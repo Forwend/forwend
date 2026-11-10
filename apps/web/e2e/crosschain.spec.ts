@@ -403,21 +403,28 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       };
       await mockInvoice(page, { ...LIVE, crossChain, crossChainOn });
       await page.goto(`/pay/${PAY}`);
-      await expect(
-        page.getByRole("heading", { name: "Payment seen on Tron. Don't pay again." }),
-      ).toBeVisible();
+      await expect(page.getByText("Nothing more to do")).toBeVisible();
       const steps = page.getByRole("list", { name: "Payment progress" }).getByRole("listitem");
-      await expect(steps.nth(0)).toContainText("Detected, done");
+      await expect(steps).toHaveText([
+        /Done: We received your payment/,
+        /Converting to USDC/,
+        /Base confirms the transfer/,
+        /Alice Design GmbH is paid/,
+      ]);
       await expect(steps.nth(1)).toHaveAttribute("aria-current", "step");
-      await expect(steps.nth(1)).toContainText("Converting");
-      await expect(page.getByText("NEAR Intents is converting it to USDC on Base.")).toBeVisible();
-      // What was sent, with 1Click's own link where no known explorer takes the hash.
-      await expect(page.getByText("1,263.00 USDT on Tron")).toBeVisible();
-      await expect(page.getByRole("link", { name: "View transaction on Tron" })).toHaveAttribute(
-        "href",
-        "https://tronscan.org/#/transaction/abc123",
+      await expect(steps.nth(1)).toContainText("USDT on Tron");
+      await expect(steps.nth(1)).toContainText("USDC on Base");
+      await expect(steps.nth(1)).toContainText("NEAR Intents is exchanging it.");
+      await expect(page.getByRole("status").filter({ hasText: /./ })).toHaveText(
+        "NEAR Intents is exchanging it.",
       );
-      await expect(page.getByText("Arrived on Base")).toHaveCount(0);
+      // What was sent, with 1Click's own link where no known explorer takes the hash.
+      await expect(steps.nth(0)).toContainText("1,263.00 USDT");
+      await expect(steps.nth(0)).toContainText("on Tron · ");
+      await expect(
+        steps.nth(0).getByRole("link", { name: "View transaction on Tron" }),
+      ).toHaveAttribute("href", "https://tronscan.org/#/transaction/abc123");
+      await expect(page.getByText(/arrived on Base/)).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Basescan/ })).toHaveCount(0);
       // No address to pay again, and no way to switch.
       await expect(page.getByText(DEPOSIT_ADDRESS)).toHaveCount(0);
@@ -467,24 +474,27 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     });
     await page.goto(`/pay/${PAY}`);
     const steps = page.getByRole("list", { name: "Payment progress" }).getByRole("listitem");
-    await expect(steps.nth(1)).toContainText("Converting, done");
+    await expect(steps.nth(1)).toContainText("Done: Converted to USDC");
     await expect(steps.nth(2)).toHaveAttribute("aria-current", "step");
+    await expect(steps.nth(2)).toContainText("Base is confirming the transfer");
+    await expect(steps.nth(2)).toContainText(
+      "3,200 of 4,400 blocks · about 10 min left · final around ",
+    );
+    await expect(page.getByRole("status").filter({ hasText: "3,200 of 4,400 blocks" })).toHaveCount(
+      1,
+    );
+    await expect(steps.nth(2).locator('[style*="--fw-share"]')).toHaveCount(1);
+    await expect(steps.nth(0)).toContainText("0.583161106420370517 ETH");
+    await expect(steps.nth(0)).toContainText("on Ethereum · ");
     await expect(
-      page.getByRole("status").filter({ hasText: "Confirming (3,200/4,400)" }),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "About 10 min left" })).toBeVisible();
-    await expect(page.getByText(/^Final around /)).toBeVisible();
-    const row = (label: string) => page.getByRole("listitem").filter({ hasText: label });
-    await expect(row("You sent")).toContainText("0.583161106420370517 ETH on Ethereum");
-    await expect(
-      row("You sent").getByRole("link", { name: "View transaction on Etherscan" }),
+      steps.nth(0).getByRole("link", { name: "View transaction on Etherscan" }),
     ).toHaveAttribute("href", `https://etherscan.io/tx/${ethTx}`);
-    await expect(row("Arrived on Base")).toContainText("1,250.00 USDC");
+    await expect(steps.nth(1)).toContainText("1,250.00 USDC");
+    await expect(steps.nth(1)).toContainText("arrived on Base · ");
     await expect(
-      row("Arrived on Base").getByRole("link", { name: "View transaction on Basescan" }),
+      steps.nth(1).getByRole("link", { name: "View transaction on Basescan" }),
     ).toHaveAttribute("href", `https://basescan.org/tx/${baseTx}`);
-    await expect(row("Returned to you")).toContainText("0.001 ETH");
-    await expect(row("Returned to you")).toContainText("To TJRabP…RTv8");
+    await expect(steps.nth(1)).toContainText("0.001 ETH returned to TJRabP…RTv8");
   });
 
   test("on Base, final but not yet booked, it says what the direct box says (R-243)", async ({
@@ -524,7 +534,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     ).toBeVisible();
     // No time is promised while the ledger books it.
     await expect(page.getByText(/left$/)).toHaveCount(0);
-    await expect(page.getByText(/^Final around /)).toHaveCount(0);
+    await expect(page.getByText(/final around/i)).toHaveCount(0);
   });
 
   test("once an address shows, Change takes two presses and goes back to the price, where the Stablecoin tab is offered (R-243, R-68)", async ({
@@ -615,7 +625,7 @@ test.describe("pay with another token (R-236 to R-238)", () => {
       await expect(page.getByRole("status").filter({ hasText: line })).toContainText(
         `Quote ID for support: ${q.quoteId}`,
       );
-      await expect(page.getByText("Don't pay again")).toHaveCount(0);
+      await expect(page.getByText("Nothing more to do")).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Show address" })).toBeVisible();
       // Another token again: a price for the kept token, then the refund address.
       await anotherToken(page).click();
@@ -641,13 +651,17 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     });
     await page.goto(`/pay/${PAY}`);
     await expect(
-      page.getByRole("heading", { name: "Payment seen on Tron. Don't pay again." }),
-    ).toBeVisible();
+      page.getByRole("list", { name: "Payment progress" }).getByRole("listitem"),
+    ).toHaveCount(4);
     await expect(
       page
         .getByRole("status")
         .filter({ hasText: "Less than needed arrived. NEAR Intents holds it until" }),
-    ).toBeVisible();
+    ).toHaveCount(1);
+    // The invoice is still unpaid, so nothing says the payer is done. Held, not exchanged: no token is drawn
+    // becoming another.
+    await expect(page.getByText("Nothing more to do")).toHaveCount(0);
+    await expect(page.getByText("USDC on Base")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Show address" })).toHaveCount(0);
   });
 

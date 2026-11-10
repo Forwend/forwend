@@ -4,21 +4,19 @@ import {
   Button,
   IconButton,
   Notice,
-  PaymentTimeline,
   QrCode,
   ReceiveAddress,
   Skeleton,
-  STEP_STATES,
   shortAddress,
   TextField,
-  type TimelineStep,
+  TIMELINE_STATES,
+  Timeline,
+  type TimelineEntry,
   Tooltip,
   TruncatedAddress,
 } from "@forwend/ui-web";
-import { CircleHelp, TriangleAlert } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
-import { invoiceProgress } from "@/features/invoices/lib/invoices";
+import { ArrowRight, CircleHelp, TriangleAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
   useCreateCrossQuoteMutation,
@@ -27,12 +25,20 @@ import {
 } from "@/features/pay/api/crosschain-api";
 import { CrossChainPicker } from "@/features/pay/components/crosschain-picker";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
+import {
+  Figure,
+  LiveLine,
+  NothingMore,
+  StepLine,
+  TxLink,
+  useLastSteps,
+} from "@/features/pay/components/pay-progress";
 import { PayWays } from "@/features/pay/components/pay-ways";
 import { AmountRows, YouSend } from "@/features/pay/components/you-send";
 import { ONECLICK_SLIPPAGE_BPS } from "@/features/pay/constants/crosschain";
 import { ENTER, PAY_WAYS } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { CLOCK, useFinalTime } from "@/features/pay/hooks/use-final-time";
+import { CLOCK } from "@/features/pay/hooks/use-final-time";
 import {
   amountText,
   bufferLine,
@@ -44,7 +50,6 @@ import {
   verifyQuote,
 } from "@/features/pay/lib/crosschain";
 import type { CrossQuote, CrossToken } from "@/features/pay/types/crosschain";
-import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
 import { MarkIcon } from "@/shared/components/chains/token-mark";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
@@ -60,10 +65,12 @@ import {
   blockchainName,
   blockchainTxLink,
   chainLogo,
+  chainName,
   crossChainEnded,
   iconOf,
   tokenLogo,
 } from "@/shared/lib/chains";
+import { timeNear } from "@/shared/lib/dates";
 
 const COPY = PAY_COPY.crossChain;
 type CrossChain = NonNullable<Invoice["crossChain"]>;
@@ -92,7 +99,11 @@ export interface CrossChainPayProps {
   readAt: number | null;
   /** The money on Base is confirming, and what the direct box says of it otherwise: it is a payment like any other. */
   confirming: boolean;
+  /** The invoice can still be paid by this money: the box may say nothing more is to do. */
+  calm: boolean;
   stateLine: string;
+  /** The payee's name, where the invoice has one. */
+  payee: string | undefined;
   /** Back to the tokens the invoice takes directly. */
   onDirect: () => void;
   /** The payer opened this box by the tabs, so its tabs take the focus, once. */
@@ -114,7 +125,9 @@ export function CrossChainPay({
   now,
   readAt,
   confirming,
+  calm,
   stateLine,
+  payee,
   onDirect,
   viaTabs = false,
   onTabsFocused,
@@ -223,7 +236,9 @@ export function CrossChainPay({
         now={now}
         readAt={readAt}
         confirming={confirming}
+        calm={calm}
         stateLine={stateLine}
+        payee={payee}
       />
     );
   }
@@ -603,132 +618,155 @@ function Send({
   );
 }
 
-/** Detected on the payer's chain, Converting, Confirming on Base, Paid (R-238). */
+/** What happened to the payer's money, one step each: received on their chain, converted, confirmed on Base, paid
+ * (R-238, R-243). */
 function CrossChainProgress({
   invoice,
   crossChain,
   now,
   readAt,
   confirming,
+  calm,
   stateLine,
+  payee,
 }: {
   invoice: Invoice;
   crossChain: CrossChain;
   now: number;
   readAt: number | null;
   confirming: boolean;
+  calm: boolean;
   stateLine: string;
+  payee: string | undefined;
 }) {
   const chain = blockchainName(crossChain.blockchain);
+  const base = chainName(CROSS_CHAIN_TARGET.chainId);
   const onBase = invoice.deposits.length > 0 || invoice.options.some((o) => o.deposits.length > 0);
-  const paid = invoice.paymentStatus === "paid";
-  const reached = paid ? 4 : onBase || crossChain.convertedAt ? 2 : 1;
-  const labels = [
-    COPY.steps.detected,
-    COPY.steps.converting,
-    COPY.steps.confirming,
-    COPY.steps.paid,
-  ];
-  const steps: TimelineStep[] = labels.map((label, i) => ({
-    label,
-    state:
-      i < reached
-        ? STEP_STATES.complete
-        : i === reached
-          ? STEP_STATES.current
-          : STEP_STATES.upcoming,
-  }));
-  // On Base it is a payment like a direct one: the blocks left, the time left and when it is final while it confirms,
-  // then the same line, as "Awaiting confirmation." while the ledger books it (R-243).
-  const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
-  const final = useFinalTime(onBase && confirming, secondsLeft, readAt);
+  const converted = onBase || Boolean(crossChain.convertedAt);
   const sent = BigInt(crossChain.deposited ?? crossChain.amountIn);
   const refunded = BigInt(crossChain.refunded ?? "0");
   const origin = crossChain.originTxs[0];
   // Only 1Click's success says the USDC left for Base: an amount it names while converting is still its plan.
   const success = crossChain.status === CROSS_CHAIN_STATUSES.success;
-  const base = success ? crossChain.destinationTxs[0] : undefined;
-  // The payer's own token and chain: what they sent, and what comes back to them.
-  const originMark = (
+  const arrival = success ? crossChain.destinationTxs[0] : undefined;
+  // 1Click holds a short deposit and converts nothing (R-238).
+  const held = crossChain.status === CROSS_CHAIN_STATUSES.incomplete;
+  const today = new Date(now).toISOString();
+  const time = (at: string | null) => (at ? timeNear(at, today) : null);
+  // The payer's own token on its chain, and the USDC on Base it becomes.
+  const originMark = <OriginMark crossChain={crossChain} />;
+  const targetMark = (
     <MarkIcon
-      token={iconOf(CROSS_CHAIN_TOKEN_ICONS, crossChain.symbol)}
-      chain={iconOf(BLOCKCHAIN_ICONS, crossChain.blockchain)}
-      letter={crossChain.symbol.slice(0, 1)}
-      chainLogo={chainLogo(crossChain.blockchain)}
+      small
+      token={TOKEN_ICONS[CROSS_CHAIN_TARGET.symbol]}
+      chain={CHAINS[CROSS_CHAIN_TARGET.chainId]?.icon}
+      letter={CROSS_CHAIN_TARGET.symbol.slice(0, 1)}
     />
   );
+  const last = useLastSteps({
+    invoice,
+    network: base,
+    payee,
+    readAt,
+    arrived: converted,
+    counting: onBase && confirming,
+    // Converted, and the scan has not seen the USDC on Base yet.
+    line: onBase ? stateLine : PAY_COPY.updatesItself,
+  });
+  const converting = held ? shortDepositLine(crossChain, now) : COPY.converting;
+  const steps: TimelineEntry[] = [
+    {
+      id: "received",
+      title: PAY_COPY.steps.received,
+      state: TIMELINE_STATES.done,
+      aside: origin ? (
+        <TxLink hash={origin.hash} link={blockchainTxLink(crossChain.blockchain, origin)} />
+      ) : undefined,
+      description: (
+        <Figure
+          mark={originMark}
+          amount={amountText(sent, crossChain)}
+          rest={
+            crossChain.depositSeenAt
+              ? PAY_COPY.receivedOn(chain, timeNear(crossChain.depositSeenAt, today))
+              : PAY_COPY.on(chain)
+          }
+        />
+      ),
+    },
+    {
+      id: "converting",
+      title: converted
+        ? COPY.steps.converted(CROSS_CHAIN_TARGET.symbol)
+        : COPY.steps.converting(CROSS_CHAIN_TARGET.symbol),
+      state: converted ? TIMELINE_STATES.done : TIMELINE_STATES.current,
+      working: !held,
+      aside: arrival ? (
+        <TxLink hash={arrival.hash} chainId={CROSS_CHAIN_TARGET.chainId} />
+      ) : undefined,
+      description: (
+        <div className="flex flex-col gap-1.5">
+          {converted ? (
+            success && crossChain.delivered ? (
+              <Figure
+                mark={targetMark}
+                amount={amountText(BigInt(crossChain.delivered), CROSS_CHAIN_TARGET)}
+                rest={COPY.arrived(base, time(crossChain.convertedAt))}
+              />
+            ) : null
+          ) : (
+            <>
+              {/* A short deposit is held, not exchanged: no token becomes another. */}
+              {held ? null : (
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-0.5 text-xs">
+                  {originMark}
+                  {COPY.onChain(crossChain.symbol, chain)}
+                  <ArrowRight aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
+                  {targetMark}
+                  {COPY.onChain(CROSS_CHAIN_TARGET.symbol, base)}
+                </span>
+              )}
+              <StepLine>{converting}</StepLine>
+            </>
+          )}
+          {/* 1Click names no refund transaction (R-243). */}
+          {refunded > 0n ? (
+            <span className="text-xs">
+              {COPY.returnedTo(amountText(refunded, crossChain), shortAddress(crossChain.refundTo))}
+            </span>
+          ) : null}
+        </div>
+      ),
+    },
+    ...last.steps,
+  ];
   return (
     <section
       aria-labelledby="pay-cross-progress"
       className={`flex flex-col gap-4 p-4 sm:p-5 ${ENTER}`}
     >
-      <h2 id="pay-cross-progress" className="text-sm font-medium text-ink">
-        {COPY.seenOn(chain)}
+      <h2 id="pay-cross-progress" className="sr-only">
+        {PAY_COPY.progress}
       </h2>
-      <PaymentTimeline label={PAY_COPY.progress} steps={steps} />
-      <div className="-mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <p role="status" className="text-sm text-muted">
-          {crossChain.status === CROSS_CHAIN_STATUSES.incomplete ? (
-            shortDepositLine(crossChain, now)
-          ) : reached === 1 ? (
-            COPY.converting
-          ) : !onBase ? (
-            PAY_COPY.updatesItself
-          ) : confirming ? (
-            <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
-          ) : (
-            stateLine
-          )}
-        </p>
-        {final ? (
-          <p className="text-sm text-muted tabular-nums">{PAY_COPY.finalAround(final)}</p>
-        ) : null}
-      </div>
-      <ul className="divide-y divide-line rounded-md border border-line">
-        <Fact
-          mark={originMark}
-          label={COPY.sent}
-          value={COPY.onChain(amountText(sent, crossChain), chain)}
-        >
-          {origin ? (
-            <TxHash hash={origin.hash}>
-              <ExplorerLink
-                txHash={origin.hash}
-                link={blockchainTxLink(crossChain.blockchain, origin)}
-                named
-              />
-            </TxHash>
-          ) : null}
-        </Fact>
-        {success && crossChain.delivered ? (
-          <Fact
-            mark={
-              <MarkIcon
-                token={TOKEN_ICONS[CROSS_CHAIN_TARGET.symbol]}
-                chain={CHAINS[CROSS_CHAIN_TARGET.chainId]?.icon}
-                letter={CROSS_CHAIN_TARGET.symbol.slice(0, 1)}
-              />
-            }
-            label={COPY.arrived}
-            value={amountText(BigInt(crossChain.delivered), CROSS_CHAIN_TARGET)}
-          >
-            {base ? (
-              <TxHash hash={base.hash}>
-                <ExplorerLink chainId={CROSS_CHAIN_TARGET.chainId} txHash={base.hash} named />
-              </TxHash>
-            ) : null}
-          </Fact>
-        ) : null}
-        {refunded > 0n ? (
-          <Fact
-            mark={originMark}
-            label={COPY.returned}
-            value={amountText(refunded, crossChain)}
-            detail={COPY.returnedTo(shortAddress(crossChain.refundTo))}
-          />
-        ) : null}
-      </ul>
+      {/* A short deposit pays nothing: the payer still has an invoice to pay once it is returned. */}
+      {calm && !held ? <NothingMore /> : null}
+      <LiveLine>{last.line ?? converting}</LiveLine>
+      <Timeline label={PAY_COPY.progress} entries={steps} />
+      <PoweredByNearIntents />
     </section>
+  );
+}
+
+/** The payer's own token with its chain on the corner, small enough for a line of text. */
+export function OriginMark({ crossChain }: { crossChain: CrossChain }) {
+  return (
+    <MarkIcon
+      small
+      token={iconOf(CROSS_CHAIN_TOKEN_ICONS, crossChain.symbol)}
+      chain={iconOf(BLOCKCHAIN_ICONS, crossChain.blockchain)}
+      letter={crossChain.symbol.slice(0, 1)}
+      chainLogo={chainLogo(crossChain.blockchain)}
+    />
   );
 }
 
@@ -753,47 +791,6 @@ function CrossMark({ token }: { token: Shown["token"] }) {
         <span className="truncate text-sm font-medium text-ink">{token.symbol}</span>
         <span className="truncate text-xs text-muted">{blockchainName(token.blockchain)}</span>
       </span>
-    </span>
-  );
-}
-
-/** One line of what happened to the payer's money, with its transaction at the end. */
-function Fact({
-  mark,
-  label,
-  value,
-  detail,
-  children,
-}: {
-  /** The token with its network on the corner: which money this line is about, before it is read. */
-  mark: ReactNode;
-  label: string;
-  value: string;
-  detail?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2.5 text-sm">
-      <span className="flex min-w-0 items-center gap-3">
-        {mark}
-        <span className="flex min-w-0 flex-col">
-          <span className="text-xs text-muted">{label}</span>
-          <span className="break-words text-ink tabular-nums">{value}</span>
-          {detail ? <span className="text-xs text-muted">{detail}</span> : null}
-        </span>
-      </span>
-      {children}
-    </li>
-  );
-}
-
-function TxHash({ hash, children }: { hash: string; children: ReactNode }) {
-  return (
-    <span className="flex items-center gap-1">
-      <span className="font-mono text-xs text-muted" title={hash}>
-        {shortAddress(hash)}
-      </span>
-      {children}
     </span>
   );
 }

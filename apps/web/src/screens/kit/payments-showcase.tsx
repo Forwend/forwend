@@ -207,6 +207,29 @@ export function PaymentsShowcase() {
             ]}
           />
         </div>
+        <div className="w-full max-w-sm">
+          <Timeline
+            label="Payment progress, with a step running"
+            entries={[
+              {
+                id: "received",
+                title: "We received your payment",
+                state: TIMELINE_STATES.done,
+                aside: <span className="font-mono text-xs text-muted">0xf9a5…0b62</span>,
+                description: "1.23 USDC on Base · 2:14 PM",
+              },
+              {
+                id: "confirming",
+                title: "Base is confirming the transfer",
+                state: TIMELINE_STATES.current,
+                working: true,
+                progress: 0.25,
+                description: "3 of 12 blocks · about 2 min left",
+              },
+              { id: "paid", title: "Sample shop is paid", state: TIMELINE_STATES.upcoming },
+            ]}
+          />
+        </div>
       </KitGroup>
       <KitGroup title="Payment timeline">
         <div className="grid w-full gap-8 md:grid-cols-2">

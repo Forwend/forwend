@@ -80,7 +80,6 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
         >
           <TextField
             label={COPY.label}
-            hint={problem ? undefined : COPY.hint}
             error={problem}
             type="email"
             autoComplete="email"

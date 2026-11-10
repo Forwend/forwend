@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 474,
+  "nextId": 476,
   "tasks": [
     {
       "id": "F332",
@@ -1258,15 +1258,133 @@
     {
       "id": "F473",
       "type": "feat",
-      "behavior": "Payment progress reads as a list of steps with their facts, and says the payer has nothing more to do",
+      "behavior": "Payment progress reads as a list of steps with their facts, for direct and cross-chain payments, and says the payer has nothing more to do",
       "acceptance": [
         "After money is seen, the pay box matches the approved template (Option A): Nothing more to do, then each step with its amount, network, time and transaction.",
-        "It shows only facts the page has; Converting and Confirming keep their rules (R-238, R-243).",
-        "Before review, each state is compared side by side with its template at 1280 and 390 wide."
+        "It shows only facts the page has; Converting and Confirming keep their rules (R-238, R-243). The confirming step's ring fills with the blocks passed; no bar repeats it.",
+        "Before review, each state is compared side by side with its template at 1280 and 390 wide.",
+        "The progress steps, the Paid receipt and the page summary lead each amount with its token's logo. The receipt form shows no hint line. The footer parts its links with a rule, not a dot, in darker text."
       ],
       "dependsOn": [
         "F461"
       ],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "lint",
+        "typecheck",
+        "e2e"
+      ],
+      "refs": [
+        "R-68",
+        "R-238",
+        "R-243",
+        "R-246",
+        "R-62"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-10 review fail by reviewer: FAIL: one money-wording defect. apps/web/src/features/pay/components/pay-invoice.tsx:658 and :682 pass lead={seen && !pay.canSend} to Received, and :1132 then shows the 'Nothing more to do' box. canSend is also false while more is still due: (a) a payer-chooses invoice whose first deposit is short but reaches a tenth (payState awaitingChoice; pay.test.ts:455 asserts canSend=false for this state), e.g. 0.60 of 5.00 USDC confirming, shows 'Nothing more to do. Don't send again. You can close this page' with 4.40 still due and no remaining amount anywhere, until the ledger locks the option; (b) a short deposit while reconciliationStatus is pending; (c) a short deposit confirming after the checkout closed, which ends as closedPartial with held money. R-68 as rewritten says the box leads only 'with nothing more due'. Fix: show NothingMore only when pay.remaining is 0 (the full amount is seen on time); keep the steps without the box otherwise; add a unit or e2e case for the provisional partial. The cross-chain box (crosschain-pay.tsx:742) is unconditional and also shows for INCOMPLETE_DEPOSIT; R-238 allows it and the step line states the short deposit, so it is a note, not the fail. Other notes: dead code left by this change (InvoiceTimeline and useStepped in features/invoices/components/invoice-progress.tsx have no importer; COPY.payingWith and the 'seen ||' branch at pay-invoice.tsx:721-732 are unreachable; orphan comment at pay-invoice.tsx:121; stale ConfirmingStatus comments at pay-copy.ts:104,107); docs/web/DESIGN.md:1003 still describes the receipt hint line that was removed; Timeline upcoming titles lost font-medium for the invoice and job timelines too. Facts check out: arrival amount only on SUCCESS, times only when known. Checks run: web unit 405 passed, ui-web unit 29 passed, typecheck and lint clean, docs-check 0 errors, e2e crosschain+pay 66 passed.",
+        "2026-11-10 review fail by subagent: FAIL: one money-wording defect, same class as the first review. apps/web/src/features/pay/components/pay-invoice.tsx:1137 shows 'Nothing more to do' when pay.remaining === 0n, but on a closed checkout payState (apps/web/src/features/pay/lib/pay.ts:86-90, :128) counts held money, late money included, as received. Scenario: invoice 1000, closed, paymentStatus expired_partially_paid, deposits 400 on time (paid '0') + 600 late, amounts payable 0 / held 1000. Result: state checking, remaining 0, box shown, steps 'Base confirmed the transfer' and '<Payee> is paid' with a turning ring, line 'Awaiting confirmation.', while the invoice is unpaid and all 1000 is held for the payer ('600 arrived after the checkout closed' shows under the panel). Proved with a scratch vitest probe of payState + useLastSteps. Same root: a late-only full payment shows no box (fix holds) but reads 'Base is confirming the transfer' forever. Fix: key the box on on-time money (depositAmount(invoice,false) >= amount), or better make payState return closedPartial/closed when closed with payable 0; add a failing-first test. The first review's four states now hold (0.60 of 5.00 confirming/checking, short deposit with reconciliation pending, short deposit confirming after close, late-only: no box). Cross-chain: box also shows when the invoice is canceled, closed with late USDC, or in review (crosschain-pay.tsx:746), beside a line telling the payer to act; lower severity. Live region, removed code and docs check out; INVOICE_COPY.steps and .confirmed are now unused. Checks run: web unit 406 pass, ui-web 29 pass, typecheck, lint (1 old warning in pay.ts:238), docs-check 0 errors, e2e crosschain+pay 67 pass.",
+        "2026-11-10 review pass by reviewer: PASS: no state found where 'Nothing more to do' shows while the payer still owes. Direct (pay-invoice.tsx:1140, pay.ts:65): the box needs state confirming/checking, canSend false and on-time deposits >= the shown option's amount; traced payer-chooses (under and over the tenth, two options), client-paid fees, part plus late money, review, canceled, overpaid, a cut deposit list and a reopened invoice against payState, withOption and the ledger (on-time is block_time <= closes_at, expiry waits for booked transfers). Cross-chain (crosschain-pay.tsx:752, pay-invoice.tsx:715): hidden for a short deposit, a closed or canceled checkout and review; a short delivery on Base is reachable only if 1Click breaks exact-output. web-unit 407, ui-unit 29, typecheck, lint (one old warning at pay.ts:244), check-docs and e2e crosschain+pay 67 passed. Notes, not defects: the cross-chain box could also hide when money is on Base and canSend is true; the box shows at KNOWN_DEPOSIT_TX before 1Click checks the amount; onBase counts any deposit; a closed checkout with only late money reads 'Base is confirming the transfer' (F475); useLastSteps tests sit in pay.test.ts."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-10T19:01:32Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 59.7,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 11.4,
+            "log": ""
+          }
+        ],
+        "taskHash": "6bbcc56cbecb4695",
+        "filesHash": "dbd3a0987b662946",
+        "proof": {
+          "1": "e2e: pay.spec 'follows the payment from waiting to paid' and crosschain.spec 'follows a seen deposit through Converting' assert Nothing more to do and the step texts, amounts, times and transaction links; pay.spec 'a part payment being checked' asserts the box is absent while part is due",
+          "2": "web-unit: pay.test.ts seenInFull counts only on-time money (late held money reads as not paid), useLastSteps and confirmingLine; crosschain.spec asserts no 'arrived on Base' before SUCCESS and the short-deposit line without the box",
+          "3": "e2e: screenshots of direct confirming, detected, partial and cross converting, confirming, short deposit at 390 and 1280 were compared with template Flow 3 Option A; the owner then asked for the ring in place of the bar and for logos",
+          "4": "e2e: pay.spec receipt and footer tests pass without the hint; screenshots of the Paid box, summary and footer in light and dark at 390 and 1280 were checked"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "PASS: no state found where 'Nothing more to do' shows while the payer still owes. Direct (pay-invoice.tsx:1140, pay.ts:65): the box needs state confirming/checking, canSend false and on-time deposits >= the shown option's amount; traced payer-chooses (under and over the tenth, two options), client-paid fees, part plus late money, review, canceled, overpaid, a cut deposit list and a reopened invoice against payState, withOption and the ledger (on-time is block_time <= closes_at, expiry waits for booked transfers). Cross-chain (crosschain-pay.tsx:752, pay-invoice.tsx:715): hidden for a short deposit, a closed or canceled checkout and review; a short delivery on Base is reachable only if 1Click breaks exact-output. web-unit 407, ui-unit 29, typecheck, lint (one old warning at pay.ts:244), check-docs and e2e crosschain+pay 67 passed. Notes, not defects: the cross-chain box could also hide when money is on Base and canSend is true; the box shows at KNOWN_DEPOSIT_TX before 1Click checks the amount; onBase counts any deposit; a closed checkout with only late money reads 'Base is confirming the transfer' (F475); useLastSteps tests sit in pay.test.ts.",
+          "at": "2026-11-10T19:10:14Z",
+          "filesHash": "dbd3a0987b662946"
+        }
+      },
+      "branch": "feat/f473-payment-progress-reads-as-a-list-of-step",
+      "baseCommit": "9fcabbfc700914362d8a61f284bfb1cf173e979e",
+      "failedVerifies": 0
+    },
+    {
+      "id": "F474",
+      "type": "feat",
+      "behavior": "On a phone, panels are rounded cards with a margin and do not touch the screen's edges, except the Overview balance",
+      "acceptance": [
+        "Below the small breakpoint every panel has the page's margin, a border all round and the large radius; the Overview balance card keeps its edge-to-edge look.",
+        "At 390px no page scrolls sideways, and a panel's inner rows and placeholders still line up with its edges.",
+        "Before review, every page is looked at on the real app at 390 wide."
+      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [
         "web-unit",
@@ -1280,10 +1398,33 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F475",
+      "type": "fix",
+      "behavior": "A closed pay page whose held money reaches the amount says it closed, instead of waiting for a confirmation that never comes",
+      "acceptance": [
+        "Given a closed checkout whose held money (on time plus late) reaches the amount and nothing is payable, the pay page says it closed and the money is held, not Awaiting confirmation.",
+        "A late-only full payment shows no step that says a network is confirming."
+      ],
+      "dependsOn": [],
+      "state": "not_started",
+      "verification": [
+        "web-unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-68"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-10T15:02:33Z",
+    "at": "2026-11-10T18:10:49Z",
     "clean": false,
     "problems": [
       "F332: depends on unknown task F335",
@@ -1291,6 +1432,6 @@
       "F439: depends on unknown task F438",
       "F452: depends on unknown task F451"
     ],
-    "note": "F460 verified, reviewed and committed on its branch; not pushed. Next: owner's go-ahead for done F460, then start F461 (pay box, Option B)."
+    "note": "F461 merged in #475 (pay box, picker, shipped logos). Next by the owner's choice: F473 progress step list, or the phone panel edges task."
   }
 }

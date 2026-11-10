@@ -1,3 +1,4 @@
+import { timeLeft } from "@/features/invoices/constants/invoices-copy";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import type { PayState } from "@/features/pay/types/pay";
 
@@ -43,7 +44,6 @@ export const PAY_COPY = {
   payBox: "Payment",
   // The two ways to pay, as tabs over the box.
   ways: { label: "How to pay", direct: "Stablecoin", cross: "Any token" },
-  payingWith: "Paying with",
   progress: "Payment progress",
   network: "Network",
   token: "Token",
@@ -61,10 +61,34 @@ export const PAY_COPY = {
   updatesItself: "This page updates on its own.",
   found: "Payment found",
   foundNote: (amount: string) => `Found ${amount}. Recording it now. Don't pay again.`,
-  // R-68: once money is seen the payer has nothing left to do; saying so keeps them from paying twice.
-  seen: "Payment detected",
-  finalAround: (time: string) => `Final around ${time}`,
-  nothingToDo: "Don't pay again. This page updates on its own.",
+  // R-68: once money is seen the payer has nothing left to do; saying so first keeps them from paying twice.
+  nothingMore: "Nothing more to do",
+  nothingMoreNote: "Don't send again. You can close this page; it keeps updating if you stay.",
+  // What happens to the money, one step each, in the order it happens.
+  steps: {
+    received: "We received your payment",
+    receivedMore: "We received another payment",
+    confirms: (network: string) => `${network} confirms the transfer`,
+    confirming: (network: string) => `${network} is confirming the transfer`,
+    confirmed: (network: string) => `${network} confirmed the transfer`,
+    paid: (payee?: string) => `${payee ?? "The recipient"} is paid`,
+  },
+  receivedOn: (network: string, time: string) => `on ${network} · ${time}`,
+  // R-73: the blocks passed of those the payment waits for, the time left, and when it is final. A part never
+  // breaks across two lines: its spaces are no-break spaces.
+  confirmingLine: (done: number, total: number, seconds: number, final: string | null) => {
+    const line = [
+      total > 0
+        ? `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} blocks`
+        : null,
+      seconds > 0 ? `${timeLeft(seconds)} left` : null,
+      final ? `final around ${final}` : null,
+    ]
+      .filter((part) => part !== null)
+      .map((part) => part.replaceAll(" ", "\u00a0"))
+      .join(" · ");
+    return line ? `${line[0]?.toUpperCase()}${line.slice(1)}` : "Confirming";
+  },
   exactAmount: "You send",
   copyAmount: "Copy amount",
   amountCopied: "Amount copied",
@@ -76,10 +100,10 @@ export const PAY_COPY = {
   mismatch: "This payment page does not match the payment. Do not pay; contact the recipient.",
   unknownToken:
     "This page does not support the token this payment asks for. Do not pay; contact the recipient.",
-  // One status line (R-68); confirming adds its block count (ConfirmingStatus).
+  // One status line (R-68); confirming says its block count instead (confirmingLine).
   states: {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
-    // The steps say it arrived; the line counts the blocks (ConfirmingStatus).
+    // The steps say it arrived; the line counts the blocks (confirmingLine).
     [PAY_STATES.confirming]: () => "Confirming",
     // Final on chain, not yet booked: no time is promised, because none is known.
     [PAY_STATES.checking]: ({ delayed }) =>
@@ -122,7 +146,6 @@ export const PAY_COPY = {
     open: "Email me a receipt",
     label: "Email me the receipt (optional)",
     placeholder: "you@example.com",
-    hint: "Used for this receipt only. Nothing else is sent to it.",
     send: "Send",
     sentTitle: "Receipt sent",
     savedTitle: "Receipt saved",
@@ -238,19 +261,15 @@ export const PAY_COPY = {
     quoteRefused: "NEAR Intents refused this quote. Try again later or choose another token.",
     tooMany: "Too many prices asked for this payment. Try again later.",
     steps: {
-      detected: "Detected",
-      converting: "Converting",
-      confirming: "Confirming",
-      paid: "Paid",
+      converting: (symbol: string) => `Converting to ${symbol}`,
+      converted: (symbol: string) => `Converted to ${symbol}`,
     },
-    seenOn: (chain: string) => `Payment seen on ${chain}. Don't pay again.`,
-    converting: "NEAR Intents is converting it to USDC on Base.",
+    converting: "NEAR Intents is exchanging it.",
     // R-243: what happened to the payer's money, once 1Click saw it.
-    sent: "You sent",
-    arrived: "Arrived on Base",
-    returned: "Returned to you",
-    onChain: (amount: string, chain: string) => `${amount} on ${chain}`,
-    returnedTo: (address: string) => `To ${address}`,
+    onChain: (symbol: string, chain: string) => `${symbol} on ${chain}`,
+    arrived: (chain: string, time: string | null) =>
+      time ? `arrived on ${chain} · ${time}` : `arrived on ${chain}`,
+    returnedTo: (amount: string, address: string) => `${amount} returned to ${address}`,
     // R-238: 1Click holds a short deposit until the deadline. Whether more sent there completes it is Q-19, so the
     // payer is not asked to send more.
     incomplete: (time: string) =>

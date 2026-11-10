@@ -15,6 +15,9 @@ import {
   StepTransition,
   SuccessCheck,
   shortAddress,
+  TIMELINE_STATES,
+  Timeline,
+  type TimelineEntry,
 } from "@forwend/ui-web";
 import {
   Ban,
@@ -41,13 +44,11 @@ import {
 } from "@/features/invoices/api/invoices-api";
 import { CheckStatus, recheckKey } from "@/features/invoices/components/check-status";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
-import { ConfirmingStatus, InvoiceTimeline } from "@/features/invoices/components/invoice-progress";
 import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import {
   DOCUMENT_KINDS,
   HISTORY_FIELDS,
   INVOICE_PDFS,
-  INVOICE_STEPS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import {
@@ -56,7 +57,6 @@ import {
   formatDueDate,
   invoiceNumber,
   invoicePdfUrl,
-  invoiceProgress,
   isReturnLink,
   linesFigures,
   optionFees,
@@ -66,11 +66,19 @@ import { Backdrop } from "@/features/pay/components/backdrop";
 import {
   CrossChainEnded,
   CrossChainPay,
+  OriginMark,
   readAsked,
 } from "@/features/pay/components/crosschain-pay";
 import { ExactAmount } from "@/features/pay/components/exact-amount";
 import { NeedHelp } from "@/features/pay/components/need-help";
 import { type Choice, OptionPicker } from "@/features/pay/components/option-picker";
+import {
+  Figure,
+  LiveLine,
+  NothingMore,
+  TxLink,
+  useLastSteps,
+} from "@/features/pay/components/pay-progress";
 import { PayWays } from "@/features/pay/components/pay-ways";
 import { Payee } from "@/features/pay/components/payee";
 import { ReceiptEmail } from "@/features/pay/components/receipt-email";
@@ -79,7 +87,6 @@ import { CROSS_CHAIN_LEAST_MS } from "@/features/pay/constants/crosschain";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { ENTER, LEFT_PAD, PAY_STATES, PAY_WAYS, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
-import { useFinalTime } from "@/features/pay/hooks/use-final-time";
 import { type CrossChainTarget, crossChainTarget } from "@/features/pay/lib/crosschain";
 import {
   checkoutClosesAt,
@@ -91,16 +98,16 @@ import {
   payState,
   payToken,
   receiptDeposits,
+  seenInFull,
   shortDuration,
   withOption,
 } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import type { EmbedLayout, PayToken } from "@/features/pay/types/pay";
-import { ExplorerLink } from "@/shared/components/chains/explorer-link";
-import { TokenMark } from "@/shared/components/chains/token-mark";
+import { MarkIcon, TokenMark } from "@/shared/components/chains/token-mark";
 import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY, REFRESH_MS } from "@/shared/config/refresh";
-import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
+import { CHAINS, CROSS_CHAIN_STATUSES, TOKEN_ICONS } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import {
   addressLink,
@@ -111,6 +118,7 @@ import {
   lookalikeOf,
   txLink,
 } from "@/shared/lib/chains";
+import { timeNear } from "@/shared/lib/dates";
 import { exactDigits } from "@/shared/lib/money";
 
 const NOT_FOUND = 404;
@@ -118,8 +126,6 @@ const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle
 const PANEL = "fw-panel sm:rounded-lg";
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
 const CLOSING_SOON_MS = 30 * 60_000;
-// The payer's steps end at Paid: settling is the sender's business (R-68).
-const PAYER_STEPS = [INVOICE_STEPS.detected, INVOICE_STEPS.confirming, INVOICE_STEPS.paid];
 
 const formatMoney = (units: bigint, token: PayToken) =>
   `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
@@ -411,8 +417,17 @@ function Summary({
         />
         {/* Kept in place while the payer picks, so the network's line arriving moves nothing below it; the fees
             hold its place meanwhile. */}
-        <p className={`text-sm text-muted ${picking && !feeLine ? "invisible" : ""}`}>
-          {picking && feeLine ? feeLine : COPY.on(chainName(invoice.chainId))}
+        <p
+          className={`flex items-center gap-2 text-sm text-muted ${picking && !feeLine ? "invisible" : ""}`}
+        >
+          {picking && feeLine ? (
+            feeLine
+          ) : (
+            <>
+              <OptionMark invoice={invoice} token={token} />
+              {COPY.on(chainName(invoice.chainId))}
+            </>
+          )}
         </p>
         {feeLine && !picking ? <p className="text-sm text-muted">{feeLine}</p> : null}
       </div>
@@ -668,6 +683,7 @@ function PayBox({
       token={token}
       money={money}
       network={network}
+      now={now}
       readAt={readAt}
       lead={statusFirst}
     />
@@ -695,7 +711,10 @@ function PayBox({
               now={now}
               readAt={readAt}
               confirming={pay.state === PAY_STATES.confirming}
+              // A closed or canceled checkout, or one in review, may still need the payer.
+              calm={!pay.closed && pay.state !== PAY_STATES.review}
               stateLine={COPY.states[pay.state](values(invoice, pay, money))}
+              payee={payeeName(invoice)}
               viaTabs={viaTabs}
               onTabsFocused={tabsFocused}
               onDirect={() => {
@@ -706,10 +725,11 @@ function PayBox({
           ) : (
             <>
               {statusFirst ? received : null}
-              {(pay.canSend || seen || canChoose) && folded ? (
+              {/* Nothing more to send: the first step already names the token and its network. */}
+              {statusFirst && folded ? null : (pay.canSend || canChoose) && folded ? (
                 <section
                   aria-labelledby="pay-before"
-                  className={`flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 ${ENTER} ${statusFirst ? "border-t border-line" : ""}`}
+                  className={`flex min-h-16 items-center gap-3 px-4 py-3 sm:px-5 ${ENTER}`}
                 >
                   <h2
                     id="pay-before"
@@ -717,7 +737,7 @@ function PayBox({
                     tabIndex={-1}
                     className="w-20 shrink-0 text-sm text-muted outline-none"
                   >
-                    {pay.canSend || canChoose ? COPY.payWith : COPY.payingWith}
+                    {COPY.payWith}
                   </h2>
                   {choice && found === 0n ? (
                     <PickedOption
@@ -992,7 +1012,30 @@ function useFound(linkToken: string, pay: Pay): bigint {
   return pay.state === PAY_STATES.waiting && recheck?.rescanning && missing > 0n ? missing : 0n;
 }
 
-const payeeOf = (invoice: Invoice) => invoice.issuer?.name ?? invoice.senderName ?? COPY.creator;
+/** The invoice's token with its network on the corner, small enough for a line of text. */
+function OptionMark({ invoice, token }: { invoice: Invoice; token: PayToken }) {
+  return (
+    <MarkIcon
+      small
+      token={TOKEN_ICONS[token.symbol]}
+      chain={CHAINS[invoice.chainId]?.icon}
+      letter={token.symbol.slice(0, 1)}
+    />
+  );
+}
+
+/** A receipt row's value led by its mark; the mark adds no height to the row. */
+function Marked({ mark, children }: { mark: ReactNode; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-baseline gap-2">
+      <span className="-my-0.5 self-center">{mark}</span>
+      <span className="min-w-0">{children}</span>
+    </span>
+  );
+}
+
+const payeeName = (invoice: Invoice) => invoice.issuer?.name ?? invoice.senderName ?? undefined;
+const payeeOf = (invoice: Invoice) => payeeName(invoice) ?? COPY.creator;
 
 const values = (invoice: Invoice, pay: Pay, money: (units: bigint) => string) => ({
   delayed: pay.delayed,
@@ -1037,6 +1080,7 @@ function Received({
   token,
   money,
   network,
+  now,
   readAt,
   lead,
 }: {
@@ -1046,13 +1090,43 @@ function Received({
   token: PayToken;
   money: (units: bigint) => string;
   network: string;
+  now: number;
   readAt: number | null;
-  /** Nothing more is due: the panel opens with what was seen and when it is final. */
+  /** Nothing more is due: the panel opens by saying so. */
   lead: boolean;
 }) {
-  const { blocksLeft, blocksTotal, secondsLeft } = invoiceProgress(invoice);
-  const confirming = pay.state === PAY_STATES.confirming;
-  const final = useFinalTime(confirming, secondsLeft, readAt);
+  const today = new Date(now).toISOString();
+  const deposits = invoice.deposits.filter((d) => !d.late);
+  const last = useLastSteps({
+    invoice,
+    network,
+    payee: payeeName(invoice),
+    readAt,
+    arrived: true,
+    counting: pay.state === PAY_STATES.confirming,
+    partial: pay.state === PAY_STATES.partial,
+    line: COPY.states[pay.state](values(invoice, pay, money)),
+  });
+  const steps: TimelineEntry[] = [
+    ...deposits.map((d, i) => ({
+      id: `${d.txHash}:${d.logIndex}`,
+      title: i === 0 ? COPY.steps.received : COPY.steps.receivedMore,
+      state: TIMELINE_STATES.done,
+      aside: <TxLink hash={d.txHash} chainId={invoice.chainId} />,
+      description: (
+        <Figure
+          mark={<OptionMark invoice={invoice} token={token} />}
+          amount={money(BigInt(d.amount))}
+          rest={
+            <time dateTime={d.blockTime}>
+              {COPY.receivedOn(network, timeNear(d.blockTime, today))}
+            </time>
+          }
+        />
+      ),
+    })),
+    ...last.steps,
+  ];
   return (
     <section
       aria-labelledby="pay-progress"
@@ -1061,56 +1135,14 @@ function Received({
       <h2 id="pay-progress" className="sr-only">
         {COPY.progress}
       </h2>
-      {lead ? <p className="text-base font-semibold text-ink">{COPY.seen}</p> : null}
-      <InvoiceTimeline invoice={invoice} label={COPY.progress} steps={PAYER_STEPS} />
-      <div className="-mt-1 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <p role="status" className="text-sm text-ink">
-          {confirming ? (
-            <ConfirmingStatus blocks={blocksLeft} total={blocksTotal} seconds={secondsLeft} />
-          ) : (
-            COPY.states[pay.state](values(invoice, pay, money))
-          )}
-        </p>
-        {final ? (
-          <p className="text-sm text-muted tabular-nums">{COPY.finalAround(final)}</p>
-        ) : null}
-      </div>
-      {lead ? <p className="-mt-2 text-sm text-muted">{COPY.nothingToDo}</p> : null}
+      {/* Only once the whole amount is seen on time. No address shows either while a part payment is checked or an
+          option is being chosen, and the payer may still owe the rest then. */}
+      {lead && seenInFull(invoice) ? <NothingMore /> : null}
+      {last.line ? <LiveLine>{last.line}</LiveLine> : null}
       {invoice.depositSummary && invoice.depositSummary.count > invoice.deposits.length ? (
         <p className="text-xs text-muted">{INVOICE_COPY.depositPreview}</p>
       ) : null}
-      <ul className="divide-y divide-line rounded-md border border-line">
-        {invoice.deposits
-          .filter((d) => !d.late)
-          .map((d) => {
-            const amount = BigInt(d.amount);
-            return (
-              <li
-                key={`${d.txHash}:${d.logIndex}`}
-                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2.5 text-sm"
-              >
-                <span className="flex flex-col">
-                  <Money
-                    baseUnits={amount}
-                    decimals={token.decimals}
-                    fractionDigits={exactDigits(amount, token.decimals)}
-                    token={token.symbol}
-                    className="text-ink"
-                  />
-                  <time dateTime={d.blockTime} className="text-xs text-muted">
-                    {TIME.format(Date.parse(d.blockTime))}
-                  </time>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="font-mono text-xs text-muted" title={d.txHash}>
-                    {shortAddress(d.txHash)}
-                  </span>
-                  <ExplorerLink chainId={invoice.chainId} txHash={d.txHash} named />
-                </span>
-              </li>
-            );
-          })}
-      </ul>
+      <Timeline label={COPY.progress} entries={steps} />
       <Overpaid invoice={invoice} money={money} />
       {/* The rest may already be sent and missed: the payer can ask once in a while (R-55). */}
       {pay.state === PAY_STATES.partial ? (
@@ -1193,20 +1225,24 @@ function Paid({
       </div>
       <DetailList className="border-y border-line">
         <DetailRow term={COPY.receiptRows.amount}>
-          <span className="font-medium tabular-nums">{formatMoney(amount, token)}</span>
+          <Marked mark={<OptionMark invoice={invoice} token={token} />}>
+            <span className="font-medium tabular-nums">{formatMoney(amount, token)}</span>
+          </Marked>
         </DetailRow>
         {name ? <DetailRow term={COPY.receiptRows.to}>{name}</DetailRow> : null}
         {/* R-238: what the payer sent on its own chain, which NEAR Intents converted. */}
         {invoice.crossChain?.status === CROSS_CHAIN_STATUSES.success &&
         crossChainOptionRecorded(invoice) ? (
           <DetailRow term={COPY.crossChain.paidWith}>
-            {COPY.crossChain.paidWithValue(
-              formatMoney(
-                BigInt(invoice.crossChain.deposited ?? invoice.crossChain.amountIn),
-                invoice.crossChain,
-              ),
-              blockchainName(invoice.crossChain.blockchain),
-            )}
+            <Marked mark={<OriginMark crossChain={invoice.crossChain} />}>
+              {COPY.crossChain.paidWithValue(
+                formatMoney(
+                  BigInt(invoice.crossChain.deposited ?? invoice.crossChain.amountIn),
+                  invoice.crossChain,
+                ),
+                blockchainName(invoice.crossChain.blockchain),
+              )}
+            </Marked>
           </DetailRow>
         ) : null}
         {invoice.paidAt ? (

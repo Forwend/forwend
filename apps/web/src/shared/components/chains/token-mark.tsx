@@ -33,27 +33,35 @@ export interface MarkIconProps {
   logo?: string | null;
   /** The same for the network on the corner. */
   chainLogo?: string | null;
+  /** 24px, to sit in a line of text. */
+  small?: boolean;
 }
 
 /** A token's 36px logo with its network's on the corner. Decorative: the text beside it names both. */
-export function MarkIcon({ token, chain, letter, logo, chainLogo }: MarkIconProps) {
+export function MarkIcon({ token, chain, letter, logo, chainLogo, small }: MarkIconProps) {
+  const size = small ? "size-6" : "size-9";
+  const corner = small ? "size-2.5" : "size-4";
   return (
-    <span aria-hidden className="relative block size-9 shrink-0">
+    <span aria-hidden className={`relative block shrink-0 ${size}`}>
       {token ? (
-        <BrandIcon name={token} className="size-9" />
+        <BrandIcon name={token} className={size} />
       ) : logo ? (
-        <StoredLogo src={logo} letter={letter} className="size-9" />
+        <StoredLogo src={logo} letter={letter} className={size} />
       ) : (
-        <span className="grid size-9 place-items-center rounded-pill bg-surface-2 text-xs text-muted">
+        <span
+          className={`grid place-items-center rounded-pill bg-surface-2 text-xs text-muted ${size}`}
+        >
           {letter}
         </span>
       )}
       {chain || chainLogo ? (
-        <span className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-pill border-2 border-surface bg-surface">
+        <span
+          className={`absolute -right-1 -bottom-1 grid place-items-center rounded-pill border-surface bg-surface ${small ? "size-3.5 border" : "size-5 border-2"}`}
+        >
           {chain ? (
-            <BrandIcon name={chain} className="size-4 rounded-sm" />
+            <BrandIcon name={chain} className={`rounded-sm ${corner}`} />
           ) : chainLogo ? (
-            <StoredLogo src={chainLogo} letter="" className="size-4" />
+            <StoredLogo src={chainLogo} letter="" className={corner} />
           ) : null}
         </span>
       ) : null}

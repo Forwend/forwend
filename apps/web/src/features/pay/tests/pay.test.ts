@@ -1,6 +1,10 @@
+// @vitest-environment jsdom
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
+import { useLastSteps } from "@/features/pay/components/pay-progress";
 import { PAY_STATES } from "@/features/pay/constants/pay";
+import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { FACTORY } from "@/features/pay/constants/receive-address";
 import {
   clockRuns,
@@ -11,6 +15,7 @@ import {
   payState,
   payToken,
   receiptDeposits,
+  seenInFull,
   withOption,
 } from "@/features/pay/lib/pay";
 
@@ -544,5 +549,111 @@ describe("overpaid", () => {
     expect(overpaid({ ...late, amounts: { ...booked, held: "1400" } })).toBe(900n);
     // A return of 1000 leaves 400: the late line takes it first, as payState caps late at held.
     expect(overpaid({ ...late, amounts: { ...booked, held: "400" } })).toBe(0n);
+  });
+});
+
+describe("seenInFull", () => {
+  it("counts only money that came on time, so held late money never reads as paid", () => {
+    expect(seenInFull({ ...invoice, deposits: [deposit("1000", { paid: null })] })).toBe(true);
+    expect(seenInFull({ ...invoice, deposits: [deposit("999")] })).toBe(false);
+    // Part on time, the rest after the close: all of it is held, and payState counts it as received.
+    const late = {
+      ...invoice,
+      closed: true,
+      paymentStatus: "expired_partially_paid" as const,
+      deposits: [
+        deposit("400", { paid: "0" }),
+        deposit("600", { late: true, paid: "0", logIndex: 1 }),
+      ],
+      amounts: {
+        receiver: "1000",
+        payable: "0",
+        held: "1000",
+        settled: "0",
+        refunded: "0",
+        observedRefunded: "0",
+        lastReturnTxHash: null,
+        unreconciled: false,
+        hasPolicyException: false,
+        reconciliationStatus: "verified" as const,
+      },
+    };
+    expect(payState(late, after).remaining).toBe(0n);
+    expect(seenInFull(late)).toBe(false);
+  });
+});
+
+describe("the pay box's last steps", () => {
+  const last = (inv: Invoice, extra: Partial<Parameters<typeof useLastSteps>[0]> = {}) =>
+    renderHook(() =>
+      useLastSteps({
+        invoice: inv,
+        network: "Base",
+        payee: "Sample shop",
+        readAt: null,
+        arrived: true,
+        counting: true,
+        line: "line",
+        ...extra,
+      }),
+    ).result.current;
+  const steps = (inv: Invoice, extra: Partial<Parameters<typeof useLastSteps>[0]> = {}) =>
+    last(inv, extra).steps.map(({ title, state, progress }) => ({ title, state, progress }));
+  const confirming = deposit("1000", {
+    status: "detected",
+    paid: null,
+    blocksLeft: 9,
+    blocksTotal: 12,
+  });
+
+  it("fills the confirming step's ring with the blocks passed, and waits to pay", () => {
+    expect(steps({ ...invoice, deposits: [confirming] })).toEqual([
+      { title: "Base is confirming the transfer", state: "current", progress: 0.25 },
+      { title: "Sample shop is paid", state: "upcoming", progress: undefined },
+    ]);
+  });
+
+  it("shows no share before a block passes, or while the ledger books a final transfer", () => {
+    const [unseen] = steps({ ...invoice, deposits: [{ ...confirming, blocksLeft: 12 }] });
+    expect(unseen?.progress).toBeNull();
+    const [booking] = steps(
+      { ...invoice, deposits: [deposit("1000", { paid: null })] },
+      { counting: false },
+    );
+    expect(booking).toMatchObject({ state: "current", progress: null });
+  });
+
+  it("moves to the last step once the transfer is booked, and names a part payment", () => {
+    const booked = { ...invoice, deposits: [deposit("400")] };
+    expect(steps(booked, { counting: false }).map((s) => [s.title, s.state])).toEqual([
+      ["Base confirmed the transfer", "done"],
+      ["Sample shop is paid", "current"],
+    ]);
+    expect(steps(booked, { counting: false, partial: true })[1]?.title).toBe("Partially paid");
+  });
+
+  it("gives the live region the line of the step in progress, and none before the money arrives", () => {
+    expect(last({ ...invoice, deposits: [confirming] }).line).toBe("3\u00a0of\u00a012\u00a0blocks");
+    expect(last({ ...invoice, deposits: [deposit("400")] }, { counting: false }).line).toBe("line");
+    expect(last(invoice, { arrived: false }).line).toBeNull();
+  });
+
+  it("keeps both steps ahead while another chain's money has not reached the network", () => {
+    expect(
+      steps(invoice, { arrived: false, payee: undefined }).map((s) => [s.title, s.state]),
+    ).toEqual([
+      ["Base confirms the transfer", "upcoming"],
+      ["The recipient is paid", "upcoming"],
+    ]);
+  });
+
+  it("writes the confirming line from the parts it knows, none of them breaking in two", () => {
+    const plain = (line: string) => line.replaceAll("\u00a0", " ");
+    expect(plain(PAY_COPY.confirmingLine(3200, 4400, 600, "2:41 PM"))).toBe(
+      "3,200 of 4,400 blocks · about 10 min left · final around 2:41 PM",
+    );
+    expect(PAY_COPY.confirmingLine(3, 12, 0, null)).toBe("3\u00a0of\u00a012\u00a0blocks");
+    expect(plain(PAY_COPY.confirmingLine(0, 0, 30, null))).toBe("Under a minute left");
+    expect(PAY_COPY.confirmingLine(0, 0, 0, null)).toBe("Confirming");
   });
 });
