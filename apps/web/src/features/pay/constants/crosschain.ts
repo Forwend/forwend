@@ -29,7 +29,6 @@ export const POPULAR_BLOCKCHAINS = [
   "base",
   "bsc",
   "pol",
-  "btc",
   "op",
   "avax",
 ] as const;

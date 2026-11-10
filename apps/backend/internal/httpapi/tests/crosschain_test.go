@@ -135,6 +135,49 @@ func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
 	}
 }
 
+// R-245: a pair 1Click can't quote now leaves the list at the payer's refused price, not the worker's next check.
+// D-127: Bitcoin is never offered, priced or quoted.
+func TestCrossChainTokensLeaveOutAnUnquotablePairAndBitcoin(t *testing.T) {
+	e, fake := crossChainEnv(t)
+	const btc = "nep141:btc.omft.near"
+	fake.Tokens = append(fake.Tokens, map[string]any{"assetId": btc, "blockchain": "btc", "symbol": "BTC",
+		"decimals": 8, "price": 104000.0})
+	keeper := &intents.Keeper{Pool: e.pool, Client: fake.Client(), Every: time.Hour}
+	if err := keeper.Tick(context.Background(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	pay, _ := liveInvoice(t, e, "key-1", 86400)
+	listed := func() []string {
+		t.Helper()
+		r := e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "")
+		var assets []string
+		for _, tok := range r.body["tokens"].([]any) {
+			assets = append(assets, tok.(map[string]any)["assetId"].(string))
+		}
+		return assets
+	}
+	if got := listed(); slices.Contains(got, btc) || !slices.Contains(got, ethAsset) {
+		t.Fatalf("listed %v; want ETH and no Bitcoin", got)
+	}
+	for name, r := range map[string]reply{
+		"price": e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(btc), "", "", ""),
+		"quote": e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "",
+			`{"originAsset": "`+btc+`", "refundTo": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"}`),
+	} {
+		if r.status != http.StatusUnprocessableEntity {
+			t.Fatalf("Bitcoin %s: %d %v", name, r.status, r.body)
+		}
+	}
+	fake.Unpaired = map[string]bool{ethAsset: true}
+	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(ethAsset), "", "", "")
+	if price.status != http.StatusUnprocessableEntity || errorCode(price) != "no_liquidity" {
+		t.Fatalf("price of a pair 1Click can't quote: %d %v", price.status, price.body)
+	}
+	if got := listed(); slices.Contains(got, ethAsset) {
+		t.Fatalf("listed %v after 1Click said it can't quote ETH", got)
+	}
+}
+
 func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	e, fake := crossChainEnv(t)
 	pay, options := liveInvoice(t, e, "key-1", 86400)
@@ -226,34 +269,34 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 // longer deadline, and isn't offered when the close leaves too little time.
 func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
 	e, fake := crossChainEnv(t)
-	btc := "nep141:btc.omft.near"
-	fake.Tokens = append(slices.Clone(intentstest.Tokens), map[string]any{"assetId": btc, "blockchain": "btc",
-		"symbol": "BTC", "decimals": 8, "price": 66093})
+	ltc := "nep141:ltc.omft.near"
+	fake.Tokens = append(slices.Clone(intentstest.Tokens), map[string]any{"assetId": ltc, "blockchain": "ltc",
+		"symbol": "LTC", "decimals": 8, "price": 82})
 	if err := (&intents.Keeper{Pool: e.pool, Client: fake.Client(), Every: time.Hour}).Tick(context.Background(), time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	quote := func(pay string) reply {
 		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "",
-			`{"originAsset": "`+btc+`", "refundTo": "bc1qp42j7hn3lup7gck6y6eks6x2lmnp800t6gy7sk"}`)
+			`{"originAsset": "`+ltc+`", "refundTo": "ltc1qg42tkwuuxefutzxezdkdel39gfstuap288mfea"}`)
 	}
 	soon, _ := liveInvoice(t, e, "key-1", 1500) // closes in 25 minutes
 	for _, tok := range e.call(t, "GET", crossPath+soon+"/crosschain/tokens", "", "", "").body["tokens"].([]any) {
-		if tok.(map[string]any)["assetId"] == btc {
-			t.Fatal("BTC offered 25 minutes before the close")
+		if tok.(map[string]any)["assetId"] == ltc {
+			t.Fatal("LTC offered 25 minutes before the close")
 		}
 	}
 	if r := quote(soon); r.status != http.StatusUnprocessableEntity || errorCode(r) != "invalid_value" {
-		t.Fatalf("BTC 25 minutes before the close: %d %v", r.status, r.body)
+		t.Fatalf("LTC 25 minutes before the close: %d %v", r.status, r.body)
 	}
 	day, _ := liveInvoice(t, e, "key-2", 86400)
 	start := time.Now()
 	r := quote(day)
 	if r.status != http.StatusCreated {
-		t.Fatalf("BTC: %d %v", r.status, r.body)
+		t.Fatalf("LTC: %d %v", r.status, r.body)
 	}
 	deadline, _ := time.Parse(time.RFC3339, r.body["deadline"].(string))
 	if d := deadline.Sub(start); d < 119*time.Minute || d > 121*time.Minute {
-		t.Fatalf("BTC deadline in %s, want two hours", d)
+		t.Fatalf("LTC deadline in %s, want two hours", d)
 	}
 }
 
