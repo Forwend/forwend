@@ -625,7 +625,7 @@
       "dependsOn": [
         "F458"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "unit",
         "docs-check",
@@ -697,11 +697,11 @@
         "taskHash": "ca492f6828f35a78",
         "filesHash": "bc6a976f692398cc",
         "proof": {
-          "1": "unit: TestDroppedSettleKeepsItsSignedVersions, TestEveryRunRecordsItsOperator, TestSavedSettleIsSentOnlyAsItsSendersSettleOfItsTerms, TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute, TestReplacementNeverPassesTheGasCap, TestStuckDeployReplacementPaysForTheWholeDeploy, TestOnlyTheLowestUnminedSettleWaitsForItsReceipt, TestHeldGivesUpOnASilentConnection, TestLockConnectionNoticesALostClientSoon, TestOnlyAlreadyKnownMeansTheNodeHoldsTheSettle, TestSavedSettleIsNotReplacedWhileTheExecutorCannotPayGas",
-          "2": "unit: TestArcTransferMissingItsTokenLogCountsOnce, TestARevertedSendWhoseTransactionSucceedsAfterAReorgIsSent, TestDustFollowsTheTokensDecimals, TestATokensRefusalShowsOnlyItsDecodedRevertReason, TestReceiversHoldingMoneyAreReadFromTheirIndex, TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained",
-          "3": "unit: TestADeposit1ClickNeverFinishesStopsHoldingTheInvoice, TestADeliveryOfAnotherAmountAlertsAndLeavesTheRestPayable, TestCrossChainQuoteRefusedForAnotherReasonDoesNotBlameTheRefundAddress, TestAnAPIWithout1ClickOffersNoCrossChain, TestARejectedKeyAlertsOnce, TestCrossChainQuoteThatIsNotFreshIsRefused, TestCrossChainAlertsEndAndTheNewestComeFirst, web crosschain.test.ts",
-          "4": "unit: TestDeliverGoesOnPastAnEventItCannotRead, TestRetainerMonthThatFailsBacksOffAndTellsTheOwnerOnce, TestWebhookClaimReadsEachEndpointsFirstDueDelivery, TestOpenAPIErrorCodesMatchTheAPI, TestCreateInvoiceErrors; docs-check",
-          "5": "unit: TestListInvoicesFilterAndSearch, TestLimitsMatchTheWeb, TestPayTokensMatchTheWeb, web payFinal, send sheet polling and Payments refresh tests; e2e"
+          "1": "unit",
+          "2": "unit",
+          "3": "unit",
+          "4": "unit",
+          "5": "unit"
         },
         "review": {
           "result": "pass",
@@ -709,11 +709,18 @@
           "summary": "Independent review, two rounds. Round 1 PASS with two should-fix items, both fixed: the saved-settle sender and terms checks moved from the top of reconcile into unmined just before any send, so a mined settle confirms whatever changed (TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute fails on the old placement); payFinal keeps polling for PENDING_DEPOSIT and SUCCESS. A replacement over MaxSettleGas now ALERTs. Round 2 PASS. Checked: key rotation and wallet change still finish a sent settle; unmined's lowest-nonce wait skips no receipt for good; settlement_dropped writes can't fail on their own; DustExcess(decimals) at all three callers; arcTwins can't double count; migrations 00123-00126 run in order and dropping invoices_profile is covered by the two new profile indexes; webhook LATERAL claim keeps one request per endpoint; reserved idempotency prefixes don't touch internal creators; fee fields are always sent so the stricter web schema is safe; CROSSCHAIN_OFF leaves tracking working; the 401 alert flag is safe. Lead also fixed: lock session TCP keepalives, and a timing flake in the shared 1Click budget test. Left for the owner: see the audit report's consider list.",
           "at": "2026-11-10T00:19:19Z",
           "filesHash": "bc6a976f692398cc"
-        }
+        },
+        "commit": "c2ee5431",
+        "doneAt": "2026-11-10T00:19:20Z"
       },
       "branch": "fix/f459-the-low-findings-of-the-2026-11-09-audit",
       "baseCommit": "869c4e1932752cb7b52a307c6c720a4661c0088b",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f459-the-low-findings-of-the-2026-11-09-audit",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
