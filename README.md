@@ -58,18 +58,26 @@ It works in live mode only: NEAR Intents has no testnet.
 ## NEAR HACKATHON
 
 Forwend is entered in [NEAR HACKATHON](https://nearhackathon.com), in the Real-World Money track.
-Forwend existed before the hackathon, so only its NEAR Intents integration is entered.
+With NEAR Intents, a client pays a Forwend invoice with almost any token on any chain.
 
-- The project started on 8 Oct 2026. The hackathon was announced on 19 Oct 2026.
-- Invoices, checkout, balances and send on Base, Arbitrum, Arc and Tempo are earlier work.
-- Other work after 19 Oct that does not touch NEAR Intents is not entered.
-- Tag `pre-hackathon` marks the last commit before 19 Oct 2026 UTC.
+- The repository started on 8 Oct 2026. The hackathon was announced on 19 Oct 2026.
+- Before 19 Oct, Forwend had a first version on testnets: invoices, the pay page, balances, the invoice contracts and the backend.
+- Most of the code was written after 19 Oct, during the hackathon.
+- Tag `pre-hackathon` marks the last commit before 19 Oct 2026 UTC. Everything up to it is baseline.
 - Tag `hackathon-submission` marks the submitted commit.
-- [All changes between the two tags](https://github.com/Forwend/forwend/compare/pre-hackathon...hackathon-submission).
+- [All changes made during the hackathon](https://github.com/Forwend/forwend/compare/pre-hackathon...hackathon-submission).
 
 ### Built during the hackathon
 
-The NEAR Intents integration landed between 9 and 11 Nov 2026.
+NEAR Intents pays only into a live invoice's Base USDC option, because 1Click has no testnet.
+So Forwend first had to take real money on mainnet:
+
+| Pull request | What it adds |
+|---|---|
+| [#298](https://github.com/Forwend/forwend/pull/298) | Each chain is test or live mode, and live invoices stay apart from test ones. |
+| [#445](https://github.com/Forwend/forwend/pull/445), [#447](https://github.com/Forwend/forwend/pull/447) | Base, Arbitrum, Arc and Tempo mainnets, and live mode on them. |
+
+Then the NEAR Intents integration landed between 9 and 11 Nov 2026:
 
 | Pull request | What it adds |
 |---|---|
@@ -88,6 +96,15 @@ The code lives in these places:
 - [`apps/backend/internal/intents`](apps/backend/internal/intents): the 1Click client, quotes, signature check, tokens and status.
 - [`apps/backend/internal/invoice`](apps/backend/internal/invoice): `crosschain.go`, `crosschain_read.go` and `crosschain_track.go`.
 - [`apps/web/src/features/pay`](apps/web/src/features/pay): `crosschain-picker.tsx` and `crosschain-pay.tsx`.
+
+The rest of Forwend was built in the same weeks:
+
+- Stores, payment links and team roles for merchants ([#288](https://github.com/Forwend/forwend/pull/288), [#294](https://github.com/Forwend/forwend/pull/294), [#292](https://github.com/Forwend/forwend/pull/292)).
+- Checkout sessions and hosted or embedded checkout ([#325](https://github.com/Forwend/forwend/pull/325), [#392](https://github.com/Forwend/forwend/pull/392)).
+- The `forwend`, `@forwend/js` and `@forwend/react` packages ([#312](https://github.com/Forwend/forwend/pull/312), [#393](https://github.com/Forwend/forwend/pull/393)).
+- API keys and signed webhooks ([#299](https://github.com/Forwend/forwend/pull/299), [#301](https://github.com/Forwend/forwend/pull/301), [#303](https://github.com/Forwend/forwend/pull/303)).
+- Send between profiles and to other wallets ([#429](https://github.com/Forwend/forwend/pull/429), [#430](https://github.com/Forwend/forwend/pull/430)).
+- Network and platform fees on each invoice option ([#450](https://github.com/Forwend/forwend/pull/450), [#453](https://github.com/Forwend/forwend/pull/453)).
 
 ### Try it without money
 
