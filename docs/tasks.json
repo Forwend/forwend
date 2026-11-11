@@ -937,7 +937,7 @@
         "R-228 says which package carries the fee fields; the js and react packages stay as they are, and every package check passes."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "browser-packages",
         "node-unit",
@@ -1022,11 +1022,18 @@
           "summary": "First pass FAIL on one item, fixed: the node CHANGELOG now states the types-only break (Invoice and PaymentOption no longer accept unknown keys). Checked fine: every field of Invoice, InvoiceDetails, InvoiceOption, PaymentOption, PaymentCoverage, PaymentSettlement, PaymentReturn, Deposit and DepositSummary against the Go JSON structs (names, omitempty, pointers, money as strings, enums); create/get/cancel/reopen/send and webhooks really send the owner detail shape and list the short one; docs-api's Preview fees route, scope and params match routes.go, access.go and fees.go; the checkout-sessions line is true for 0.2.0. Also added node-unit to R-228's checks. Merged origin/main (the Google sign-in hotfix took F480, so this task is F481).",
           "at": "2026-11-11T02:21:00Z",
           "filesHash": "138a9ba1a5142eaf"
-        }
+        },
+        "commit": "60067446",
+        "doneAt": "2026-11-11T02:21:07Z"
       },
       "branch": "feat/f480-the-node-package-s-types-and-the-public",
       "baseCommit": "0c87fba7dcbb3be68d130e7d154988032374b889",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f480-the-node-package-s-types-and-the-public",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
