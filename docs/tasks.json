@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 485,
+  "nextId": 486,
   "tasks": [
     {
       "id": "F332",
@@ -1254,6 +1254,96 @@
       "delivery": {
         "mode": "pr",
         "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F485",
+      "type": "fix",
+      "behavior": "The token picker shows a centered Powered by NEAR Intents footer.",
+      "acceptance": [
+        "The Pay with any token dialog shows the existing centered NEAR Intents credit on desktop and phone layouts."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-e2e"
+      ],
+      "refs": [
+        "R-236"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by independent reviewer: No findings. The picker reuses the existing centered credit after loading, empty, and result states. Desktop and phone screenshots confirm placement. The two-line source change, DESIGN bullet, and task record are in scope; all selected checks passed."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T03:10:58Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "8b24b91b6d09f722",
+        "filesHash": "0877585bfd57488a",
+        "proof": {
+          "1": "web-e2e: The existing desktop and 390 px phone picker flow passes. A temporary visibility assertion failed before the fix and passed after it. The centered footer is visible in both captured layouts: docs/runs/F485-picker-desktop.png and docs/runs/F485-picker-phone.png. Temporary screenshot and copy checks were removed after verification."
+        },
+        "review": {
+          "result": "pass",
+          "by": "independent reviewer",
+          "summary": "No findings. The picker reuses the existing centered credit after loading, empty, and result states. Desktop and phone screenshots confirm placement. The two-line source change, DESIGN bullet, and task record are in scope; all selected checks passed.",
+          "at": "2026-11-11T03:11:25Z",
+          "filesHash": "0877585bfd57488a"
+        },
+        "commit": "3b58bb40",
+        "doneAt": "2026-11-11T03:11:57Z"
+      },
+      "branch": "fix/f485-the-token-picker-shows-a-centered-powere",
+      "baseCommit": "7452b397d9e23e7731b7abae0e2dfdd556dce593",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f485-the-token-picker-shows-a-centered-powere",
         "base": "main"
       }
     },

@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { amountText, orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
+import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
 import { StoredLogo } from "@/shared/components/chains/stored-logo";
 import { BLOCKCHAIN_ICONS, CROSS_CHAIN_TOKEN_ICONS } from "@/shared/constants/chains";
 import { blockchainName, chainLogo, iconOf, tokenLogo } from "@/shared/lib/chains";
@@ -249,6 +250,7 @@ export function CrossChainPicker({
           </div>
         </div>
       )}
+      <PoweredByNearIntents />
     </Sheet>
   );
 }
