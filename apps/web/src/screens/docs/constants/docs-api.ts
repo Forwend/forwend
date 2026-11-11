@@ -89,6 +89,12 @@ export const API_PAGES: readonly DocsArticle[] = [
               "Fixed token: network ID, enabled token contract and positive integer base units. For 6 decimals, 1250000000 represents 1250 tokens.",
           },
           {
+            name: "feesPaidBy",
+            type: "string · optional",
+            description:
+              "owner, deducted at settlement, or client, added on top of the price. Defaults to the profile’s choice.",
+          },
+          {
             name: "storeId",
             type: "UUID · optional",
             description:
@@ -216,6 +222,36 @@ export const API_PAGES: readonly DocsArticle[] = [
         ],
       },
       {
+        id: "fees",
+        title: "Preview fees",
+        method: "GET",
+        path: `${PROFILE}/fees`,
+        scope: "invoices.read",
+        fields: [
+          ...PATH,
+          {
+            name: "amountUsd, or chainId, token, amount",
+            type: "query · required",
+            description: "A price, as a create takes it.",
+          },
+          {
+            name: "feesPaidBy",
+            type: "query · string",
+            description:
+              "Optional: owner or client. Prices it with that choice: a client’s fees on top let a smaller price carry them.",
+          },
+          {
+            name: "storeId",
+            type: "query · UUID",
+            description: "Optional: keeps a merchant store’s tokens. Defaults to the first store.",
+          },
+        ],
+        paragraphs: [
+          "Returns 200 with the profile’s feesPaidBy and options: each option’s chainId, token, decimals, price, networkFee and platformFee in base units. No request body.",
+          "It leaves out networks as a create does. The invoice gets its own quote when it is made.",
+        ],
+      },
+      {
         id: "response",
         title: "Invoice response",
         fieldLabel: "Response fields",
@@ -230,6 +266,18 @@ export const API_PAGES: readonly DocsArticle[] = [
             name: "chainId, token, amount",
             type: "integer, address, string",
             description: "Token identity and amount in integer base units.",
+          },
+          {
+            name: "networkFee, platformFee, netAmount",
+            type: "strings",
+            description:
+              "Fees in the token’s base units; settlement pays both out of amount. netAmount is amount less both fees: what you receive.",
+          },
+          {
+            name: "feesPaidBy",
+            type: "string",
+            description:
+              "owner, deducted at settlement, or client, added on top of the price. When the client pays, amount is the price plus the fees.",
           },
           {
             name: "paymentStatus, confirming",
@@ -287,7 +335,7 @@ export const API_PAGES: readonly DocsArticle[] = [
         scope: "invoices.write",
         paragraphs: [
           "Returns 201 for a new attempt, 200 for an exact retry. Requires a merchant store with billing details, wallet and accepted tokens ready.",
-          "The published Node package does not expose these methods yet. Use HTTP.",
+          "The Node package wraps them as `forwend.checkoutSessions.create`, `get`, `list` and `expire`.",
         ],
         fields: PATH,
         fieldLabel: "Path parameters",
@@ -308,6 +356,12 @@ export const API_PAGES: readonly DocsArticle[] = [
             name: "amountUsd",
             type: "string · required",
             description: "Exact positive USD decimal. Compute it on your server.",
+          },
+          {
+            name: "feesPaidBy",
+            type: "string · optional",
+            description:
+              "owner, deducted at settlement, or client, added on top of the price. Defaults to the profile’s choice.",
           },
           {
             name: "reference",
@@ -434,6 +488,18 @@ export const API_PAGES: readonly DocsArticle[] = [
               "Amount is a string in integer base units; identify money by chain and contract.",
           },
           {
+            name: "payment.networkFee, platformFee, netAmount",
+            type: "strings",
+            description:
+              "Fees in the token’s base units; settlement pays both out of amount. netAmount is amount less both fees: what you receive.",
+          },
+          {
+            name: "payment.feesPaidBy",
+            type: "string",
+            description:
+              "owner, deducted at settlement, or client, added on top of the price. When the client pays, amount is the price plus the fees.",
+          },
+          {
             name: "payment.paymentStatus, settlementStatus, refundStatus",
             type: "strings",
             description: "Separate payment, wallet settlement and held-money processing.",
@@ -453,7 +519,18 @@ export const API_PAGES: readonly DocsArticle[] = [
             name: "payment.amounts",
             type: "object · optional",
             description:
-              "Exact receiver, payable, held, settled and refunded balances, with reconciliation information.",
+              "Exact receiver, payable, held, settled and refunded balances, with reconciliation information. settled is what reached your wallet, net of fees.",
+          },
+          {
+            name: "payment.amounts.fees",
+            type: "string",
+            description: "The network and platform fees settlement paid.",
+          },
+          {
+            name: "payment.amounts.observedRefunded, lastReturnTxHash",
+            type: "string, string | null",
+            description:
+              "Confirmed returns of held money to the payer, and the last return’s transaction hash.",
           },
         ],
         paragraphs: [

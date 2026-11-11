@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 480,
+  "nextId": 481,
   "tasks": [
     {
       "id": "F332",
@@ -830,6 +830,97 @@
         "branch": "docs/f479-finished-tasks-leave-the-queue",
         "base": "main"
       }
+    },
+    {
+      "id": "F480",
+      "type": "feat",
+      "behavior": "The node package's types and the public API reference match what the API returns today, fees and returns included",
+      "acceptance": [
+        "The node package types every invoice and payment-option field the API returns (confirming, closed, option choice, title, per-option fees, coverage, settlement, returns, deposits), with no field left as unknown that the API sends.",
+        "The node README, its CHANGELOG and the public API reference at /docs name feesPaidBy, each fee field, amounts.fees, observedRefunded and lastReturnTxHash, and the fee preview route.",
+        "R-228 says which package carries the fee fields; the js and react packages stay as they are, and every package check passes."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "browser-packages",
+        "node-unit",
+        "web-unit"
+      ],
+      "refs": [
+        "R-228",
+        "R-154"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T02:15:05Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.8,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.0,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 53.3,
+            "log": ""
+          }
+        ],
+        "taskHash": "011ee2ec9a84a62e",
+        "filesHash": "8bdb2b05c27e8949",
+        "proof": {
+          "1": "node-unit: the node package typechecks and its 17 tests pass with Invoice, InvoiceDetails, InvoiceOption and PaymentOption typing every JSON field of invoiceapi invoiceJSON/optionJSON/invoiceDetailJSON and paymentapi optionJSON; a script compared each Go JSON tag with the TypeScript keys and found no difference; the example merchant typechecks.",
+          "2": "web-unit: the web app typechecks and its tests pass with docs-api.ts naming feesPaidBy, each fee field, amounts.fees, observedRefunded, lastReturnTxHash and the Preview fees route; the node README and CHANGELOG name them.",
+          "3": "browser-packages: the js and react packages are unchanged in code and pass the size, install, import, render and type checks; R-228 now says the node package carries the fee fields and js/react carry only the payment status (D-117)."
+        }
+      },
+      "branch": "feat/f480-the-node-package-s-types-and-the-public",
+      "baseCommit": "0c87fba7dcbb3be68d130e7d154988032374b889",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

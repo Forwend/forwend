@@ -219,7 +219,7 @@ export interface PaymentDetails extends Payment {
   snapshotAt: string;
 }
 
-/** A token and network the payer may pay with. The fields a server most often needs are typed; the rest stay as sent. */
+/** A token and network the payer may pay with. */
 export interface PaymentOption extends OptionFees {
   optionId: string;
   chainId: number;
@@ -233,7 +233,90 @@ export interface PaymentOption extends OptionFees {
   settlementStatus: SettlementStatus;
   refundStatus: RefundStatus;
   amounts: PaymentAmounts | null;
-  [field: string]: unknown;
+  coverage: PaymentCoverage;
+  settlement: PaymentSettlement | null;
+  /** Held money the refund authority sent back to a payer, in chain order. */
+  returns: PaymentReturn[];
+  deposits: Deposit[];
+  /** More transfers reached the address than deposits lists. */
+  depositsTruncated: boolean;
+}
+
+/** How far the scan of an option's address got, and what it could not book yet. */
+export interface PaymentCoverage {
+  /** False once the scan no longer reads the address's deposits. */
+  historyComplete: boolean;
+  verifiedBlock: number | null;
+  verifiedHash: string | null;
+  verifiedTime: string | null;
+  observedBalance: string | null;
+  balanceDifference: string | null;
+  reconciliationError: string | null;
+  bookingError: string | null;
+  retryAt: string | null;
+  updatedAt: string;
+  chainFinalizedBlock: number | null;
+  pendingDeposits: number;
+  unbookedDeposits: number;
+  /** 1 while the final balance holds more than every recorded deposit: a deposit the scan missed. */
+  unprovedDeposits: number;
+  unbookedOutflows: number;
+}
+
+/** The move of an option's money to the profile wallet. */
+export interface PaymentSettlement {
+  status: string;
+  wait: string | null;
+  attempts: number;
+  createdAt: string;
+  nextAttemptAt: string;
+  signedAt: string | null;
+  txHash: string | null;
+  /** The settlement seen to succeed, a mined replacement too; for display only. */
+  receiptTxHash: string | null;
+  blockNumber: number | null;
+  /** Null before a successful receipt. */
+  blocksLeft: number | null;
+  secondsLeft: number | null;
+}
+
+export interface PaymentReturn {
+  txHash: string;
+  /** The payer's address the money went to. */
+  to: string;
+  amount: string;
+  blockTime: string;
+}
+
+export const DEPOSIT_STATUSES = ["detected", "confirmed"] as const;
+export type DepositStatus = (typeof DEPOSIT_STATUSES)[number];
+
+/** A transfer to an option's receive address, in its token's base units. */
+export interface Deposit {
+  txHash: string;
+  logIndex: number;
+  from: string;
+  amount: string;
+  blockNumber: number;
+  blockTime: string;
+  /** confirmed once its block is final. */
+  status: DepositStatus;
+  /** Sent after the close: held for the payer unless the owner reopens the invoice. */
+  late: boolean;
+  /** The part booked to the owner; null until the ledger books it. */
+  paid: string | null;
+  blocksLeft: number;
+  blocksTotal: number;
+  secondsLeft: number;
+}
+
+/** Totals of every transfer, beyond the deposits a read lists. */
+export interface DepositSummary {
+  count: number;
+  onTimeAmount: string;
+  lateAmount: string;
+  /** On time, and not booked yet. */
+  pendingAmount: string;
 }
 
 export interface PaymentDelivery {
@@ -334,37 +417,193 @@ export interface ListCheckoutSessions {
   storeId?: string;
 }
 
-/** An invoice as its owner reads it. The fields a server most often needs are typed; the rest stay as sent. */
+/**
+ * An invoice as its owner's list returns it. With several options, the terms and statuses are the current option's:
+ * the one that received money first, else the first.
+ */
 export interface Invoice extends OptionFees {
   amounts?: PaymentAmounts;
   purpose: PaymentPurpose;
   documentKind: DocumentKind;
   linkId?: string;
   invoiceId: string;
+  payToken: string | null;
+  /** The option the terms are in; invoiceId for a fixed invoice. */
+  optionId: string;
+  /** An option's final payments reached 1.00 USD: money sent to any other option is held for the payer. */
+  optionLocked: boolean;
+  /** The option the payer last picked with Show address; only payments decide the option. */
+  pickedOptionId: string | null;
+  optionCount: number;
+  /** A payment made before the close is not final yet; show a partially_paid invoice as confirming. */
+  confirming: boolean;
+  /** The checkout closed unpaid; paymentStatus turns expired once the chain is final. */
+  closed: boolean;
   /** Null for a payment-link invoice before its first deposit. */
   number: number | null;
-  payToken: string | null;
+  title: string | null;
+  note: string | null;
+  dueDate: string | null;
+  supplyDate: string | null;
+  reference: string | null;
+  /** A price agreed in fiat; amount is in the currency's minor units. */
+  agreedValue: { currency: string; amount: string; decimals: number; date: string } | null;
+  client: {
+    name: string | null;
+    email: string | null;
+    address: string | null;
+    country: string | null;
+    taxId: string | null;
+  };
+  /** A merchant invoice's store. */
+  store?: { storeId: string; name: string };
+  metadata: Record<string, string>;
+  brand: { storeId: string; color: string | null; logoAt: string | null } | null;
+  /** The profile's billing details when the invoice was made. */
+  issuer: {
+    name: string;
+    address: string;
+    country: string;
+    taxId: string | null;
+    email: string;
+  } | null;
+  senderName: string | null;
+  returnUrl: string | null;
   chainId: number;
   livemode: boolean;
   token: string;
   amount: string;
+  /** The profile wallet that settlement pays. */
+  recipient: string;
+  factory: string;
+  receiveAddress: string;
+  expiresAt: string;
+  closesAt: string;
+  settleDeadline: string;
   paymentStatus: PaymentStatus;
   settlementStatus: SettlementStatus;
   refundStatus: RefundStatus;
   /** The list's state filter matches it. */
   state: PaymentState;
   wallet: WalletState;
-  reference: string | null;
-  returnUrl: string | null;
-  expiresAt: string;
-  closesAt: string;
+  settlementTxHash: string | null;
   createdAt: string;
-  metadata: Record<string, string>;
-  /** A payment through NEAR Intents; an invoice's own read and webhooks fill it, lists leave it out. */
-  crossChain?: CrossChain | null;
-  /** The payee takes payments from other chains (R-240), in an invoice's own read. */
-  crossChainOn?: boolean;
-  [field: string]: unknown;
+}
+
+/** A token and network an invoice accepts, with its own id, amount and receive address. */
+export interface InvoiceOption extends OptionFees {
+  optionId: string;
+  chainId: number;
+  /** The chain's name, such as base-sepolia. */
+  network: string;
+  token: string;
+  symbol: string;
+  decimals: number;
+  amount: string;
+  receiveAddress: string;
+  closesAt: string;
+  amounts?: PaymentAmounts;
+  depositSummary?: DepositSummary;
+  /** On an option other than the shown one, they are held for the payer. */
+  deposits: Deposit[];
+}
+
+/** The other invoice of a Revise; payToken is the replacement's pay link, null otherwise. */
+export interface Revision {
+  invoiceId: string;
+  number: number;
+  payToken: string | null;
+}
+
+/** An email to the client; sentAt and failedAt stay null while it waits. */
+export interface InvoiceSend {
+  requestedAt: string;
+  sentAt: string | null;
+  failedAt: string | null;
+}
+
+export const SETTLEMENT_WAITS = [
+  "signing",
+  "finalizing",
+  "retrying",
+  "dailyLimit",
+  "refused",
+] as const;
+export const REMINDER_STEPS = ["before", "due", "after"] as const;
+export const HISTORY_ACTORS = ["owner", "payer", "system"] as const;
+/** The fields whose edits the payer sees. */
+export const UPDATE_FIELDS = ["reference", "note", "dueDate"] as const;
+export const EDITED_FIELDS = ["memo", "clientEmail", "returnUrl", ...UPDATE_FIELDS] as const;
+export type SettlementWait = (typeof SETTLEMENT_WAITS)[number];
+export type ReminderStep = (typeof REMINDER_STEPS)[number];
+export type HistoryActor = (typeof HISTORY_ACTORS)[number];
+export type UpdateField = (typeof UPDATE_FIELDS)[number];
+export type EditedField = (typeof EDITED_FIELDS)[number];
+
+/** A change to an invoice; the fields its kind does not use are null. */
+export interface InvoiceHistory {
+  id: number;
+  /** Such as invoice.created, invoice.paid or crosschain.converted. */
+  kind: string;
+  actor: HistoryActor;
+  at: string;
+  optionId: string | null;
+  /** In asset's base units when asset is set, else in the option's token. */
+  amount: string | null;
+  /** The 1Click asset a cross-chain amount is in. */
+  asset: string | null;
+  txHash: string | null;
+  step: ReminderStep | null;
+  field: EditedField | null;
+  from: string | null;
+  to: string | null;
+  until: string | null;
+  related: Revision | null;
+}
+
+/** One invoice, as create, get, cancel, reopen, send and webhooks return it. */
+export interface InvoiceDetails extends Invoice {
+  paidAt: string | null;
+  settledAt: string | null;
+  canceledAt: string | null;
+  depositSummary?: DepositSummary;
+  /** At most 100 transfers, in chain order; depositSummary has the totals. */
+  deposits: Deposit[];
+  options: InvoiceOption[];
+  /** Money in the base units of the option whose optionId is the invoiceId. */
+  lines: PaymentDetails["items"];
+  /** When Check status may run again; null when it may now. */
+  nextCheckAt: string | null;
+  /** The edits the payer sees, newest first; from and to are a due date's. */
+  updates: { at: string; field: UpdateField; from: string | null; to: string | null }[];
+  replacedBy: Revision | null;
+  replaces: Revision | null;
+  /** A payment through NEAR Intents. */
+  crossChain: CrossChain | null;
+  /** The payee takes payments from other chains (R-240). */
+  crossChainOn: boolean;
+  /** Why paid money has not reached the profile wallet yet; null when it is not waiting. */
+  settlementWait: { kind: SettlementWait; until: string | null; secondsLeft: number | null } | null;
+  sends: InvoiceSend[];
+  reminders: {
+    on: boolean;
+    stoppedAt: string | null;
+    emails: (InvoiceSend & { step: ReminderStep })[];
+  };
+  /** Null when the invoice doesn't repeat. */
+  retainer: {
+    endDate: string | null;
+    nextDueDate: string | null;
+    nextOn: string | null;
+    stoppedAt: string | null;
+  } | null;
+  /** Newest first. */
+  history: InvoiceHistory[];
+  /** Pay page loads. */
+  views: { count: number; firstAt: string | null; lastAt: string | null };
+  memo: string | null;
+  /** The close a reopen would give now; null when it can't reopen. */
+  reopenUntil: string | null;
 }
 
 /** What a create takes; the API checks each value (docs/backend/api.md). */
@@ -432,7 +671,7 @@ export interface WebhookEvent {
   /** The invoice's events in order, from 1. */
   sequence: number;
   timestamp: string;
-  data: { invoice: Invoice; held: Held | null };
+  data: { invoice: InvoiceDetails; held: Held | null };
 }
 
 /** The owner's check of an endpoint: it names no invoice. */

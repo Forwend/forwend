@@ -34,6 +34,15 @@ if (payment.paymentStatus === "paid") fulfil();
 - `checkoutSessions`: `create`, `get`, `list`, `expire`. `payments`: `get`, with items, options and problems, and `list`.
 - `invoices`: `create`, `get`, `list`, `cancel`, `reopen`, `send`. `stores`: `list`, `get`. `webhookEvents`: `list`.
 - Lists are async iterables: `for await` reads every page. Payments filter by `reference`, `state`, `wallet` and more.
+- `feesPaidBy` on an invoice or checkout create says who pays the fees: `owner`, deducted at settlement, or `client`,
+  added on top of the price.
+  - Left out, the profile's choice applies.
+  - `GET /v1/profiles/{profileId}/fees` previews the fees for a price; the package has no method for it yet.
+- Invoices, payments and each option carry `networkFee`, `platformFee` and `netAmount`, in the token's base units.
+  - `netAmount` is the amount less both fees: what you receive.
+- A payment's `amounts.settled` is what reached your wallet, net of fees; `amounts.fees` is what settlement paid in fees.
+  - `observedRefunded` and `lastReturnTxHash` show held money sent back to the payer.
+- A payment through NEAR Intents carries `crossChain`: 1Click's status, what the payer sent and both chains' transactions.
 - The baseUrl must be https, or http on localhost. The key never goes anywhere else, and a redirect is refused.
 - A rate limit is tried again, twice by default (`maxRetries`). So are a lost answer and a gateway error on a read,
   a create and a send.

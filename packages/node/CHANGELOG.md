@@ -9,6 +9,12 @@
 - An invoice's and a payment's own read, and webhooks, carry crossChain: a payment through NEAR Intents, with 1Click's
   status, what the payer sent and got back, and both chains' transactions. A payments list carries it only while
   1Click converts or converted the deposit, and an invoice's own read carries crossChainOn.
+- Invoices and payment options type every field the API sends: confirming, closed, the option choice, title, each
+  option's fees, coverage, settlement, returns and deposits.
+  - invoices.create, get, cancel, reopen and send, and webhooks, return InvoiceDetails; invoices.list returns Invoice.
+  - Breaking, types only: Invoice and PaymentOption no longer accept unknown keys. Read fields by name; a hand-built
+    Invoice needs the new required fields.
+- The README names feesPaidBy, the fee fields, amounts.fees, observedRefunded, lastReturnTxHash and the fee preview route.
 
 ## 0.2.0 (2026-11-08)
 
