@@ -62,7 +62,13 @@ func (b *Buckets) Wait(key string) time.Duration {
 		k.tokens--
 		return 0
 	}
-	return time.Duration((1 - k.tokens) / b.rate * float64(time.Second))
+	// A bucket that never refills, or refills too slowly to count in nanoseconds, waits the longest: converting +Inf or
+	// an overflow to a duration gives the most negative value on amd64, which would let every request through.
+	wait := (1 - k.tokens) / b.rate * float64(time.Second)
+	if b.rate <= 0 || wait >= math.MaxInt64 {
+		return time.Duration(math.MaxInt64)
+	}
+	return time.Duration(wait)
 }
 
 // Dropping a full bucket loses nothing: a key that comes back starts full. Call it with mu held.
