@@ -76,7 +76,7 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
     <section aria-labelledby="invoice-history" className="fw-panel">
       <div className="fw-panel-head flex-wrap justify-between gap-y-2">
         <h2 id="invoice-history" className="text-base font-semibold text-ink">
-          Document history
+          {COPY.title}
         </h2>
         <SegmentedControl
           label={COPY.filter}

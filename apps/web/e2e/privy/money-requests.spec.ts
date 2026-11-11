@@ -100,20 +100,24 @@ test("a personal profile requests money, sends the pay link and the payer sees w
     // The API takes seconds from now, so the close lands within a minute of the time picked.
     expect(Math.abs(Date.parse(request.expiresAt) - tomorrow.getTime())).toBeLessThan(60_000);
 
-    await expect(page.getByRole("main").locator("header")).toContainText("3.25");
+    await expect(page.getByRole("main")).toContainText("3.25");
     const link = `http://localhost:3000/pay/${request.payToken}`;
+    // The pay link's actions sit in the header; the link itself never shows.
+    await expect(
+      page
+        .getByRole("main")
+        .locator("header")
+        .getByRole("link", { name: "Open pay page in a new tab" }),
+    ).toHaveAttribute("href", `${link}?preview=1`);
     await page
       .getByRole("main")
       .locator("header")
-      .getByRole("button", { name: "More actions" })
+      .getByRole("button", { name: "Copy link" })
       .click();
     await expect(
-      page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
-    ).toHaveAttribute("href", `${link}?preview=1`);
-    await page.getByRole("menuitem", { name: "Copy link" }).click();
-    await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
+      page.getByRole("main").locator("header").getByRole("button", { name: "Link copied" }),
+    ).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
-    await page.keyboard.press("Escape");
     expect(await blockingViolations(page)).toEqual([]);
 
     await expect(
@@ -121,7 +125,8 @@ test("a personal profile requests money, sends the pay link and the payer sees w
         .getByRole("navigation", { name: "Breadcrumb" })
         .getByRole("link", { name: "Requests", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("region", { name: "From" })).toContainText("E2E Requester");
+    // From is a row of Details.
+    await expect(page.getByRole("region", { name: "Details" })).toContainText("E2E Requester");
     await expect(page.getByRole("region", { name: "Billed to" })).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
     await sidebar.getByRole("link", { name: "Requests", exact: true }).click();
@@ -171,15 +176,10 @@ test("on a phone a personal profile requests money from the round actions withou
     // It stops counting toward the shared profile's open cap within the hour (D-85).
     await sheet.getByText("1 hour", { exact: true }).click();
     const request = await createRequest(page);
-    await page
-      .getByRole("main")
-      .locator("header")
-      .getByRole("button", { name: "More actions" })
-      .click();
+    // On a phone the pay link's actions are rows under the amount panel.
     await expect(
-      page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
+      page.getByRole("main").getByRole("link", { name: "Open pay page in a new tab" }),
     ).toHaveAttribute("href", new RegExp(`/pay/${request.payToken}\\?preview=1$`));
-    await page.keyboard.press("Escape");
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await expect(page.getByRole("heading", { level: 1, name: request.number })).toBeVisible();

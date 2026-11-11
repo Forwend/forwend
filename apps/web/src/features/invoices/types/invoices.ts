@@ -17,6 +17,7 @@ import type {
   LINE_ERRORS,
   OWED_KINDS,
   PAY_WITH,
+  RECORD_STEPS,
   REMINDER_STEPS,
   SETTLEMENT_WAITS,
 } from "@/features/invoices/constants/invoices";
@@ -80,6 +81,17 @@ export type InvoiceHistoryEvent = z.infer<typeof invoiceHistoryEventSchema>;
 export type InvoiceViews = z.infer<typeof invoiceViewsSchema>;
 export type Revision = z.infer<typeof revisionSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
+
+export type RecordStepId = (typeof RECORD_STEPS)[keyof typeof RECORD_STEPS];
+
+/** One step of the owner's record, from the facts the API gave. */
+export interface RecordStep {
+  id: RecordStepId;
+  at: string | null;
+  done: boolean;
+  /** How often the pay page was opened, on the opened step. */
+  count?: number;
+}
 
 /** Base units of the shown option: received before expiry, still left to pay, and arrived after it (held). */
 export interface InvoiceException {

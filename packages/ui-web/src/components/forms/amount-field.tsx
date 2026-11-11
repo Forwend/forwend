@@ -44,10 +44,11 @@ export function AmountField({
             autoComplete="off"
             aria-invalid={error ? true : undefined}
             aria-describedby={[`${fieldId}-unit`, line].filter(Boolean).join(" ")}
-            // As wide as its figures (tabular, so a ch each, the point narrower), in every browser.
+            // As wide as its figures (tabular, so a ch each, the point narrower), in every browser. The figures sit at
+            // the field's end, so the room the point leaves falls outside them, not between them and the unit.
             style={{ width: `${Math.max(length, 1) + 0.5}ch` }}
             className={cx(
-              "max-w-full bg-transparent text-center font-medium tracking-tight tabular-nums outline-none transition-[font-size] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle motion-reduce:transition-none",
+              "max-w-full bg-transparent text-right font-medium tracking-tight tabular-nums outline-none transition-[font-size] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle motion-reduce:transition-none",
               size,
               error ? "text-danger" : "text-ink",
             )}

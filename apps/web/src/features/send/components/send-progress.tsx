@@ -137,7 +137,7 @@ export function SendProgress({
         ) : failed ? (
           <CircleAlert aria-hidden className="size-12 text-danger" />
         ) : (
-          <Spinner label={SEND_COPY.sending} className="size-12" />
+          <Spinner label={SEND_COPY.sending} size="xl" />
         )}
       </div>
       <div aria-live="polite" className="flex flex-col gap-1">

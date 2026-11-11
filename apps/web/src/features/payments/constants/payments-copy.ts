@@ -87,7 +87,7 @@ export const PAYMENT_DETAIL_COPY = {
     cells: {
       requested: "Requested",
       paid: "Customer paid",
-      returned: "Returned to the payer",
+      returned: "Refunded",
       held: "Held for the customer",
       due: "Still due",
       networkFee: "Network fee",

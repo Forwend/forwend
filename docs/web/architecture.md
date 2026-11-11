@@ -150,6 +150,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - links: the USD amount pattern.
   - stores: the stores a sale can belong to.
   - balances: the USD formatting of the amount shown to the customer.
+  - invoices: the confirming count of a payment seen (`ConfirmingStatus`).
 - `/l/<slug>` and `/pay/<token>` share the `(checkout)` group, whose layout mounts one public store.
   - Pay on a link reads the new invoice into it, then opens the checkout, so it renders at once.
 - `/embed/<token>?layout=full|element&origin=…&theme=light|dark` (R-168) is `/pay/<token>` in a merchant's page.

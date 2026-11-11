@@ -42,7 +42,7 @@ import {
   usePickOptionMutation,
   useRecheckInvoiceMutation,
 } from "@/features/invoices/api/invoices-api";
-import { CheckStatus, recheckKey } from "@/features/invoices/components/check-status";
+import { CheckStatus } from "@/features/invoices/components/check-status";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
 import { PaymentAmountsNotice } from "@/features/invoices/components/payment-amounts-notice";
 import {
@@ -51,6 +51,7 @@ import {
   INVOICE_PDFS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { recheckKey } from "@/features/invoices/hooks/use-check-status";
 import {
   depositAmount,
   formatAgreed,

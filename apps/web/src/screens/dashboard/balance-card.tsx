@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionButton, Card, Skeleton } from "@forwend/ui-web";
-import { ArrowDownLeft, FilePlus2, Link2, ShoppingCart } from "lucide-react";
+import { ArrowDownLeft, FilePlus2, Link2, Send, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { BalanceChange } from "@/features/balances/components/balance-change";
@@ -30,6 +30,8 @@ export interface BalanceCardProps {
   merchant: boolean;
   canBill: boolean;
   onReceive: () => void;
+  /** Null where the role can't move money. Phones have no header Send, so this is their way to it. */
+  onSend: (() => void) | null;
 }
 
 /** The overview's lead: what is in the wallet, its change over the past month, and the actions that bring more in. */
@@ -42,6 +44,7 @@ export function BalanceCard({
   merchant,
   canBill,
   onReceive,
+  onSend,
 }: BalanceCardProps) {
   const router = useRouter();
   // The Received card's default range, so the read comes from its cache.
@@ -60,6 +63,7 @@ export function BalanceCard({
         ]
       : []),
     { label: COPY.receive, icon: ArrowDownLeft, onClick: onReceive, primary: !canBill },
+    ...(onSend ? [{ label: BALANCES_COPY.send, icon: Send, onClick: onSend }] : []),
   ];
   return (
     <Card id="balance-title" className="isolate flex min-h-64 flex-col overflow-hidden xl:min-h-72">
@@ -95,13 +99,15 @@ export function BalanceCard({
       </div>
       <fieldset className="m-0 mt-auto border-0 p-0 pt-6">
         <legend className="sr-only">{COPY.actions}</legend>
-        <div className="flex flex-wrap justify-center gap-3 sm:justify-start sm:gap-5">
+        {/* Phones keep every action on one row in equal columns, as a phone app's quick actions do. */}
+        <div className="grid auto-cols-fr grid-flow-col gap-1 sm:flex sm:flex-wrap sm:justify-start sm:gap-5">
           {actions.map((action) => (
             <ActionButton
               key={action.label}
               icon={action.icon}
               label={action.label}
               primary={action.primary}
+              className="text-center leading-tight"
               onClick={action.onClick ?? (() => router.push(action.href ?? APP_ROUTES.home))}
             />
           ))}

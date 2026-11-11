@@ -387,16 +387,16 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
       timeZone: "UTC",
     }).format(new Date(`${due}T00:00:00Z`));
     await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
-    await expect(page.getByText(title)).toBeVisible();
-    const header = page.getByRole("main").locator("header");
-    await expect(header).toContainText("12.50 USDC");
+    await expect(page.getByText(title).filter({ visible: true })).toBeVisible();
+    // The amount and View payment sit in the amount card, under the header.
+    const invoicePage = page.getByRole("main");
+    await expect(invoicePage).toContainText("12.50 USDC");
     await expect(
       page.getByRole("main").getByText("Waiting for payment", { exact: true }),
     ).toBeVisible();
-    await expect(header.getByRole("link", { name: "View payment", exact: true })).toHaveAttribute(
-      "href",
-      `/app/payments/${invoice.invoiceId}`,
-    );
+    await expect(
+      invoicePage.getByRole("link", { name: "View payment", exact: true }),
+    ).toHaveAttribute("href", `/app/payments/${invoice.invoiceId}`);
     const details = page.getByRole("region", { name: "Details" });
     await expect(details).toContainText("Due date");
     await expect(details).toContainText(dueText);
@@ -445,7 +445,9 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     const sent = page.waitForRequest(
       (r) => r.url().endsWith(`/invoices/${invoice.invoiceId}/send`) && r.method() === "POST",
     );
-    await client.getByRole("button", { name: "Send to client" }).click();
+    // R-94: emailing the invoice is about the client, so it sits in Billed to.
+    const billedTo = page.getByRole("region", { name: "Billed to" });
+    await billedTo.getByRole("button", { name: "Email the client" }).click();
     // The API turns away a send without its key; the mock doesn't, so the key is checked here.
     expect(await (await sent).headerValue("idempotency-key")).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
@@ -453,9 +455,11 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(
       page.getByText(`${invoice.number} is on its way to delivered@resend.dev`),
     ).toBeVisible();
-    await expect(client).toContainText("Sending to delivered@resend.dev");
-    await expect(client.getByRole("button", { name: "Send to client" })).toHaveCount(0);
-    await expect(client.getByText(/^You can send it again after/)).toBeFocused();
+    await expect(billedTo).toContainText("Sending to delivered@resend.dev");
+    await expect(billedTo.getByRole("button", { name: "Email the client" })).toHaveCount(0);
+    await expect(
+      billedTo.getByText(/^You can send it again after/).filter({ visible: true }),
+    ).toBeFocused();
     expect(await blockingViolations(page)).toEqual([]);
     // R-96, R-97. The due date is a month away and the checkout closes tomorrow, so no reminder goes.
     const reminders = client.getByRole("switch", { name: "Payment reminders" });
@@ -483,18 +487,22 @@ test("a merchant creates an invoice, finds it in the list and opens its detail w
     await expect(client.getByRole("button", { name: "Stop repeating" })).toHaveCount(0);
     expect(await blockingViolations(page)).toEqual([]);
     const link = `http://localhost:3000/pay/${invoice.payToken}`;
+    // The pay link's actions sit in the header; the link itself never shows.
+    await expect(
+      page
+        .getByRole("main")
+        .locator("header")
+        .getByRole("link", { name: "Open pay page in a new tab" }),
+    ).toHaveAttribute("href", `${link}?preview=1`);
     await page
       .getByRole("main")
       .locator("header")
-      .getByRole("button", { name: "More actions" })
+      .getByRole("button", { name: "Copy link" })
       .click();
     await expect(
-      page.getByRole("menuitem", { name: "Open pay page in a new tab" }),
-    ).toHaveAttribute("href", `${link}?preview=1`);
-    await page.getByRole("menuitem", { name: "Copy link" }).click();
-    await expect(page.getByRole("menuitem", { name: "Link copied" })).toBeVisible();
+      page.getByRole("main").locator("header").getByRole("button", { name: "Link copied" }),
+    ).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
-    await page.keyboard.press("Escape");
     // R-91
     await page
       .getByRole("main")
@@ -745,23 +753,18 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     },
   });
   if (invoice) {
-    await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
-    await expect(page.getByRole("main").locator("header")).toContainText(
-      choosing ? "1.00 USD" : "1.00 USDC",
-    );
+    // On a phone the client is the large title.
+    await expect(page.getByRole("heading", { level: 1, name: "E2E phone client" })).toBeVisible();
+    await expect(page.getByRole("main")).toContainText(choosing ? "1.00 USD" : "1.00 USDC");
     if (choosing) {
       expect(invoice.options.length).toBeGreaterThan(1);
-      await expect(page.getByRole("main").locator("header")).toContainText(
-        `The client picks one of ${invoice.options.length}`,
-      );
+      await expect(page.getByRole("main")).toContainText("Client picks the token");
     }
     await expect(page.getByRole("region", { name: "Items" })).toContainText(
       choosing ? "E2E logo2 × 0.50 USD1.00 USD" : "E2E logo2 × 0.50 USDC1.00 USDC",
     );
     // R-94
-    await expect(page.getByRole("region", { name: "Billed to" })).toContainText(
-      "No client email on this invoice",
-    );
+    await expect(page.getByRole("region", { name: "Billed to" })).toContainText("No client email");
     await fits();
     // R-91
     await page
@@ -769,7 +772,11 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
       .locator("header")
       .getByRole("button", { name: "More actions" })
       .click();
-    await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    // On a phone More actions opens a sheet.
+    await page
+      .getByRole("dialog", { name: invoice.number })
+      .getByRole("link", { name: "Duplicate" })
+      .click();
     await page.getByRole("main").getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("textbox", { name: "Item 1", exact: true })).toHaveValue(
       "E2E logo",
@@ -777,7 +784,8 @@ test("on a phone a merchant creates and opens an invoice without sideways scroll
     await fits();
     expect(await blockingViolations(page)).toEqual([]);
     await page.goBack();
-    await expect(page.getByRole("heading", { level: 1, name: invoice.number })).toBeVisible();
+    // On a phone the client is the large title.
+    await expect(page.getByRole("heading", { level: 1, name: "E2E phone client" })).toBeVisible();
     expect(await blockingViolations(page)).toEqual([]);
     await page.getByRole("link", { name: "Invoices" }).click();
     await expect(
