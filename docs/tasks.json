@@ -839,7 +839,7 @@
         "Google callback cleanup cannot cancel the signed-in transition to /app; email and existing-session sign-in still work."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "web-build",
@@ -914,11 +914,18 @@
           "summary": "Reviewed the sign-in diff, all SignInForm readers, the installed Privy callback cleanup and Next.js RESTORE behavior. Query changes remount only the redirect after authentication, preserving the sign-in gate. The three targeted tests pass. They prove navigation is reissued after simulated cleanup; live Google login has not been retested.",
           "at": "2026-11-11T02:14:07Z",
           "filesHash": "db5ebfa41f3c5fdd"
-        }
+        },
+        "commit": "51d653cd",
+        "doneAt": "2026-11-11T02:14:54Z"
       },
       "branch": "fix/f480-google-sign-in-reaches-the-app-without-r",
       "baseCommit": "0c87fba7dcbb3be68d130e7d154988032374b889",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f480-google-sign-in-reaches-the-app-without-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
