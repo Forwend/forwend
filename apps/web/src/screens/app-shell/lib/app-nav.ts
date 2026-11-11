@@ -23,6 +23,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 /** Every settings page, for marking Settings as the current place. */
 export const SETTINGS_PATHS: readonly string[] = [
   APP_ROUTES.settings,
+  APP_ROUTES.account,
   APP_ROUTES.notifications,
   APP_ROUTES.billingDetails,
   APP_ROUTES.networks,
@@ -91,6 +92,12 @@ export function breadcrumb(
   }
   if (pathname === APP_ROUTES.settings) {
     return { trail: [{ label: AUTH_COPY.settings, href: APP_ROUTES.settings }], invoiceId: null };
+  }
+  if (pathname === APP_ROUTES.account) {
+    return {
+      trail: [{ label: SETTINGS_COPY.account.title, href: APP_ROUTES.account }],
+      invoiceId: null,
+    };
   }
   if (pathname === APP_ROUTES.networks) {
     return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };

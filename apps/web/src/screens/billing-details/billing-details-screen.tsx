@@ -9,6 +9,7 @@ import { BILLING_THEN, PROFILE_KINDS } from "@/features/profiles/constants/profi
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { LoadError } from "@/shared/components/load-error";
+import { SETTINGS_TITLE } from "@/shared/components/settings-group";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export function BillingDetailsScreen() {
@@ -26,10 +27,7 @@ export function BillingDetailsScreen() {
           : APP_ROUTES.home;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
-        <p className="text-sm text-muted">{COPY.intro}</p>
-      </div>
+      <h1 className={SETTINGS_TITLE}>{COPY.title}</h1>
       {details.isError ? (
         <LoadError
           message={COPY.loadFailed}

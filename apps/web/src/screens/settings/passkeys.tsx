@@ -10,6 +10,7 @@ import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
 import { forgetOnDevice, PasskeyOnDevice } from "@/features/auth/lib/passkeys";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { canRemovePasskey, type PasskeyRow, passkeysOf } from "@/screens/settings/lib/passkeys";
+import { SETTINGS_ROW } from "@/shared/components/settings-group";
 import { shortDate } from "@/shared/lib/dates";
 
 const COPY = SETTINGS_COPY.account;
@@ -60,11 +61,11 @@ export function Passkeys() {
           ))}
         </ul>
       ) : null}
-      <div ref={addArea} className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:px-5">
+      <div ref={addArea} className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:px-5">
         {fresh.step ?? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
             <p className="min-w-0 flex-1 text-sm text-muted">
-              {passkeys.length > 0 ? COPY.anotherPasskey : COPY.passkeyHint}
+              {passkeys.length > 0 ? null : COPY.passkeyHint}
             </p>
             <Button
               size="sm"
@@ -108,9 +109,12 @@ function PasskeyItem({
   // Privy leaves two-step on with nothing to answer it when its passkey goes, so that one stays until two-step is off.
   const blocked = !removable ? COPY.onlyWay : passkey.twoStep ? COPY.twoStepPasskey : null;
   const meta = [
-    passkey.madeOn ? COPY.passkeyMade(passkey.madeOn) : null,
-    passkey.added ? COPY.passkeyAdded(shortDate(passkey.added.toISOString())) : null,
-    passkey.lastUsed ? COPY.passkeyUsed(shortDate(passkey.lastUsed.toISOString())) : null,
+    passkey.madeOn,
+    passkey.lastUsed
+      ? COPY.passkeyUsed(shortDate(passkey.lastUsed.toISOString()))
+      : passkey.added
+        ? COPY.passkeyAdded(shortDate(passkey.added.toISOString()))
+        : null,
   ].filter(Boolean);
 
   // The row leaves the list once Privy has removed it, and its dialog with it.
@@ -131,7 +135,7 @@ function PasskeyItem({
   };
 
   return (
-    <li className="flex items-start gap-3 px-4 py-4 sm:items-center sm:px-5">
+    <li className={SETTINGS_ROW}>
       <span className="grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-muted max-sm:hidden">
         <Fingerprint aria-hidden className="size-[var(--fw-icon-md)]" />
       </span>

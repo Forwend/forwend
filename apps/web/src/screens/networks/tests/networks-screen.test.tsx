@@ -32,7 +32,7 @@ const USDC = {
 afterEach(cleanup);
 
 const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
-const NAME = { name: /Accept other tokens through NEAR Intents/ };
+const NAME = { name: /Accept other tokens/ };
 const toggle = () => screen.getByRole("switch", NAME);
 
 // R-240: the switch saves alone, so a token turned off elsewhere is never put back by it.

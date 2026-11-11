@@ -46,11 +46,8 @@ export const NEW_PROFILE_COPY = {
 export const BILLING_DETAILS_COPY = {
   title: "Billing details",
   saved: "Billing details saved",
-  intro: "How clients see you on new invoices. Sent ones keep theirs.",
   contactGroup: "Contact",
-  contactNote: "The name and email clients see on invoices and receipts.",
   addressGroup: "Address and tax",
-  addressNote: "Printed under your name on every invoice; EU and UK invoices need a tax ID.",
   name: "Name or business name",
   nameHint: "Your own name, or your business's if you invoice as one.",
   businessName: "Business name",
@@ -83,30 +80,28 @@ export const BILLING_DETAILS_COPY = {
 /** R-136. */
 export const TOKENS_COPY = {
   title: "Accepted assets",
-  intro: "The stablecoins and networks new invoices and requests accept. Sent ones keep theirs.",
+  note: "For new invoices and requests. Sent ones keep theirs.",
   lastOn: "One stays on, so this profile can still be paid.",
   loadFailed: "We could not load the accepted assets.",
   saveFailed: "We could not save this setting. Try again.",
   saving: "Saving…",
   savedAll: "Changes saved.",
   // R-240: payments from other chains through NEAR Intents, into a live invoice's Base USDC option.
-  crossChain: "Accept other tokens through NEAR Intents",
+  crossChain: "Accept other tokens",
   crossChainHint:
-    "Clients can pay a live invoice from another chain and token. NEAR Intents converts it to USDC on Base, " +
-    "so Base USDC must stay on. Clients pay the conversion cost.",
+    "Clients pay a live invoice with a token from another chain. NEAR Intents converts it to USDC on Base, " +
+    "which stays on. Clients cover the cost.",
 } as const;
 
 /** D-122: who pays new invoices' fees. */
 export const FEES_COPY = {
-  title: "Network fees",
-  note: "Each invoice carries the fee for sending its payment to your wallet. Choose who pays it on new invoices.",
+  title: "Who pays the network fee",
   legend: "Who pays the network fee",
   owner: "You",
-  ownerHint:
-    "Taken from what you receive when the payment reaches your wallet. Your client pays the price.",
+  ownerHint: "Taken from what you receive.",
   client: "Your client",
-  clientHint: "Added to what your client pays. You receive the full price.",
-  kept: "Each invoice and link can choose otherwise. Invoices you already sent keep theirs.",
+  clientHint: "Added to the price. You receive it all.",
+  kept: "For new invoices and links. Each one can choose otherwise.",
   ownersOnly: "Only the owner or an Admin can change it.",
   saved: "Saved: new invoices follow it",
   saveFailed: "We could not save who pays the fees. Try again.",
@@ -115,13 +110,10 @@ export const FEES_COPY = {
 /** R-221. */
 export const DEVELOPER_MODE_COPY = {
   title: "Developer mode",
-  intro: "Try Forwend on test networks with free testnet tokens before you take real money.",
-  section: "Mode",
-  sectionNote: "For this profile only: each of your profiles has its own mode.",
   toggle: "Developer mode",
-  on: "On: test networks. New invoices, links, keys and webhooks use testnet tokens, which have no value.",
-  off: "Off: live networks. Payers pay real stablecoins on Base, Arbitrum, Arc and Tempo.",
-  kept: "Turning it changes nothing you already made: each invoice, link, key and webhook keeps its mode.",
+  on: "Test networks with free test tokens",
+  off: "Live networks and real money",
+  kept: "Only this profile. What you already made keeps its mode.",
   ownersOnly: "Only the owner or an Admin can change it.",
   saveFailed: "We could not change the mode. Try again.",
   noLive: "No live network is switched on yet, so this profile stays in Developer mode.",
@@ -140,16 +132,12 @@ export const DEVELOPER_MODE_COPY = {
 
 /** R-80. */
 export const NOTIFICATIONS_COPY = {
-  emailSection: "Email",
-  emailNote:
-    "Payment emails for this profile. Payers' receipts and invoices to clients aren't affected.",
-  title: "Email notifications",
-  intro: "An email when an invoice is paid, reaches your wallet or has money held.",
-  toggle: "Email me about this profile's invoices",
-  to: (address: string) => `Emails go to ${address}, the email you sign in with.`,
-  noAddress:
-    "Your account has no email to send to: you sign in with a passkey alone. Sign in with email or Google to get emails.",
+  title: "Notifications",
+  note: "When an invoice is paid, reaches your wallet or has money held.",
+  toggle: "Payment emails",
+  to: (address: string) => `To ${address}`,
+  noAddress: "Your account has no email. Sign in with email or Google to get these.",
   loadFailed: "We could not load this setting.",
   saveFailed: "We could not save this setting. Try again.",
-  saved: (on: boolean) => (on ? "Email notifications on" : "Email notifications off"),
+  saved: (on: boolean) => (on ? "Payment emails on" : "Payment emails off"),
 } as const;

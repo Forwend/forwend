@@ -3,7 +3,6 @@ import { ROLES } from "@/features/profiles/constants/profile";
 /** R-139: the Team page. */
 export const TEAM_COPY = {
   title: "Team",
-  intro: "People on this profile. Only the owner moves money.",
   members: "Members",
   invites: "Open invites",
   noInvites: "No open invites.",

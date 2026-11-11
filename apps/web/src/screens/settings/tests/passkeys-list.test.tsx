@@ -53,14 +53,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("passkeys in Account and security (R-217)", () => {
-  it("lists a passkey with where it was made, when added and last used, and offers another", () => {
+describe("passkeys in Security (R-217)", () => {
+  it("lists a passkey with where it was made and when it was last used, and offers another", () => {
     privy.accounts = [email, passkey];
     render(<Passkeys />, { wrapper: wrap });
     expect(screen.getByText("iCloud Keychain")).toBeTruthy();
-    expect(
-      screen.getByText(/^Made on Safari, macOS · Added Oct 27 · Last used Nov 5$/),
-    ).toBeTruthy();
+    expect(screen.getByText(/^Safari, macOS · Last used Nov 5$/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add a passkey" })).toBeTruthy();
   });
 
@@ -119,9 +117,7 @@ describe("passkeys in Account and security (R-217)", () => {
       name: "Remove iCloud Keychain made on Safari, macOS",
     }) as HTMLButtonElement;
     expect(remove.disabled).toBe(true);
-    const reason = screen.getByText(
-      "It's your two-step verification. Remove it from two-step first.",
-    );
+    const reason = screen.getByText("Remove it from two-step first.");
     expect(remove.getAttribute("aria-describedby")).toBe(reason.id);
     expect(screen.getByText("Two-step")).toBeTruthy();
   });

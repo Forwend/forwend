@@ -145,7 +145,7 @@ test("the Privy test account signs in, with no WalletConnect request, and lands 
   await expect(page.getByRole("menu").getByRole("menuitem")).toHaveText(["Settings", "Sign out"]);
   await expect(page.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
     "href",
-    "/app/settings",
+    "/app/account",
   );
   await page.getByRole("menuitemcheckbox", { name: "Dark mode" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", theme ?? "");

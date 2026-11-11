@@ -37,7 +37,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
 - Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google, passkey; D-21) on the Privy
   React SDK's headless hooks; Privy's modal is not used. With no wallet login, Privy's wallet list is empty and its
   WalletConnect is off, so no page fetches WalletConnect's registry or loads its code. Users add a passkey from the
-  overview checklist, the onboarding step or Account and security, all through `useAddPasskey`. It asks
+  overview checklist, the onboarding step or Security in Settings, all through `useAddPasskey`. It asks
   `GET /v1/me/fresh-sign-in` first, then calls Privy's `useLinkWithPasskey`; they sign in with `useLoginWithPasskey`.
   The Wallet settings page opens Privy's `useExportWallet` for the profile's wallet, after the same check (R-218).
   Like the passkey check, it binds Forwend's page only, not Privy's API (Q-13). Privy loads only in the

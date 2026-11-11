@@ -25,7 +25,7 @@ export function settingsSections(
 ): { label: string; business: boolean; items: SettingsSection[] }[] {
   const links = accountLinks(profile);
   const account: SettingsSection[] = [
-    { href: APP_ROUTES.settings, label: COPY.account.title, icon: ShieldCheck },
+    { href: APP_ROUTES.account, label: COPY.account.title, icon: ShieldCheck },
     ...(links.notifications
       ? [{ href: APP_ROUTES.notifications, label: COPY.notifications.title, icon: Bell }]
       : []),

@@ -62,7 +62,7 @@ export function AccountMenu({
         </MenuCheckboxItem>
         {settings ? (
           <MenuItem asChild>
-            <Link href={APP_ROUTES.settings}>
+            <Link href={APP_ROUTES.account}>
               <Settings aria-hidden className="size-[var(--fw-icon-md)]" />
               {AUTH_COPY.settings}
             </Link>

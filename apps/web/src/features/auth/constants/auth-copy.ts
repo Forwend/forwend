@@ -81,7 +81,7 @@ export const TWO_STEP_COPY = {
   timedOut: "This took too long. Cancel and start again.",
   failed: "We couldn't check it. Try again.",
   noMethod:
-    "Your account confirms this with a method Forwend doesn't support. Set up a passkey or an authenticator app in Account and security.",
+    "Your account confirms this with a method Forwend doesn't support. Set up a passkey or an authenticator app in Settings, under Security.",
   tryAgain: "Try again",
   notNow: "Not now",
   cancel: "Cancel",

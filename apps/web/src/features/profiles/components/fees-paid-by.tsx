@@ -7,7 +7,7 @@ import { FEES_PAID_BY, PERMISSIONS } from "@/features/profiles/constants/profile
 import { FEES_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { can } from "@/features/profiles/lib/profile";
 import type { FeesPaidBy, Profile } from "@/features/profiles/types/profile";
-import { SplitSection } from "@/shared/components/split-section";
+import { SettingsGroup } from "@/shared/components/settings-group";
 
 /** D-122, R-227: who pays the profile's new invoices' fees unless an invoice or link says otherwise. */
 export function FeesPaidBySetting({ profile }: { profile: Profile }) {
@@ -24,7 +24,7 @@ export function FeesPaidBySetting({ profile }: { profile: Profile }) {
     }
   };
   return (
-    <SplitSection title={COPY.title} description={COPY.note}>
+    <SettingsGroup title={COPY.title} note={allowed ? COPY.kept : COPY.ownersOnly}>
       <div className="flex flex-col gap-3">
         <fieldset disabled={isLoading || !allowed} className="grid gap-3 sm:grid-cols-2">
           <legend className="sr-only">{COPY.legend}</legend>
@@ -49,13 +49,12 @@ export function FeesPaidBySetting({ profile }: { profile: Profile }) {
             hint={COPY.clientHint}
           />
         </fieldset>
-        <p className="text-sm text-muted">{allowed ? COPY.kept : COPY.ownersOnly}</p>
         {isError ? (
           <p role="alert" className="text-sm text-danger">
             {COPY.saveFailed}
           </p>
         ) : null}
       </div>
-    </SplitSection>
+    </SettingsGroup>
   );
 }

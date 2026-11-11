@@ -197,17 +197,26 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - View all opens Payments for a business and Transactions for a personal profile.
 - The account menu holds the email, the app's one theme control (a Dark mode switch item), Settings and Sign out.
   - Settings shows only when the role may open it. Phones reach it from More.
-  - Sign out of all devices (R-137) lives in Settings, Account and security, never in the menu.
+  - Sign out of all devices (R-137) lives in Settings, Security, never in the menu.
 - The sidebar's foot, above the account row: the setup guide while steps remain.
   - The setup guide is a small card that starts closed: "Get started", "n of m done" and one segment per step.
   - Its title row opens and closes it with a height transition (none under reduced motion); open, it shows the next
     step with its action and Skip. It has no close button.
   - It goes once every step is done or skipped; phones show it at the top of More.
-- Settings is one area with a section column beside the page (13rem); phones get a row of text tabs instead.
-  - Your account: Account and security, Notifications. This profile (its name): Billing details, Accepted assets,
+- Settings (R-255) is one area. From large screens a section column (13rem) sits beside the page.
+  - `/app/settings` opens the first section there, Security (`/app/account`).
+  - Phones open `/app/settings` as a list of the sections, like a phone's settings app: grouped rows with an icon
+    and a chevron. Each section page starts with a back link to that list. No row of tabs scrolls sideways.
+  - Your account: Security, Notifications. This profile (its name): Billing details, Accepted assets,
     Developer mode, Team, Wallet.
+  - A section page is its title (large on phones), then groups (`SettingsGroup`): a small title, one panel of rows,
+    and at most one short note under it. No intro line and no description column.
+  - A row (`SETTINGS_ROW`) has its label on the left and its value or control on the right, on phones too.
+  - A destructive action, such as Sign out of all devices, is a row in the danger color that confirms first.
+  - The page column is at most 48rem wide.
   - Developer mode (R-221): one switch in a panel, like Notifications. A line under it says what On or Off means.
-    - Another line says nothing already made changes mode; a role that can't turn it reads Only the owner or an Admin.
+    - The group's note says only this profile changes and nothing already made does; a role that can't turn it reads
+      Only the owner or an Admin.
     - While it is on, every app page has a warning strip under the header with Turn off.
     - The app then reads every page again in the new mode, without reloading.
     - With no mainnet on, turning it off is refused, and a line says the profile stays in Developer mode.
@@ -219,10 +228,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Until two-step is set up (wallet MFA on), Set up two-step verification takes the place of Show the key.
     - The warning closes first, so no dialog sits under Privy's.
   - Each section shows only to a role that can open it (D-93). The pages keep their addresses.
-  - Account and security lists the sign-in methods (email, Google) and this device, from its user agent.
+  - Security lists the sign-in methods (email, Google), the passkeys, two-step and this device, from its user agent.
     - Under them: Sign out, and Sign out of all devices with its dialog.
   - Passkeys (R-217) have rows of their own, newest first, each with a fingerprint mark and Remove.
-    - A row names the password manager, or Passkey, then "Made on Safari, macOS · Added Oct 27 · Last used Nov 5".
+    - A row names the password manager, or Passkey, then "Safari, macOS · Last used Nov 5" (Added before first use).
     - Each Remove is named apart: a passkey with no name adds where it was made.
     - Add a passkey stays under them, for each device the owner signs in on.
     - Remove asks in a small dialog, Keep it or Remove. Adding or removing first confirms it's you, in place.
@@ -665,7 +674,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Settings opens from the account menu, and on phones from More (see App shell); its sections share one frame.
   - Developers keeps the full content width: its tables need the room.
 - Accepted assets (R-136) uses the accepted-assets selector: one row per asset, its networks under it.
-  - Under it, a `SwitchCard` "Accept other tokens through NEAR Intents" (R-240), on by default.
+  - Under it, a `SwitchCard` "Accept other tokens" (R-240), on by default; its line names NEAR Intents.
     - It follows the box rules below, with its own status line, and saves only the switch.
   - A change saves at once; one quiet status line says Saving or Changes saved, never a toast per box.
   - A box changes the moment it is pressed, and every box stays usable while it saves. A refused save puts it back.
@@ -692,7 +701,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A delivery row: the event and its invoice number, when, a status badge, Resend, and its attempts in a disclosure.
   - Results and errors in the sheet show in its status line, not as toasts.
 - Team (R-139) is a Settings section for a merchant profile's owner and members.
-  - It is laid out like the other sections: a title, an intro line, then panels.
+  - It is laid out like the other sections: a title, then panels. No open invites is one quiet line.
   - An Admin sees Members, then Open invites, each a panel with a compact table (Member or Email, Stores, Role).
   - Invite sits beside the Members heading and opens a dialog: Email, a Role select with a hint, and store checkboxes.
   - The checkboxes show for Developer and Finance only.
@@ -783,7 +792,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - New invoice once closed or canceled; View payment and Receipt PDF once paid.
   - Until paid, View payment is the amount card's last row, with a chevron.
   - Details are statement rows, the term on the left and its value on the right; a note stacks under its term.
-- Email notifications: one settings row in a panel (see Controls).
+- Notifications: one switch row, Payment emails, with the address under it (see Controls).
 - First run (R-50): while `/v1/me` has no `onboardedAt`, `/app/onboarding` shows standalone steps instead of the shell.
   - Every step: the logo where landing and sign-in put it (`SiteBar`, plain), "Step 2 of 5" and Sign out at the right,
     then a bar with one segment per step, the question and its fields in one column.
@@ -814,8 +823,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Steps come from data: passkey linked, billing details (freelancer), first invoice or request, first paid in full,
   first final money in. Skipped steps are remembered per profile in the browser.
 - Form pages stop at 56rem (`max-w-4xl`), so a field never runs across a wide screen; step forms use 72rem for the
-  preview beside them, and settings pages sit in the settings frame.
-  - The 56rem pages are Billing details and Email notifications.
+  preview beside them, and settings pages sit in the settings frame (48rem).
 - New profile: "Add a profile" over the form (37.5rem), beside a preview (22.5rem) from lg up, centered in the page.
   - The heading shows at every width; the header's breadcrumb still names the page.
   - Two type cards side by side, each with what it includes (hidden on phones), then the optional name.

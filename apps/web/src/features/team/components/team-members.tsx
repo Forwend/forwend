@@ -4,14 +4,12 @@ import {
   Badge,
   Button,
   cx,
-  EmptyState,
   Skeleton,
   TABLE_HEAD_CLASSES,
   TABLE_ROW_CLASSES,
   TONES,
   useToast,
 } from "@forwend/ui-web";
-import { Mail } from "lucide-react";
 import { useState } from "react";
 import { ROLE_LABELS, ROLES } from "@/features/profiles/constants/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
@@ -117,7 +115,7 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
                       <span className={NARROW}>{reach(member.stores)}</span>
                     </td>
                     <td className={cx(WIDE, "truncate text-muted")}>{reach(member.stores)}</td>
-                    <td className="w-28">
+                    <td className="w-28 @max-2xl:text-right">
                       <Badge tone={member.role === ROLES.owner ? TONES.info : TONES.neutral}>
                         {ROLE_LABELS[member.role]}
                       </Badge>
@@ -150,7 +148,7 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
         {!loaded ? (
           <RowsSkeleton />
         ) : loaded.invites.length === 0 ? (
-          <EmptyState compact icon={Mail} title={COPY.noInvites} />
+          <p className="px-4 py-3.5 text-sm text-muted sm:px-5">{COPY.noInvites}</p>
         ) : (
           <table className="w-full table-fixed text-sm">
             <thead className="hidden @2xl:table-header-group">

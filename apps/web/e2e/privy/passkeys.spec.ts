@@ -18,7 +18,7 @@ async function confirmIfAsked(where: ReturnType<Page["getByRole"]>) {
   }
 }
 
-test("a passkey is added in Account and security, listed with where it was made, and removed", async ({
+test("a passkey is added in Security, listed with where it was made, and removed", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
@@ -36,8 +36,8 @@ test("a passkey is added in Account and security, listed with where it was made,
       automaticPresenceSimulation: true,
     },
   });
-  await page.goto("/app/settings");
-  const methods = page.getByRole("region", { name: "Sign-in methods" });
+  await page.goto("/app/account");
+  const methods = page.getByRole("region", { name: "Sign in with" });
   const remove = methods.getByRole("button", { name: /^Remove / });
   const add = methods.getByRole("button", { name: "Add a passkey" });
   // The account has loaded once Add shows: only then does the count of passkeys mean anything.
@@ -48,7 +48,7 @@ test("a passkey is added in Account and security, listed with where it was made,
   await confirmIfAsked(page.getByRole("main"));
   await expect(page.getByText("Passkey added")).toBeVisible({ timeout: 30_000 });
   await expect(remove).toHaveCount(before + 1, { timeout: 30_000 });
-  await expect(methods.getByText(/Added .* · Last used /).first()).toBeVisible();
+  await expect(methods.getByText(/ · (Last used|Added) /).first()).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
   // The newest is first; removing it asks in a dialog, and Keep it leaves it.

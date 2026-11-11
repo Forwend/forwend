@@ -11,7 +11,7 @@ import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { deviceName } from "@/screens/settings/lib/device";
 import { Passkeys } from "@/screens/settings/passkeys";
 import { TwoStep } from "@/screens/settings/two-step";
-import { SplitSection } from "@/shared/components/split-section";
+import { SETTINGS_ROW, SETTINGS_TITLE, SettingsGroup } from "@/shared/components/settings-group";
 
 const COPY = SETTINGS_COPY.account;
 
@@ -48,13 +48,10 @@ export function SettingsScreen() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
-        <p className="text-sm text-muted">{COPY.intro}</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <h1 className={SETTINGS_TITLE}>{COPY.title}</h1>
 
-      <SplitSection title={COPY.signInWith} description={COPY.signInNote}>
+      <SettingsGroup title={COPY.signInWith}>
         <div className="fw-panel overflow-hidden">
           <DetailList>
             {methods.map((method) => (
@@ -66,42 +63,40 @@ export function SettingsScreen() {
           {/* Passkeys have rows of their own: where each was made, when it was used, and Remove (R-217). */}
           <Passkeys />
         </div>
-      </SplitSection>
+      </SettingsGroup>
 
-      <SplitSection title={COPY.twoStep} description={COPY.twoStepNote}>
+      <SettingsGroup title={COPY.twoStep} note={COPY.twoStepNote}>
         <TwoStep />
-      </SplitSection>
+      </SettingsGroup>
 
-      <SplitSection title={COPY.device} description={COPY.deviceNote}>
-        <div className="fw-panel overflow-hidden">
-          <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+      <SettingsGroup title={COPY.device}>
+        <div className="fw-panel divide-y divide-line overflow-hidden">
+          <div className={SETTINGS_ROW}>
             <span className="grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-muted max-sm:hidden">
               <Laptop aria-hidden className="size-[var(--fw-icon-md)]" />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
-                {device ?? " "}
-                <Badge tone="success">{COPY.current}</Badge>
-              </p>
-              <p className="text-sm text-muted">{COPY.deviceHint}</p>
-            </div>
+            <p className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm font-medium text-ink">
+              {device ?? " "}
+              <Badge tone="success">{COPY.current}</Badge>
+            </p>
             <Button size="sm" variant={BUTTON_VARIANTS.secondary} onClick={() => void signOut()}>
               {COPY.signOut}
             </Button>
           </div>
-          <div className="flex flex-col gap-3 border-t border-line px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-ink">{COPY.everywhere}</p>
-              <p className="text-sm text-muted">{COPY.everywhereHint}</p>
-            </div>
+          {/* Wrapped, so the panel's rules see one row and not the closed dialog beside it. */}
+          <div>
             <Dialog
               triggerLabel={COPY.everywhere}
               title={SIGN_OUT_EVERYWHERE_COPY.title}
               onClose={reset}
               trigger={(open) => (
-                <Button size="sm" variant={BUTTON_VARIANTS.secondary} onClick={open}>
+                <button
+                  type="button"
+                  onClick={open}
+                  className={`${SETTINGS_ROW} w-full text-left text-sm font-medium text-danger outline-none hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
+                >
                   {COPY.everywhere}
-                </Button>
+                </button>
               )}
             >
               <p>{SIGN_OUT_EVERYWHERE_COPY.body}</p>
@@ -126,7 +121,7 @@ export function SettingsScreen() {
             </Dialog>
           </div>
         </div>
-      </SplitSection>
+      </SettingsGroup>
     </div>
   );
 }
