@@ -55,6 +55,62 @@ It works in live mode only: NEAR Intents has no testnet.
 - The pay page follows each step: received, converting, confirming on Base, and paid.
 - Each profile can turn cross-chain payments off in Settings, under Accepted assets.
 
+## NEAR HACKATHON
+
+Forwend is entered in [NEAR HACKATHON](https://nearhackathon.com), in the Real-World Money track.
+Forwend existed before the hackathon, so only its NEAR Intents integration is entered.
+
+- The project started on 8 Oct 2026. The hackathon was announced on 19 Oct 2026.
+- Invoices, checkout, balances and send on Base, Arbitrum, Arc and Tempo are earlier work.
+- Other work after 19 Oct that does not touch NEAR Intents is not entered.
+- Tag `pre-hackathon` marks the last commit before 19 Oct 2026 UTC.
+- Tag `hackathon-submission` marks the submitted commit.
+- [All changes between the two tags](https://github.com/Forwend/forwend/compare/pre-hackathon...hackathon-submission).
+
+### Built during the hackathon
+
+The NEAR Intents integration landed between 9 and 11 Nov 2026.
+
+| Pull request | What it adds |
+|---|---|
+| [#457](https://github.com/Forwend/forwend/pull/457) | The API asks 1Click for an exact-output quote and checks its signature. |
+| [#458](https://github.com/Forwend/forwend/pull/458) | The worker follows each quote's 1Click status to its end. |
+| [#459](https://github.com/Forwend/forwend/pull/459) | The pay page gets a token picker, a checked deposit address and a 15-minute price. |
+| [#460](https://github.com/Forwend/forwend/pull/460) | The owner sees how each cross-chain payment was paid, and can turn the option off. |
+| [#461](https://github.com/Forwend/forwend/pull/461) | The picker shows each token's minimum and blocks a token that needs more than is due. |
+| [#462](https://github.com/Forwend/forwend/pull/462) | The pay box shows what the payer sent, what arrived on Base and any refund. |
+| [#464](https://github.com/Forwend/forwend/pull/464), [#465](https://github.com/Forwend/forwend/pull/465), [#472](https://github.com/Forwend/forwend/pull/472) | One rounded amount to send, clear refusals, and no tokens that 1Click can't route. |
+| [#468](https://github.com/Forwend/forwend/pull/468) | Audit fixes: a stuck quote frees the invoice, and the page shows the refund fee. |
+| [#474](https://github.com/Forwend/forwend/pull/474), [#475](https://github.com/Forwend/forwend/pull/475), [#476](https://github.com/Forwend/forwend/pull/476), [#489](https://github.com/Forwend/forwend/pull/489) | The payment page and pay box show each cross-chain step. |
+
+The code lives in these places:
+
+- [`apps/backend/internal/intents`](apps/backend/internal/intents): the 1Click client, quotes, signature check, tokens and status.
+- [`apps/backend/internal/invoice`](apps/backend/internal/invoice): `crosschain.go`, `crosschain_read.go` and `crosschain_track.go`.
+- [`apps/web/src/features/pay`](apps/web/src/features/pay): `crosschain-picker.tsx` and `crosschain-pay.tsx`.
+
+### Try it without money
+
+NEAR Intents has no testnet, so a real cross-chain payment needs mainnet funds.
+The browser tests run the pay page against a local stub API that returns signed 1Click quotes.
+
+```sh
+pnpm install
+pnpm --filter @forwend/web e2e crosschain
+```
+
+Playwright builds the web app and pays a live invoice with USDT on Tron, from quote to receipt.
+It also covers refunds, short deposits, token minimums and a quote changed after 1Click signed it.
+Every test passes.
+
+### Libraries and services
+
+- Web: Next.js, React, Redux Toolkit, Zod, Tailwind CSS, Radix UI and Lucide icons.
+- Backend: Go with pgx, goose, go-ethereum, the Privy Go SDK, golang-jwt, gorilla/websocket and fpdf.
+- Contracts: Foundry with forge-std and OpenZeppelin Contracts.
+- Tests and tooling: Vitest, Playwright, Biome, Turborepo and pnpm.
+- Services: the NEAR Intents 1Click API, Privy for sign-in and wallets, Chainlink price feeds and Uniswap v3.
+
 ## Packages
 
 | Package | What it is |
