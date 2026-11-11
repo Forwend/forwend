@@ -931,7 +931,7 @@
         "With reduced motion, the kit's fade test checks that the dialog's and backdrop's transitions last at most 0.01 ms, instead of reading the opacity a few frames after opening."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "kit-e2e"
       ],
@@ -1008,11 +1008,18 @@
           "summary": "Parsing handles Chrome's computed forms (1e-05s, lists, ms); a 200 ms fade (0.2 s) fails the under-0.1 ms check, so the check still catches reduced motion not applying; base.css's reduced-motion rule covers the dialog and *::backdrop; the poll to opacity 1 still runs in both branches. The test passes locally against the real dialog and sheet.",
           "at": "2026-11-11T05:07:14Z",
           "filesHash": "f9a1b0d4d76244f5"
-        }
+        },
+        "commit": "f287cc0d",
+        "doneAt": "2026-11-11T05:07:21Z"
       },
       "branch": "test/f492-the-kit-s-reduced-motion-check-holds-on",
       "baseCommit": "7f1a7ad2975a50c8ebdb8051605c4a80325f8fe3",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f492-the-kit-s-reduced-motion-check-holds-on",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
