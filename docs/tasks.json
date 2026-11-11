@@ -570,7 +570,7 @@
         "The New invoice form tests pass on the staging CI runner, where they timed out at 5 s while the other packages' tests ran beside them."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit"
       ],
@@ -633,11 +633,18 @@
           "summary": "vi.setConfig at module scope applies to every test in new-invoice-form.test.tsx (vitest 5.0.5 resets config after each file, so nothing leaks); no assertion changed; the comment gives the reason in two sentences. The CI timeout was in a test body (line 91), which testTimeout covers.",
           "at": "2026-11-11T03:36:04Z",
           "filesHash": "0f63cbbc5e9acc07"
-        }
+        },
+        "commit": "f3918098",
+        "doneAt": "2026-11-11T03:36:06Z"
       },
       "branch": "test/f488-the-new-invoice-form-tests-have-time-to",
       "baseCommit": "fe0e9beaeff75251eca59c7a1a517b5f5a7c5c49",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f488-the-new-invoice-form-tests-have-time-to",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
