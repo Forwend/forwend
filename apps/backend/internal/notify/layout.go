@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"html/template"
 	"regexp"
+	"strings"
 )
 
 // WebURL is the web app's origin (links and the hosted logo); an empty PostalAddress or Support leaves it out of the
@@ -19,27 +20,38 @@ var layoutHTML string
 // html/template escapes every value, so a name the invoice's creator typed can't inject markup (F200).
 var layout = template.Must(template.New("email").Funcs(template.FuncMap{"keep": keep}).Parse(layoutHTML))
 
-var invoiceNumber = regexp.MustCompile(`INV-\d+`)
+// logo is the email header's mark, served by the web app: a lime tile that reads on light and dark grounds.
+const logo = "/email/logo-mark.png"
 
-// keep escapes s and keeps each invoice number on one line: a narrow screen must not split "INV-" from "0001".
+// together finds an invoice number, a date ("30 Nov 2026") and an amount ("1,250.00 USDC").
+var together = regexp.MustCompile(`INV-\d+|\d{1,2} [A-Z][a-z]{2} \d{4}|\d[\d,]*(?:\.\d+)? [A-Z][A-Z0-9]*`)
+
+// keep escapes s and keeps each invoice number, date and amount on one line: a narrow screen must not split "INV-"
+// from "0001" or leave "USDC" alone on a line. An amount wider than a phone still breaks, by the paragraph's
+// overflow-wrap, where a nowrap span would overflow.
 func keep(s string) template.HTML {
-	return template.HTML(invoiceNumber.ReplaceAllString(template.HTMLEscapeString(s),
-		`<span style="white-space:nowrap">$0</span>`))
+	return template.HTML(together.ReplaceAllStringFunc(template.HTMLEscapeString(s), func(m string) string {
+		if strings.HasPrefix(m, "INV-") {
+			return `<span style="white-space:nowrap">` + m + `</span>`
+		}
+		return strings.ReplaceAll(m, " ", "&nbsp;")
+	}))
 }
 
 type row struct{ Label, Value, Href string }
 
 type button struct{ Label, URL string }
 
-// Tone colors the badge: success, warning or neutral.
+// Tone picks the status mark above the title, success or warning; an email with no status to show has none.
 type view struct {
 	Subject, Preheader string
-	Badge, Tone        string
+	TestMode           string // R-143's line, shown first, on a test-mode invoice's emails
+	Tone               string
 	Title, Amount      string
 	Lead               []string
 	Details            []row
 	Note               string
-	Button             button
+	Button, Link       button // Link is an optional second action, a plain link under the button
 	Reason, Settings   string // why it was sent; the email settings link for owner emails
 	ReplyTo            string // where the recipient's reply goes; Forwend's From address when empty
 	// Stop is the client's page to stop reminders (R-96), linked in the footer; Unsubscribe is the one-click
@@ -53,7 +65,7 @@ func render(site Site, v view) (string, error) {
 	data := struct {
 		view
 		Site, Logo, Support, Postal string
-	}{v, site.WebURL, site.WebURL + "/icon-192.png", site.Support, site.PostalAddress}
+	}{v, site.WebURL, site.WebURL + logo, site.Support, site.PostalAddress}
 	err := layout.Execute(&b, data)
 	return b.String(), err
 }

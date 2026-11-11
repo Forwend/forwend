@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 482,
+  "nextId": 483,
   "tasks": [
     {
       "id": "F332",
@@ -541,27 +541,111 @@
     {
       "id": "F470",
       "type": "feat",
-      "behavior": "Invoice and receipt PDFs and the emails follow the redesigned documents",
+      "behavior": "Emails read short and clear, with a logo that shows in dark mode",
       "acceptance": [
-        "The PDFs and the 16 emails match the approved templates (Forwend Redesign Templates), Option A; email text reads with images hidden.",
-        "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
-        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+        "Each of the 16 emails says each fact once: no lead repeats the title, amount, network or invoice number, and detail rows show only facts not shown above.",
+        "The header logo reads on light and dark email backgrounds and the text reads with images off; success and warning emails start with a drawn status mark; the button is at least 44px tall and full width on phones.",
+        "Amounts, invoice numbers and dates never break across lines; every required fact, link, Reply-To and stop link from the requirement rows stays.",
+        "Every email has a preview sample, and the HTML and plain-text parts carry the same links."
       ],
       "dependsOn": [
         "F469"
       ],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
-        "web-unit",
-        "lint",
-        "typecheck"
+        "backend-affected",
+        "images-check"
       ],
       "refs": [],
       "keep": [],
       "review": false,
-      "notes": [],
+      "notes": [
+        "2026-11-11 review pass by subagent: First pass FAIL on copy, all fixed: the held note again names a partial payment when checkout closed (R-80; a new test checks every reason), the paid email no longer promises a second email that a ledger policy or the email setting can skip, the button is 48px as DESIGN.md says (13px padding), and the held, invite and code preheaders no longer repeat the body. Checked fine: every required fact, link, Reply-To, Stop link and List-Unsubscribe per R-80, 82, 84, 94, 96, 98, 107, 137, 139, 143, 148, D-49, D-118, D-65; the code subject still ends with the digits; keep() escapes first and can't split entities; every href is in the plain text; dark rules cover the new elements; the logo is served from public/; amounts still come from big.Int formatting; test mode is marked first."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T02:30:36Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "images-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 85.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "0b34c1aaadd85581",
+        "filesHash": "14157f372eb3c63e",
+        "proof": {
+          "1": "backend-affected: notify tests pass on Postgres; the rendered samples (all 16 emails) show each fact once: paid is the title, the amount, one sentence and only the network row; sent drops the Invoice, From and Token rows; no preheader repeats the body.",
+          "2": "images-check: the new 96px lime logo mark (apps/web/public/email/logo-mark.png) passes the image check; browser check of the samples at 720 px light and 390 px dark: the logo and Forwend text read on both grounds, paid and receipt start with a drawn check, held with a drawn !, and the 48px button spans the phone width.",
+          "3": "backend-affected: layout tests check non-breaking amounts, invoice numbers and dates, and that the held note names every reason money is held (R-80, D-118); required links, Reply-To and stop links stay; the paid email no longer promises a second email that a policy or the setting can skip.",
+          "4": "backend-affected: samples() covers all 16 kinds (code, outflow, waiting and the due-today reminder added) and TestEveryEmailHasHTMLWithTheTextLinks passes for each."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "First pass FAIL on copy, all fixed: the held note again names a partial payment when checkout closed (R-80; a new test checks every reason), the paid email no longer promises a second email that a ledger policy or the email setting can skip, the button is 48px as DESIGN.md says (13px padding), and the held, invite and code preheaders no longer repeat the body. Checked fine: every required fact, link, Reply-To, Stop link and List-Unsubscribe per R-80, 82, 84, 94, 96, 98, 107, 137, 139, 143, 148, D-49, D-118, D-65; the code subject still ends with the digits; keep() escapes first and can't split entities; every href is in the plain text; dark rules cover the new elements; the logo is served from public/; amounts still come from big.Int formatting; test mode is marked first.",
+          "at": "2026-11-11T02:32:11Z",
+          "filesHash": "14157f372eb3c63e"
+        },
+        "commit": "546cbbda",
+        "doneAt": "2026-11-11T02:32:26Z"
+      },
+      "branch": "feat/f470-emails-read-short-and-clear-with-a-logo",
+      "baseCommit": "c58ff1231105052725fdc346ab38fe18078a04a4",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f470-emails-read-short-and-clear-with-a-logo",
+        "base": "main"
+      }
     },
     {
       "id": "F471",
@@ -1034,6 +1118,26 @@
         "branch": "feat/f480-the-node-package-s-types-and-the-public",
         "base": "main"
       }
+    },
+    {
+      "id": "F482",
+      "type": "feat",
+      "behavior": "Invoice and receipt PDFs follow the redesigned documents",
+      "acceptance": [
+        "The invoice and receipt PDFs match the redesigned document look, with each fee shown when the client pays it.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
+      ],
+      "dependsOn": [
+        "F470"
+      ],
+      "state": "not_started",
+      "verification": [],
+      "refs": [],
+      "keep": [],
+      "review": false,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null
     }
   ],
   "lastWrapup": {

@@ -315,17 +315,14 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	}
 	var v view
 	if kind == outbox.Receipt {
-		v = receipt(reference, document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID), issuer, typed,
+		v = receipt(reference, document.Amount(units, decimals, symbol), document.NetworkName(chainID), issuer, typed,
 			document.TxURL(chainID, hash), webURL+"/api/v1/invoices/"+pay+"/receipt.pdf")
 	} else {
-		v = compose(kind, reference, document.Amount(units, decimals, symbol), symbol, document.NetworkName(chainID),
-			ownerURL, webURL+"/app/notifications")
+		v = compose(kind, reference, document.Amount(units, decimals, symbol), document.NetworkName(chainID), ownerURL,
+			webURL+"/app/notifications")
 		if number == nil {
 			v.Button.Label = "View payment"
 		}
-	}
-	if number == nil {
-		v.Details[0].Label = "Payment"
 	}
 	if len(paidWith) == 4 && (kind == outbox.Receipt || kind == outbox.Paid) {
 		sent, _ := new(big.Int).SetString(paidWith[2], 10)
@@ -337,115 +334,118 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, kind, invoice string, payload 
 	return marked(v, live), to, on, nil
 }
 
-func compose(kind, number, amount, symbol, network, link, settings string) view {
+func compose(kind, number, amount, network, link, settings string) view {
 	v := view{Amount: amount, Tone: "success", Button: button{"View invoice", link},
-		Details: []row{{Label: "Invoice", Value: number}, {Label: "Network", Value: network}, {Label: "Token", Value: symbol}},
-		Reason:  "You get this email because email is on for this profile.", Settings: settings}
+		Details: []row{{Label: "Network", Value: network}},
+		Reason:  "Sent because email is on for this profile.", Settings: settings}
 	switch kind {
 	case outbox.Paid:
-		v.Subject, v.Badge, v.Title = number+" paid: "+amount, "Paid", number+" was paid"
-		v.Lead = []string{number + " was paid: " + amount + " on " + network + ". Forwend sends it to your wallet next."}
+		v.Subject, v.Title = number+" paid: "+amount, number+" was paid"
+		v.Preheader = "Paid on " + network + "."
+		v.Lead = []string{"The money is on its way to your wallet."}
 	case outbox.Settled:
-		v.Subject, v.Badge, v.Title = number+": "+amount+" is in your wallet", "In your wallet", "The money is in your wallet"
-		v.Lead = []string{"The payment for " + number + " reached your wallet: " + amount + " on " + network + "."}
+		v.Subject, v.Title = number+": "+amount+" is in your wallet", "Money for "+number+" is in your wallet"
+		v.Preheader = "Settled on " + network + " and ready to use."
+		v.Lead = []string{"That’s what reached your wallet, less any fees. It now shows in your balance."}
 	default: // outbox.Held
-		v.Subject, v.Badge, v.Tone, v.Title = number+": "+amount+" held for the payer", "Held for the payer", "warning",
-			"Money held for the payer"
-		v.Lead = []string{amount + " for " + number + " on " + network + " does not pay it: more than the amount, a " +
-			"partial payment when the checkout closed, money after it closed or after you canceled it, or money on " +
-			"another payment option. It is held for the payer, not paid to you.",
-			"Forwend support handles any return to the payer, so you don't need to do anything."}
+		v.Subject, v.Tone, v.Title = number+": "+amount+" held for the payer", "warning",
+			number+": money held for the payer"
+		v.Preheader = "Received on " + network + "."
+		v.Lead = []string{"It doesn’t count toward the invoice, so it isn’t paid to you. Forwend support handles any " +
+			"return to the payer, so you don’t need to do anything."}
+		v.Note = "Money is held when it’s over the amount due, part of a payment when checkout closed, arrives " +
+			"after checkout closed or the invoice was canceled, or goes to another payment option."
 	}
-	v.Preheader = v.Lead[0]
 	return v
 }
 
 // welcome is a new account's one welcome email (R-84).
 func welcome(app string) view {
-	return view{Subject: "Welcome to Forwend", Preheader: "Your Forwend account is ready.", Title: "Welcome to Forwend",
-		Lead: []string{"Your Forwend account is ready. Create an invoice or a payment request, share its pay link, " +
-			"and get paid in stablecoins to your wallet.", "Forwend emails you when an invoice is paid, when the money " +
-			"reaches your wallet, and when money is held for a payer. You can turn those emails off for each profile."},
-		Button: button{"Open Forwend", app}, Reason: "You get this email once, because you created a Forwend account."}
+	return view{Subject: "Welcome to Forwend", Preheader: "Your account is ready.", Title: "Welcome to Forwend",
+		Lead: []string{"Create an invoice or a payment request, share its pay link, and get paid in stablecoins " +
+			"to your wallet.", "Forwend emails you when an invoice is paid, when the money reaches your wallet, and if " +
+			"money is held for a payer. You can turn these emails off for each profile."},
+		Button: button{"Open Forwend", app}, Reason: "Sent once, because you created a Forwend account."}
 }
 
 // CodeMessage is the email with a Confirm it's you code (R-137); the api sends it at once, outside the outbox.
 func CodeMessage(site Site, code string, ttl time.Duration) (email.Message, error) {
-	return message(site, view{Subject: "Your Forwend code: " + code, Preheader: "Use it to confirm it's you.",
-		Title: "Confirm it's you", Amount: code,
-		// The plain-text part has no large figure, so the code is in the words too.
-		Lead: []string{"Your code is " + code + ". Enter it in Forwend to confirm it's you. " +
-			fmt.Sprintf("It works for %d minutes.", int(ttl.Minutes()))},
-		Note:   "Didn't ask for it? Don't share it. Sign out of all devices in Forwend's Settings.",
-		Button: button{"Open Forwend", site.WebURL + "/app"},
-		Reason: "You get this email because someone asked to confirm it's you in Forwend."})
+	return message(site, confirm(site.WebURL+"/app", code, ttl))
 }
 
+// confirm ends the subject with the code: the browser tests read it there (apps/web/e2e/privy/fake-resend.mjs).
+func confirm(app, code string, ttl time.Duration) view {
+	return view{Subject: "Your Forwend code: " + code, Preheader: "Use it to confirm it’s you.",
+		Title: "Confirm it’s you", Amount: code,
+		Lead:   []string{fmt.Sprintf("Enter this code in Forwend. It works for %d minutes.", int(ttl.Minutes()))},
+		Note:   "Didn’t ask for it? Don’t share it, and sign out of all devices in Forwend’s Settings.",
+		Button: button{"Open Forwend", app},
+		Reason: "Sent because someone asked to confirm it’s you in Forwend."}
+}
+
+// unchecked goes with a name the invoice's creator typed. An email comes from Forwend, so it says so here; the PDF is
+// the sender's own document and shows the name alone.
+const unchecked = "This name is what the invoice’s creator gave. Forwend doesn’t check it."
+
 // receipt is the payer's one email (R-82): nothing else is ever sent to this address.
-func receipt(number, amount, symbol, network, issuer, sender, tx, pdf string) view {
-	v := view{Subject: "Your receipt for " + number, Badge: "Paid", Tone: "success", Title: "Receipt for " + number,
-		Amount: amount, Button: button{"Download receipt (PDF)", pdf}, Details: []row{{Label: "Invoice", Value: number}},
-		Reason: "You get this one email because you asked for the receipt on the payment page. Forwend sends nothing " +
-			"else to this address."}
-	to := ""
-	switch {
-	case issuer != "":
-		to = issuer
-	case sender != "":
-		// Same wording as the pay page's Need help. An email comes from Forwend, so a typed name says so here; the PDF
-		// is the sender's own document and shows the name alone.
-		to, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
+func receipt(number, amount, network, issuer, sender, tx, pdf string) view {
+	v := view{Subject: "Your receipt for " + number, Preheader: amount + " paid on " + network + ".", Tone: "success",
+		Title: "Receipt for " + number, Amount: amount,
+		Lead:    []string{"Your payment is complete. You don’t need to do anything else."},
+		Details: []row{{Label: "Network", Value: network}}, Button: button{"Download receipt (PDF)", pdf},
+		Reason: "Sent once, because you asked for a receipt on the payment page. Forwend sends nothing else to this " +
+			"address."}
+	to := issuer
+	if to == "" && sender != "" {
+		to, v.Note = sender, unchecked
 	}
 	if to != "" {
-		v.Details = append(v.Details, row{Label: "Paid to", Value: to})
-		to = " to " + to
+		v.Preheader = amount + " paid to " + to + "."
+		v.Lead[0] = "Your payment to " + to + " is complete. You don’t need to do anything else."
 	}
-	v.Details = append(v.Details, row{Label: "Network", Value: network}, row{Label: "Token", Value: symbol})
 	if tx != "" {
 		v.Details = append(v.Details, row{Label: "Transaction", Value: "View on the block explorer", Href: tx})
 	}
-	v.Lead = []string{"You paid " + amount + " on " + network + to + " for " + number + "."}
-	v.Preheader = v.Lead[0]
 	return v
 }
 
 // marked says an email is about a test-mode invoice (R-143), so testnet tokens never pass for real money.
 func marked(v view, live bool) view {
 	if !live {
-		v.Lead = append(v.Lead, document.TestMode+".")
+		v.TestMode = document.TestMode + "."
 	}
 	return v
 }
 
+// payHow is the client's one line on paying: a payer needs no Forwend account (R-94, R-96).
+const payHow = "from a crypto wallet or an exchange. You don’t need a Forwend account."
+
 // sent is the invoice email to the client (R-94); network is empty when the client chooses.
 func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string) view {
-	v := view{Subject: "Invoice " + number, Badge: "Invoice", Tone: "neutral", Title: "Invoice " + number,
-		Amount: amount, Button: button{"View and pay", pay}, ReplyTo: replyTo, Details: []row{{Label: "Invoice", Value: number}}}
+	v := view{Subject: "Invoice " + number, Preheader: amount + " to pay online.", Amount: amount,
+		Lead: []string{"Pay it online " + payHow}, Button: button{"View and pay", pay},
+		Link: button{"Download the invoice (PDF)", pdf}, ReplyTo: replyTo,
+		Reason: "Someone sent you this invoice through Forwend."}
 	from := issuer
 	if from == "" && sender != "" {
-		from, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
+		from, v.Note = sender, unchecked
 	}
-	v.Lead = []string{"You have invoice " + number + " for " + amount + "."}
-	v.Reason = "You get this email because someone sent you this invoice through Forwend."
 	if from != "" {
 		v.Subject += " from " + from
-		v.Details = append(v.Details, row{Label: "From", Value: from})
-		v.Lead[0] = from + " sent you " + number + " for " + amount + "."
-		v.Reason = "You get this email because " + from + " sent you this invoice through Forwend."
+		v.Reason = from + " sent you this invoice through Forwend."
 	}
-	v.Lead[0] += " You pay it in stablecoins on the payment page."
+	v.Title = v.Subject
 	if due != "" {
+		v.Preheader = amount + ", due " + due + "."
 		v.Details = append(v.Details, row{Label: "Due date", Value: due})
 	}
 	if network == "" {
 		network = "You choose on the payment page"
 	}
-	v.Details = append(v.Details, row{Label: "Network", Value: network},
-		row{Label: "Invoice PDF", Value: "Download the invoice (PDF)", Href: pdf})
+	v.Details = append(v.Details, row{Label: "Network", Value: network})
 	if replyTo != "" {
 		v.Reason += " Reply to this email to reach them."
 	}
-	v.Preheader = v.Lead[0]
 	return v
 }
 
@@ -517,13 +517,13 @@ func disabledEmail(ctx context.Context, tx pgx.Tx, endpoint string, payload []by
 // outflow tells the owner money left their wallet with no send they approved in Forwend (D-49): a stolen session can
 // sign through Privy without Forwend's screens.
 func outflow(amount, to, network, tx, link string) view {
-	what := amount + " left your wallet on " + network + " to " + to + ", without a send you approved in Forwend."
-	v := view{Subject: "Money left your wallet", Preheader: what, Badge: "Check this", Tone: "warning",
-		Title: "Money left your wallet", Button: button{"Open Account and security", link},
-		Lead: []string{what, "If you moved it yourself, for example from another wallet app, nothing is wrong. If " +
-			"you didn't, sign out of all devices now and contact support."},
-		Details: []row{{Label: "Amount", Value: amount}, {Label: "To", Value: to}, {Label: "Network", Value: network}},
-		Reason:  "You get this email because money left one of your Forwend wallets."}
+	v := view{Subject: "Money left your wallet: " + amount,
+		Preheader: "Sent on " + network + ", not through Forwend. Was it you?", Tone: "warning",
+		Title: "Money left your wallet", Amount: amount, Button: button{"Open Account and security", link},
+		Lead: []string{"It wasn’t a send you approved in Forwend. If you moved it yourself, for example from another " +
+			"wallet app, nothing is wrong.", "If you didn’t, sign out of all devices now and contact support."},
+		Details: []row{{Label: "To", Value: to}, {Label: "Network", Value: network}},
+		Reason:  "Sent because money left one of your Forwend wallets."}
 	if tx != "" {
 		v.Details = append(v.Details, row{Label: "Transaction", Value: "View on the block explorer", Href: tx})
 	}
@@ -532,52 +532,49 @@ func outflow(amount, to, network, tx, link string) view {
 
 // waiting tells the owner their paid invoices wait on the day's sponsored settlements (SEC-03).
 func waiting(link string) view {
-	why := "You were paid for more invoices in 24 hours than Forwend settles to your wallets in a day. The rest wait " +
-		"at their receive addresses and settle as the day's limit frees up."
-	return view{Subject: "Some payments are waiting to settle", Preheader: why, Badge: "Waiting", Tone: "warning",
-		Title: "Some payments are waiting to settle", Button: button{"Open Transactions", link},
-		Lead: []string{why, "The money is safe. If payments keep coming at this pace, contact support so a payment " +
-			"isn't left waiting past its settle deadline."},
-		Reason: "You get this email because payments to your profiles are waiting to settle."}
+	return view{Subject: "Some payments are waiting to settle", Preheader: "The money is safe and settles as the daily " +
+		"limit frees up.", Tone: "warning", Title: "Some payments are waiting to settle",
+		Button: button{"Open Transactions", link},
+		Lead: []string{"You were paid for more invoices in 24 hours than Forwend settles to your wallets in a day. The " +
+			"rest wait safely at their receive addresses.", "If payments keep coming at this pace, contact support so " +
+			"none waits past its settle deadline."},
+		Reason: "Sent because payments to your profiles are waiting to settle."}
 }
 
 // retainerFailed tells the owner a retainer's month failed RetainerFailuresTold times in a row, so its client got no
 // invoice yet (R-98).
 func retainerFailed(number, client, due, link string) view {
-	why := "Forwend could not make the invoice due " + due + " that repeats " + number + " for " + client + "."
-	return view{Subject: "Repeating invoice not made: " + number, Preheader: why, Badge: "Not made", Tone: "warning",
-		Title: "A repeating invoice was not made", Button: button{"View invoice", link},
-		Lead: []string{why, "Forwend keeps trying until the due date, then skips this month. Check the tokens and " +
-			"billing details of the profile, or stop the repeat on the invoice page."},
-		Details: []row{{Label: "Invoice", Value: number}, {Label: "Client", Value: client}, {Label: "Due", Value: due}},
-		Reason:  "You get this email because a repeating invoice of your profile could not be made."}
+	return view{Subject: "Repeating invoice not made: " + number, Preheader: "The invoice for " + client + " due " + due +
+		" isn’t made yet.", Tone: "warning", Title: "A repeating invoice wasn’t made", Button: button{"View invoice", link},
+		Lead: []string{"Forwend couldn’t make the next invoice for " + client + ". It keeps trying until the due date, " +
+			"then skips the month.", "Check the profile’s tokens and billing details, or stop the repeat on the invoice page."},
+		Details: []row{{Label: "Repeats", Value: number}, {Label: "Due date", Value: due}},
+		Reason:  "Sent because a repeating invoice of your profile couldn’t be made."}
 }
 
 // disabled names only the endpoint's host: its path or query may hold the receiver's own token.
 func disabled(host, reason, link string) view {
-	why := "Forwend could not deliver an event to " + host + " for about 3 days, so it stopped sending events there."
+	why := "Forwend couldn’t deliver events to " + host + " for about 3 days, so it stopped sending them."
 	if reason == webhook.Gone {
 		why = host + " answered 410 Gone, so Forwend stopped sending events there."
 	}
-	return view{Subject: "Webhook endpoint turned off: " + host, Preheader: why, Badge: "Turned off", Tone: "warning",
-		Title: "A webhook endpoint was turned off", Button: button{"Open Developers", link},
-		Lead: []string{why, "Fix the endpoint, then turn it on again on the Developers page. Events from while it " +
-			"was off are not sent to it."},
-		Details: []row{{Label: "Endpoint", Value: host}},
-		Reason:  "You get this email because a webhook endpoint of your profile was turned off."}
+	return view{Subject: "Webhook endpoint turned off: " + host, Preheader: "No events go there until you turn it " +
+		"back on.", Tone: "warning", Title: "Webhook endpoint turned off", Button: button{"Open Developers", link},
+		Lead: []string{why, "Fix the endpoint, then turn it back on in Developers. Events from while it was off aren’t " +
+			"sent to it."},
+		Reason: "Sent because a webhook endpoint of your profile was turned off."}
 }
 
 var roleNames = map[string]string{"admin": "Admin", "developer": "Developer", "finance": "Finance"}
 
 // invitation is a team invite's email to the address invited (R-139).
 func invitation(team, role, replyTo, link string) view {
-	lead := "You are invited to join " + team + " on Forwend as " + role + "."
-	return view{Subject: "Join " + team + " on Forwend", Preheader: lead, Badge: "Invite", Tone: "neutral",
-		Title: "Join " + team, Button: button{"Accept the invite", link}, ReplyTo: replyTo,
-		Lead:    []string{lead, "Sign in to Forwend with this email address to accept. The link works for 7 days, once."},
-		Details: []row{{Label: "Team", Value: team}, {Label: "Role", Value: role}},
-		Reason: "You get this email because a member of " + team + " invited this address. If you did not expect it, " +
-			"ignore it: nothing happens until you accept."}
+	return view{Subject: "Join " + team + " on Forwend", Preheader: "Invited as " + role + ".",
+		Title: "Join " + team + " on Forwend", Button: button{"Accept the invite", link}, ReplyTo: replyTo,
+		Lead: []string{"You’re invited as " + role + ". To accept, sign in to Forwend with this email address. The " +
+			"link works once, within 7 days."},
+		Reason: "Sent because a member of " + team + " invited this address. Not expecting it? Ignore it: nothing " +
+			"happens until you accept."}
 }
 
 // change is a scope change's email to the client (R-107).
@@ -589,13 +586,13 @@ func change(issuer, job, title, amount string, days int, replyTo, link string) v
 	case 1:
 		due = "due 1 day after"
 	}
-	lead := issuer + " proposed a change to " + job + ": " + title + " for " + amount + "."
-	return view{Subject: "A change to " + job + " from " + issuer, Preheader: lead, Badge: "Change", Tone: "neutral",
-		Title: "A change to " + job, Amount: amount, Button: button{"Review the change", link}, ReplyTo: replyTo,
-		Lead:    []string{lead, "It is billed only if you accept it: its invoice comes when the work is done, " + due + "."},
-		Details: []row{{Label: "Job", Value: job}, {Label: "Change", Value: title}, {Label: "From", Value: issuer}},
-		Reason: "You get this email because you accepted " + issuer + "'s quote for " + job + " through Forwend. " +
-			"Reply to this email to reach them."}
+	return view{Subject: issuer + " proposed a change to " + job, Preheader: "“" + title + "” for " + amount +
+		", billed only if you accept.", Title: "A change to " + job, Amount: amount,
+		Button: button{"Review the change", link}, ReplyTo: replyTo,
+		Lead: []string{issuer + " proposed “" + title + "”.", "You pay for it only if you accept. Its invoice comes " +
+			"when the work is done, " + due + "."},
+		Reason: "Sent because you accepted " + issuer + "’s quote for " + job + " through Forwend. Reply to this email " +
+			"to reach them."}
 }
 
 // reminderEmail sends only while reminders are on and something is left to pay on an open invoice (R-96): checked
@@ -639,43 +636,39 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 
 // reminder is a payment reminder (R-96); network is empty when the client chooses.
 func reminder(step, number, left, network, issuer, sender, due, replyTo, pay, pdf string) view {
-	v := view{Badge: "Reminder", Tone: "neutral", Amount: left, Button: button{"View and pay", pay}, ReplyTo: replyTo,
-		Details: []row{{Label: "Invoice", Value: number}}}
+	v := view{Amount: left, Button: button{"View and pay", pay},
+		Link: button{"Download the invoice (PDF)", pdf}, ReplyTo: replyTo}
 	from := issuer
 	if from == "" && sender != "" {
-		from, v.Note = sender, "The name is what the invoice's creator gave; Forwend doesn't check it."
+		from, v.Note = sender, unchecked
 	}
-	who := "This is a reminder that " + number
+	who, owed, by := number, "That’s what’s left to pay", "The sender"
 	if from != "" {
-		v.Details = append(v.Details, row{Label: "From", Value: from})
-		who = from + " reminds you that " + number
+		who, owed, by = number+" from "+from, owed+" to "+from, from
 	}
+	var is string
 	switch step {
 	case invoice.ReminderBefore:
-		v.Subject, v.Title = "Reminder: "+number+" is due on "+due, number+" is due on "+due
-		v.Lead = []string{who + " is due on " + due + ": " + left + " left to pay."}
+		is, v.Preheader = "is due "+due, left+" left to pay by "+due+"."
+		v.Lead = []string{owed + ". Pay it online " + payHow}
 	case invoice.ReminderDue:
-		v.Subject, v.Title = "Reminder: "+number+" is due today", number+" is due today"
-		v.Lead = []string{who + " is due today, " + due + ": " + left + " left to pay."}
+		is, v.Preheader = "is due today", left+" left to pay today."
+		v.Lead = []string{owed + ". Pay it online " + payHow}
+		v.Details = []row{{Label: "Due date", Value: due}}
 	default: // invoice.ReminderAfter
-		v.Subject, v.Title, v.Tone = "Reminder: "+number+" is overdue", number+" is overdue", "warning"
-		v.Lead = []string{who + " was due on " + due + ": " + left + " left to pay."}
+		is, v.Preheader, v.Tone = "is overdue", left+" left to pay. It was due "+due+".", "warning"
+		v.Lead = []string{owed + ". Please pay it online as soon as you can, " + payHow}
+		v.Details = []row{{Label: "Due date", Value: due}}
 	}
-	if from != "" {
-		v.Subject += " (" + from + ")"
-	}
+	v.Subject, v.Title = "Reminder: "+who+" "+is, number+" "+is
 	if network == "" {
 		network = "You choose on the payment page"
 	}
-	v.Details = append(v.Details, row{Label: "Due date", Value: due}, row{Label: "Network", Value: network},
-		row{Label: "Invoice PDF", Value: "Download the invoice (PDF)", Href: pdf})
-	v.Lead[0] += " You pay it in stablecoins on the payment page."
-	v.Reason = "You get this reminder because the sender turned on payment reminders for this invoice. At most 3 are " +
-		"sent, and none once it is paid."
+	v.Details = append(v.Details, row{Label: "Network", Value: network})
+	v.Reason = by + " turned on payment reminders for this invoice: at most 3, and none once it’s paid."
 	if replyTo != "" {
 		v.Reason += " Reply to this email to reach them."
 	}
-	v.Preheader = v.Lead[0]
 	return v
 }
 
@@ -685,7 +678,14 @@ func message(site Site, v view) (email.Message, error) {
 	if err != nil {
 		return email.Message{}, err
 	}
-	text := strings.Join(v.Lead, "\n\n")
+	text := v.Title + "\n"
+	if v.TestMode != "" {
+		text = v.TestMode + "\n\n" + text
+	}
+	if v.Amount != "" {
+		text += v.Amount + "\n"
+	}
+	text += "\n" + strings.Join(v.Lead, "\n\n")
 	if len(v.Details) > 0 {
 		text += "\n"
 		for _, d := range v.Details {
@@ -699,7 +699,11 @@ func message(site Site, v view) (email.Message, error) {
 	if v.Note != "" {
 		text += "\n\n" + v.Note
 	}
-	text += "\n\n" + v.Button.Label + ": " + v.Button.URL + "\n\n" + v.Reason
+	text += "\n\n" + v.Button.Label + ": " + v.Button.URL
+	if v.Link.URL != "" {
+		text += "\n" + v.Link.Label + ": " + v.Link.URL
+	}
+	text += "\n\n" + v.Reason
 	if v.Settings != "" {
 		text += " Email settings: " + v.Settings
 	}
