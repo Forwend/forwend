@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 492,
+  "nextId": 493,
   "tasks": [
     {
       "id": "F332",
@@ -922,6 +922,97 @@
         "branch": "test/f491-the-kit-s-fade-in-test-passes-on-a-slow",
         "base": "main"
       }
+    },
+    {
+      "id": "F492",
+      "type": "test",
+      "behavior": "The kit's reduced-motion check holds on a CI runner whose transitions start late",
+      "acceptance": [
+        "With reduced motion, the kit's fade test checks that the dialog's and backdrop's transitions last at most 0.01 ms, instead of reading the opacity a few frames after opening."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "kit-e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: Parsing handles Chrome's computed forms (1e-05s, lists, ms); a 200 ms fade (0.2 s) fails the under-0.1 ms check, so the check still catches reduced motion not applying; base.css's reduced-motion rule covers the dialog and *::backdrop; the poll to opacity 1 still runs in both branches. The test passes locally against the real dialog and sheet."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T05:05:30Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.2,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 15.9,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.8,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 49.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "1eda80f4b9a6c07d",
+        "filesHash": "f9a1b0d4d76244f5",
+        "proof": {
+          "1": "kit-e2e: with reduced motion the fade test now reads the dialog's and backdrop's computed transition-duration and expects under 0.1 ms (design-tokens base.css sets 0.01ms). On staging run 42961290466 (attempt 2) the old check read opacity [0, 0] four frames after opening, because the 0.01 ms transition had not started yet; locally it read [1, 1]. The no-preference branch is unchanged and the test passes."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Parsing handles Chrome's computed forms (1e-05s, lists, ms); a 200 ms fade (0.2 s) fails the under-0.1 ms check, so the check still catches reduced motion not applying; base.css's reduced-motion rule covers the dialog and *::backdrop; the poll to opacity 1 still runs in both branches. The test passes locally against the real dialog and sheet.",
+          "at": "2026-11-11T05:07:14Z",
+          "filesHash": "f9a1b0d4d76244f5"
+        }
+      },
+      "branch": "test/f492-the-kit-s-reduced-motion-check-holds-on",
+      "baseCommit": "7f1a7ad2975a50c8ebdb8051605c4a80325f8fe3",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
