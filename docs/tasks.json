@@ -949,12 +949,14 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-11 review pass by subagent: First pass FAIL on one item, fixed: the node CHANGELOG now states the types-only break (Invoice and PaymentOption no longer accept unknown keys). Checked fine: every field of Invoice, InvoiceDetails, InvoiceOption, PaymentOption, PaymentCoverage, PaymentSettlement, PaymentReturn, Deposit and DepositSummary against the Go JSON structs (names, omitempty, pointers, money as strings, enums); create/get/cancel/reopen/send and webhooks really send the owner detail shape and list the short one; docs-api's Preview fees route, scope and params match routes.go, access.go and fees.go; the checkout-sessions line is true for 0.2.0. Also added node-unit to R-228's checks. Merged origin/main (the Google sign-in hotfix took F480, so this task is F481)."
+      ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-11T02:15:05Z",
+        "at": "2026-11-11T02:19:43Z",
         "checks": [
           {
             "id": "docs-check",
@@ -995,23 +997,31 @@
             "id": "browser-packages",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.7,
-            "log": ""
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
           },
           {
             "id": "web-e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 53.3,
+            "seconds": 53.5,
             "log": ""
           }
         ],
         "taskHash": "011ee2ec9a84a62e",
-        "filesHash": "8bdb2b05c27e8949",
+        "filesHash": "138a9ba1a5142eaf",
         "proof": {
-          "1": "node-unit: the node package typechecks and its 17 tests pass with Invoice, InvoiceDetails, InvoiceOption and PaymentOption typing every JSON field of invoiceapi invoiceJSON/optionJSON/invoiceDetailJSON and paymentapi optionJSON; a script compared each Go JSON tag with the TypeScript keys and found no difference; the example merchant typechecks.",
-          "2": "web-unit: the web app typechecks and its tests pass with docs-api.ts naming feesPaidBy, each fee field, amounts.fees, observedRefunded, lastReturnTxHash and the Preview fees route; the node README and CHANGELOG name them.",
+          "1": "node-unit: the node package typechecks and its 17 tests pass with Invoice, InvoiceDetails, InvoiceOption and PaymentOption typing every JSON field of invoiceapi invoiceJSON/optionJSON/invoiceDetailJSON/ownerInvoiceJSON and paymentapi optionJSON; the review compared each Go JSON tag, omitempty and pointer with the TypeScript keys and found no mismatch; the example merchant typechecks.",
+          "2": "web-unit: the web app typechecks and its tests pass with docs-api.ts naming feesPaidBy, each fee field, amounts.fees, observedRefunded, lastReturnTxHash and the Preview fees route (routes.go:43, invoices.read); the node README and CHANGELOG name them, and the CHANGELOG states the types-only break.",
           "3": "browser-packages: the js and react packages are unchanged in code and pass the size, install, import, render and type checks; R-228 now says the node package carries the fee fields and js/react carry only the payment status (D-117)."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "First pass FAIL on one item, fixed: the node CHANGELOG now states the types-only break (Invoice and PaymentOption no longer accept unknown keys). Checked fine: every field of Invoice, InvoiceDetails, InvoiceOption, PaymentOption, PaymentCoverage, PaymentSettlement, PaymentReturn, Deposit and DepositSummary against the Go JSON structs (names, omitempty, pointers, money as strings, enums); create/get/cancel/reopen/send and webhooks really send the owner detail shape and list the short one; docs-api's Preview fees route, scope and params match routes.go, access.go and fees.go; the checkout-sessions line is true for 0.2.0. Also added node-unit to R-228's checks. Merged origin/main (the Google sign-in hotfix took F480, so this task is F481).",
+          "at": "2026-11-11T02:21:00Z",
+          "filesHash": "138a9ba1a5142eaf"
         }
       },
       "branch": "feat/f480-the-node-package-s-types-and-the-public",
