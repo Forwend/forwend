@@ -17,11 +17,45 @@ Payers can also pay with almost any token from another chain, through NEAR Inten
 
 ## What it does
 
-- **Invoices.** Send an invoice with a pay link, a PDF and reminders. The client pays from any wallet or exchange.
-- **Checkout.** Take payments in a store, at a counter with a QR code, or from your own site through the packages.
+Forwend is for freelancers, businesses and anyone who gets paid.
+One account holds up to 10 profiles. Each profile has its own wallet, balances, activity and clients.
+Payers need no account. They pay from any wallet or exchange.
+
+### For freelancers
+
+- **Invoices.** Add items and a due date. Forwend emails the client a pay link and a link to the PDF.
+- **Reminders.** Unless it is paid, Forwend emails the client 3 days before the due date, on it, and 7 days after.
+- **Monthly invoices.** An invoice can repeat every month. Each one is emailed 7 days before it is due.
+- **Jobs.** A quote with a deposit and milestones, sent to the client as a link.
+  - The client accepts the quote on that page. Forwend keeps their name, email and the time.
+  - The deposit is invoiced when the client accepts. Each milestone is invoiced when you mark it done.
+  - The job's page keeps delivery links and a record of every step.
+  - Work outside the quote is a proposed change. The client must accept it before you can bill it.
+- **Clients.** Save a client once, then pick them on each new invoice.
+- **Agreed value.** An invoice and its PDF can show the price agreed in another currency, such as EUR.
+
+### For businesses
+
+- **Invoices and clients.** The same invoices, reminders, monthly invoices and saved clients as for freelancers.
+- **Payment links.** A fixed price, a price range or any amount. Set a purchase limit, or turn a link off.
+- **Checkout at the counter.** Type the amount and show a QR code. The screen says when to hand over the order.
+- **Checkout on your site.** Take payments in your own pages with the [packages](#packages).
+- **Stores.** Each store has a logo, a checkout time and the sites allowed to embed its checkout.
+- **Team.** Invite people as Admin, Developer or Finance. Only the owner can move money out.
+
+### For anyone
+
+- **Requests.** Each account starts with a personal profile. Ask anyone for an amount, and they pay by link.
+- **Cross-chain payments.** In live mode, a payer can pay with another token on another chain, through [NEAR Intents](#cross-chain-payments-with-near-intents).
 - **Balances.** See what is in your wallet, what is on its way and what is held, per token and network.
 - **Send.** Move money between your profiles or to a wallet on the same network, after a fresh sign-in check.
-- **Teams and developers.** Roles for a merchant's team, API keys, webhooks and a public API.
+- **Records.** Export payments and transactions as CSV. A balance report shows opening, changes and closing for any period.
+- **Fees.** Each profile or invoice sets who pays the network fee: you or the client.
+- **Sign-in.** Email, Google or a passkey, with optional two-step verification.
+- **Your key.** The owner can export the profile wallet's private key.
+- **Developers.** Freelancer and business profiles get API keys, signed webhooks and a public API.
+
+Withdrawal to a bank and analytics are not built yet. The app marks them as coming.
 
 Forwend accepts USDC on Base, Arbitrum and Arc, and stablecoins on Tempo.
 Each profile chooses its own tokens and networks.
