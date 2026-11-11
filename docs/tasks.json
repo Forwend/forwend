@@ -833,7 +833,7 @@
         "The kit's fade-in test catches the dialog and sheet fades however slow the browser runs, and still sees no fade with reduced motion."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "kit-e2e"
       ],
@@ -910,11 +910,18 @@
           "summary": "The observer is attached before the click, filters to a dialog becoming open, and the two kit triggers have unique labels; Sheet's open in a useEffect still sets the open attribute, so it fires. A missing trigger would hang until Playwright's timeout, which fails loudly. Reduced motion asserts the same last sample; the dialog locator, Escape and toBeHidden are unchanged.",
           "at": "2026-11-11T04:45:02Z",
           "filesHash": "87fca43ef691a6e0"
-        }
+        },
+        "commit": "66cffca1",
+        "doneAt": "2026-11-11T04:45:08Z"
       },
       "branch": "test/f491-the-kit-s-fade-in-test-passes-on-a-slow",
       "baseCommit": "3fa7f8c7fea37d01c2f39d6487eb83dc26ce919f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f491-the-kit-s-fade-in-test-passes-on-a-slow",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
