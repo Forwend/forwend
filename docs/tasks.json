@@ -1265,7 +1265,7 @@
         "The Pay with any token dialog shows the existing centered NEAR Intents credit on desktop and phone layouts."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e"
       ],
@@ -1334,11 +1334,18 @@
           "summary": "No findings. The picker reuses the existing centered credit after loading, empty, and result states. Desktop and phone screenshots confirm placement. The two-line source change, DESIGN bullet, and task record are in scope; all selected checks passed.",
           "at": "2026-11-11T03:11:25Z",
           "filesHash": "0877585bfd57488a"
-        }
+        },
+        "commit": "3b58bb40",
+        "doneAt": "2026-11-11T03:11:57Z"
       },
       "branch": "fix/f485-the-token-picker-shows-a-centered-powere",
       "baseCommit": "7452b397d9e23e7731b7abae0e2dfdd556dce593",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f485-the-token-picker-shows-a-centered-powere",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
