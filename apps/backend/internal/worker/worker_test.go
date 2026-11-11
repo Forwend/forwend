@@ -168,6 +168,8 @@ func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pg
 		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: a.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}}}, 1000)
 	t.Cleanup(w.Close)
 	w.Round(ctx) // the first scan starts the chain's cursor
+	// Round leaves the recovery scan running. Run after the deposit, it books the money this test has the scan miss.
+	w.historical.Wait()
 	a.Transfer(token, receive, "5000000")
 	a.Mine(watcher.RescanDepth + 20)
 	if _, err := pool.Exec(ctx, `UPDATE chain_cursors SET last_scanned_block = last_finalized_block + $1,
@@ -223,6 +225,8 @@ func TestRecheckBooksADepositTheScanMissed(t *testing.T) {
 	if got := status(); got != "paid" {
 		t.Fatalf("after the recheck's rescan: invoice %s, want paid", got)
 	}
+	// The rescan records the deposit, then clears the request: a round can book it in between.
+	w.historical.Wait()
 	var pending bool
 	if err := pool.QueryRow(ctx, "SELECT rescan_requested_at IS NOT NULL FROM invoice_rechecks").Scan(&pending); err != nil || pending {
 		t.Fatalf("rescan still asked: %v (%v)", pending, err)

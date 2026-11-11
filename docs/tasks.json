@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 489,
+  "nextId": 490,
   "tasks": [
     {
       "id": "F332",
@@ -645,6 +645,106 @@
         "branch": "test/f488-the-new-invoice-form-tests-have-time-to",
         "base": "main"
       }
+    },
+    {
+      "id": "F489",
+      "type": "fix",
+      "behavior": "Backend tests that failed on a busy CI runner pass there, and CI keeps the logs of a failed check",
+      "acceptance": [
+        "TestStuckSettleIsReplacedWithAHigherFee and TestRecheckBooksADepositTheScanMissed pass repeatedly with the backend on 2 CPUs while other tests run, and the cause of each failure is fixed where it lives.",
+        "A failed staging CI run keeps every check's log as a downloadable artifact."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend-affected"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: First pass FAIL on one item, fixed: TestRecheckBooksADepositTheScanMissed could still see 'rescan still asked' because the rescan records the deposit, then clears the request in a separate statement; the test now waits for the rescan job before checking (a reviewer overlay with a 200 ms gap failed 3/3 without the wait, passed with it). Also: the reconcile.go comment now says the nonce may have been used by another transaction too, and architecture.md has the step. Checked fine: returning (nil, nil) after a send error when the nonce moved writes nothing and leaves booking to the next round's receipt reads, or retry/stall at finality; a lagging node only falls back to the old error; Tempo uses the protocol nonce; the new signer test reproduces the CI path (failed with an overlay of the old reconcile.go); the uploaded logs hold no secrets."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T04:09:00Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.5,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 87.1,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 7.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.9,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 82.5,
+            "log": ""
+          }
+        ],
+        "taskHash": "710dcd8431ad40d7",
+        "filesHash": "d4de7522b4020b42",
+        "proof": {
+          "1": "backend-affected: TestStuckSettleThatMinesWhenSentAgainIsBookedWithoutAnError forces the CI order (the stuck settle mines just before its replacement is sent) and failed 3/3 with 'send settle: nonce too low' before the reconcile.go change; the worker recheck tests failed 3/3 with a 50 ms delay in the recovery job before the waits. With the fixes, the whole backend suite passed with -race, -count=2 on GOMAXPROCS=2 while the web tests ran beside it, and the affected packages pass.",
+          "2": "backend-affected: .github/workflows/ci.yml uploads docs/runs/check-*.log as the check-logs artifact when a run fails, kept 7 days; docs/staging.md says so. The logs hold no secrets: CI passes none, and its database credentials are the public test defaults."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "First pass FAIL on one item, fixed: TestRecheckBooksADepositTheScanMissed could still see 'rescan still asked' because the rescan records the deposit, then clears the request in a separate statement; the test now waits for the rescan job before checking (a reviewer overlay with a 200 ms gap failed 3/3 without the wait, passed with it). Also: the reconcile.go comment now says the nonce may have been used by another transaction too, and architecture.md has the step. Checked fine: returning (nil, nil) after a send error when the nonce moved writes nothing and leaves booking to the next round's receipt reads, or retry/stall at finality; a lagging node only falls back to the old error; Tempo uses the protocol nonce; the new signer test reproduces the CI path (failed with an overlay of the old reconcile.go); the uploaded logs hold no secrets.",
+          "at": "2026-11-11T04:13:07Z",
+          "filesHash": "d4de7522b4020b42"
+        }
+      },
+      "branch": "fix/f489-backend-tests-that-failed-on-a-busy-ci-r",
+      "baseCommit": "f36885b3d22baf742d7db16dc10b8488600a4522",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

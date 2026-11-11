@@ -133,6 +133,11 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 		}
 	}
 	if err := client.SendTransaction(ctx, tx); err != nil && !holds(err) {
+		// The nonce was used meanwhile, by a version of this settle (sent again above, it may mine first) or another
+		// transaction: the next round decides, as when it is found used before sending.
+		if now, nerr := client.NonceAt(ctx, sender, nil); nerr == nil && int64(now) > *in.nonce {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("send settle: %w", err)
 	}
 	if s.stopAfter == "send" {

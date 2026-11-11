@@ -14,6 +14,7 @@
 - Keep staging free of independent commits. From a clean checkout, fetch origin, switch to staging, fast-forward
   it to `origin/main` with `git merge --ff-only origin/main`, then push staging when a batch is ready. Each push
   consumes one full CI run; promote deliberately, not after every task. Do not squash or delete staging.
+- A failed run keeps each check's full log as the `check-logs` artifact for 7 days; the job log shows only its end.
 - A staging push happens before CI reports a result. Treat only a passing run for that exact commit as validated;
   do not deploy or release an unverified batch. Fix failures on a task branch, merge into main, then promote again.
 
