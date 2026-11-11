@@ -538,6 +538,8 @@ signer:
    - Nor is one that needs more gas than `MaxSettleGas` (3,000,000); the saved bytes are sent again too.
    - When the node refuses the saved bytes for insufficient funds, no replacement is signed: a higher fee can't help.
      - The attempt fails and the same bytes are sent again once the executor is funded.
+   - A send refused after the nonce was used meanwhile is no error: the stuck version may have mined when sent again.
+     - The next round decides, as when the nonce is found used before sending.
    - Only the settle at the executor's next mined nonce waits for its receipt in the attempt.
      - A later one can't mine first. It is sent, and its receipt is read next round.
    - When the executor's next mined nonce has nothing pending and no saved settle holds it (a settle saved but never

@@ -1335,6 +1335,48 @@ func TestStuckSettleIsReplacedWithAHigherFee(t *testing.T) {
 	}
 }
 
+// Sent again before its replacement, the stuck settle may mine first: the replacement then finds its nonce used. That
+// is no error; the next round books the version that mined.
+func TestStuckSettleThatMinesWhenSentAgainIsBookedWithoutAnError(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	id, _ := e.paidInvoice(t)
+	saving := e.signer(t)
+	saving.stopAfter = "save"
+	if err := saving.Run(ctx); !errors.Is(err, errStopped) {
+		t.Fatalf("got %v", err)
+	}
+	stuck, _ := e.saved(t, id)
+	e.anvilCall(t, "evm_setAutomine", false)
+	// The saved settle goes out first and waits in the pool; it mines just before the replacement arrives.
+	proxy := e.anvil.Proxy()
+	sends := 0
+	proxy.Fail(func(c chaintest.Call) chaintest.Fault {
+		if c.Method == "eth_sendRawTransaction" {
+			if sends++; sends == 2 {
+				e.anvilCall(t, "evm_mine")
+			}
+		}
+		return chaintest.Forward
+	})
+	s := e.signerVia(t, proxy.URL)
+	s.replaceAfter = 0
+	if err := s.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if sends != 2 {
+		t.Fatalf("the signer sent %d transactions; want the stuck settle, then its replacement", sends)
+	}
+	e.anvilCall(t, "evm_setAutomine", true)
+	e.final(t, e.signer(t))
+	if status, settlement, reason := e.intent(t, id); status != "confirmed" || settlement != "settled" {
+		t.Fatalf("intent %s (%s), settlement %s; want confirmed, settled", status, reason, settlement)
+	}
+	if hash := e.settlementTxHash(t, id); hash != stuck {
+		t.Fatalf("settlementTxHash %s; want the version that mined, %s", hash, stuck)
+	}
+}
+
 // A receipt for any hash signed for the intent books it, once, with that hash.
 func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 	e := setup(t)
