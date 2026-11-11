@@ -59,7 +59,7 @@ test("the owner turns Developer mode off and on, and the strip under the header 
   await expect(page.getByText("Developer mode off: live networks")).toBeVisible();
   await expect(toggle).not.toBeChecked();
   await expect(strip).toBeHidden();
-  await expect(main).toContainText("Off: live networks.");
+  await expect(main).toContainText("Live networks and real money");
   await page.screenshot({ path: "../../docs/runs/f438-developer-mode-off-1440.png" });
 
   await toggle.click();

@@ -10,7 +10,7 @@ import {
   useToast,
 } from "@forwend/ui-web";
 import { useExportWallet } from "@privy-io/react-auth";
-import { KeyRound, WalletMinimal } from "lucide-react";
+import { ChevronRight, KeyRound, WalletMinimal } from "lucide-react";
 import { useRef, useState } from "react";
 import { useCheckFreshSignInMutation } from "@/features/auth/api/auth-api";
 import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
@@ -21,7 +21,7 @@ import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
-import { SplitSection } from "@/shared/components/split-section";
+import { SETTINGS_ROW, SETTINGS_TITLE, SettingsGroup } from "@/shared/components/settings-group";
 
 const COPY = SETTINGS_COPY.wallet;
 // Privy rejects with only this message, no code, when the owner closes its window while it still connects.
@@ -96,24 +96,17 @@ export function WalletScreen() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
-        <p className="text-sm text-muted">{COPY.intro}</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <h1 className={SETTINGS_TITLE}>{COPY.title}</h1>
       {!address ? (
         <EmptyState compact icon={WalletMinimal} title={COPY.noWallet} />
       ) : (
         <>
-          <SplitSection title={COPY.address} description={COPY.addressNote}>
+          <SettingsGroup note={COPY.addressNote}>
             <ReceiveAddress address={address} label={COPY.yourAddress} />
-          </SplitSection>
-          <SplitSection title={COPY.key} description={COPY.keyNote}>
-            <div className="fw-panel flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-              <span className="grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-muted max-sm:hidden">
-                <KeyRound aria-hidden className="size-[var(--fw-icon-md)]" />
-              </span>
-              <p className="min-w-0 flex-1 text-sm text-muted">{COPY.exportHint}</p>
+          </SettingsGroup>
+          <SettingsGroup note={COPY.exportHint}>
+            <div className="fw-panel overflow-hidden">
               <Dialog
                 triggerLabel={COPY.export}
                 title={settingUp ? TWO_STEP_COPY.setUp : COPY.warningTitle}
@@ -124,9 +117,18 @@ export function WalletScreen() {
                   setError("");
                 }}
                 trigger={(open) => (
-                  <Button size="sm" variant={BUTTON_VARIANTS.secondary} onClick={open}>
-                    {COPY.export}
-                  </Button>
+                  <button
+                    type="button"
+                    onClick={open}
+                    className={`${SETTINGS_ROW} w-full text-left text-sm font-medium text-ink outline-none hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus`}
+                  >
+                    <KeyRound
+                      aria-hidden
+                      className="size-[var(--fw-icon-md)] shrink-0 text-muted"
+                    />
+                    <span className="min-w-0 flex-1">{COPY.export}</span>
+                    <ChevronRight aria-hidden className="size-4 shrink-0 text-muted" />
+                  </button>
                 )}
               >
                 <div ref={body}>
@@ -169,7 +171,7 @@ export function WalletScreen() {
                 </div>
               </Dialog>
             </div>
-          </SplitSection>
+          </SettingsGroup>
         </>
       )}
     </div>

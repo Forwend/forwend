@@ -6,7 +6,7 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { DEVELOPER_MODE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
-import { SplitSection } from "@/shared/components/split-section";
+import { SETTINGS_TITLE, SettingsGroup } from "@/shared/components/settings-group";
 
 const INVALID = 422; // live mode with no mainnet switched on
 
@@ -26,12 +26,9 @@ export function DeveloperModeScreen() {
     }
   };
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
-        <p className="text-sm text-muted">{COPY.intro}</p>
-      </div>
-      <SplitSection title={COPY.section} description={COPY.sectionNote}>
+    <div className="flex flex-col gap-6">
+      <h1 className={SETTINGS_TITLE}>{COPY.title}</h1>
+      <SettingsGroup note={allowed ? COPY.kept : COPY.ownersOnly}>
         <div className="fw-panel flex flex-col gap-1 px-4 py-3 sm:px-5">
           <Switch
             label={COPY.toggle}
@@ -40,8 +37,7 @@ export function DeveloperModeScreen() {
             disabled={isLoading || !allowed}
             className="w-full flex-row-reverse justify-between font-medium text-ink"
           />
-          <p className="-mt-1.5 text-sm text-muted">{on ? COPY.on : COPY.off}</p>
-          <p className="pb-1 text-sm text-muted">{allowed ? COPY.kept : COPY.ownersOnly}</p>
+          <p className="-mt-1.5 pb-1 text-sm text-muted">{on ? COPY.on : COPY.off}</p>
           {isError ? (
             <p role="alert" className="pb-1 text-sm text-danger">
               {(error as { status?: unknown } | undefined)?.status === INVALID
@@ -50,7 +46,7 @@ export function DeveloperModeScreen() {
             </p>
           ) : null}
         </div>
-      </SplitSection>
+      </SettingsGroup>
     </div>
   );
 }

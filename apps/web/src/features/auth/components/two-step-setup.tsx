@@ -36,7 +36,7 @@ import { mfaCancelled } from "@/features/auth/lib/two-step";
 type Method = "passkey" | "totp";
 
 export interface TwoStepSetupProps {
-  /** One method only, as a row of Account and security sets it up; without, every method not on yet. */
+  /** One method only, as a row of Security sets it up; without, every method not on yet. */
   only?: Method;
   onDone: () => void;
   onCancel: () => void;

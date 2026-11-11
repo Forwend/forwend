@@ -80,7 +80,7 @@ export const PAYMENT_PAGES: readonly DocsArticle[] = [
           "In live mode only: NEAR Intents has no test networks.",
           "On invoices, payment links and checkout that accept USDC on Base.",
           "While the payment stays open for at least 20 more minutes.",
-          "While the profile has Accept other tokens through NEAR Intents on. It is on by default.",
+          "While the profile has Accept other tokens on, in Settings, Accepted assets. It is on by default.",
         ],
       },
       {
@@ -142,7 +142,7 @@ export const PAYMENT_PAGES: readonly DocsArticle[] = [
         id: "off",
         title: "Turn it off",
         paragraphs: [
-          "In Networks settings, turn off Accept other tokens through NEAR Intents. New quotes stop; a quote already given still finishes.",
+          "In Settings, Accepted assets, turn off Accept other tokens. New quotes stop; a quote already given still finishes.",
         ],
       },
     ],

@@ -793,13 +793,13 @@ test("the owner turns email notifications off from Settings", async ({ browser }
     .click();
   await expect(page).toHaveURL("/app/notifications");
   const main = page.getByRole("main");
-  const toggle = main.getByRole("switch", { name: "Email me about this profile's invoices" });
+  const toggle = main.getByRole("switch", { name: "Payment emails" });
   await expect(toggle).toBeChecked();
-  await expect(main).toContainText("Emails go to owner@example.com, the email you sign in with.");
+  await expect(main).toContainText("To owner@example.com");
   expect(await blockingViolations(page)).toEqual([]);
   await toggle.click();
   await expect(toggle).not.toBeChecked();
-  await expect(page.getByText("Email notifications off")).toBeVisible();
+  await expect(page.getByText("Payment emails off")).toBeVisible();
   expect(puts).toEqual([{ email: false }]);
   await context.close();
 });
@@ -842,7 +842,7 @@ test("Settings opens Accepted assets, where a box turns a token off", async ({ b
     }
     await route.fulfill({ json: { tokens } });
   });
-  await page.goto("/app/settings");
+  await page.goto("/app/account");
   await page
     .getByRole("navigation", { name: "Settings" })
     .getByRole("link", { name: "Accepted assets" })
@@ -885,7 +885,7 @@ test("Sign out everywhere asks first, then ends the sessions and signs out", asy
   await page.route("https://auth.privy.io/api/v1/sessions/logout", (route) =>
     route.fulfill({ json: {} }),
   );
-  await page.goto("/app/settings");
+  await page.goto("/app/account");
   const everywhere = page
     .getByRole("main")
     .getByRole("button", { name: "Sign out of all devices" });
@@ -1200,7 +1200,7 @@ test("a freelancer can reach invoices, activity and billing from the mobile menu
     );
     await page.keyboard.press("Escape");
   }
-  // Billing details is a section of Settings.
+  // On a phone Settings is a list of its sections; Billing details is one.
   await page
     .getByRole("navigation", { name: "Settings" })
     .getByRole("link", { name: "Billing details" })
@@ -1238,6 +1238,7 @@ test("on a phone every panel is a card inside the page's margin, and no page scr
     "/app/checkout",
     "/app/developers",
     "/app/settings",
+    "/app/account",
     "/app/notifications",
     "/app/billing-details",
     "/app/networks",

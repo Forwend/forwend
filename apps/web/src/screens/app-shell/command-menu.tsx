@@ -159,7 +159,8 @@ export function CommandMenu({
             group: COMMAND_COPY.pages,
             label: AUTH_COPY.settings,
             icon: Settings,
-            run: go(APP_ROUTES.settings),
+            // Security is the first section: from large screens Settings opens there.
+            run: go(APP_ROUTES.account),
           },
         ]
       : []),

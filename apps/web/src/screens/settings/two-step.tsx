@@ -10,6 +10,7 @@ import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
 import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
+import { SETTINGS_ROW } from "@/shared/components/settings-group";
 
 const COPY = SETTINGS_COPY.account;
 type Method = Extract<MfaMethod, "passkey" | "totp">;
@@ -84,7 +85,7 @@ function MethodRow({
   const closeSetup = () => setupBox.current?.closest("dialog")?.close();
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
+    <div className={SETTINGS_ROW}>
       <span className="grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-muted max-sm:hidden">
         <Icon aria-hidden className="size-[var(--fw-icon-md)]" />
       </span>
@@ -94,9 +95,6 @@ function MethodRow({
           {isOn ? <Badge tone="success">{COPY.twoStepOn}</Badge> : null}
         </p>
         <p className="text-sm text-muted">{!isOn && required ? COPY.twoStepNeeded : hint}</p>
-        {isOn && method === "totp" ? (
-          <p className="text-sm text-muted">{COPY.twoStepLost}</p>
-        ) : null}
       </div>
       {isOn ? (
         <Dialog
