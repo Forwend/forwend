@@ -551,7 +551,7 @@
       "dependsOn": [
         "F469"
       ],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected",
         "images-check"
@@ -634,11 +634,18 @@
           "summary": "First pass FAIL on copy, all fixed: the held note again names a partial payment when checkout closed (R-80; a new test checks every reason), the paid email no longer promises a second email that a ledger policy or the email setting can skip, the button is 48px as DESIGN.md says (13px padding), and the held, invite and code preheaders no longer repeat the body. Checked fine: every required fact, link, Reply-To, Stop link and List-Unsubscribe per R-80, 82, 84, 94, 96, 98, 107, 137, 139, 143, 148, D-49, D-118, D-65; the code subject still ends with the digits; keep() escapes first and can't split entities; every href is in the plain text; dark rules cover the new elements; the logo is served from public/; amounts still come from big.Int formatting; test mode is marked first.",
           "at": "2026-11-11T02:32:11Z",
           "filesHash": "14157f372eb3c63e"
-        }
+        },
+        "commit": "546cbbda",
+        "doneAt": "2026-11-11T02:32:26Z"
       },
       "branch": "feat/f470-emails-read-short-and-clear-with-a-logo",
       "baseCommit": "c58ff1231105052725fdc346ab38fe18078a04a4",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f470-emails-read-short-and-clear-with-a-logo",
+        "base": "main"
+      }
     },
     {
       "id": "F471",
