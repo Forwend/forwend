@@ -20,7 +20,7 @@ Product requirements and money policy live in [PROJECT](../PROJECT.md); future s
 - Current public-facing material is pre-launch. No invented customers, testimonials, funding, insurance, regulation or volumes.
 - Landing actions open `/sign-in`; the landing page does not collect email addresses.
 - The hero dashboard and product drawings are examples, named so to screen readers. Nothing in them is a control or accepts money.
-- The roadmap marks Payments as Done, Agentic payments as Coming next, and Bank withdrawals and Card and wallet payments as Planned.
+- The roadmap marks Payments as Done, Agentic payments (x402 payments for AI agents) as Coming next, and Bank withdrawals and Card and wallet payments as Planned.
 - Say the exact network and token; planned support is not live support.
 - Live mode is Base, Arbitrum, Arc and Tempo with real money; Developer mode uses their testnets (D-120).
 - Plain words, short instructions, no crypto knowledge assumed beyond choosing the specified network.

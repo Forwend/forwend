@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 487,
+  "nextId": 488,
   "tasks": [
     {
       "id": "F332",
@@ -469,6 +469,91 @@
         "branch": "docs/f486-the-readme-roadmap-matches-the-landing-p",
         "base": "main"
       }
+    },
+    {
+      "id": "F487",
+      "type": "fix",
+      "behavior": "The roadmap says agentic payments are x402 payments for AI agents",
+      "acceptance": [
+        "The landing page and the README describe agentic payments as x402 payments for AI agents."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "landing-e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: The three sentences (landing roadmap, README, PRODUCT.md) are plain, accurate about x402 (an agent pays per request over HTTP), give no date and agree with each other; no test asserts the old text. The only other change is the harness's own task record in docs/tasks.json."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T03:23:57Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "landing-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 19.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "675cfda43a424e53",
+        "filesHash": "e2e2f3f39850940d",
+        "proof": {
+          "1": "landing-e2e: the landing e2e passes; browser check at 1280 px: the roadmap's Coming next card reads 'x402 payments for AI agents: an agent pays for an API or content per request, in stablecoins.', and the README's Next line says the same."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "The three sentences (landing roadmap, README, PRODUCT.md) are plain, accurate about x402 (an agent pays per request over HTTP), give no date and agree with each other; no test asserts the old text. The only other change is the harness's own task record in docs/tasks.json.",
+          "at": "2026-11-11T03:25:34Z",
+          "filesHash": "e2e2f3f39850940d"
+        }
+      },
+      "branch": "fix/f487-the-roadmap-says-agentic-payments-are-x4",
+      "baseCommit": "b86f1338c048a88428771e6f9622930b6eb7d98c",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
