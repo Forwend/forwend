@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 480,
+  "nextId": 481,
   "tasks": [
     {
       "id": "F332",
@@ -830,6 +830,95 @@
         "branch": "docs/f479-finished-tasks-leave-the-queue",
         "base": "main"
       }
+    },
+    {
+      "id": "F480",
+      "type": "fix",
+      "behavior": "Google sign-in reaches the app without reloading after its callback URL is cleaned",
+      "acceptance": [
+        "Google callback cleanup cannot cancel the signed-in transition to /app; email and existing-session sign-in still work."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-unit",
+        "web-build",
+        "web-e2e"
+      ],
+      "refs": [
+        "R-34",
+        "D-21"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-11 review pass by reviewer: Reviewed the sign-in diff, all SignInForm readers, the installed Privy callback cleanup and Next.js RESTORE behavior. Query changes remount only the redirect after authentication, preserving the sign-in gate. The three targeted tests pass. They prove navigation is reissued after simulated cleanup; live Google login has not been retested."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T02:10:11Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.0,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.9,
+            "log": ""
+          },
+          {
+            "id": "web-build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.5,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "eb50b116ebc390e6",
+        "filesHash": "db5ebfa41f3c5fdd",
+        "proof": {
+          "1": "web-unit: sign-in-screen tests reproduce callback cleanup interrupting navigation and cover email login and restored sessions."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Reviewed the sign-in diff, all SignInForm readers, the installed Privy callback cleanup and Next.js RESTORE behavior. Query changes remount only the redirect after authentication, preserving the sign-in gate. The three targeted tests pass. They prove navigation is reissued after simulated cleanup; live Google login has not been retested.",
+          "at": "2026-11-11T02:14:07Z",
+          "filesHash": "db5ebfa41f3c5fdd"
+        }
+      },
+      "branch": "fix/f480-google-sign-in-reaches-the-app-without-r",
+      "baseCommit": "0c87fba7dcbb3be68d130e7d154988032374b889",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
