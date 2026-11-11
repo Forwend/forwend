@@ -56,6 +56,8 @@ Source: the owner's hand-drawn draft (2026-10-08). Steps used to make the files:
    - `apps/web/public/brand/forwend-icon.svg` and `apps/web/src/app/icon.svg`: tile, `--fw-primary`
      with the mark in `--fw-on-primary`, mark at 62% of the tile
    - `apps/web/src/app/favicon.ico` (16, 32, 48), `apps/web/src/app/apple-icon.png` (180, square)
+   - `apps/web/public/email/logo-mark.png` (96, the emails' header logo): `forwend-icon.svg` with a lime
+     `#c9ef5f` tile and an ink `#0e0e0e` mark, rasterized with macOS `sips -s format png -z 96 96`
    - `apps/web/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (mark at 50% for the
      maskable safe zone)
 

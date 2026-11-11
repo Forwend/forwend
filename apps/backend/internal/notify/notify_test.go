@@ -122,12 +122,13 @@ func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 		t.Fatalf("sent %d, unpublished %d", len(f.sent), count(t, pool, "published_at IS NULL"))
 	}
 	for i, want := range []struct{ subject, text string }{
-		{"INV-0001 paid: 5.00 USDC", "INV-0001 was paid: 5.00 USDC on Base Sepolia."},
-		{"INV-0001: 5.00 USDC is in your wallet", "reached your wallet: 5.00 USDC on Base Sepolia."},
-		{"INV-0001: 1.50 USDC held for the payer", "a partial payment when the checkout closed"},
+		{"INV-0001 paid: 5.00 USDC", "INV-0001 was paid\n5.00 USDC\n"},
+		{"INV-0001: 5.00 USDC is in your wallet", "Money for INV-0001 is in your wallet\n5.00 USDC\n"},
+		{"INV-0001: 1.50 USDC held for the payer", "INV-0001: money held for the payer\n1.50 USDC\n"},
 	} {
 		m := f.sent[i]
 		if m.To != "owner@example.com" || m.Subject != want.subject || !strings.Contains(m.Text, want.text) ||
+			!strings.Contains(m.Text, "Network: Base Sepolia") ||
 			!strings.Contains(m.Text, web+"/app/invoices/"+id) || !strings.Contains(m.Text, web+"/app/notifications") ||
 			!strings.HasPrefix(m.Key, fmt.Sprintf("forwend-%s-%d-", id, i+1)) {
 			t.Fatalf("email %d: %+v", i, m)
@@ -281,7 +282,7 @@ func TestDeliverTellsTheOwnerARetainerMonthFailed(t *testing.T) {
 	}
 	m := f.sent[0]
 	if m.To != "owner@example.com" || m.Subject != "Repeating invoice not made: INV-0001" ||
-		!strings.Contains(m.Text, "due 28 Feb 2027") || !strings.Contains(m.Text, web+"/app/invoices/"+id) {
+		!strings.Contains(m.Text, "Due date: 28 Feb 2027") || !strings.Contains(m.Text, web+"/app/invoices/"+id) {
 		t.Fatalf("email %+v", m)
 	}
 }
@@ -414,8 +415,8 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 		t.Fatalf("sent %d, want the receipt alone", len(f.sent))
 	}
 	m := f.sent[0]
-	for _, want := range []string{"You paid 5.00 USDC on Base Sepolia to Mara Ilić for INV-0001.",
-		"The name is what the invoice's creator gave; Forwend doesn't check it.", "Test mode: testnet tokens have no value.",
+	for _, want := range []string{"Receipt for INV-0001\n5.00 USDC\n", "Your payment to Mara Ilić is complete.",
+		unchecked, "Test mode: testnet tokens have no value.",
 		"Transaction: https://sepolia.basescan.org/tx/" + hash, "Download receipt (PDF): " + web + "/api/v1/invoices/" + payToken + "/receipt.pdf"} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("receipt text %q lacks %q", m.Text, want)
@@ -444,11 +445,11 @@ func TestKeyFollowsTheAddress(t *testing.T) {
 }
 
 func TestReceiptNamesTheIssuer(t *testing.T) {
-	m, err := message(site, receipt("INV-0001", "5.00 USDC", "USDC", "Base Sepolia", "Alice Design GmbH", "Mara", "", "pdf"))
+	m, err := message(site, receipt("INV-0001", "5.00 USDC", "Base Sepolia", "Alice Design GmbH", "Mara", "", "pdf"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(m.Text, "to Alice Design GmbH for INV-0001.") || strings.Contains(m.Text, "doesn't check") {
+	if !strings.Contains(m.Text, "Your payment to Alice Design GmbH is complete.") || strings.Contains(m.Text, unchecked) {
 		t.Fatalf("receipt %q", m.Text)
 	}
 }
@@ -536,8 +537,8 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 		!strings.HasPrefix(m.Key, "forwend-"+id+"-1-") {
 		t.Fatalf("email %+v", m)
 	}
-	for _, want := range []string{"Alice Design GmbH sent you INV-0001 for 5.00 USDC.", "Due date: 30 Nov 2026",
-		"Network: Base Sepolia", "Invoice PDF: " + web + "/api/v1/invoices/" + payToken + "/invoice.pdf",
+	for _, want := range []string{"Invoice INV-0001 from Alice Design GmbH\n5.00 USDC\n", "Due date: 30 Nov 2026",
+		"Network: Base Sepolia", "Download the invoice (PDF): " + web + "/api/v1/invoices/" + payToken + "/invoice.pdf",
 		"View and pay: " + web + "/pay/" + payToken, "Reply to this email to reach them.",
 		"Test mode: testnet tokens have no value."} {
 		if !strings.Contains(m.Text, want) {
@@ -558,7 +559,7 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.sent) != 2 || !strings.Contains(f.sent[1].Text, "for 5.00 USD.") ||
+	if len(f.sent) != 2 || !strings.Contains(f.sent[1].Text, "\n5.00 USD\n") ||
 		!strings.Contains(f.sent[1].Text, "Network: You choose on the payment page") {
 		t.Fatalf("payer-chooses email %+v", f.sent[len(f.sent)-1])
 	}
@@ -602,11 +603,12 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 	}
 	m := f.sent[0]
 	if m.To != "ap@client.example" || m.ReplyTo != "billing@alice.example" ||
-		m.Subject != "Reminder: INV-0001 is overdue (Alice Design GmbH)" ||
+		m.Subject != "Reminder: INV-0001 from Alice Design GmbH is overdue" ||
 		m.Unsubscribe != web+"/api/v1/reminders/"+token+"/stop" {
 		t.Fatalf("reminder %+v", m)
 	}
-	for _, want := range []string{"Alice Design GmbH reminds you that INV-0001 was due on 30 Nov 2026: 5.00 USDC left to pay.",
+	for _, want := range []string{"INV-0001 is overdue\n5.00 USDC\n", "That’s what’s left to pay to Alice Design GmbH.",
+		"Due date: 30 Nov 2026", "Download the invoice (PDF): " + web + "/api/v1/invoices/" + payToken + "/invoice.pdf",
 		"View and pay: " + web + "/pay/" + payToken, "Stop reminders: " + web + "/reminders/" + token} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("text %q lacks %q", m.Text, want)
@@ -659,10 +661,10 @@ func TestDeliverSendsTheChangeToTheClient(t *testing.T) {
 	}
 	m := f.sent[0]
 	if m.To != "jane@bob.example" || m.ReplyTo != "billing@alice.example" ||
-		m.Subject != "A change to Logo design from Alice Design GmbH" || !strings.HasPrefix(m.Key, "forwend-job-"+job+"-") {
+		m.Subject != "Alice Design GmbH proposed a change to Logo design" || !strings.HasPrefix(m.Key, "forwend-job-"+job+"-") {
 		t.Fatalf("email %+v", m)
 	}
-	for _, want := range []string{"Alice Design GmbH proposed a change to Logo design: Extra page for 150.00 USD.",
+	for _, want := range []string{"A change to Logo design\n150.00 USD\n", "Alice Design GmbH proposed “Extra page”.",
 		"due 7 days after.", "Review the change: " + web + "/w/" + token, "Reply to this email to reach them."} {
 		if !strings.Contains(m.Text, want) {
 			t.Fatalf("text %q lacks %q", m.Text, want)

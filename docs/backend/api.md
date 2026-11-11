@@ -273,10 +273,13 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   unique index keeps one per user). The worker sends it whatever the profile setting, with
   `forwend-user-<userId>-<eventId>-<address hash>` as the Idempotency-Key.
 - Every email (F200) has an HTML part from one layout (`internal/notify/layout.html.tmpl`, `html/template`, so typed names
-  are escaped) and a plain text part built from the same content, with the same links: the logo
-  (`PUBLIC_WEB_URL/icon-192.png`), a badge, the title, the amount, a details table, one button, and a footer with why
-  it was sent, the email settings link on owner emails, and `SUPPORT_EMAIL` and `EMAIL_POSTAL_ADDRESS` when set.
-  Tables, inline styles and a dark-mode block; no scripts, tracking pixels or other remote assets.
+  are escaped) and a plain text part built from the same content, with the same links.
+  - The parts: the logo (`PUBLIC_WEB_URL/email/logo-mark.png`), a test-mode band, a status mark, the title, the amount.
+  - Then one or two sentences, a details table, one button, and an optional link such as the invoice PDF.
+  - The footer says why it was sent, links email settings on owner emails, and shows `SUPPORT_EMAIL` and `EMAIL_POSTAL_ADDRESS` when set.
+  - Tables, inline styles and a dark-mode block; no scripts or tracking pixels.
+  - The logo is the one remote file. Its `alt` is empty: the name beside it is text, so the email reads with images off.
+  - A test checks that the logo file is in `apps/web/public`; the look is in [DESIGN.md](../web/DESIGN.md#emails).
 - `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
   document number when present, the option's token and the amount (newly held for `invoice.held`; for `invoice.settled`, what
   reached the wallet, less any fees).

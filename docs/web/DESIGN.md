@@ -1342,15 +1342,34 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 ## Emails
 
 - Every email is one layout (`apps/backend/internal/notify/layout.html.tmpl`) in the Signal look.
-  - The logo and name above one white card with a hairline and 16px corners, on the light grey ground.
-  - A status badge in the tone pairs; the title semibold; the amount large with tabular figures.
-  - Detail rows ruled like a statement; links are underlined ink.
-  - One action: the lime button with its olive edge and 10px corners. Its padding sits on the link, so the whole
-    button is the target; it is text, never an image.
+  - Transactional mail stays plain: no hero image. Images can be blocked, dark mode can invert them, and they load slowly.
+  - The page is 600px wide, built from tables with inline styles.
+  - The logo and name sit above one white card with a hairline and 16px corners, on the light grey ground.
+  - The logo is `apps/web/public/email/logo-mark.png`: the mark in ink on a lime tile, 96px shown at 32px.
+    - The lime tile reads on light and dark grounds; a near-black tile would vanish on dark ones.
+    - It is decorative (`alt=""`): the live "Forwend" beside it reads with images off. No fact lives in an image.
+    - Mail clients don't show SVG, so the logo is a PNG.
+  - A test-mode email starts with an amber band: "Test mode: testnet tokens have no value." (R-143).
+  - A status mark is drawn in HTML, never an image: a 40px circle with ✓ (success) or ! (warning).
+    - An email with no status to report, such as an invoice to a client, has no mark.
+  - Then the title (24px, semibold, line height 1.25, slightly tight tracking).
+  - Then the amount (40px semibold, 30px on phones, line height 1.1, tabular figures).
+  - Then one or two short sentences (16px, line height 1.6) that add what the title and amount don't say.
+    - They never repeat the title, the amount, the network or the invoice number.
+  - Detail rows (14px) only for facts not shown above, ruled like a statement. Links are underlined ink.
+  - One action: the lime button with its olive edge and 10px corners, 48px tall, full width below 620px.
+    - Its padding sits on the link, so the whole button is the target. It is text, never an image.
+    - A second useful action, such as the invoice PDF, is a plain link under it.
+  - The footer is quiet (12px, muted): why it was sent with its settings or stop link, support, then "Forwend · address".
   - Type is the system stack: mail clients don't load Hanken Grotesk.
-  - The logo is decorative (`alt=""`): the name beside it says Forwend with images off. No fact lives in an image.
   - Colors are the token values for both schemes, with `[data-ogsc]` rules for the Outlook app's dark mode.
   - Dates read "30 Nov 2026", as in the PDFs. `html/template` drops HTML comments, so no Outlook conditionals.
+  - Invoice numbers, dates and amounts never break across lines, so "USDC" never sits alone.
+- Email copy is plain and short.
+  - The subject starts with the event, such as "INV-0001 paid: 1,250.00 USDC".
+  - The preheader adds what the subject lacks, such as the network or the due date. It never copies the body.
+  - Copy uses real typographic characters: ’ “ ” – ·.
+  - The plain-text part follows the HTML: title, amount, sentences, details, note, actions, footer.
 - Invoice and receipt PDFs (`apps/backend/internal/document`) keep Noto Sans: it covers Greek and Cyrillic names.
   - Labels are sentence case, never tracked capitals; dates read "28 Oct 2026, 13:00 UTC".
 
