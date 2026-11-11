@@ -431,7 +431,7 @@
         "The README roadmap names the landing page's stages: payments done, agentic payments next, then bank withdrawals and card and wallet payments."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -457,11 +457,18 @@
         "filesHash": "8f1e9f82b35a9b24",
         "proof": {
           "1": "docs-check: the README roadmap lists Done: payments (invoices and PDFs, payment links, hosted and embedded checkout, signed webhooks, paying from other chains), Next: agentic payments, Planned: bank withdrawals and card and wallet payments, as apps/web/src/screens/landing/sections/roadmap.tsx does; docs-check passes."
-        }
+        },
+        "commit": "57e79978",
+        "doneAt": "2026-11-11T03:22:19Z"
       },
       "branch": "docs/f486-the-readme-roadmap-matches-the-landing-p",
       "baseCommit": "70263e36434f80b96ee857e5f3229ff2987da044",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f486-the-readme-roadmap-matches-the-landing-p",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
