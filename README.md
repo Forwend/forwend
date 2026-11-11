@@ -11,15 +11,16 @@ Payers can also pay with almost any token from another chain, through NEAR Inten
 [![npm: @forwend/js](https://img.shields.io/npm/v/@forwend/js?label=%40forwend%2Fjs)](https://www.npmjs.com/package/@forwend/js)
 [![npm: @forwend/react](https://img.shields.io/npm/v/@forwend/react?label=%40forwend%2Freact)](https://www.npmjs.com/package/@forwend/react)
 
-> Forwend is under active development. It runs on testnets today.
-> Mainnet use waits for the security review and audit in the [roadmap](#roadmap).
+> Forwend is under active development. Test mode runs on testnets.
+> Live mode runs on mainnets as a development deployment, not for other people's money,
+> until the security review and audit in the [roadmap](#roadmap).
 
 ## What it does
 
 - **Invoices.** Send an invoice with a pay link, a PDF and reminders. The client pays from any wallet or exchange.
 - **Checkout.** Take payments in a store, at a counter with a QR code, or from your own site through the packages.
 - **Balances.** See what is in your wallet, what is on its way and what is held, per token and network.
-- **Send.** Move money between your profiles or to any address, with two-step verification.
+- **Send.** Move money between your profiles or to a wallet on the same network, after a fresh sign-in check.
 - **Teams and developers.** Roles for a merchant's team, API keys, webhooks and a public API.
 
 Forwend accepts USDC on Base, Arbitrum and Arc, and stablecoins on Tempo.
@@ -31,7 +32,7 @@ Each profile chooses its own tokens and networks.
 2. The payer sends the exact amount to that address. The address is known before the contract is deployed.
 3. The worker watches the chain. "Paid" comes only from the token balance at that address, once it is final.
 4. The signer settles the payment: the contract can only pay its fixed recipient, your profile wallet.
-5. Money that arrives late, twice or short is held. Only a multisig with a time delay can return it.
+5. Money that arrives late, twice or short is held. It goes back only through the refund authority, a multisig with a time delay at launch.
 
 The API holds no keys, and the signer has no public routes.
 Read [the architecture](docs/architecture.md) and [the money safety rules](docs/backend/money-safety.md) for the details.
@@ -50,7 +51,7 @@ It works in live mode only: NEAR Intents has no testnet.
 6. Forwend marks the invoice paid from the USDC balance on Base, as for any direct payment.
 
 - The payer pays the conversion cost. You receive the invoice amount, as for a direct payment.
-- Extra, short or failed money goes back to the payer's refund address. Forwend never holds it.
+- Extra, short or failed money goes back to the payer's refund address. Forwend holds none of the payer's money in transit.
 - The pay page follows each step: received, converting, confirming on Base, and paid.
 - Each profile can turn cross-chain payments off in Settings, under Accepted assets.
 
@@ -130,7 +131,7 @@ pnpm lint && pnpm typecheck
 
 ## Roadmap
 
-- **Done:** invoices and checkout on four testnets, payment exceptions, merchant stores and teams, developer tools, cross-chain payments, send.
+- **Done:** invoices and checkout on four networks, payment exceptions, merchant stores and teams, developer tools, cross-chain payments in live mode, send.
 - **Next:** handles and saved contacts, then the release safety work: key storage, outage drills and reconciliation.
 - **Before real money:** an independent contract audit, then small personal mainnet trials.
 - **Later:** bank withdrawals, paying from a connected wallet, and card payments.
