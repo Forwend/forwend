@@ -13,7 +13,7 @@ Payers can also pay with almost any token from another chain, through NEAR Inten
 
 > Forwend is under active development. Test mode runs on testnets.
 > Live mode runs on mainnets as a development deployment, not for other people's money,
-> until the security review and audit in the [roadmap](#roadmap).
+> until a security review and an independent contract audit.
 
 ## What it does
 
@@ -131,12 +131,10 @@ pnpm lint && pnpm typecheck
 
 ## Roadmap
 
-- **Done:** invoices and checkout on four networks, payment exceptions, merchant stores and teams, developer tools, cross-chain payments in live mode, send.
-- **Next:** handles and saved contacts, then the release safety work: key storage, outage drills and reconciliation.
-- **Before real money:** an independent contract audit, then small personal mainnet trials.
-- **Later:** bank withdrawals, paying from a connected wallet, and card payments.
-
-[PLAN.md](PLAN.md) has the full roadmap.
+- **Done: payments.** Invoices and PDFs, payment links, hosted and embedded checkout, signed webhooks, and paying from other chains.
+- **Next: agentic payments.** Payments that software starts on your behalf. Details will follow.
+- **Planned: bank withdrawals.** Move stablecoins to a bank account.
+- **Planned: card and wallet payments.** Customers pay with a card, Apple Pay or Google Pay, with no crypto knowledge. You still receive stablecoins.
 
 ## Security
 
