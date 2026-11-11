@@ -655,7 +655,7 @@
         "A failed staging CI run keeps every check's log as a downloadable artifact."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected"
       ],
@@ -740,11 +740,18 @@
           "summary": "First pass FAIL on one item, fixed: TestRecheckBooksADepositTheScanMissed could still see 'rescan still asked' because the rescan records the deposit, then clears the request in a separate statement; the test now waits for the rescan job before checking (a reviewer overlay with a 200 ms gap failed 3/3 without the wait, passed with it). Also: the reconcile.go comment now says the nonce may have been used by another transaction too, and architecture.md has the step. Checked fine: returning (nil, nil) after a send error when the nonce moved writes nothing and leaves booking to the next round's receipt reads, or retry/stall at finality; a lagging node only falls back to the old error; Tempo uses the protocol nonce; the new signer test reproduces the CI path (failed with an overlay of the old reconcile.go); the uploaded logs hold no secrets.",
           "at": "2026-11-11T04:13:07Z",
           "filesHash": "d4de7522b4020b42"
-        }
+        },
+        "commit": "715f46a7",
+        "doneAt": "2026-11-11T04:13:15Z"
       },
       "branch": "fix/f489-backend-tests-that-failed-on-a-busy-ci-r",
       "baseCommit": "f36885b3d22baf742d7db16dc10b8488600a4522",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f489-backend-tests-that-failed-on-a-busy-ci-r",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
