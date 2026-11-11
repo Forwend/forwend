@@ -11,7 +11,7 @@ npm install forwend
 import { Forwend, verifyWebhook } from "forwend";
 
 const forwend = new Forwend({
-  apiKey: process.env.FORWEND_KEY!,
+  apiKey: process.env.FORWEND_API_KEY!,
   profileId: process.env.FORWEND_PROFILE_ID!,
   baseUrl: "https://forwend.com/api",
 });

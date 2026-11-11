@@ -8,7 +8,7 @@ export const CHECKOUT_REQUEST = `const response = await fetch(
   {
     method: "POST",
     headers: {
-      Authorization: "Bearer " + process.env.FORWEND_KEY,
+      Authorization: "Bearer " + process.env.FORWEND_API_KEY,
       "Content-Type": "application/json",
       "Idempotency-Key": "order-1042-attempt-1",
     },
@@ -29,7 +29,7 @@ const payToken = session.payment.payToken;`;
 export const INVOICE_REQUEST = `import { Forwend } from "forwend";
 
 const forwend = new Forwend({
-  apiKey: process.env.FORWEND_KEY!,
+  apiKey: process.env.FORWEND_API_KEY!,
   profileId: process.env.FORWEND_PROFILE_ID!,
   baseUrl: process.env.FORWEND_API_URL!,
 });

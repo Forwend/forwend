@@ -51,6 +51,8 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
   - It checks the recipient got the amount less both, and the refund authority the platform fee.
   - Run it only where the test recipient's money may be lost: no one holds its key.
 - It reads the first executor from `FIRST_EXECUTOR`, never from the signing key: that address is part of the factory address.
+- The deployer and refund-authority keys in `packages/contracts/.env` also guard the development mainnet factory.
+  - Keep them off shared machines.
 - Record it in `packages/contracts/deployments.json`; a replaced factory moves to `superseded`.
 - Every deploy needs Sasha's explicit yes. Results: local docs/spikes/s5-s6-testnets.md notes (`../spikes/s5-s6-testnets.md`).
 

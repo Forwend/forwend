@@ -130,130 +130,6 @@
       "evidence": null
     },
     {
-      "id": "F462",
-      "type": "feat",
-      "behavior": "Transactions shows each fee in its own column, and Transactions, Activity, Payments and Invoices share one list system on desktop and phone",
-      "acceptance": [
-        "The lists match the approved templates (Forwend Redesign Templates), Option A: Transactions has a Fee column headed Fee before the Amount column; Transactions, Activity and Payments have two-line phone rows under day headings, and Invoices or Requests keep their phone rows, without day headings; a tapped Transactions row opens a sheet with the sum, addresses, links and type.",
-        "Loading placeholders keep the real headers and have each cell's shape; long amounts and dates are never cut; an empty list offers its next action; no match names the list and says what was searched and filtered.",
-        "At 390px no screen of this step scrolls sideways, and on phones each list's head has its action in the title row, full-width search and segmented controls, and one Filters sheet for its menus.",
-        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "lint",
-        "typecheck"
-      ],
-      "refs": [
-        "R-64",
-        "R-75",
-        "R-109",
-        "R-111",
-        "R-224",
-        "R-228"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-10 review fail by subagent: Blocking: (1) transaction-sheet.tsx:35 + transactions-table.tsx:152,326: Sheet is a native dialog that keeps children mounted and SheetBody is not keyed, so TransactionType's local 'chosen' survives a change of transaction; after labelling row A (sheet holds a stale snapshot, so chosen is never cleared), opening row B shows A's label in B's select although nothing was saved. The sheet also never updates status/type/fee while open. Fix: key SheetBody by transactionKey(t) and store the opened key, reading the live row from rows (fallback to last snapshot). (2) apps/web/e2e/privy/records.spec.ts:169-176 looks for the EUR records-value button inside a phone listitem; phone rows no longer render RecordsValue (sheet only), so the live test fails; R-111 (PROJECT.md:162, 'each amount shows its value under it') no longer holds on phones and is not updated or in refs. web-e2e ignores e2e/privy/**, so verify will not catch it. Fix: open the row's sheet in that test, update R-111 and add it to refs. (3) Acceptance 1 (docs/tasks.json:137) says Invoices or Requests phone rows sit under day headings; InvoicesTable passes no day prop (invoices-table.tsx:263) and DESIGN.md's invoice phone row has none. Add day={(inv)=>inv.createdAt} or reword the acceptance. Minor: overview preview changed despite R-109 'stays as it is' (Fee column, Set type chip at transactions-table.tsx:536, sheet with select); stale DESIGN.md lines 361, 382 (PaymentStateFilter gone), 744, 376 (other DataTableSkeleton callers and Transactions' own TableSkeleton); R-64 Export position and pending pill on phones; payments-screen.tsx:204 phone Export shows on a profile with no payments; transactions-table.tsx:154-159,259 duplicates narrowedBy and PAYMENT_STATE_COPY.searched, duplicated day-heading classes and skeleton; payment-state-filter.tsx is a .tsx in components/ with no component; ListFilters chips are a raw radio control outside the kit; text-[0.8125rem] and 1.5px raw values; Clear all unmounts while focused (list-filters.tsx:56); invoice skeleton lacks the Store column; list e2e coverage is live-only (privy), so accept 3 needs check live-e2e.",
-        "2026-11-10 review pass by subagent: Re-review: the three blockers are fixed. (1) transactions-table.tsx reads the live row by openedKey with a snapshot fallback; transaction-sheet.tsx keys SheetBody by transactionKey(t). (2) records.spec.ts finds the EUR button in the opened row's dialog; R-111 updated and in refs. (3) Acceptance 1 matches the code: Invoices/Requests have no day headings. Minor, left by choice: duplicated no-match sentence, TableSkeleton vs DataTableSkeleton, typeName, ListFilters outside ui-web, Invoices skeleton Store column. List e2e is live-only (e2e/privy); its proof needs check live-e2e."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-10T23:30:07Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.7,
-            "log": ""
-          },
-          {
-            "id": "tokens-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "ui-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 13.6,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 53.4,
-            "log": ""
-          }
-        ],
-        "taskHash": "c699115cce2d930a",
-        "filesHash": "ae89fdc726b50580",
-        "proof": {
-          "1": "web-e2e: the four lists render with the new columns, phone rows and sheets; checked by eye on desktop and a 375px phone in the owner's signed-in session",
-          "2": "web-unit: transaction-fee, dates, payment-state and payments tests cover fees, dates, no-match wording and received-of-asked amounts",
-          "3": "web-e2e: list pages fit narrow widths; every list and its phone head checked at 375px with no sideways scroll",
-          "4": "web-unit: existing activity, payments, invoices, transactions and shared tests pass; typecheck and lint pass"
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "Re-review: the three blockers are fixed. (1) transactions-table.tsx reads the live row by openedKey with a snapshot fallback; transaction-sheet.tsx keys SheetBody by transactionKey(t). (2) records.spec.ts finds the EUR button in the opened row's dialog; R-111 updated and in refs. (3) Acceptance 1 matches the code: Invoices/Requests have no day headings. Minor, left by choice: duplicated no-match sentence, TableSkeleton vs DataTableSkeleton, typeName, ListFilters outside ui-web, Invoices skeleton Store column. List e2e is live-only (e2e/privy); its proof needs check live-e2e.",
-          "at": "2026-11-10T23:31:28Z",
-          "filesHash": "ae89fdc726b50580"
-        },
-        "commit": "d07b49dd",
-        "doneAt": "2026-11-10T23:39:33Z"
-      },
-      "branch": "feat/f462-transactions-activity-and-payments-show",
-      "baseCommit": "254ad6224f9e4421ad94761b83a9ad4a0ab82de4",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f462-transactions-activity-and-payments-show",
-        "base": "main"
-      }
-    },
-    {
       "id": "F465",
       "type": "feat",
       "behavior": "My assets, Send and Receive follow the redesigned layouts; Overview stays as it is for now",
@@ -307,108 +183,6 @@
       "evidence": null
     },
     {
-      "id": "F467",
-      "type": "feat",
-      "behavior": "Settings read short and clear, and a phone opens them as a list like a phone app's settings",
-      "acceptance": [
-        "Each settings page shows its title and grouped rows, with no intro line or description column; a hint stays only where a choice needs it, as one short line under its group.",
-        "On a phone, Settings opens a list of its pages grouped by your account and this profile; each page has a back link to the list, and no row of tabs scrolls sideways.",
-        "At 390px no settings page scrolls sideways, buttons sit in their rows instead of full-width stacks, and each loading placeholder has the shape of what it replaces.",
-        "Requests and existing behavior stay as they are unless the step's requirement row says otherwise."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "lint",
-        "typecheck"
-      ],
-      "refs": [
-        "R-255"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-11 review pass by subagent: First pass FAIL on two items, both fixed: the live developer-mode spec expected the old Off copy, and four docs named old copy or sizes (R-240, the public /docs payments page, DESIGN.md passkey meta and the 56rem form line). Also fixed: the Settings list now redirects when a tablet turns wide, the Notifications placeholder matches the shorter row, the h1 sits outside the nav, and the command menu links to Security directly. Checked fine: every reader of /app/settings and /app/account, permissions (the redirect target needs the same permission as Settings, so no loop), focus after passkey removal, disabled-reason aria-describedby, privy locators, and R-80/136/137/139/217/218/219/221/227, D-122. Not re-reviewed: the fixes are copy, docs and small layout changes."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-11T02:04:34Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.0,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 13.3,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 59.8,
-            "log": ""
-          }
-        ],
-        "taskHash": "be679f47aa83da31",
-        "filesHash": "e6b3320597bacda5",
-        "proof": {
-          "1": "web-unit: networks-screen, passkeys-list and settings-sections tests pass with the shortened copy; browser check at 1440x900 and 375 px of Security, Notifications, Billing details, Accepted assets, Developer mode, Team and Wallet: each is a title and grouped rows, with no intro line or description column.",
-          "2": "web-unit: settings-sections.test.tsx covers the sections a role sees; browser check at 375 px: /app/settings lists the 7 sections in two groups under the Settings title, each section shows a Settings back link, and no tab row exists; widening to 1200 px opens /app/account.",
-          "3": "web-unit: browser check at 375 px: scrollWidth is 375 on every section; Remove, Sign out and Add a passkey sit in their rows. The Notifications placeholder now matches its shorter label and address.",
-          "4": "web-unit: all web unit tests pass; requests are unchanged. /app/settings opens Security at /app/account from large screens; the account and command menus link there."
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "First pass FAIL on two items, both fixed: the live developer-mode spec expected the old Off copy, and four docs named old copy or sizes (R-240, the public /docs payments page, DESIGN.md passkey meta and the 56rem form line). Also fixed: the Settings list now redirects when a tablet turns wide, the Notifications placeholder matches the shorter row, the h1 sits outside the nav, and the command menu links to Security directly. Checked fine: every reader of /app/settings and /app/account, permissions (the redirect target needs the same permission as Settings, so no loop), focus after passkey removal, disabled-reason aria-describedby, privy locators, and R-80/136/137/139/217/218/219/221/227, D-122. Not re-reviewed: the fixes are copy, docs and small layout changes.",
-          "at": "2026-11-11T02:05:59Z",
-          "filesHash": "e6b3320597bacda5"
-        },
-        "commit": "626d4d65",
-        "doneAt": "2026-11-11T02:06:13Z"
-      },
-      "branch": "feat/f467-settings-read-short-and-clear-and-a-phon",
-      "baseCommit": "65cae8c063bbeb217467ca8709233f9fcb7ae922",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f467-settings-read-short-and-clear-and-a-phon",
-        "base": "main"
-      }
-    },
-    {
       "id": "F468",
       "type": "feat",
       "behavior": "The app shell keeps one lime action per page, and shared placeholders, errors and motion match the templates",
@@ -432,220 +206,6 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
-    },
-    {
-      "id": "F469",
-      "type": "feat",
-      "behavior": "The landing page follows the redesigned templates and gains a Cross-chain payments section",
-      "acceptance": [
-        "The landing matches the approved templates (Forwend Redesign Templates), Option A, on desktop and phone: section 04 Cross-chain payments with its animated route and short copy, the logo carousel with NEAR Intents, one lime action in the first view, a readable hero picture on phones, flat feature panels, roadmap and questions that name payments from other chains, and a footer without disabled buttons.",
-        "The docs have a Payments group with Direct payments and Cross-chain payments pages, and the landing links to the cross-chain page.",
-        "At 320 to 1536px no part of the landing scrolls sideways; the route pauses under the pointer, its token buttons work, and reduced motion shows its final frame with no running animation.",
-        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "lint",
-        "typecheck"
-      ],
-      "refs": [
-        "R-6",
-        "R-7",
-        "D-123"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-10 review pass by reviewer: No blocking findings. Hydration, timer cleanup, reduced motion, CSS class names, numbering 01-05, bigint money and the inert hero picture are correct; lint passes. Minor: (1) docs-payments.ts:123 'Forwend never holds the customer's money in this flow' contradicts R-239/D-118 (USDC arriving after another option paid is held); docs-payments.ts:60 'Held money is never counted as yours' contradicts R-130 reopen and R-119; docs-payments.ts:112 omits the R-244 caveat that a buffer below the refund fee may not come back. (2) cross-chain-route.tsx:167-170 one paused flag for pointer and focus: leaving with either source resumes while the other still holds; touch users can't pause, and there's no lasting pause control (WCAG 2.2.2). (3) cross-chain-route.tsx:86 shows Detected while the token goes to NEAR; Forwend sees nothing on Base until delivery. (4) constants/cross-chain.ts:10 1,253.14 USDT for 1,250 USDC is below the 1% price buffer the docs state. (5) ROUTE_TICK_MS 50 re-renders the route 20 times a second while visible; .dot animates left/top. (6) cross-chain-route.tsx:153,203 re-implements blockchainName() from shared/lib/chains; the aria-label has no fallback. (7) cross-chain-payments.tsx:33 borrows features CSS (.number/.link); landing.module.css is the shared place. (8) landing-footer.module.css:93-109 duplicates .links; Questions/Sign in sit outside the Footer nav. (9) landing-header.tsx:69 ghost variant overridden to ink; no ui-web variant. (10) hero-dashboard.tsx:56 aria-label names cards phones hide and omits Latest payments. (11) Docs held section: renderer puts paragraphs before points. (12) FAQ faq.tsx:28 and fact cross-chain-payments.tsx:24 omit live mode only (D-123). (13) structure.md:81 omits hero-received-chart.tsx; DESIGN.md:39 'first two rows' is stale. (14) roadmap.tsx:28 lists Pay from other chains as available while R-241 mainnet proof (F452) is blocked: owner call. (15) Proof 3 does not cover pause, token buttons or final frame; checked by code reading only. Dead code to note: Button variant soon is now used only on /kit.",
-        "2026-11-10 review pass by reviewer: Independent review passed earlier with no blocking findings (see the review note). Changes after it only apply that review's findings 1-6, 8 and 13-15: accurate held-money and refund wording in the docs, live mode named, open status while the token travels, separate hover and focus pause flags, the USDT sample above the 1% buffer, blockchainName reused, docs reading order and design-doc lines. The owner chose to skip a second review. Not changed by choice: 7, 9-12, 16-18."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-10T22:27:45Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.6,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 13.1,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 53.8,
-            "log": ""
-          }
-        ],
-        "taskHash": "62a28b1d5d0db566",
-        "filesHash": "67e51a09c81e7e52",
-        "proof": {
-          "1": "web-e2e: the landing renders at every R-7 width with section 04, its route, the carousel and the hero picture; checked by eye in light and dark on desktop and phone",
-          "2": "web-e2e: docs pages build and route, including the new Payments group; typecheck covers the docs data",
-          "3": "web-e2e: no sideways scroll from 320 to 1536px including #cross-chain, and no running animation under reduced motion",
-          "4": "web-unit: existing web tests pass unchanged; typecheck and lint pass"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Independent review passed earlier with no blocking findings (see the review note). Changes after it only apply that review's findings 1-6, 8 and 13-15: accurate held-money and refund wording in the docs, live mode named, open status while the token travels, separate hover and focus pause flags, the USDT sample above the 1% buffer, blockchainName reused, docs reading order and design-doc lines. The owner chose to skip a second review. Not changed by choice: 7, 9-12, 16-18.",
-          "at": "2026-11-10T22:29:07Z",
-          "filesHash": "67e51a09c81e7e52"
-        },
-        "commit": "273f4169",
-        "doneAt": "2026-11-10T22:29:30Z"
-      },
-      "branch": "feat/f469-the-landing-page-follows-the-redesigned",
-      "baseCommit": "3e2ca5748336479fffe3a352ba0f2d4bb9df940d",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f469-the-landing-page-follows-the-redesigned",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F470",
-      "type": "feat",
-      "behavior": "Emails read short and clear, with a logo that shows in dark mode",
-      "acceptance": [
-        "Each of the 16 emails says each fact once: no lead repeats the title, amount, network or invoice number, and detail rows show only facts not shown above.",
-        "The header logo reads on light and dark email backgrounds and the text reads with images off; success and warning emails start with a drawn status mark; the button is at least 44px tall and full width on phones.",
-        "Amounts, invoice numbers and dates never break across lines; every required fact, link, Reply-To and stop link from the requirement rows stays.",
-        "Every email has a preview sample, and the HTML and plain-text parts carry the same links."
-      ],
-      "dependsOn": [
-        "F469"
-      ],
-      "state": "passing",
-      "verification": [
-        "backend-affected",
-        "images-check"
-      ],
-      "refs": [],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-11 review pass by subagent: First pass FAIL on copy, all fixed: the held note again names a partial payment when checkout closed (R-80; a new test checks every reason), the paid email no longer promises a second email that a ledger policy or the email setting can skip, the button is 48px as DESIGN.md says (13px padding), and the held, invite and code preheaders no longer repeat the body. Checked fine: every required fact, link, Reply-To, Stop link and List-Unsubscribe per R-80, 82, 84, 94, 96, 98, 107, 137, 139, 143, 148, D-49, D-118, D-65; the code subject still ends with the digits; keep() escapes first and can't split entities; every href is in the plain text; dark rules cover the new elements; the logo is served from public/; amounts still come from big.Int formatting; test mode is marked first."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-11T02:30:36Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "images-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": ""
-          },
-          {
-            "id": "backend-affected",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 85.9,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          }
-        ],
-        "taskHash": "0b34c1aaadd85581",
-        "filesHash": "14157f372eb3c63e",
-        "proof": {
-          "1": "backend-affected: notify tests pass on Postgres; the rendered samples (all 16 emails) show each fact once: paid is the title, the amount, one sentence and only the network row; sent drops the Invoice, From and Token rows; no preheader repeats the body.",
-          "2": "images-check: the new 96px lime logo mark (apps/web/public/email/logo-mark.png) passes the image check; browser check of the samples at 720 px light and 390 px dark: the logo and Forwend text read on both grounds, paid and receipt start with a drawn check, held with a drawn !, and the 48px button spans the phone width.",
-          "3": "backend-affected: layout tests check non-breaking amounts, invoice numbers and dates, and that the held note names every reason money is held (R-80, D-118); required links, Reply-To and stop links stay; the paid email no longer promises a second email that a policy or the setting can skip.",
-          "4": "backend-affected: samples() covers all 16 kinds (code, outflow, waiting and the due-today reminder added) and TestEveryEmailHasHTMLWithTheTextLinks passes for each."
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "First pass FAIL on copy, all fixed: the held note again names a partial payment when checkout closed (R-80; a new test checks every reason), the paid email no longer promises a second email that a ledger policy or the email setting can skip, the button is 48px as DESIGN.md says (13px padding), and the held, invite and code preheaders no longer repeat the body. Checked fine: every required fact, link, Reply-To, Stop link and List-Unsubscribe per R-80, 82, 84, 94, 96, 98, 107, 137, 139, 143, 148, D-49, D-118, D-65; the code subject still ends with the digits; keep() escapes first and can't split entities; every href is in the plain text; dark rules cover the new elements; the logo is served from public/; amounts still come from big.Int formatting; test mode is marked first.",
-          "at": "2026-11-11T02:32:11Z",
-          "filesHash": "14157f372eb3c63e"
-        },
-        "commit": "546cbbda",
-        "doneAt": "2026-11-11T02:32:26Z"
-      },
-      "branch": "feat/f470-emails-read-short-and-clear-with-a-logo",
-      "baseCommit": "c58ff1231105052725fdc346ab38fe18078a04a4",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f470-emails-read-short-and-clear-with-a-logo",
-        "base": "main"
-      }
     },
     {
       "id": "F471",
@@ -689,127 +249,6 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
-    },
-    {
-      "id": "F476",
-      "type": "feat",
-      "behavior": "The owner's invoice page and the in-person Checkout follow the redesigned templates with short copy and an app-like phone layout, a business can Send from a phone, and My assets reads cleanly on phones",
-      "acceptance": [
-        "The owner's invoice page has the new layout the owner approved over the template: actions in the header, the amount card with its money line and steps, Billed to and Details beside it, with only the text a reader needs; on phones it reads like an app screen.",
-        "The in-person Checkout follows its template with shorter copy; it hides its QR code while a payment confirms, so a customer can't pay twice.",
-        "On a phone a business profile reaches Send without search, and My assets shows each token as one clean row.",
-        "Loading placeholders have the shape of what they replace; motion is short and respects reduced motion; at 390px no screen scrolls sideways.",
-        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "lint",
-        "typecheck",
-        "docs-check"
-      ],
-      "refs": [
-        "R-254"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-11 review pass by subagent: First pass FAIL, 3 blocking findings, all fixed with failing-first tests. (1) Items lost the Subtotal and fee rows when the client pays the fees; it uses linesFigures again. (2) The notice hid returns the money line can't show; it now skips only the option whose whole return the line shows. (3) A canceled invoice with held money read Still due; owing now leaves out canceled. Also fixed: Email the client waits for the owner read, plus stale comments and docs. Second pass PASS: no new money or regression bug. Left as follow-ups: the phone focus order follows the DOM, not CSS order; copying has no manual fallback; Send sits beside Receive on the desktop overview card."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-11T01:41:21Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.1,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.4,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.9,
-            "log": ""
-          },
-          {
-            "id": "tokens-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "ui-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 13.4,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 58.2,
-            "log": ""
-          }
-        ],
-        "taskHash": "1382e5de4a4715eb",
-        "filesHash": "9c0a0b48f9a8b4a2",
-        "proof": {
-          "1": "web-unit: invoice-detail.test.tsx checks the header's pay link actions, the money line terms (Customer paid, Refunded with its explorer link, Held for the customer, Network fee, In your wallet), Items with the client's fee rows, a canceled invoice never reading Still due, returns the money line can't show kept in the notice, Email the client only while the pay link takes money, and the phone More actions sheet. Browser check at 1440x900 and 375 px: INV-0006 paid and INV-0008 open; the steps row ends at the card's edge.",
-          "2": "web-unit: checkout-live.test.tsx 'hides the QR code and the pay link once money is on its way, so the customer can't pay twice'; checkout-form.test.tsx checks the keypad amount, the idempotency key and the amount limits.",
-          "3": "web-unit: balances-list.test.tsx checks each token row with its amount, value and money on its way or on hold. The Overview's balance card and My assets show Send below lg; browser check at 375 px.",
-          "4": "web-unit: the invoice, checkout and My assets placeholders keep the loaded shape (balances 'keeps the balances back until the prices answer'). Browser check at 375 px: scrollWidth equals 375 on the invoice page.",
-          "5": "web-unit: all web unit tests pass; money figures come from the same helpers (linesFigures, optionFees, invoiceException). Label changes (Refunded, steps row, Email the client in Billed to) are in R-60, R-69, R-77, R-94 and DESIGN.md."
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "First pass FAIL, 3 blocking findings, all fixed with failing-first tests. (1) Items lost the Subtotal and fee rows when the client pays the fees; it uses linesFigures again. (2) The notice hid returns the money line can't show; it now skips only the option whose whole return the line shows. (3) A canceled invoice with held money read Still due; owing now leaves out canceled. Also fixed: Email the client waits for the owner read, plus stale comments and docs. Second pass PASS: no new money or regression bug. Left as follow-ups: the phone focus order follows the DOM, not CSS order; copying has no manual fallback; Send sits beside Receive on the desktop overview card.",
-          "at": "2026-11-11T01:42:47Z",
-          "filesHash": "9c0a0b48f9a8b4a2"
-        },
-        "commit": "ea203bab",
-        "doneAt": "2026-11-11T01:43:23Z"
-      },
-      "branch": "feat/f476-the-owner-s-invoice-page-and-the-in-pers",
-      "baseCommit": "6571b253ff53c71adb2fda9f94f0704e6450bc69",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f476-the-owner-s-invoice-page-and-the-in-pers",
-        "base": "main"
-      }
     },
     {
       "id": "F477",
@@ -860,266 +299,6 @@
       "evidence": null
     },
     {
-      "id": "F479",
-      "type": "docs",
-      "behavior": "Finished tasks leave the queue",
-      "acceptance": [
-        "Merged and dropped tasks move from docs/tasks.json to the local archive; unfinished tasks stay."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "docs-check"
-      ],
-      "refs": [],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-10 review pass by reviewer: Only docs/tasks.json changed. 12 tasks left the queue: 11 passing and 1 dropped; none was not_started, active, verified or blocked. The 18 tasks left are 3 blocked, 14 not_started and F479 (verified). Kept tasks are unchanged; nextId 479 to 480."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-10T21:48:50Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "3668cf1ddd69d99e",
-        "filesHash": "120bd844aa9f5c02",
-        "proof": {
-          "1": "docs-check: archive moved 12 merged or dropped tasks to docs/archive; 18 unfinished tasks stay in docs/tasks.json"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Only docs/tasks.json changed. 12 tasks left the queue: 11 passing and 1 dropped; none was not_started, active, verified or blocked. The 18 tasks left are 3 blocked, 14 not_started and F479 (verified). Kept tasks are unchanged; nextId 479 to 480.",
-          "at": "2026-11-10T21:49:25Z",
-          "filesHash": "120bd844aa9f5c02"
-        },
-        "commit": "f0e99c68",
-        "doneAt": "2026-11-10T21:49:34Z"
-      },
-      "branch": "docs/f479-finished-tasks-leave-the-queue",
-      "baseCommit": "a976988296faddcb65f71ed21256ea3da62de8f4",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "docs/f479-finished-tasks-leave-the-queue",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F480",
-      "type": "fix",
-      "behavior": "Google sign-in reaches the app without reloading after its callback URL is cleaned",
-      "acceptance": [
-        "Google callback cleanup cannot cancel the signed-in transition to /app; email and existing-session sign-in still work."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-unit",
-        "web-build",
-        "web-e2e"
-      ],
-      "refs": [
-        "R-34",
-        "D-21"
-      ],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-11 review pass by reviewer: Reviewed the sign-in diff, all SignInForm readers, the installed Privy callback cleanup and Next.js RESTORE behavior. Query changes remount only the redirect after authentication, preserving the sign-in gate. The three targeted tests pass. They prove navigation is reissued after simulated cleanup; live Google login has not been retested."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-11T02:10:11Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.5,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 2.0,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 12.9,
-            "log": ""
-          },
-          {
-            "id": "web-build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 9.5,
-            "log": ""
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 51.0,
-            "log": ""
-          }
-        ],
-        "taskHash": "eb50b116ebc390e6",
-        "filesHash": "db5ebfa41f3c5fdd",
-        "proof": {
-          "1": "web-unit: sign-in-screen tests reproduce callback cleanup interrupting navigation and cover email login and restored sessions."
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Reviewed the sign-in diff, all SignInForm readers, the installed Privy callback cleanup and Next.js RESTORE behavior. Query changes remount only the redirect after authentication, preserving the sign-in gate. The three targeted tests pass. They prove navigation is reissued after simulated cleanup; live Google login has not been retested.",
-          "at": "2026-11-11T02:14:07Z",
-          "filesHash": "db5ebfa41f3c5fdd"
-        },
-        "commit": "51d653cd",
-        "doneAt": "2026-11-11T02:14:54Z"
-      },
-      "branch": "fix/f480-google-sign-in-reaches-the-app-without-r",
-      "baseCommit": "0c87fba7dcbb3be68d130e7d154988032374b889",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f480-google-sign-in-reaches-the-app-without-r",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F481",
-      "type": "feat",
-      "behavior": "The node package's types and the public API reference match what the API returns today, fees and returns included",
-      "acceptance": [
-        "The node package types every invoice and payment-option field the API returns (confirming, closed, option choice, title, per-option fees, coverage, settlement, returns, deposits), with no field left as unknown that the API sends.",
-        "The node README, its CHANGELOG and the public API reference at /docs name feesPaidBy, each fee field, amounts.fees, observedRefunded and lastReturnTxHash, and the fee preview route.",
-        "R-228 says which package carries the fee fields; the js and react packages stay as they are, and every package check passes."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "browser-packages",
-        "node-unit",
-        "web-unit"
-      ],
-      "refs": [
-        "R-228",
-        "R-154"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-11 review pass by subagent: First pass FAIL on one item, fixed: the node CHANGELOG now states the types-only break (Invoice and PaymentOption no longer accept unknown keys). Checked fine: every field of Invoice, InvoiceDetails, InvoiceOption, PaymentOption, PaymentCoverage, PaymentSettlement, PaymentReturn, Deposit and DepositSummary against the Go JSON structs (names, omitempty, pointers, money as strings, enums); create/get/cancel/reopen/send and webhooks really send the owner detail shape and list the short one; docs-api's Preview fees route, scope and params match routes.go, access.go and fees.go; the checkout-sessions line is true for 0.2.0. Also added node-unit to R-228's checks. Merged origin/main (the Google sign-in hotfix took F480, so this task is F481)."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-11T02:19:43Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.8,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 13.0,
-            "log": ""
-          },
-          {
-            "id": "node-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.9,
-            "log": ""
-          },
-          {
-            "id": "browser-packages",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 53.5,
-            "log": ""
-          }
-        ],
-        "taskHash": "011ee2ec9a84a62e",
-        "filesHash": "138a9ba1a5142eaf",
-        "proof": {
-          "1": "node-unit: the node package typechecks and its 17 tests pass with Invoice, InvoiceDetails, InvoiceOption and PaymentOption typing every JSON field of invoiceapi invoiceJSON/optionJSON/invoiceDetailJSON/ownerInvoiceJSON and paymentapi optionJSON; the review compared each Go JSON tag, omitempty and pointer with the TypeScript keys and found no mismatch; the example merchant typechecks.",
-          "2": "web-unit: the web app typechecks and its tests pass with docs-api.ts naming feesPaidBy, each fee field, amounts.fees, observedRefunded, lastReturnTxHash and the Preview fees route (routes.go:43, invoices.read); the node README and CHANGELOG name them, and the CHANGELOG states the types-only break.",
-          "3": "browser-packages: the js and react packages are unchanged in code and pass the size, install, import, render and type checks; R-228 now says the node package carries the fee fields and js/react carry only the payment status (D-117)."
-        },
-        "review": {
-          "result": "pass",
-          "by": "subagent",
-          "summary": "First pass FAIL on one item, fixed: the node CHANGELOG now states the types-only break (Invoice and PaymentOption no longer accept unknown keys). Checked fine: every field of Invoice, InvoiceDetails, InvoiceOption, PaymentOption, PaymentCoverage, PaymentSettlement, PaymentReturn, Deposit and DepositSummary against the Go JSON structs (names, omitempty, pointers, money as strings, enums); create/get/cancel/reopen/send and webhooks really send the owner detail shape and list the short one; docs-api's Preview fees route, scope and params match routes.go, access.go and fees.go; the checkout-sessions line is true for 0.2.0. Also added node-unit to R-228's checks. Merged origin/main (the Google sign-in hotfix took F480, so this task is F481).",
-          "at": "2026-11-11T02:21:00Z",
-          "filesHash": "138a9ba1a5142eaf"
-        },
-        "commit": "60067446",
-        "doneAt": "2026-11-11T02:21:07Z"
-      },
-      "branch": "feat/f480-the-node-package-s-types-and-the-public",
-      "baseCommit": "0c87fba7dcbb3be68d130e7d154988032374b889",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "feat/f480-the-node-package-s-types-and-the-public",
-        "base": "main"
-      }
-    },
-    {
       "id": "F482",
       "type": "feat",
       "behavior": "Invoice and receipt PDFs follow the redesigned documents",
@@ -1140,32 +319,31 @@
       "evidence": null
     },
     {
-      "id": "F483",
-      "type": "chore",
-      "behavior": "forwend 0.2.1 is on npm with the fee, cross-chain and invoice type changes",
+      "id": "F484",
+      "type": "docs",
+      "behavior": "The repository is ready to be public: a clear README, an MIT license and env examples that list only the keys in use",
       "acceptance": [
-        "forwend 0.2.1 is published on npm from this repository's packages/node, with the fee, cross-chain and typed invoice changes, and the npm page shows its README.",
-        "The package version, its CHANGELOG heading, the docs' install line, reference version and changelog, packages/node/AGENTS.md and PLAN 11.9.4 name 0.2.1."
+        "The root README says what Forwend is, how a payment and a cross-chain payment through NEAR Intents work, how to install and use the forwend, @forwend/js and @forwend/react packages, how to run the repository locally, a short roadmap, how to report a vulnerability, and the license.",
+        "The repository has an MIT LICENSE at its root, matching the packages' license (D-103).",
+        "Each .env.example lists only keys the code, tooling or deployment reads, without comments; every key the code reads is listed.",
+        "Nothing that would leak secrets or private data is in any branch, tag or commit that goes public."
       ],
       "dependsOn": [],
       "state": "passing",
       "verification": [
-        "node-unit",
-        "web-unit"
+        "docs-check"
       ],
-      "refs": [
-        "R-154"
-      ],
+      "refs": [],
       "keep": [],
       "review": true,
       "notes": [
-        "2026-11-11 review pass by subagent: One stale version, fixed: the example merchant README named 0.2.0. Checked fine: package.json, the CHANGELOG heading, packages/node/AGENTS.md, the docs install line and reference version, and PLAN 11.9.4 say 0.2.1; other 0.2.0 mentions are historical; npm serves 0.2.1 as latest with its README; the CHANGELOG and /docs entry state the TypeScript-only break; the docs sentence on what the package covers matches client.ts and index.ts."
+        "2026-11-11 review pass by subagent: First pass found four overstated README claims, all corrected: the status note now says test mode runs on testnets and live mode on mainnets as a development deployment until the audit; Send is to a wallet on the same network after a fresh sign-in check; held money goes back only through the refund authority (a time-delayed multisig at launch); Forwend holds none of the payer's money in transit, and cross-chain is live mode only. Checked fine: package names, install lines, API and prop names, prerequisite versions, root scripts, the folder table, every link, no competitor named, and no .env.example key lost (three used keys added). The Security tab link needs private vulnerability reporting, enabled right after the repo goes public."
       ],
       "blockedReason": null,
       "evidence": {
         "version": 3,
         "status": "passed",
-        "at": "2026-11-11T02:43:54Z",
+        "at": "2026-11-11T03:16:51Z",
         "checks": [
           {
             "id": "harness",
@@ -1186,164 +364,62 @@
             "id": "lint",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.4,
+            "seconds": 0.3,
             "log": ""
           },
           {
             "id": "typecheck",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 0.8,
+            "seconds": 0.2,
             "log": ""
           },
           {
             "id": "unit",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 84.6,
+            "seconds": 94.9,
             "log": ""
           },
           {
             "id": "build",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 8.0,
+            "seconds": 1.4,
             "log": ""
           },
           {
             "id": "e2e",
             "outcome": "passed",
             "exit": 0,
-            "seconds": 50.6,
-            "log": ""
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 12.7,
-            "log": ""
-          },
-          {
-            "id": "node-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.9,
+            "seconds": 51.7,
             "log": ""
           }
         ],
-        "taskHash": "d5affe36f11734ea",
-        "filesHash": "5d20a9e9192b9d30",
+        "taskHash": "b4aa28a8ef7ad411",
+        "filesHash": "cda2b5affbf78a06",
         "proof": {
-          "1": "node-unit: the node package builds and its 17 tests pass; npm view forwend@0.2.1 answers version 0.2.1 with 14 files as latest, and the tarball pulled from npm carries InvoiceDetails, the fee fields and crossChain in dist/types.d.ts.",
-          "2": "web-unit: the web app's tests and typecheck pass with the docs install line npm install forwend@0.2.1, the reference version 0.2.1 and a 2026-11-11 changelog entry; package.json, CHANGELOG, packages/node/AGENTS.md, PLAN 11.9.4 and the example merchant README name 0.2.1."
+          "1": "docs-check: README.md covers what Forwend is, how a payment works, cross-chain payments through NEAR Intents (live mode only; D-123, D-124, D-125, R-231–R-240), the three packages with install and usage, the repository layout, local setup, a roadmap from PLAN.md, private vulnerability reporting and the license; a review checked each claim against the code and four were corrected.",
+          "2": "docs-check: LICENSE at the root is the packages' MIT text (Copyright (c) 2026 Forwend) and the root package.json says MIT.",
+          "3": "docs-check: the four .env.example files have no comment lines; an audit of every key found a reader for each (config.go, next.config, scripts, compose, Foundry), and KIT_ENABLED, RESEND_API_URL and BASE_SEPOLIA_RPC were added; facts only the comments held moved to api.md, architecture.md and contracts operations.",
+          "4": "docs-check: a scan of all 1,829 commits, 13,090 blobs and every PR ref found no secrets: no keys, tokens, mnemonics, keystores or committed .env files; the only private key is Anvil key #0 in test code. The owner accepted publishing the history as it is."
         },
         "review": {
           "result": "pass",
           "by": "subagent",
-          "summary": "One stale version, fixed: the example merchant README named 0.2.0. Checked fine: package.json, the CHANGELOG heading, packages/node/AGENTS.md, the docs install line and reference version, and PLAN 11.9.4 say 0.2.1; other 0.2.0 mentions are historical; npm serves 0.2.1 as latest with its README; the CHANGELOG and /docs entry state the TypeScript-only break; the docs sentence on what the package covers matches client.ts and index.ts.",
-          "at": "2026-11-11T02:46:42Z",
-          "filesHash": "5d20a9e9192b9d30"
+          "summary": "First pass found four overstated README claims, all corrected: the status note now says test mode runs on testnets and live mode on mainnets as a development deployment until the audit; Send is to a wallet on the same network after a fresh sign-in check; held money goes back only through the refund authority (a time-delayed multisig at launch); Forwend holds none of the payer's money in transit, and cross-chain is live mode only. Checked fine: package names, install lines, API and prop names, prerequisite versions, root scripts, the folder table, every link, no competitor named, and no .env.example key lost (three used keys added). The Security tab link needs private vulnerability reporting, enabled right after the repo goes public.",
+          "at": "2026-11-11T03:19:31Z",
+          "filesHash": "cda2b5affbf78a06"
         },
-        "commit": "ff9642d4",
-        "doneAt": "2026-11-11T02:46:49Z"
+        "commit": "42ff7344",
+        "doneAt": "2026-11-11T03:19:32Z"
       },
-      "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
-      "baseCommit": "4926bcf5fe68bab1fca005b92160127f7c913042",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F485",
-      "type": "fix",
-      "behavior": "The token picker shows a centered Powered by NEAR Intents footer.",
-      "acceptance": [
-        "The Pay with any token dialog shows the existing centered NEAR Intents credit on desktop and phone layouts."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "web-e2e"
-      ],
-      "refs": [
-        "R-236"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-11 review pass by independent reviewer: No findings. The picker reuses the existing centered credit after loading, empty, and result states. Desktop and phone screenshots confirm placement. The two-line source change, DESIGN bullet, and task record are in scope; all selected checks passed."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-11T03:10:58Z",
-        "checks": [
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "web-e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          }
-        ],
-        "taskHash": "8b24b91b6d09f722",
-        "filesHash": "0877585bfd57488a",
-        "proof": {
-          "1": "web-e2e: The existing desktop and 390 px phone picker flow passes. A temporary visibility assertion failed before the fix and passed after it. The centered footer is visible in both captured layouts: docs/runs/F485-picker-desktop.png and docs/runs/F485-picker-phone.png. Temporary screenshot and copy checks were removed after verification."
-        },
-        "review": {
-          "result": "pass",
-          "by": "independent reviewer",
-          "summary": "No findings. The picker reuses the existing centered credit after loading, empty, and result states. Desktop and phone screenshots confirm placement. The two-line source change, DESIGN bullet, and task record are in scope; all selected checks passed.",
-          "at": "2026-11-11T03:11:25Z",
-          "filesHash": "0877585bfd57488a"
-        },
-        "commit": "3b58bb40",
-        "doneAt": "2026-11-11T03:11:57Z"
-      },
-      "branch": "fix/f485-the-token-picker-shows-a-centered-powere",
+      "branch": "docs/f484-the-repository-is-ready-to-be-public-a-c",
       "baseCommit": "7452b397d9e23e7731b7abae0e2dfdd556dce593",
       "failedVerifies": 0,
       "delivery": {
         "mode": "pr",
-        "branch": "fix/f485-the-token-picker-shows-a-centered-powere",
+        "branch": "docs/f484-the-repository-is-ready-to-be-public-a-c",
         "base": "main"
       }
     }

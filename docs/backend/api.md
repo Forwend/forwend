@@ -110,6 +110,7 @@ R-227, D-122; the full schema is in openapi.yaml.
   - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).
   - A quote over 5.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
   - The platform fee is `PLATFORM_FEE_BPS` (0 to 500) of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
+    - Unset, each is 0: no platform fee. The api and the worker read the same values.
 - `feesPaidBy` is `owner` (deducted at settlement) or `client` (added on top of the price).
   - The profile's choice applies unless an invoice, checkout session or link says otherwise.
   - `PUT /v1/profiles/{profileId}/fees` takes `{"feesPaidBy": "owner"|"client"}`, with `billing.write`. `GET /v1/me` gives it.

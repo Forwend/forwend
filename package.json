@@ -1,6 +1,7 @@
 {
   "name": "forwend-monorepo",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@12.15.0",
   "engines": {
     "node": ">=26"

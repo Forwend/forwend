@@ -61,7 +61,7 @@ Read only the sections your task touches:
     - It writes what changed to `crosschain_quotes` and the history; it never decides paid.
     - The alerts every 5 minutes include cross-chain payments that hold a payer's money.
   - It keeps CoinGecko's USD prices of the stablecoins for display (`internal/price`, R-178, D-115).
-    - It reads them at start, every 15 minutes (`COINGECKO_INTERVAL`), and 2 minutes after a failure.
+    - It reads them at start, every 15 minutes (`COINGECKO_INTERVAL`, at least 1 minute), and 2 minutes after a failure.
     - A read times out after 10 s; a redirect or an answer over 64 KiB fails it.
     - It sends `COINGECKO_API_KEY`, a Demo plan key, when set; only the worker holds it.
     - A coin the answer gives no price keeps its last one, which turns stale.

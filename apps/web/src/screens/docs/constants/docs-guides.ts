@@ -83,7 +83,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         ],
         code: {
           language: "Shell",
-          code: `export FORWEND_API_URL=${API_ADDRESS}\nexport FORWEND_KEY=fw_test_replace_on_your_server\nexport FORWEND_PROFILE_ID=replace_with_your_profile_id\nexport FORWEND_STORE_ID=replace_with_your_store_id`,
+          code: `export FORWEND_API_URL=${API_ADDRESS}\nexport FORWEND_API_KEY=fw_test_replace_on_your_server\nexport FORWEND_PROFILE_ID=replace_with_your_profile_id\nexport FORWEND_STORE_ID=replace_with_your_store_id`,
         },
       },
       {
@@ -139,7 +139,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         ],
         code: {
           language: "Shell",
-          code: `curl "$FORWEND_API_URL/v1/profiles/$FORWEND_PROFILE_ID/checkout-sessions/$SESSION_ID" \\\n  -H "Authorization: Bearer $FORWEND_KEY"`,
+          code: `curl "$FORWEND_API_URL/v1/profiles/$FORWEND_PROFILE_ID/checkout-sessions/$SESSION_ID" \\\n  -H "Authorization: Bearer $FORWEND_API_KEY"`,
         },
         links: [
           { label: "Set up and verify webhooks", slug: "integrate/webhooks" },
@@ -432,7 +432,7 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         points: [
           "payToken identifies the hosted payment page and can be passed to a customer.",
           "The store’s allowed origins decide which sites may embed its checkout.",
-          "FORWEND_KEY and FORWEND_WEBHOOK_SECRET stay on your server.",
+          "FORWEND_API_KEY and FORWEND_WEBHOOK_SECRET stay on your server.",
           "Callbacks update presentation only; confirm payment through the server API.",
         ],
       },
