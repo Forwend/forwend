@@ -43,6 +43,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   Like the passkey check, it binds Forwend's page only, not Privy's API (Q-13). Privy loads only in the
   `(app)` route group (`/sign-in`, `/app`), never on the landing page or checkout. `/app` sends signed-out visitors to
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
+  - The signed-in redirect follows query changes, so Privy's Google callback cleanup cannot leave users waiting on `/sign-in`.
 - A fresh sign-in (R-137): when the API answers 401 `reauth_required`, `shared/api/fresh-sign-in.ts` holds the request.
   - `providers/store-provider.tsx` mounts `FreshSignInProvider` (`features/auth/components/fresh-sign-in.tsx`) once.
   - A form sends its request through `useFreshSignIn().run`, which claims the ask: its `step` shows in the form.
