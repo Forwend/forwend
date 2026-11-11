@@ -541,7 +541,7 @@
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -637,11 +637,18 @@
           "summary": "First pass FAIL, 3 blocking findings, all fixed with failing-first tests. (1) Items lost the Subtotal and fee rows when the client pays the fees; it uses linesFigures again. (2) The notice hid returns the money line can't show; it now skips only the option whose whole return the line shows. (3) A canceled invoice with held money read Still due; owing now leaves out canceled. Also fixed: Email the client waits for the owner read, plus stale comments and docs. Second pass PASS: no new money or regression bug. Left as follow-ups: the phone focus order follows the DOM, not CSS order; copying has no manual fallback; Send sits beside Receive on the desktop overview card.",
           "at": "2026-11-11T01:42:47Z",
           "filesHash": "9c0a0b48f9a8b4a2"
-        }
+        },
+        "commit": "ea203bab",
+        "doneAt": "2026-11-11T01:43:23Z"
       },
       "branch": "feat/f476-the-owner-s-invoice-page-and-the-in-pers",
       "baseCommit": "6571b253ff53c71adb2fda9f94f0704e6450bc69",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f476-the-owner-s-invoice-page-and-the-in-pers",
+        "base": "main"
+      }
     },
     {
       "id": "F477",
