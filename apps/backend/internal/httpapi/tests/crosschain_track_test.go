@@ -74,7 +74,8 @@ func historyKinds(t *testing.T, e invoiceEnv, pay string) map[string]map[string]
 func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
-	start := time.Now()
+	// Postgres keeps microseconds: an exact next check compares equal only to a time at that precision.
+	start := time.Now().Truncate(time.Microsecond)
 
 	// Waiting in its price window: every 30 s.
 	if next := checkAt(t, e, worker, id, start); next == nil || next.Sub(start) != 30*time.Second {
@@ -265,7 +266,7 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	e3, fake3, worker3, pay3, quote3 := tracked(t)
 	id3 := quote3["quoteId"].(string)
 	fake3.Down = true
-	now := time.Now()
+	now := time.Now().Truncate(time.Microsecond)
 	if next := checkAt(t, e3, worker3, id3, now); next == nil || next.Sub(now) != time.Minute {
 		t.Fatalf("down: next %v", next)
 	}

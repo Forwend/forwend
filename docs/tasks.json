@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 490,
+  "nextId": 491,
   "tasks": [
     {
       "id": "F332",
@@ -750,6 +750,78 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f489-backend-tests-that-failed-on-a-busy-ci-r",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F490",
+      "type": "fix",
+      "behavior": "A rate bucket that does not refill holds on every CPU, and the cross-chain tracking tests pass on Linux",
+      "acceptance": [
+        "On amd64, as on arm64, an empty rate bucket that does not refill makes a request wait instead of letting it through.",
+        "The cross-chain tracking tests compare next checks at Postgres's microsecond precision, so they pass on Linux as on macOS."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: Normal rates are unchanged; the new branch needs rate <= 0 or a wait past MaxInt64, where the old conversion was CPU-dependent (MaxInt64 on arm64, MinInt64 on amd64). Every Buckets.Wait caller only checks wait > 0 or ceils it into Retry-After (9223372037 at the max, fits int). Production rates are all positive; rate 0 occurs only in the cross-chain budget test. The new mid test can only fail on x86, so the staging run is its proof. No other exact next-check comparison in the cross-chain tests uses an untruncated time.Now()."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T04:27:13Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 55.7,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 32.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "3bb88077fbaf92ea",
+        "filesHash": "5e2241a7e0d894c6",
+        "proof": {
+          "1": "backend-affected: TestAnEmptyBucketThatDoesNotRefillWaitsOnEveryCPU checks that a bucket with rate 0 or 1e-12 waits the longest once empty. Before the change Wait returned time.Duration(+Inf), which is MaxInt64 on arm64 but MinInt64 on amd64, so on the CI runner the shared cross-chain price budget let a 22nd call through (crosschain_test.go:331 in staging run 42957817059). The httpapi tests pass.",
+          "2": "backend-affected: the tracking tests now truncate their start times to microseconds; with 123 ns added to the start and no truncation, TestWorkerFollowsAQuoteFromDepositToConversion failed here with the CI message 'waiting: next ...', and passed once truncated. The httpapi tests pass twice with -race."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Normal rates are unchanged; the new branch needs rate <= 0 or a wait past MaxInt64, where the old conversion was CPU-dependent (MaxInt64 on arm64, MinInt64 on amd64). Every Buckets.Wait caller only checks wait > 0 or ceils it into Retry-After (9223372037 at the max, fits int). Production rates are all positive; rate 0 occurs only in the cross-chain budget test. The new mid test can only fail on x86, so the staging run is its proof. No other exact next-check comparison in the cross-chain tests uses an untruncated time.Now().",
+          "at": "2026-11-11T04:28:52Z",
+          "filesHash": "5e2241a7e0d894c6"
+        },
+        "commit": "94c91aef",
+        "doneAt": "2026-11-11T04:28:52Z"
+      },
+      "branch": "fix/f490-a-rate-bucket-that-does-not-refill-holds",
+      "baseCommit": "a3b786681baad1f55ac723a34738a15242274899",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f490-a-rate-bucket-that-does-not-refill-holds",
         "base": "main"
       }
     }
