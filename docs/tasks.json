@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 493,
+  "nextId": 494,
   "tasks": [
     {
       "id": "F332",
@@ -1020,6 +1020,72 @@
         "branch": "test/f492-the-kit-s-reduced-motion-check-holds-on",
         "base": "main"
       }
+    },
+    {
+      "id": "F493",
+      "type": "fix",
+      "behavior": "Two-step turned on with a passkey the account already has is saved, not refused as not set up",
+      "acceptance": [
+        "A Privy user read made right after two-step is set up lists it, though Privy's edge cached an earlier read for 10 s"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "backend-affected"
+      ],
+      "refs": [
+        "R-219",
+        "D-49"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-11 review pass by subagent: Pass. The one production Privy user read (privy.go:165, c.user) now adds a random query, and every user read uses it: LoginEmail (profile/signup.go:76, team/invites.go:129) and SignInTimes (mid/auth.go:163, reauthapi/codes.go:63). It only makes the D-49 fresh sign-in and two-step checks read current data, closing a 10 s window where a cached read could miss a method a stolen session just set up. In a scratch copy the new test fails with the old call ('right after the setup: []') and passes with the fix; -race -count=30 passes. The fake's edge map is read and written under f.mu. Comments and the architecture.md paragraph state the reason, not history. Non-blocking: RecordTwoStep's 3x700 ms rereads (reauth.go:223) and openapi.yaml:840 'Privy can answer without a new method for a moment' may only have covered this cache; the live test reads no user, so nothing live guards Privy accepting the extra query."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T11:22:42Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 63.5,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.1,
+            "log": ""
+          }
+        ],
+        "taskHash": "760d6b7f4d4107d9",
+        "filesHash": "d5dfe862359e390f",
+        "proof": {
+          "1": "backend-affected: TestSignInTimesSeesTwoStepSetUpRightAfterAnotherRead reads the user, sets two-step at a fake Privy that caches each user read by URL like Privy's edge, and reads again; it failed before the fix (right after the setup: []) and passes after"
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "Pass. The one production Privy user read (privy.go:165, c.user) now adds a random query, and every user read uses it: LoginEmail (profile/signup.go:76, team/invites.go:129) and SignInTimes (mid/auth.go:163, reauthapi/codes.go:63). It only makes the D-49 fresh sign-in and two-step checks read current data, closing a 10 s window where a cached read could miss a method a stolen session just set up. In a scratch copy the new test fails with the old call ('right after the setup: []') and passes with the fix; -race -count=30 passes. The fake's edge map is read and written under f.mu. Comments and the architecture.md paragraph state the reason, not history. Non-blocking: RecordTwoStep's 3x700 ms rereads (reauth.go:223) and openapi.yaml:840 'Privy can answer without a new method for a moment' may only have covered this cache; the live test reads no user, so nothing live guards Privy accepting the extra query.",
+          "at": "2026-11-11T11:27:19Z",
+          "filesHash": "d5dfe862359e390f"
+        }
+      },
+      "branch": "fix/f493-two-step-turned-on-with-a-passkey-the-ac",
+      "baseCommit": "aa996482a4d64aa644f78dff30b89b1538459031",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

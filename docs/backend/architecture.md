@@ -397,6 +397,9 @@ failed create. The server never signs
 for these wallets (D-46). Tests run against a fake Privy API (`privy/privytest`); `-tags privylive` runs one against
 the Privy test app. Each call is bounded by `privy.Timeout` (20 s, under the api's 30 s write timeout).
 
+Privy's edge keeps a `GET /v1/users/{id}` answer for 10 s by its URL, despite `Cache-Control: no-store`. Each user
+read adds a query of its own, so it sees changes made since, such as two-step just set up.
+
 `internal/profile` (R-32) signs a user up (`POST /v1/me`: the user and personal profile, inserted in one transaction with
 `ON CONFLICT DO NOTHING`) and creates freelancer and merchant profiles once per Idempotency-Key. Each then gets its
 wallet from `ProfileWallet`, outside any transaction; the wallet row is stored under a lock on the profile row, so

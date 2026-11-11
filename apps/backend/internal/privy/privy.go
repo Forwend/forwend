@@ -5,6 +5,7 @@ package privy
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -139,7 +140,7 @@ func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID strin
 func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	u, err := c.sdk.Users.Get(ctx, privyUserID)
+	u, err := c.user(ctx, privyUserID)
 	if err != nil {
 		return "", fmt.Errorf("read Privy user: %w", err)
 	}
@@ -157,6 +158,13 @@ func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, er
 	return google, nil
 }
 
+// user reads the user as Privy has them now. Privy's edge caches a user read by its URL for 10 s, despite
+// Cache-Control: no-store, so a read soon after another misses a change made in between, such as two-step just set up.
+// A query of its own keeps each read off that cache.
+func (c *Client) user(ctx context.Context, privyUserID string) (*privyclient.User, error) {
+	return c.sdk.Users.Get(ctx, privyUserID, option.WithQuery("read", rand.Text()))
+}
+
 // NewAccountAge: an email or passkey linked this recently isn't a sign-in for D-49. A stolen session can link its own
 // at Privy and sign in with it (Q-13). The one the user signed up with counts at once: a passkey alone has no email
 // for a code.
@@ -171,7 +179,7 @@ func (c *Client) SignInTimes(ctx context.Context, privyUserID, loginEmail string
 	err error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	u, err := c.sdk.Users.Get(ctx, privyUserID)
+	u, err := c.user(ctx, privyUserID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read Privy user: %w", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -137,5 +138,20 @@ func TestProfileWalletBelongsToItsUser(t *testing.T) {
 	}
 	if w, err := c.ProfileWallet(ctx, "did:privy:mallory", profile); err == nil {
 		t.Fatalf("another user got %+v", w)
+	}
+}
+
+func TestSignInTimesSeesTwoStepSetUpRightAfterAnotherRead(t *testing.T) {
+	f, c := newFake(t)
+	f.EdgeCache = true
+	if _, twoStep, err := c.SignInTimes(context.Background(), user, ""); err != nil || len(twoStep) != 0 {
+		t.Fatalf("before the setup: %v %v", twoStep, err)
+	}
+	f.Lock()
+	f.Mfa[user] = map[string]int64{"passkey": 90}
+	f.Unlock()
+	if _, twoStep, err := c.SignInTimes(context.Background(), user, ""); err != nil ||
+		!slices.Equal(twoStep, []string{"passkey:90"}) {
+		t.Fatalf("right after the setup: %v %v", twoStep, err)
 	}
 }
