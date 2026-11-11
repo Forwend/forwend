@@ -169,9 +169,18 @@ test("a dialog and a centered sheet fade in as they open, and at once with reduc
         trigger,
       );
       const dialog = page.getByRole("dialog", { name });
-      // Reduced motion: both whole a few frames in, while a 200 ms fade is still under way.
-      if (reducedMotion === "reduce") expect(seen.at(-1)).toEqual([1, 1]);
-      else expect(Math.min(...seen.flat())).toBeLessThan(1);
+      if (reducedMotion === "reduce") {
+        // Reduced motion cuts every transition to 0.01 ms (design-tokens base.css). Read that, not frames: a runner
+        // can start even so short a transition a few frames late.
+        const seconds = await dialog.evaluate((el) =>
+          [getComputedStyle(el), getComputedStyle(el, "::backdrop")].flatMap((style) =>
+            style.transitionDuration
+              .split(",")
+              .map((d) => Number.parseFloat(d) / (d.trim().endsWith("ms") ? 1000 : 1)),
+          ),
+        );
+        expect(Math.max(...seconds)).toBeLessThan(0.0001);
+      } else expect(Math.min(...seen.flat())).toBeLessThan(1);
       await expect
         .poll(() => dialog.evaluate((el) => Number(getComputedStyle(el).opacity)))
         .toBe(1);
