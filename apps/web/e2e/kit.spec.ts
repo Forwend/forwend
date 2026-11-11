@@ -135,23 +135,40 @@ test("a dialog and a centered sheet fade in as they open, and at once with reduc
       ["Open dialog", "Confirm withdrawal"],
       ["Open sheet", "Receive"],
     ]) {
-      await page.getByRole("button", { name: trigger, exact: true }).click();
-      const dialog = page.getByRole("dialog", { name });
-      const seen = await dialog.evaluate(
-        (el) =>
+      // Sampled from the moment the dialog opens, in the page itself: a slow runner's round trip after a click can
+      // outlast the 200 ms fade.
+      const seen = await page.evaluate(
+        (label) =>
           new Promise<number[][]>((resolve) => {
-            const frames: number[][] = [];
-            const sample = () => {
-              frames.push([
-                Number(getComputedStyle(el).opacity),
-                Number(getComputedStyle(el, "::backdrop").opacity),
-              ]);
-              if (frames.length < 4) requestAnimationFrame(sample);
-              else resolve(frames);
-            };
-            sample();
+            const observer = new MutationObserver((records) => {
+              const el = records
+                .map((r) => r.target)
+                .find((t) => t instanceof HTMLDialogElement && t.open);
+              if (!(el instanceof HTMLDialogElement)) return;
+              observer.disconnect();
+              const frames: number[][] = [];
+              const sample = () => {
+                frames.push([
+                  Number(getComputedStyle(el).opacity),
+                  Number(getComputedStyle(el, "::backdrop").opacity),
+                ]);
+                if (frames.length < 4) requestAnimationFrame(sample);
+                else resolve(frames);
+              };
+              sample();
+            });
+            observer.observe(document.body, {
+              subtree: true,
+              attributes: true,
+              attributeFilter: ["open"],
+            });
+            [...document.querySelectorAll("button")]
+              .find((b) => b.textContent?.trim() === label)
+              ?.click();
           }),
+        trigger,
       );
+      const dialog = page.getByRole("dialog", { name });
       // Reduced motion: both whole a few frames in, while a 200 ms fade is still under way.
       if (reducedMotion === "reduce") expect(seen.at(-1)).toEqual([1, 1]);
       else expect(Math.min(...seen.flat())).toBeLessThan(1);
