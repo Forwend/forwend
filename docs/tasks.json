@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 491,
+  "nextId": 492,
   "tasks": [
     {
       "id": "F332",
@@ -824,6 +824,97 @@
         "branch": "fix/f490-a-rate-bucket-that-does-not-refill-holds",
         "base": "main"
       }
+    },
+    {
+      "id": "F491",
+      "type": "test",
+      "behavior": "The kit's fade-in test passes on a slow CI runner",
+      "acceptance": [
+        "The kit's fade-in test catches the dialog and sheet fades however slow the browser runs, and still sees no fade with reduced motion."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "kit-e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: The observer is attached before the click, filters to a dialog becoming open, and the two kit triggers have unique labels; Sheet's open in a useEffect still sets the open attribute, so it fires. A missing trigger would hang until Playwright's timeout, which fails loudly. Reduced motion asserts the same last sample; the dialog locator, Escape and toBeHidden are unchanged."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T04:43:06Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.0,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.5,
+            "log": ""
+          },
+          {
+            "id": "kit-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 16.0,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.7,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 48.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "800afb7a82512fc3",
+        "filesHash": "87fca43ef691a6e0",
+        "proof": {
+          "1": "kit-e2e: the fade test now clicks the trigger inside the page and samples opacity from the moment the dialog's open attribute appears. With Chrome's CPU throttled 20x, the old test failed as on staging CI (run 42959532854: 'Received: 1'), and the new one passed; it also passes unthrottled, with reduced motion still reading [1, 1]."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "The observer is attached before the click, filters to a dialog becoming open, and the two kit triggers have unique labels; Sheet's open in a useEffect still sets the open attribute, so it fires. A missing trigger would hang until Playwright's timeout, which fails loudly. Reduced motion asserts the same last sample; the dialog locator, Escape and toBeHidden are unchanged.",
+          "at": "2026-11-11T04:45:02Z",
+          "filesHash": "87fca43ef691a6e0"
+        }
+      },
+      "branch": "test/f491-the-kit-s-fade-in-test-passes-on-a-slow",
+      "baseCommit": "3fa7f8c7fea37d01c2f39d6487eb83dc26ce919f",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
