@@ -5,6 +5,7 @@ import type {
   CreateCheckoutSession,
   CreateInvoice,
   Invoice,
+  InvoiceDetails,
   ListCheckoutSessions,
   ListInvoices,
   ListPayments,
@@ -70,16 +71,16 @@ export class Forwend {
   };
   readonly invoices: {
     /** Creates an invoice. The same idempotencyKey and body return the same invoice; one is made when none is given. */
-    create(body: CreateInvoice, options?: { idempotencyKey?: string }): Promise<Invoice>;
-    get(invoiceId: string): Promise<Invoice>;
+    create(body: CreateInvoice, options?: { idempotencyKey?: string }): Promise<InvoiceDetails>;
+    get(invoiceId: string): Promise<InvoiceDetails>;
     /** Every invoice, newest first, page after page through nextCursor. */
     list(params?: ListInvoices): AsyncGenerator<Invoice>;
     /** Cancels an invoice before any money arrives. */
-    cancel(invoiceId: string): Promise<Invoice>;
+    cancel(invoiceId: string): Promise<InvoiceDetails>;
     /** Reopens an invoice that closed partly paid. */
-    reopen(invoiceId: string): Promise<Invoice>;
+    reopen(invoiceId: string): Promise<InvoiceDetails>;
     /** Emails the invoice to its client, once a day at most. The same idempotencyKey sends nothing more. */
-    send(invoiceId: string, options?: { idempotencyKey?: string }): Promise<Invoice>;
+    send(invoiceId: string, options?: { idempotencyKey?: string }): Promise<InvoiceDetails>;
   };
   readonly stores: {
     /** The profile's stores, the first one first. */

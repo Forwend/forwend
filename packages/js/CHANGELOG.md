@@ -3,6 +3,7 @@
 ## Unreleased
 
 - The README says a checkout is in live mode on mainnets or test mode on testnets, by its key.
+- The README says an event's `invoiceId` is the checkout session's `payment.paymentId`.
 
 ## 0.1.1 (2026-11-08)
 

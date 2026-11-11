@@ -30,6 +30,7 @@ import { Checkout, PayButton, PaymentElement } from "@forwend/react";
 - `theme` is `light` or `dark`. Without it the checkout follows the visitor's system theme, so set it when your page has one.
 - `baseUrl` must be https, or http on localhost while you develop.
 - Events are hints for your page. Fulfil the order from the `invoice.paid` webhook, never from them.
+- An event's `invoiceId` is the checkout session's `payment.paymentId`.
 - If your page sends a Content-Security-Policy, allow `frame-src https://forwend.com`.
 - The components work in Next.js app routes: they are client components and render an empty box on the server.
 
