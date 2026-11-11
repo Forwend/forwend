@@ -108,6 +108,7 @@ code, and never connect a wallet (D-37).
     has a changelog file, size and type checks. After 11.9.3.
     - The 0.1.0 releases were published from a local machine, so they have no provenance.
     - `forwend` 0.2.0 and the browser packages' 0.1.1 followed on 2026-11-08, also from a local machine.
+    - `forwend` 0.2.1 followed on 2026-11-11, also from a local machine.
     - npm held each upload until the owner approved it on npmjs.com (`npm stage`).
     - `.github/workflows/publish.yml` publishes one package, started by hand from main. Before its first run the owner:
       - Makes the repository public: npm makes provenance only from a public repository.

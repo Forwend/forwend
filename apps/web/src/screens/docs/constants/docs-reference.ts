@@ -228,7 +228,7 @@ export const REFERENCE_PAGES: readonly DocsArticle[] = [
         fields: [
           {
             name: "forwend",
-            type: "0.2.0 · Node ≥20",
+            type: "0.2.1 · Node ≥20",
             description:
               "Checkout sessions, payments, invoices, stores, webhook events and signature verification. No runtime dependencies.",
           },
@@ -262,6 +262,15 @@ export const REFERENCE_PAGES: readonly DocsArticle[] = [
     title: "Changelog",
     description: "Verified releases, newest first.",
     sections: [
+      {
+        id: "2026-11-11",
+        title: "2026-11-11 · Fees, cross-chain payments and full invoice types",
+        points: [
+          "forwend 0.2.1: networkFee, platformFee, netAmount and feesPaidBy on invoices, payments and their options.",
+          "Payments through NEAR Intents carry crossChain; every invoice and payment-option field is typed.",
+          "TypeScript only: Invoice and PaymentOption no longer accept unknown keys.",
+        ],
+      },
       {
         id: "2026-11-08",
         title: "2026-11-08 · Packages match the API",

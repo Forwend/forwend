@@ -1,6 +1,6 @@
 {
   "name": "forwend",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The Forwend API for Node: checkout sessions, payments, invoices, stores, webhook events and webhook verification.",
   "license": "MIT",
   "homepage": "https://forwend.com/docs",
