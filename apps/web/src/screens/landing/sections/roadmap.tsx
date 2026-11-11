@@ -32,7 +32,10 @@ export function Roadmap() {
             <span className={styles.dot} aria-hidden="true" />
             <span className={styles.status}>Coming next</span>
             <h3>Agentic payments</h3>
-            <p>Payments initiated by software on your behalf. Further details will follow.</p>
+            <p>
+              x402 payments for AI agents: an agent pays for an API or content per request, in
+              stablecoins.
+            </p>
           </li>
           <li className={styles.planned}>
             <span className={styles.dot} aria-hidden="true" />

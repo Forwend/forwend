@@ -132,7 +132,7 @@ pnpm lint && pnpm typecheck
 ## Roadmap
 
 - **Done: payments.** Invoices and PDFs, payment links, hosted and embedded checkout, signed webhooks, and paying from other chains.
-- **Next: agentic payments.** Payments that software starts on your behalf. Details will follow.
+- **Next: agentic payments.** x402 payments for AI agents: an agent pays for an API or content per request, in stablecoins.
 - **Planned: bank withdrawals.** Move stablecoins to a bank account.
 - **Planned: card and wallet payments.** Customers pay with a card, Apple Pay or Google Pay, with no crypto knowledge. You still receive stablecoins.
 
