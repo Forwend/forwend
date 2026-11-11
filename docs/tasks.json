@@ -317,7 +317,7 @@
         "Requests and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
@@ -395,11 +395,18 @@
           "summary": "First pass FAIL on two items, both fixed: the live developer-mode spec expected the old Off copy, and four docs named old copy or sizes (R-240, the public /docs payments page, DESIGN.md passkey meta and the 56rem form line). Also fixed: the Settings list now redirects when a tablet turns wide, the Notifications placeholder matches the shorter row, the h1 sits outside the nav, and the command menu links to Security directly. Checked fine: every reader of /app/settings and /app/account, permissions (the redirect target needs the same permission as Settings, so no loop), focus after passkey removal, disabled-reason aria-describedby, privy locators, and R-80/136/137/139/217/218/219/221/227, D-122. Not re-reviewed: the fixes are copy, docs and small layout changes.",
           "at": "2026-11-11T02:05:59Z",
           "filesHash": "e6b3320597bacda5"
-        }
+        },
+        "commit": "626d4d65",
+        "doneAt": "2026-11-11T02:06:13Z"
       },
       "branch": "feat/f467-settings-read-short-and-clear-and-a-phon",
       "baseCommit": "65cae8c063bbeb217467ca8709233f9fcb7ae922",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f467-settings-read-short-and-clear-and-a-phon",
+        "base": "main"
+      }
     },
     {
       "id": "F468",
