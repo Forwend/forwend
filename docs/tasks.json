@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 494,
+  "nextId": 495,
   "tasks": [
     {
       "id": "F332",
@@ -1093,6 +1093,90 @@
         "branch": "fix/f493-two-step-turned-on-with-a-passkey-the-ac",
         "base": "main"
       }
+    },
+    {
+      "id": "F494",
+      "type": "feat",
+      "behavior": "forwend.com serves PROJECT.md with the pitch and roadmap and llms.txt for agents and developers, and the README links the X demo",
+      "acceptance": [
+        "forwend.com/PROJECT.md says what Forwend is, who it is for, how NEAR Intents fits in and the roadmap, and marks planned work as planned",
+        "forwend.com/llms.txt follows the llms.txt format: a short description, how to use Forwend, and links to the repository, packages and docs",
+        "The README links the live demo post on X"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [
+        "R-256"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-11 review fail by reviewer: Fail: 4 accuracy problems. (1) public/PROJECT.md:42 'You get the full invoice amount' is false by default: fees_paid_by defaults to owner (migration 00112), so the network fee is deducted at settlement (D-122, R-226). Use the docs/landing wording: 'Your invoice is paid in full', own fees as for a direct payment. (2) public/llms.txt:12-14 tells a freelancer profile to take site payments with checkout sessions; sessions need a merchant store (checkoutapi/create.go:28, invoice/create.go:158, docs-api.ts:337). Say: use a merchant profile with a store, create a key for that store. (3) PROJECT.md:50 'Card payments are the next big step' contradicts its own roadmap line 57 (Next: AI agents) and PRODUCT.md:23 (card = Planned). (4) PROJECT.md:6 'Your clients pay the way they want' (and :3 'from anyone, anywhere') reads as live card support; today clients pay with tokens only. Passed: llms.txt format (H1, blockquote, prose, H2 link lists, Optional); all 15 docs slugs, openapi.yaml, sign-in route, fw_live_/fw_test_ prefixes, public MIT repo exist; no competitor names, secrets or sentences over 25 words; proxy matcher is /embed only, web.Dockerfile copies public, localhost:3000 serves both files 200 with identical content; docs-check 0 errors. Minor, not blocking: PROJECT.md:28 add 'on the same network'; :43 add 'short'; R-256 refs D-103 (package name) weakly; docs-check does not read apps/web/public, so a small e2e GET check would prove R-256; X demo link not verified.",
+        "2026-11-11 review pass by reviewer: Pass on re-review. All 4 earlier findings are fixed: public/PROJECT.md:41 says 'Your invoice is paid in full, as for a direct payment' (true with owner-paid fees, D-122); public/llms.txt:12 says to use a merchant profile with a store and create a key for that store (matches checkoutapi/create.go:28 and docs-api.ts:337); PROJECT.md:49 calls card payments 'a planned step', matching roadmap lines 56-57 and PRODUCT.md:23; PROJECT.md:3 and :6 no longer imply card support today. Minor fixes landed: send on the same network (:27), 'Extra, short or failed' (:42), market-trend line removed, 'settles it to your wallet' in PROJECT.md:30 and llms.txt:7. Rechecked: llms.txt format (H1, blockquote, prose, H2 link lists, Optional), no competitor names or secrets, no sentence over 25 words, docs-check 0 errors, localhost:3000 serves both files identical to the working tree. Accepted as is: R-256 basis D-103 is a weak link but harmless; no kept test for static files, per docs/workflow.md 'Which tests to keep'. X demo link was not opened."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T15:38:16Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.1,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "8b9fde9d90b6868b",
+        "filesHash": "4a53d3d8b009d1a0",
+        "proof": {
+          "1": "docs-check: local next serves /PROJECT.md 200 text/markdown with pitch, NEAR Intents, roadmap (cards and bank Planned, agents Next) and status; review fixes: paid in full as for a direct payment, cards a planned step, clients pay with tokens today",
+          "2": "docs-check: local next serves /llms.txt 200 text/plain in llms.txt format; all forwend.com links 200 locally, GitHub links 200, npm packages exist; site payments need a merchant store and its key",
+          "3": "docs-check: README NEAR HACKATHON section links the X demo post"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Pass on re-review. All 4 earlier findings are fixed: public/PROJECT.md:41 says 'Your invoice is paid in full, as for a direct payment' (true with owner-paid fees, D-122); public/llms.txt:12 says to use a merchant profile with a store and create a key for that store (matches checkoutapi/create.go:28 and docs-api.ts:337); PROJECT.md:49 calls card payments 'a planned step', matching roadmap lines 56-57 and PRODUCT.md:23; PROJECT.md:3 and :6 no longer imply card support today. Minor fixes landed: send on the same network (:27), 'Extra, short or failed' (:42), market-trend line removed, 'settles it to your wallet' in PROJECT.md:30 and llms.txt:7. Rechecked: llms.txt format (H1, blockquote, prose, H2 link lists, Optional), no competitor names or secrets, no sentence over 25 words, docs-check 0 errors, localhost:3000 serves both files identical to the working tree. Accepted as is: R-256 basis D-103 is a weak link but harmless; no kept test for static files, per docs/workflow.md 'Which tests to keep'. X demo link was not opened.",
+          "at": "2026-11-11T15:39:34Z",
+          "filesHash": "4a53d3d8b009d1a0"
+        }
+      },
+      "branch": "feat/f494-forwend-com-serves-project-md-with-the-p",
+      "baseCommit": "ca1373e874e15bf102ab91ad6eb55f3f80fc23b0",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

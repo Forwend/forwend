@@ -1,0 +1,54 @@
+# Forwend
+
+> Forwend lets businesses and freelancers get paid in stablecoins through invoices, payment links and checkout. A client can pay with almost any token on almost any chain through NEAR Intents, and the business receives USDC.
+
+Forwend is under active development. Test mode runs on testnets. Live mode runs on Base, Arbitrum, Arc and Tempo mainnets as a development deployment, not yet for other people's money.
+
+Each payment lands in its own contract, which settles it to the profile's wallet. Forwend accepts USDC on Base, Arbitrum and Arc, and stablecoins on Tempo. Cross-chain payments work in live mode only and arrive as USDC on Base.
+
+How to use Forwend:
+
+- Sign in at https://forwend.com/sign-in, then create an invoice or a payment link and share its pay link. The client pays from any wallet or exchange.
+- To take payments on your own site, use a merchant profile with a store. Open Developers and create a secret API key for that store. Keys start with `fw_live_`, or `fw_test_` in Developer mode.
+- Your server creates a checkout session with the `forwend` package, at the API base URL https://forwend.com/api. Keep the key on the server.
+- Send the client to the session's hosted checkout, or embed it with `@forwend/js` or `@forwend/react` using the session's `payToken`.
+- Fulfil an order only after your server verifies the signed webhook and reads the payment as paid.
+
+## Docs
+
+- [Documentation](https://forwend.com/docs): start here
+- [Choose an integration](https://forwend.com/docs/start/choose-an-integration): invoices, payment links, hosted or embedded checkout
+- [Your first test payment](https://forwend.com/docs/start/first-test-payment)
+- [Authentication and keys](https://forwend.com/docs/integrate/authentication)
+- [Server setup](https://forwend.com/docs/integrate/server-setup): the `forwend` Node package
+- [Browser packages](https://forwend.com/docs/integrate/browser-packages): `@forwend/js` and `@forwend/react`
+- [Webhooks and verification](https://forwend.com/docs/integrate/webhooks)
+- [Payment status](https://forwend.com/docs/integrate/payment-status)
+- [Cross-chain payments](https://forwend.com/docs/payments/cross-chain): paying with other tokens through NEAR Intents
+- [Networks and tokens](https://forwend.com/docs/reference/networks)
+- [Errors](https://forwend.com/docs/reference/errors)
+
+## API reference
+
+- [Invoices](https://forwend.com/docs/api/invoices)
+- [Checkout sessions](https://forwend.com/docs/api/checkout-sessions)
+- [Stores](https://forwend.com/docs/api/stores)
+- [Tokens](https://forwend.com/docs/api/tokens)
+- [Webhook events](https://forwend.com/docs/api/webhook-events)
+- [OpenAPI spec](https://github.com/Forwend/forwend/blob/main/apps/backend/api/openapi.yaml)
+
+## Packages
+
+- [forwend](https://www.npmjs.com/package/forwend): the server package for Node 20 or later: checkout sessions, payments, invoices, stores, webhook events and `verifyWebhook`
+- [@forwend/js](https://www.npmjs.com/package/@forwend/js): the checkout in any web page: a pay link, the full checkout or its pay panel
+- [@forwend/react](https://www.npmjs.com/package/@forwend/react): the same checkout for React 18 and 19: `PayButton`, `Checkout` and `PaymentElement`
+
+## Code
+
+- [Repository](https://github.com/Forwend/forwend): the web app, Go backend, contracts and packages, under the MIT license
+- [Example merchant](https://github.com/Forwend/forwend/tree/main/apps/example-merchant): a sample shop that uses the packages and verifies webhooks
+
+## Optional
+
+- [Project and roadmap](https://forwend.com/PROJECT.md): the pitch, what is done and what comes next
+- [Live demo on X](https://x.com/0xEnsp1re/status/2120536074787205365)
