@@ -1077,6 +1077,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Once an address shows, the token folds into one row with Change, as a direct payment's does.
       - That Change takes two presses (R-68) and goes back to the price, where the tabs are.
     - Choose a token opens a wide sheet: chains on the left with a search, the chosen chain's tokens on the right.
+      - "Powered by NEAR Intents" closes the picker, centered, using `PoweredByNearIntents`.
       - The first chain is chosen; popular chains come first. A token search looks across every chain.
       - A phone has no room for both, so its sheet is two steps (R-236):
         - First the networks, one full row each: logo, name, how many tokens, a chevron.
