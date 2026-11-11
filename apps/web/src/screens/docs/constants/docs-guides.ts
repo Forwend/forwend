@@ -375,10 +375,10 @@ export const GUIDE_PAGES: readonly DocsArticle[] = [
         id: "install",
         title: "Install the Node package",
         paragraphs: [
-          "forwend 0.2.0 requires Node 20 or later and has no runtime dependencies. It covers checkout sessions, payments, invoices, stores and webhook events, plus verifyWebhook.",
+          "forwend 0.2.1 requires Node 20 or later and has no runtime dependencies. It covers checkout sessions, payments, invoices, stores and webhook events, plus verifyWebhook.",
           "The base URL must be https, or http on localhost while you develop.",
         ],
-        code: { language: "Shell", code: "npm install forwend@0.2.0" },
+        code: { language: "Shell", code: "npm install forwend@0.2.1" },
       },
       {
         id: "client",

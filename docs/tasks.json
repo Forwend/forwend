@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 483,
+  "nextId": 484,
   "tasks": [
     {
       "id": "F332",
@@ -1138,6 +1138,124 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F483",
+      "type": "chore",
+      "behavior": "forwend 0.2.1 is on npm with the fee, cross-chain and invoice type changes",
+      "acceptance": [
+        "forwend 0.2.1 is published on npm from this repository's packages/node, with the fee, cross-chain and typed invoice changes, and the npm page shows its README.",
+        "The package version, its CHANGELOG heading, the docs' install line, reference version and changelog, packages/node/AGENTS.md and PLAN 11.9.4 name 0.2.1."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "node-unit",
+        "web-unit"
+      ],
+      "refs": [
+        "R-154"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: One stale version, fixed: the example merchant README named 0.2.0. Checked fine: package.json, the CHANGELOG heading, packages/node/AGENTS.md, the docs install line and reference version, and PLAN 11.9.4 say 0.2.1; other 0.2.0 mentions are historical; npm serves 0.2.1 as latest with its README; the CHANGELOG and /docs entry state the TypeScript-only break; the docs sentence on what the package covers matches client.ts and index.ts."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T02:43:54Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 84.6,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 8.0,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.7,
+            "log": ""
+          },
+          {
+            "id": "node-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "d5affe36f11734ea",
+        "filesHash": "5d20a9e9192b9d30",
+        "proof": {
+          "1": "node-unit: the node package builds and its 17 tests pass; npm view forwend@0.2.1 answers version 0.2.1 with 14 files as latest, and the tarball pulled from npm carries InvoiceDetails, the fee fields and crossChain in dist/types.d.ts.",
+          "2": "web-unit: the web app's tests and typecheck pass with the docs install line npm install forwend@0.2.1, the reference version 0.2.1 and a 2026-11-11 changelog entry; package.json, CHANGELOG, packages/node/AGENTS.md, PLAN 11.9.4 and the example merchant README name 0.2.1."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "One stale version, fixed: the example merchant README named 0.2.0. Checked fine: package.json, the CHANGELOG heading, packages/node/AGENTS.md, the docs install line and reference version, and PLAN 11.9.4 say 0.2.1; other 0.2.0 mentions are historical; npm serves 0.2.1 as latest with its README; the CHANGELOG and /docs entry state the TypeScript-only break; the docs sentence on what the package covers matches client.ts and index.ts.",
+          "at": "2026-11-11T02:46:42Z",
+          "filesHash": "5d20a9e9192b9d30"
+        },
+        "commit": "ff9642d4",
+        "doneAt": "2026-11-11T02:46:49Z"
+      },
+      "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
+      "baseCommit": "4926bcf5fe68bab1fca005b92160127f7c913042",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {

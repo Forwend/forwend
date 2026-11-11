@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 (2026-11-11)
 
 - Invoices, payments and their options carry networkFee, platformFee, netAmount and feesPaidBy.
 - Invoices carry state and wallet, as payments do; purpose and documentKind are typed as always sent.
