@@ -33,7 +33,7 @@ const ROW = "grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_
 // The C comp's order: what you have and what is coming, then how money came in and what it is in, then who still owes
 // you and the latest payments. Every card leads somewhere to act.
 export function BusinessOverview() {
-  const { profile, openReceive } = useAppSession();
+  const { profile, openReceive, openSend } = useAppSession();
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const days = HISTORY_RANGES[range];
   const rangeName = BALANCES_COPY.rangeNames[range];
@@ -92,6 +92,7 @@ export function BusinessOverview() {
           merchant={profile.kind === PROFILE_KINDS.merchant}
           canBill={can(profile, PERMISSIONS.invoicesWrite)}
           onReceive={openReceive}
+          onSend={openSend}
         />
         <OnItsWayCard balances={balances} prices={prices} failed={failed} onRetry={retry} />
       </div>

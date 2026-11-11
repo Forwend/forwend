@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CheckoutForm } from "@/features/checkout/components/checkout-form";
+import { typeKey } from "@/features/checkout/lib/checkout";
 import { makeStore } from "@/store/store";
 
 const NodeRequest = globalThis.Request;
@@ -51,7 +52,7 @@ function renderForm() {
 describe("checkout form", () => {
   it("sends nothing without a valid amount", async () => {
     const requests = renderForm();
-    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "12.505" } });
+    fireEvent.change(screen.getByLabelText("Amount to charge"), { target: { value: "12.505" } });
     fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
     await settle();
     expect(requests).toHaveLength(0);
@@ -60,14 +61,14 @@ describe("checkout form", () => {
 
   it("retries a sale with the same key and starts an edited sale with a new one", async () => {
     const requests = renderForm();
-    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "24.50" } });
+    fireEvent.change(screen.getByLabelText("Amount to charge"), { target: { value: "24.50" } });
     fireEvent.change(screen.getByLabelText(/^Order reference/), { target: { value: "table-12" } });
     fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
     await settle();
     expect(screen.getByText("We could not start the checkout. Try again.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
     await settle();
-    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "30" } });
+    fireEvent.change(screen.getByLabelText("Amount to charge"), { target: { value: "30" } });
     fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
     await settle();
 
@@ -78,5 +79,16 @@ describe("checkout form", () => {
     });
     expect(requests[1]?.key).toBe(requests[0]?.key);
     expect(requests[2]?.key).not.toBe(requests[0]?.key);
+  });
+});
+
+describe("checkout keypad", () => {
+  it("types only an amount the API takes: one point, two decimals, twelve whole digits", () => {
+    const typed = (keys: string) => [...keys].reduce(typeKey, "");
+    expect(typed("12.505")).toBe("12.50");
+    expect(typed(".5")).toBe("0.5");
+    expect(typed("007")).toBe("7");
+    expect(typed("1..2")).toBe("1.2");
+    expect(typed("1234567890123")).toBe("123456789012");
   });
 });

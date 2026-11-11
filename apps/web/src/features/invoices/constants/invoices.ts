@@ -286,6 +286,17 @@ export const INVOICE_STEPS = {
 /** The timeline, in order. */
 export const INVOICE_TIMELINE = Object.values(INVOICE_STEPS);
 
+/** The owner's record of an invoice, in order: the last is In your wallet, or how it ended. */
+export const RECORD_STEPS = {
+  created: "created",
+  sent: "sent",
+  opened: "opened",
+  paid: "paid",
+  wallet: "wallet",
+  closed: "closed",
+  canceled: "canceled",
+} as const;
+
 /** The PDFs the API draws; the receipt answers 409 until the invoice is paid. */
 export const INVOICE_PDFS = {
   invoice: "invoice",
@@ -323,3 +334,7 @@ export const INVOICE_STEP_IDS = [
 ] as const;
 
 export const REQUEST_STEPS = [STEP_IDS.items, STEP_IDS.details, STEP_IDS.review] as const;
+
+/** The invoice page's actions on phones: a bar above the tab bar, within thumb reach. */
+export const PHONE_ACTION_BAR =
+  "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] max-lg:z-[var(--fw-z-nav)] max-lg:flex max-lg:gap-2 max-lg:border-t max-lg:border-line max-lg:bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] max-lg:fw-safe-x max-lg:py-3 max-lg:backdrop-blur-md max-lg:[--fw-pop-y:0.5rem] max-lg:motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]";

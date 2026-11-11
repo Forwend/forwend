@@ -13,7 +13,7 @@ import {
   TONES,
   useToast,
 } from "@forwend/ui-web";
-import { Ban, Ellipsis, ReceiptText } from "lucide-react";
+import { Ban, Ellipsis, ReceiptText, X } from "lucide-react";
 import Link from "next/link";
 import { type MouseEvent, useRef } from "react";
 import { useExpireCheckoutMutation } from "@/features/checkout/api/checkout-api";
@@ -28,8 +28,9 @@ export interface CheckoutActionsProps {
   paymentId: string;
   /** Still open with nothing paid, so Cancel checkout shows. */
   cancelable: boolean;
-  /** The live sale links its payment; the payment's own page does not. */
-  withPayment?: boolean;
+  /** The live sale: its menu links the payment, and Cancel is a button of its own at the bar's start. The payment's
+   * own page keeps both in its menu. */
+  sale?: boolean;
   /** Once Cancel is done or comes too late, this menu may go: focus moves here. */
   onDone: () => void;
 }
@@ -38,7 +39,7 @@ export function CheckoutActions({
   profileId,
   paymentId,
   cancelable,
-  withPayment = false,
+  sale = false,
   onDone,
 }: CheckoutActionsProps) {
   const [expire, { isLoading, isError }] = useExpireCheckoutMutation();
@@ -46,7 +47,7 @@ export function CheckoutActions({
   // The dialog opens once the menu has closed, so the menu does not hand focus back to its trigger over the dialog.
   const chosen = useRef<(() => void) | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  if (!cancelable && !withPayment) return null;
+  if (!cancelable && !sale) return null;
 
   // The refetch that follows ends the cancel and removes the dialog, so it closes first: focus can then leave it.
   const confirm = async (event: MouseEvent<HTMLButtonElement>) => {
@@ -85,7 +86,7 @@ export function CheckoutActions({
           open();
         }}
       >
-        {withPayment ? (
+        {sale ? (
           <MenuItem asChild>
             <Link href={`${APP_ROUTES.payments}/${paymentId}`}>
               <ReceiptText aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -93,7 +94,7 @@ export function CheckoutActions({
             </Link>
           </MenuItem>
         ) : null}
-        {withPayment && openCancel ? <MenuSeparator /> : null}
+        {sale && openCancel ? <MenuSeparator /> : null}
         {openCancel ? (
           <MenuItem
             className="text-danger data-[highlighted]:bg-danger-soft"
@@ -110,7 +111,23 @@ export function CheckoutActions({
   );
 
   return cancelable ? (
-    <Dialog triggerLabel={COPY.cancel} title={COPY.cancelTitle} trigger={(open) => menu(open)}>
+    <Dialog
+      triggerLabel={COPY.cancel}
+      title={COPY.cancelTitle}
+      trigger={(open) =>
+        sale ? (
+          <>
+            <Button variant={BUTTON_VARIANTS.ghost} onClick={open} className="order-first">
+              <X aria-hidden className="size-[var(--fw-icon-sm)]" />
+              {COPY.cancelSale}
+            </Button>
+            {menu()}
+          </>
+        ) : (
+          menu(open)
+        )
+      }
+    >
       <p>{COPY.cancelBody}</p>
       {isError ? (
         <p role="alert" className="mt-3 text-sm text-danger">

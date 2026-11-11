@@ -13,8 +13,6 @@ export interface InvoiceLinesProps {
   decimals: number;
   unit: string;
   total: bigint;
-  /** What the payer sent so far, in the same units: adds Received and Still due under the total. */
-  received?: bigint;
   /** Rows on the page's own ground, as a checkout lists them, not a panel. */
   plain?: boolean;
   /** The option's fees (R-228). The client's fees show before the total; owner adds what the owner receives. */
@@ -31,7 +29,6 @@ export function InvoiceLines({
   decimals,
   unit,
   total,
-  received,
   plain,
   fees,
   owner,
@@ -87,11 +84,7 @@ export function InvoiceLines({
         ) : null}
         <div className="flex items-baseline justify-between gap-4">
           <dt className="text-muted">{COPY.itemsTotal}</dt>
-          <dd
-            className={`tabular-nums ${received === undefined ? "font-semibold text-ink" : "text-ink"}`}
-          >
-            {money(total)}
-          </dd>
+          <dd className="font-semibold text-ink tabular-nums">{money(total)}</dd>
         </div>
         {fees && fees.total > 0n && owner ? (
           <>
@@ -99,20 +92,6 @@ export function InvoiceLines({
             <Row label={COPY.youReceive} value={money(fees.net)} />
           </>
         ) : null}
-        {received === undefined ? null : (
-          <>
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-muted">{COPY.received}</dt>
-              <dd className="text-ink tabular-nums">{money(received)}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-4 border-t border-line pt-2">
-              <dt className="font-medium text-ink">{COPY.stillDue}</dt>
-              <dd className="font-semibold text-ink tabular-nums">
-                {money(received < total ? total - received : 0n)}
-              </dd>
-            </div>
-          </>
-        )}
       </dl>
     </section>
   );

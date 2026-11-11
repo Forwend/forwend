@@ -235,27 +235,64 @@ describe("owner's invoice page", () => {
     await settle();
     const region = (name: string) => within(screen.getByRole("region", { name }));
     expect(region("Details").getByText(/Checkout closed/)).toBeTruthy();
-    expect(region("Timeline").getByText("Checkout closed")).toBeTruthy();
+    expect(region("Progress").getByText("Checkout closed")).toBeTruthy();
 
     expect(screen.queryByRole("button", { name: "Copy link" })).toBeNull();
     expect(screen.queryByText("Waiting for payment")).toBeNull();
+    // R-94: emailing it only sends the client a link that takes no money.
+    expect(region("Billed to").queryByText("No client email.")).toBeNull();
   });
 
   it("keeps the pay link, Check status, edits and cancel on an overdue invoice whose checkout is open", async () => {
     serve({ ...OPEN, dueDate: "2026-01-01" });
     show();
     await settle();
-    const header = within(screen.getByRole("banner"));
+    const header = within(document.body);
     expect(header.getByText("Overdue")).toBeTruthy();
-    expect(header.getByRole("button", { name: "Check status" })).toBeTruthy();
-    fireEvent.keyDown(screen.getByRole("button", { name: "More actions" }), { key: "Enter" });
-    await settle();
-    for (const item of ["Copy link", "Edit", "Revise", "Cancel invoice"]) {
-      expect(screen.getByRole("menuitem", { name: item })).toBeTruthy();
+    expect(header.getByText(/^\d+ days late\.$/)).toBeTruthy();
+    expect(header.getByText(/^The link works until /)).toBeTruthy();
+    // The pay link's actions are on the page, never the link itself.
+    expect(header.getAllByRole("button", { name: "Copy link" }).length).toBeGreaterThan(0);
+    expect(header.getAllByRole("link", { name: /^Open pay page/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\/pay\//)).toBeNull();
+    // Phones (this test's width): More actions opens a sheet.
+    act(() => header.getByRole("button", { name: "More actions" }).click());
+    const sheet = within(screen.getByRole("dialog", { name: "INV-0001" }));
+    for (const item of ["Edit", "Check status", "Cancel invoice"]) {
+      expect(sheet.getByRole("button", { name: item })).toBeTruthy();
+    }
+    expect(sheet.getByRole("link", { name: "Revise" })).toBeTruthy();
+    cleanup();
+
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    try {
+      show();
+      await settle();
+      // Desktop: Edit is its own button; the menu holds the rest.
+      expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+      fireEvent.keyDown(screen.getByRole("button", { name: "More actions" }), { key: "Enter" });
+      await settle();
+      expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+        "Check status",
+        "Revise",
+        "Duplicate",
+        "Cancel invoice",
+      ]);
+    } finally {
+      vi.stubGlobal("matchMedia", () => ({
+        matches: false,
+        addEventListener() {},
+        removeEventListener() {},
+      }));
     }
   });
 
-  it("counts a paid invoice's money as received once it has moved to the wallet", async () => {
+  // R-228
+  it("sums a paid invoice's money from its deposits, less each fee, once it has moved to the wallet", async () => {
     const full = { ...DEPOSIT, amount: "1250000000", paid: "1250000000" };
     serve({
       ...OPEN,
@@ -275,13 +312,68 @@ describe("owner's invoice page", () => {
         unreconciled: false,
       },
       deposits: [full],
-      options: [{ ...OPEN.options[0], deposits: [full] }],
+      options: [{ ...OPEN.options[0], networkFee: "60000", deposits: [full] }],
     });
     show();
     await settle();
-    const summary = within(screen.getByRole("region", { name: "Summary" }));
-    expect(summary.getByText("Received").nextElementSibling?.textContent).toBe("1,250.00 USDC");
-    expect(summary.getByText("Still due").nextElementSibling?.textContent).toBe("0.00 USDC");
+    const amount = within(screen.getByRole("region", { name: "In your wallet" }));
+    expect(amount.getAllByRole("definition").map((dd) => dd.textContent)).toEqual([
+      "1,250.00 USDC",
+      "− 0.06 USDC",
+      "1,249.94 USDC",
+    ]);
+    expect(screen.queryByRole("region", { name: "Summary" })).toBeNull();
+  });
+
+  // R-228
+  it("takes money returned to the customer as Refunded, with its transaction, and holds the rest", async () => {
+    const over = { ...DEPOSIT, amount: "1260000000", paid: "1250000000" };
+    const returnTx = `0x${"9".repeat(64)}`;
+    serve({
+      ...OPEN,
+      paymentStatus: "paid",
+      settlementStatus: "settled",
+      paidAt: over.blockTime,
+      settledAt: "2026-10-10T12:05:00Z",
+      deposits: [over],
+      options: [
+        {
+          ...OPEN.options[0],
+          networkFee: "60000",
+          deposits: [over],
+          amounts: {
+            receiver: "0",
+            payable: "0",
+            held: "6000000",
+            settled: "1249940000",
+            refunded: "4000000",
+            observedRefunded: "4000000",
+            lastReturnTxHash: returnTx,
+            unreconciled: false,
+          },
+        },
+      ],
+    });
+    show();
+    await settle();
+    const amount = within(screen.getByRole("region", { name: "In your wallet" }));
+    expect(amount.getAllByRole("term").map((dt) => dt.textContent)).toEqual([
+      "Customer paid",
+      "Refunded",
+      "Held for the customer",
+      "Network fee",
+      "In your wallet",
+    ]);
+    expect(amount.getAllByRole("definition").map((dd) => dd.textContent)).toEqual([
+      "1,260.00 USDC",
+      "− 4.00 USDC",
+      "− 6.00 USDC",
+      "− 0.06 USDC",
+      "1,249.94 USDC",
+    ]);
+    expect(amount.getByRole("link", { name: /^View transaction on / }).title).toBe(returnTx);
+    // The money line says it once; no separate line under the header.
+    expect(screen.queryByText(/^Recorded returns:/)).toBeNull();
   });
 
   // R-239: only once 1Click delivered; money it returned didn't pay the invoice.
@@ -364,6 +456,76 @@ describe("owner's invoice page", () => {
     expect(items.getByText("750.00 USD")).toBeTruthy();
     expect(items.getByText("1 × 500.00 USD")).toBeTruthy();
     expect(items.getByText("1,250.00 USD")).toBeTruthy();
+  });
+
+  // R-228
+  it("adds the client's fee under the items, so they sum to the total", async () => {
+    const withFee = { amount: "1250060000", networkFee: "60000", feesPaidBy: "client" };
+    serve({
+      ...OPEN,
+      ...withFee,
+      options: [{ ...OPEN.options[0], ...withFee }],
+      lines: [
+        { description: "Design", quantity: "1.00", unitPrice: "1250000000", amount: "1250000000" },
+      ],
+    });
+    show();
+    await settle();
+    const items = within(screen.getByRole("region", { name: "Items" }));
+    expect(items.getAllByRole("term").map((dt) => dt.textContent)).toEqual([
+      "Subtotal",
+      "Network fee",
+      "Total",
+    ]);
+    expect(items.getByText("1,250.06 USDC")).toBeTruthy();
+  });
+
+  it("never calls a canceled invoice's held money a part payment", async () => {
+    serve({
+      ...OPEN,
+      paymentStatus: "canceled",
+      canceledAt: "2026-10-11T09:00:00Z",
+      amounts: {
+        receiver: "400000000",
+        payable: "0",
+        held: "400000000",
+        settled: "0",
+        refunded: "0",
+        observedRefunded: "0",
+        lastReturnTxHash: null,
+        unreconciled: false,
+      },
+    });
+    show();
+    await settle();
+    expect(screen.queryByText("Still due")).toBeNull();
+    expect(screen.queryByText(/^Received /)).toBeNull();
+  });
+
+  it("keeps a return the money line can't show, as on a canceled invoice", async () => {
+    serve({
+      ...OPEN,
+      paymentStatus: "canceled",
+      canceledAt: "2026-10-11T09:00:00Z",
+      options: [
+        {
+          ...OPEN.options[0],
+          amounts: {
+            receiver: "0",
+            payable: "0",
+            held: "0",
+            settled: "0",
+            refunded: "400000000",
+            observedRefunded: "400000000",
+            lastReturnTxHash: `0x${"9".repeat(64)}`,
+            unreconciled: false,
+          },
+        },
+      ],
+    });
+    show();
+    await settle();
+    expect(screen.getByText("Recorded returns: 400.00 USDC on Base Sepolia.")).toBeTruthy();
   });
 
   // R-124.
@@ -462,7 +624,9 @@ describe("owner's invoice page", () => {
     show();
     await settle();
     // R-77: the next steps sit with the header's actions, with no box under the title.
-    const header = within(screen.getByRole("banner"));
+    const header = within(document.body);
+    const amount = within(header.getByRole("region", { name: "Not paid" }));
+    expect(amount.getByText("Received 400.00 USDC of 1,250.00 USDC")).toBeTruthy();
     expect(header.getByRole("button", { name: "Reopen checkout" })).toBeTruthy();
     expect(header.getByRole("link", { name: "New invoice" })).toBeTruthy();
     expect(screen.queryByText(/is held for the payer/)).toBeNull();
@@ -488,11 +652,16 @@ describe("owner's invoice page", () => {
 
   // R-54, R-55
   it("says under the header why paid money waits, and offers Check status only while it can take money", async () => {
+    const more = () => {
+      act(() =>
+        within(screen.getByRole("banner")).getByRole("button", { name: "More actions" }).click(),
+      );
+      return within(screen.getByRole("dialog", { name: "INV-0001" }));
+    };
     serve(OPEN);
     show();
     await settle();
-    const header = within(screen.getByRole("banner"));
-    expect(header.getByRole("button", { name: "Check status" })).toBeTruthy();
+    expect(more().getByRole("button", { name: "Check status" })).toBeTruthy();
     cleanup();
 
     serve({
@@ -504,16 +673,16 @@ describe("owner's invoice page", () => {
     });
     show();
     await settle();
-    const paid = within(screen.getByRole("banner"));
+    const paid = within(document.body);
     const why = paid.getByText(
       "Sending to your wallet · waiting for Base Sepolia to finalize, about 12 min left",
     );
     expect(why.getAttribute("role")).toBe("status");
-    expect(paid.queryByRole("button", { name: "Check status" })).toBeNull();
+    expect(more().queryByRole("button", { name: "Check status" })).toBeNull();
   });
 
   // R-77
-  it("offers New invoice beside View payment once the checkout closed or the invoice was canceled", async () => {
+  it("offers New invoice in the header once the checkout closed or the invoice was canceled", async () => {
     const past = new Date(Date.now() - 10 * 60_000).toISOString();
     for (const invoice of [
       { ...OPEN, expiresAt: past, closesAt: past, closed: true },
@@ -522,10 +691,13 @@ describe("owner's invoice page", () => {
       serve(invoice);
       show();
       await settle();
-      const header = within(screen.getByRole("banner"));
+      const header = within(document.body);
       const restart = header.getByRole("link", { name: "New invoice" });
       expect(restart.getAttribute("href")).toBe(`/app/invoices/new?from=${ID}`);
-      expect(restart.nextElementSibling?.textContent).toBe("View payment");
+      // One for each width: under the next step on desktop, a row of the panel on phones.
+      for (const link of header.getAllByRole("link", { name: "View payment" })) {
+        expect(link.getAttribute("href")).toBe(`/app/payments/${ID}`);
+      }
       expect(screen.queryByText(/can't take money again|is held for the payer/)).toBeNull();
       cleanup();
     }
@@ -555,9 +727,7 @@ describe("owner's invoice page", () => {
       serve(invoice);
       show();
       await settle();
-      expect(
-        within(screen.getByRole("banner")).queryByRole("link", { name: "New invoice" }),
-      ).toBeNull();
+      expect(within(document.body).queryByRole("link", { name: "New invoice" })).toBeNull();
       cleanup();
     }
   });

@@ -17,6 +17,8 @@ export interface ReopenInvoiceProps {
   until: string;
   // The page moves keyboard focus: the dialog and its trigger go away with the status.
   onReopened: () => void;
+  /** The trigger button's place in the page's actions. */
+  className?: string;
 }
 
 // R-130: an invoice that closed partly paid takes payments again, once.
@@ -27,6 +29,7 @@ export function ReopenInvoice({
   noun,
   until,
   onReopened,
+  className,
 }: ReopenInvoiceProps) {
   const [reopen, { isLoading, error }] = useReopenInvoiceMutation();
   const toast = useToast();
@@ -50,7 +53,7 @@ export function ReopenInvoice({
       triggerLabel={COPY.trigger}
       title={COPY.title(number)}
       trigger={(open) => (
-        <Button variant={BUTTON_VARIANTS.primary} onClick={open}>
+        <Button variant={BUTTON_VARIANTS.primary} onClick={open} className={className}>
           {COPY.trigger}
         </Button>
       )}

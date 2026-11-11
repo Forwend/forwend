@@ -19,7 +19,7 @@ export function MotionShowcase() {
     <div className="flex flex-col gap-10">
       <KitGroup title="Spinner: short waits, inside buttons">
         <Spinner />
-        <Spinner label="Saving" className="size-[var(--fw-icon-md)]" />
+        <Spinner label="Saving" size="md" />
       </KitGroup>
       <KitGroup title="Dot loader: waiting for the network">
         <DotLoader />

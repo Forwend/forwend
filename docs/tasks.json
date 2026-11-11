@@ -532,26 +532,123 @@
     {
       "id": "F476",
       "type": "feat",
-      "behavior": "The owner's invoice page opens on the pay link and says the next step in one sentence",
+      "behavior": "The owner's invoice page and the in-person Checkout follow the redesigned templates with short copy and an app-like phone layout, a business can Send from a phone, and My assets reads cleanly on phones",
       "acceptance": [
-        "The page matches the approved template (The owner's invoice page, Proposed) in each state: just created, overdue, partially paid, paid, overpaid, closed part paid, canceled.",
-        "At 390px it does not scroll sideways; Copy link and Share stay at the bottom of the screen.",
-        "Existing behavior stays: Edit, Revise, Cancel, Reopen, Duplicate, View payment, Check status, reminders, the PDFs and the history."
+        "The owner's invoice page has the new layout the owner approved over the template: actions in the header, the amount card with its money line and steps, Billed to and Details beside it, with only the text a reader needs; on phones it reads like an app screen.",
+        "The in-person Checkout follows its template with shorter copy; it hides its QR code while a payment confirms, so a customer can't pay twice.",
+        "On a phone a business profile reaches Send without search, and My assets shows each token as one clean row.",
+        "Loading placeholders have the shape of what they replace; motion is short and respects reduced motion; at 390px no screen scrolls sideways.",
+        "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "passing",
       "verification": [
         "web-unit",
         "lint",
         "typecheck",
         "docs-check"
       ],
-      "refs": [],
+      "refs": [
+        "R-254"
+      ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-11 review pass by subagent: First pass FAIL, 3 blocking findings, all fixed with failing-first tests. (1) Items lost the Subtotal and fee rows when the client pays the fees; it uses linesFigures again. (2) The notice hid returns the money line can't show; it now skips only the option whose whole return the line shows. (3) A canceled invoice with held money read Still due; owing now leaves out canceled. Also fixed: Email the client waits for the owner read, plus stale comments and docs. Second pass PASS: no new money or regression bug. Left as follow-ups: the phone focus order follows the DOM, not CSS order; copying has no manual fallback; Send sits beside Receive on the desktop overview card."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T01:41:21Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.4,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.9,
+            "log": ""
+          },
+          {
+            "id": "tokens-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "ui-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.4,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 58.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "1382e5de4a4715eb",
+        "filesHash": "9c0a0b48f9a8b4a2",
+        "proof": {
+          "1": "web-unit: invoice-detail.test.tsx checks the header's pay link actions, the money line terms (Customer paid, Refunded with its explorer link, Held for the customer, Network fee, In your wallet), Items with the client's fee rows, a canceled invoice never reading Still due, returns the money line can't show kept in the notice, Email the client only while the pay link takes money, and the phone More actions sheet. Browser check at 1440x900 and 375 px: INV-0006 paid and INV-0008 open; the steps row ends at the card's edge.",
+          "2": "web-unit: checkout-live.test.tsx 'hides the QR code and the pay link once money is on its way, so the customer can't pay twice'; checkout-form.test.tsx checks the keypad amount, the idempotency key and the amount limits.",
+          "3": "web-unit: balances-list.test.tsx checks each token row with its amount, value and money on its way or on hold. The Overview's balance card and My assets show Send below lg; browser check at 375 px.",
+          "4": "web-unit: the invoice, checkout and My assets placeholders keep the loaded shape (balances 'keeps the balances back until the prices answer'). Browser check at 375 px: scrollWidth equals 375 on the invoice page.",
+          "5": "web-unit: all web unit tests pass; money figures come from the same helpers (linesFigures, optionFees, invoiceException). Label changes (Refunded, steps row, Email the client in Billed to) are in R-60, R-69, R-77, R-94 and DESIGN.md."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "First pass FAIL, 3 blocking findings, all fixed with failing-first tests. (1) Items lost the Subtotal and fee rows when the client pays the fees; it uses linesFigures again. (2) The notice hid returns the money line can't show; it now skips only the option whose whole return the line shows. (3) A canceled invoice with held money read Still due; owing now leaves out canceled. Also fixed: Email the client waits for the owner read, plus stale comments and docs. Second pass PASS: no new money or regression bug. Left as follow-ups: the phone focus order follows the DOM, not CSS order; copying has no manual fallback; Send sits beside Receive on the desktop overview card.",
+          "at": "2026-11-11T01:42:47Z",
+          "filesHash": "9c0a0b48f9a8b4a2"
+        },
+        "commit": "ea203bab",
+        "doneAt": "2026-11-11T01:43:23Z"
+      },
+      "branch": "feat/f476-the-owner-s-invoice-page-and-the-in-pers",
+      "baseCommit": "6571b253ff53c71adb2fda9f94f0704e6450bc69",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f476-the-owner-s-invoice-page-and-the-in-pers",
+        "base": "main"
+      }
     },
     {
       "id": "F477",

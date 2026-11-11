@@ -27,6 +27,7 @@ import type {
   OwedKind,
   PayWith,
   Recheck,
+  RecordStepId,
   ReminderStep,
   SettlementWaitKind,
 } from "@/features/invoices/types/invoices";
@@ -385,7 +386,7 @@ export const INVOICE_COPY = {
   latestReturn: "Latest return transaction",
   back: "Invoices",
   testnet: "Testnet",
-  clientChooses: (n: number) => `The client picks one of ${n} tokens and networks`,
+  clientChooses: "Client picks the token",
   heldOn: (symbol: string, network: string) => `Held for the payer · ${symbol} on ${network}`,
   partlyPaid: "Partially paid",
   viewPayment: "View payment",
@@ -395,9 +396,41 @@ export const INVOICE_COPY = {
   notFound: "No invoice has this link.",
   failed: "We could not load this invoice.",
   amount: "Amount",
-  total: "Total",
+  amountDue: "Amount due",
+  notPaid: "Not paid",
+  inWallet: "In your wallet",
+  onNetwork: (symbol: string, network: string) => `${symbol} on ${network}`,
   billedTo: (name: string) => `Billed to ${name}`,
-  dueOn: (date: string) => `Due ${date}`,
+  // The amount panel's one sentence: a bold part, then at most one short quiet part.
+  say: {
+    due: (date: string) => `Due ${date}.`,
+    late: (days: number) =>
+      `${days === 1 ? "1 day" : `${days.toLocaleString("en-US")} days`} late.`,
+    // Overdue: the pay link still takes money until the checkout closes (D-80).
+    until: (date: string) => `The link works until ${date}.`,
+    rest: "The same link takes the rest.",
+    arriving: "A payment is on its way.",
+    paid: (date: string) => `Paid ${date}.`,
+    closed: (date: string) => `The checkout closed ${date}.`,
+    canceled: "The pay link takes no payments.",
+  },
+  // The money line: what the client pays, each fee, and what the owner gets (R-228).
+  terms: {
+    clientPays: "Client pays",
+    customerPaid: "Customer paid",
+    refunded: "Refunded",
+    held: "Held for the customer",
+    toWallet: "To your wallet",
+  },
+  sendTitle: "Send the pay link",
+  showQr: "Show QR code",
+  qrLabel: "QR code of the pay link",
+  emailed: (date: string) => `Emailed ${date}`,
+  emailFailed: "Email failed",
+  reopenNote: (until: string) => `Open again until ${until}, once.`,
+  restartNote: "A copy with a new number and pay link.",
+  progressTitle: "Progress",
+  stepStates: { done: "Done", current: "Now", upcoming: "Next", stopped: "Ended" },
   progress: "Payment progress",
   confirmingCount: (done: number, total: number) =>
     total > 0
@@ -445,7 +478,8 @@ export const INVOICE_COPY = {
   newRequest: "New request",
   copy: "Copy link",
   copied: "Link copied",
-  copyFailed: "Copy failed: select the link",
+  copyFailed: "Copy failed",
+  share: "Share",
   details: "Details",
   items: "Items",
   summary: "Summary",
@@ -454,18 +488,16 @@ export const INVOICE_COPY = {
   networkFee: "Network fee",
   platformFee: "Platform fee",
   youReceive: "You receive",
-  received: "Received",
   stillDue: "Still due",
-  timeline: "Timeline",
   timelineSteps: {
     created: "Created",
-    sent: "Emailed to the client",
+    sent: "Emailed",
     opened: "Pay page opened",
     paid: "Paid",
     wallet: "In your wallet",
     closed: "Checkout closed",
     canceled: "Canceled",
-  },
+  } satisfies Record<RecordStepId, string>,
   opened: (n: number) => (n === 1 ? "Once" : `${n} times`),
   openedChip: "Opened",
   dueDate: "Due date",
@@ -547,12 +579,10 @@ export const INVOICE_COPY = {
   noIssuer: "None on this invoice.",
   // R-94.
   send: {
-    action: "Send to client",
-    noEmail: "No client email on this invoice, so it can't be emailed. Share the pay link instead.",
+    action: "Email the client",
+    noEmail: "No client email.",
     again: (time: string) => `You can send it again after ${time}.`,
-    sent: (time: string) => `Emailed · ${time}`,
     sending: (email: string | null) => (email ? `Sending to ${email}…` : "Sending…"),
-    failed: (time: string) => `Could not email · asked ${time}`,
     done: (number: string, email: string) => `${number} is on its way to ${email}`,
     closed: "It can't be sent: the invoice can no longer be paid.",
     limited: "You can't send more emails right now. Try again later.",
@@ -561,8 +591,8 @@ export const INVOICE_COPY = {
   // R-96.
   reminders: {
     toggle: "Payment reminders",
-    hint: "Emails the client 3 days before the due date, on it and 7 days after, until it is paid.",
-    needsDue: "Reminders need a due date, so they are off for this invoice.",
+    hint: "Emails the client 3 days before the due date, on it and 7 days after.",
+    needsDue: "Reminders need a due date.",
     stopped: (time: string) => `The client stopped reminders on ${time}.`,
     steps: {
       [REMINDER_STEPS.before]: "Reminder before the due date",
@@ -596,7 +626,7 @@ export const INVOICE_COPY = {
   paidThroughValue: (amount: string, chain: string) => `${amount} on ${chain}`,
   // R-124.
   history: {
-    title: "History",
+    title: "Document history",
     filter: "Show",
     filters: {
       [HISTORY_FILTERS.all]: "All",
@@ -681,7 +711,7 @@ export const INVOICE_COPY = {
     } satisfies Record<ReminderStep, string>,
     heldFor: (money: string, network: string) => `${money} for the payer · ${network}`,
     // R-125.
-    notOpened: "No pay link opens counted yet.",
+    notOpened: "Pay link not opened yet.",
     opened: (count: number) =>
       count === 1
         ? "Pay link opened once"

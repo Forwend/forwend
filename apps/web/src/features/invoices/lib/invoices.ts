@@ -14,6 +14,7 @@ import {
   LINE_LIMITS,
   OWED_KINDS,
   PAY_WITH,
+  RECORD_STEPS,
   RESTART_PARAMS,
 } from "@/features/invoices/constants/invoices";
 import type {
@@ -29,13 +30,16 @@ import type {
   InvoiceField,
   InvoicePdf,
   InvoiceReminders,
+  InvoiceSend,
   InvoiceStart,
   InvoiceSummary,
+  InvoiceViews,
   LineDraft,
   LineError,
   LineField,
   OptionFees,
   Owed,
+  RecordStep,
 } from "@/features/invoices/types/invoices";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { TokenRef } from "@/features/profiles/types/tokens";
@@ -254,6 +258,36 @@ export function invoiceProgress(inv: Invoice) {
     ...slowest(onChain),
     secondsLeft: Math.max(0, ...onChain.map((d) => d.secondsLeft)),
   };
+}
+
+/** The invoice's record so far and what comes next, never a step ahead of the facts. Emailing is optional: its step
+ * shows once an email went out. A canceled or closed unpaid invoice ends on how it ended. */
+export function recordSteps(
+  inv: Invoice,
+  sends: readonly InvoiceSend[],
+  views: InvoiceViews | null,
+): RecordStep[] {
+  const sent = sends.find((s) => s.sentAt)?.sentAt ?? null;
+  const paid = inv.paidAt !== null;
+  const ended = !paid && (inv.canceledAt !== null || Date.parse(inv.closesAt) <= Date.now());
+  return [
+    { id: RECORD_STEPS.created, at: inv.createdAt, done: true },
+    ...(sent ? [{ id: RECORD_STEPS.sent, at: sent, done: true }] : []),
+    {
+      id: RECORD_STEPS.opened,
+      at: views?.firstAt ?? null,
+      count: views?.count ?? 0,
+      done: Boolean(views?.firstAt) || paid,
+    },
+    { id: RECORD_STEPS.paid, at: inv.paidAt, done: paid },
+    ended
+      ? {
+          id: inv.canceledAt ? RECORD_STEPS.canceled : RECORD_STEPS.closed,
+          at: inv.canceledAt ?? inv.closesAt,
+          done: true,
+        }
+      : { id: RECORD_STEPS.wallet, at: inv.settledAt, done: inv.settledAt !== null },
+  ];
 }
 
 function slowest(deposits: readonly Deposit[]) {

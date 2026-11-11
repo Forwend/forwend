@@ -311,7 +311,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Row 1: the Balance card and Pending payments, both at the row's height.
     - Balance: the personal card's figure over the art with a surface veil: the total, USD and its hint, then
       its change over the past month. Its pending and held links stay off: Pending payments sits beside it.
-    - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive.
+    - Then round actions: New invoice (lime), Payment link, Checkout (merchants), Receive, Send (roles that move money).
     - Pending payments: the USD total not in the wallet yet, a three-part bar, then one row per part.
       - Moving to wallet (paid, ink), Confirming (muted), then Partially paid (subtle): surest first.
       - Each row shows its USD amount and opens Payments at its status.
@@ -348,11 +348,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Pointer, tap or arrow keys choose a point; only keyboard moves are announced, and a hidden table gives screen
   readers every value. Range choice is a segmented control. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
   never an endless skeleton.
-- My assets: Total balance (`BigAmount`), then one row per token.
-  - Columns: Asset, In wallet (with its market value), Moving to wallet, Not final, On hold.
+- My assets: Total balance (`BalanceFigure`, as on the overview, centered on phones), then one row per token.
+  - Below large screens, round Receive (lime) and Send sit under the total, as the header's buttons are hidden there.
+  - So a business reaches Send on a phone from the My assets tab.
+  - Wide screens: columns Asset, In wallet, Moving to wallet, Not final, On hold.
+  - The in-wallet amount carries its token ("12,400.10 USDC"), with its market value under it.
   - Moving to wallet is paid money being transferred; Not final is confirming or partly paid money, which may still
     turn out to be the payer's. Each header's title says so.
-  - Nothing in a column is a quiet dash on wide screens and no row at all on phones.
+  - Nothing in a column is a quiet dash on wide screens.
+  - Phones: each token is one row, as in a wallet app: its mark and network, then the amount and its value on the
+    right.
+    - Money moving, not final or on hold shows in a small box under the row, one labelled line per kind.
+    - A token with none of it has no box.
+  - The placeholder is two rows of that shape, under the column titles on wide screens.
 - Invoices and Activity: the shared status filter (below) and a search; a row opens its
   invoice. An Activity row is a past-tense event ("Invoice created", "Payment received", "Held for the customer");
   its status column is headed Status, and the intro says it is where the payment stands now, not what the event did. Activity and Transactions page through the API's cursor, so their history reaches its start.
@@ -466,15 +474,33 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Their list's own actions (Open in Invoices or Payments, Export) sit at the list's head, not in the header.
 - Checkout (`/app/checkout`, merchants with invoices.write) takes a payment in person:
   - From large screens the sale is a 26rem column, with Recent checkouts beside it; phones stack them.
-  - Recent checkouts is the payments list of checkouts, newest first.
-  - Each column is a heading row (New sale or the checkout's label; Recent checkouts with View all), then one card.
-  - The form card: Store (with more than one), an `AmountField` in USD, Order reference and What it's for.
-  - Show QR code sits at the form card's foot.
-  - Then the sale card: the label, Test mode and More actions in its heading row.
-  - Then `BigAmount` in USD, one QR code of the pay link, the status pill, one sentence and the close time.
+  - Recent checkouts is the payments list of checkouts, newest first, under its heading with View all.
+  - The sale is one card (`SaleCard`) with no heading: a bar, the customer's part in the middle, actions at the foot.
+    - It keeps one size from the amount to Paid, so a step never moves the page.
+    - Each new step fades in place from a slight blur; nothing slides. Reduced motion shows it at once.
+    - Until the stores load, it holds placeholders of the amount, the keys and the button.
+  - On a phone the sale is the whole first screen (`data-phone-flow`): the app's header and tab bar step aside.
+    - The foot sits at the screen's bottom, within thumb reach. Recent checkouts follows below the screen.
+  - The amount is the screen: "Amount to charge", the figure at 64px (`AmountField bare`), then a keypad.
+    - The bar holds Back to the overview (phones), Store when there is more than one, and Recent (phones).
+    - The keys are 56px tiles; they never open the phone's keyboard, so Show QR code stays in view.
+    - A keyboard still types into the amount.
+    - Add a reference or note opens a sheet with Order reference and What it's for, then Done.
+    - Once one is set, a chip with it takes the button's place and opens the sheet again.
+    - Show QR code (lime, 56px) sits at the foot; a failed start shows its notice above the keys.
+  - The sale's bar: Cancel sale at its start while nothing is paid, its name, Test mode and More actions at its end.
+  - Waiting: the store, the amount in USD at one size, cents included, then one 300px QR code of the pay link.
+    - At the foot a line says the customer is to pay, or part is paid, with the close time under it.
+    - Then Copy payment link.
+  - Once money is seen, the QR code and Copy payment link go, so the customer can't pay twice.
+    - Instead: a ring, Payment seen, the amount, the token and network, a bar of blocks and its confirming count.
+    - At the foot: "Do not hand over the order yet. Wait for Paid."
+    - The code returns only while part is still owed and nothing is on its way.
+  - Paid turns the card green: a check in a green circle, Paid, the amount and "You can hand over the order."
+    - At the foot New sale (lime), then Open payment.
+  - Closed or canceled: a clock, Checkout closed, its status and the amount in a quiet color; then New sale.
   - It checks every 3 seconds until decided.
-  - At its foot Copy payment link; once decided, New sale (lime) starts a fresh form.
-  - More actions holds Open payment and, while nothing is paid, Cancel checkout behind a confirm.
+  - More actions holds Open payment; Cancel sale opens the same confirm as Cancel checkout.
   - Once canceled, or too late because money arrived, the dialog closes with a toast and focus moves to the title.
   - A checkout's payment page has the same Cancel checkout in its More actions.
   - A retried tap reuses the idempotency key; any change makes a new one.
@@ -534,7 +560,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Payment records to review, an unexpected transfer, a webhook that fails.
     - The wallet transfer and what is still due are never repeated.
   - Under the header, the money is one sum (R-248): Customer paid, each amount taken from it, In your wallet.
-    - The figures taken are Returned to the payer, Held for the customer, Network fee and Platform fee, each only above 0.
+    - The figures taken are Refunded, Held for the customer, Network fee and Platform fee, each only above 0.
     - The last figure is In your wallet once settled, with a success check and the transfer's time, else Expected in your wallet.
     - Paid, with a transfer not refused or waiting, the narrow headline reads "On its way to your wallet" with a
       spinner and "Expected once Base confirms it". Anything else not settled keeps Expected in your wallet.
@@ -744,10 +770,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Activity on phones: the event, its time and the amount, then who it was for and the status.
   - A confirmed payment names no status.
   - An invoice in several tokens leaves out "Any network": its USD amount says so.
-- Invoice detail on phones: above a title the number is a small quiet label; with no title it is the heading, as on
-  desktop. The invoice's actions wait in one More actions menu at the header's top right
-  (see the invoice page under Checkout). Details are statement rows, the term on the left and its value on the right;
-  a note stacks under its term.
+- Invoice detail on phones reads like an app screen (see the invoice page under Checkout).
+  - Back and More actions share the first row. More actions opens a sheet: Edit, Check status and the menu's items.
+  - A small quiet line "INV-0008 · title" sits over the large title: the client, or the number without one.
+  - The amount card stacks its money line under the money.
+  - While the checkout takes money, a group of rows follows: Show QR code and Open pay page.
+    - Show QR code opens a sheet with the pay link's QR.
+  - Then Progress, the record as a vertical timeline.
+  - Then Billed to (with Email the client), Items, Details and Document history.
+  - The main actions wait in a bar above the tab bar, by state.
+    - Copy link and Share while it takes money; Reopen checkout and New invoice once closed part paid.
+    - New invoice once closed or canceled; View payment and Receipt PDF once paid.
+  - Until paid, View payment is the amount card's last row, with a chevron.
+  - Details are statement rows, the term on the left and its value on the right; a note stacks under its term.
 - Email notifications: one settings row in a panel (see Controls).
 - First run (R-50): while `/v1/me` has no `onboardedAt`, `/app/onboarding` shows standalone steps instead of the shell.
   - Every step: the logo where landing and sign-in put it (`SiteBar`, plain), "Step 2 of 5" and Sign out at the right,
@@ -1133,8 +1168,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - When a refresh fails the page keeps the last read under a notice across its top (R-194).
   - It says "Can't reach the server. Retrying…", centered, with no button: the page retries on its own.
   - From large screens it spans both halves.
-- PDFs open through the same-origin `/api` path. The invoice detail lists them under Documents: the invoice PDF
-  always, the receipt PDF once paid.
+- PDFs open through the same-origin `/api` path. The invoice detail lists the invoice PDF under Documents.
+  - Once paid, Receipt PDF sits in the header, on phones in the bottom bar; Details lists both PDFs.
 - While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "Confirming (4/12)"
   and a small info icon whose tooltip says "About 19 min left". Keep the count out of the narrow
   step columns on owner pages, including four-digit counts on phones. The pay page shows its own line under the step. Its ring fills as blocks pass
@@ -1150,20 +1185,41 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
   phone, so in a container narrower than 28rem they stack into one upright list of markers beside larger labels.
 - A test-mode invoice's page (R-143) has a warning Test mode badge under its header's name.
-- The invoice page (R-60) says each thing once.
-  - The header names the invoice by its number, with its status badges (the confirming count while confirming).
-  - One line under it: the title, Billed to, the due date, "Received X of Y" when partly paid, and who picks the token.
+- The invoice page (R-60) follows the redesign's owner page: few words, each fact once.
+  - The header: the file tile, the number, the status badges (the confirming count while confirming).
+  - One quiet line under it: "<title> · Billed to <client>".
+  - At its right, the next step, then Edit (R-127) and one More actions menu.
+    - While the checkout can take money: Show QR code and Open pay page as outlined icon buttons, then Copy link (lime).
+    - Show QR code opens a sheet with the pay link's QR. The page never prints the link itself.
+    - Once paid: View payment and Receipt PDF. Closed or canceled: the next step (R-77).
+    - The menu: Check status while the checkout can take money (R-55), then Revise and Cancel while it can be canceled.
+    - Duplicate always (New invoice filled from this one, R-91). Cancel is in the danger color and asks first.
+  - The page uses the full content width.
+    - From large screens a main column sits beside a 20rem side column (22rem from extra-large screens).
+  - The amount card leads the main column: the money on the left, the money line on the right from large screens.
+  - The money's label names the figure: Amount due, Still due, In your wallet, Not paid, or Amount.
+  - The figure is the page's one large type (`BigAmount`). A canceled invoice's figure is faded.
+  - Under it the token mark with "USDC on Base", or "Client picks the token".
+  - Then one sentence: a bold part and at most one short quiet part ("3 days late. The link works until Jan 5.").
+  - The money line (R-228) is a ruled statement: "Client pays", "− Network fee", then "You receive".
+    - Each term is a row, the term left and the amount right; the result is bold under a rule.
+    - Once paid: "Customer paid − Refunded − Held for the customer − Network fee = In your wallet".
+    - Refunded is the extra money returned to the customer, with the return's explorer link after the amount.
+    - The extra not returned yet stays Held for the customer. The page has no separate line about returns.
+    - A fee of 0 is no term. A line that would only repeat the figure is left out.
+    - Partly paid, a bar that fills once and "Received X of Y" take its place. Canceled, there is none.
+  - One quiet line says why paid money still waits to reach the wallet (R-54), and one what Check status found.
+  - Until paid, View payment follows them.
+  - The card's foot is the record as one step row: Created, Emailed, Pay page opened, Paid, then In your wallet.
+    - The steps share the width; the last takes its own width, so the row ends at the card's edge.
+    - A closed or canceled invoice ends on Checkout closed or Canceled, marked with a lock.
+    - Done is a check, now an accent ring, next an empty circle; each step shows its short date.
   - Details says the times: when the checkout closes ("Checkout closed" once past) and, once canceled, Canceled on.
-  - At its top right sits one More
-  actions menu: Copy link and Open pay page (a new tab) while the checkout can take money, Edit always (R-127),
-  Revise while it can still be canceled (R-129), Duplicate always (New invoice filled from this one, R-91), and while
-  it can still be canceled, Cancel in the danger color, which asks to confirm in a dialog. Copying keeps the menu
-  open and the item says Link copied; if the clipboard refuses, the whole link shows there to select.
-  - Under the header, one quiet line says why paid money still waits to reach the wallet (R-54).
-  - Check status sits there too, only while the checkout can take money (R-55).
   - Its progress and every transaction show once, on its payment page: View payment opens it.
-  - Below, from extra-large screens up, the main column holds the Items panel.
-  - Then Billed to and From side by side, as on a paper invoice.
+  - Motion: the page fades in over its placeholder, and a new state fades in the amount card. Polling moves nothing.
+  - While it loads, placeholders keep the page's shape: the header and its buttons, the amount card, then each panel.
+    - Panel titles show at once; only the data is a placeholder.
+  - Under the amount card, the main column holds Items (only with lines) and History.
   - History (R-124) ends the main column: a ruled table of changes, newest first, like the other tables.
     - Columns: Event, By (You, Payer, Forwend), Details and Time, which sits on the right.
     - Event is the short name in medium weight after a dot in its category's color: payments success, changes subtle,
@@ -1178,13 +1234,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A small segmented control in the head shows All, Payments, Changes or Emails.
     - Under the table, ruled off, one quiet line says how often the pay link was opened, first and last (R-125).
     - An invoice made before pay links (R-114) has no such line.
-  - Billed to and From share one height. They stack while the column is under 36rem; a request's From fills it.
-  - Beside the main column, a third of the width, sits the details panel (empty rows left out).
+  - The side column holds Billed to, then the details panel (empty rows left out).
+  - Billed to: the client, then Email the client (R-94), Payment reminders and Repeats monthly.
+    - One quiet line under Email the client: "Emailed Oct 23", or "Sending to <address>…".
+    - Email the client gives way to "You can send it again after <time>" for a day; focus moves there.
+  - From is a Details row, stacked under its term. The PDFs are a Details row.
   - Your memo (R-127) is a Details row after the note: the owner's own text, stacked under its term.
   - Replaced by and Replaces (R-129) are Details rows after Canceled on, each the other invoice's number as a link.
   - From shows "None on this invoice" with a link to add billing details when there are none.
-  - Narrower screens stack Items, Billed to, From, History, then the details.
-- An expired or canceled invoice's next step sits in the header's actions, before View payment (R-77).
+  - Below large screens: the amount card, the pay link's rows, Progress, Billed to, Items, Details, then History.
+- An expired or canceled invoice's next step sits in the header, and on phones in the bar at the bottom (R-77).
   - New invoice (lime) opens New invoice filled from it; the status badge and Details say what happened.
   - While the API's `reopenUntil` is set, Reopen checkout (lime) sits before it, and New invoice turns secondary (R-130).
   - Neither shows while its records are in review or the final ones are still being read.
@@ -1209,13 +1268,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Save changes saves every field and closes with a toast.
   - A refused value shows its error under its field.
   - However the dialog closes, it opens next time on what is saved.
-- Billed to ends with Send to client (R-94), ruled off under the client:
-  - Each send in a quiet list: "Emailed · <time>", "Sending to <address>…" or "Could not email · asked <time>".
-  - A past send names no address: the client email can change after it (R-127). The list stays without an email.
-  - While the checkout can take money, a small secondary Send to client button. A day after the last send it returns;
-    until then a quiet line says when.
-  - Without a client email, while the checkout can take money, one quiet line says it can't be emailed.
-- Payment reminders (R-96) follow Send to client in Billed to, ruled off, as a settings row:
+- Payment reminders (R-96) follow the client in Billed to, ruled off, as a settings row:
   - They show with a client email, or while on after it was cleared, so they can be turned off.
   - The Payment reminders switch at the row's end, saved when flipped, with a toast.
   - Under it one quiet line: the schedule, "Reminders need a due date", or when the client stopped them.

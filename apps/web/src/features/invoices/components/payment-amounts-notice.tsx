@@ -14,15 +14,21 @@ export interface PaymentAmountsNoticeProps {
   >[];
   detailsHref?: string;
   showVerification?: boolean;
+  /** The option whose whole return the page already shows, in its money line: left out here. */
+  returnsShownFor?: string;
 }
 export function PaymentAmountsNotice({
   options,
   detailsHref,
   showVerification = true,
+  returnsShownFor,
 }: PaymentAmountsNoticeProps) {
   const state = paymentVerification(options);
   const returns = options.filter(
-    (option) => option.amounts && BigInt(option.amounts.observedRefunded) > 0n,
+    (option) =>
+      option.optionId !== returnsShownFor &&
+      option.amounts &&
+      BigInt(option.amounts.observedRefunded) > 0n,
   );
   const verification = showVerification && state === RECONCILIATION_STATES.review;
   if (!verification && returns.length === 0) return null;

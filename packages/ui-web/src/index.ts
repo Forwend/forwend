@@ -12,7 +12,7 @@ export { HOLD_MS, HoldButton } from "./components/buttons/hold-button";
 export type { IconButtonProps, IconButtonSize } from "./components/buttons/icon-button";
 export { ICON_BUTTON_SIZES, IconButton, iconButtonClasses } from "./components/buttons/icon-button";
 export type { RowButtonProps } from "./components/buttons/row-button";
-export { RowButton } from "./components/buttons/row-button";
+export { RowButton, rowButtonClasses } from "./components/buttons/row-button";
 export type { AccordionItem, AccordionProps } from "./components/display/accordion";
 export { Accordion } from "./components/display/accordion";
 export type { BadgeProps } from "./components/display/badge";

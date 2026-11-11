@@ -90,7 +90,7 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
   await expect(confirmation.getByRole("button", { name: "About 6 min left" })).toBeVisible();
   // R-69: its progress and transactions show once, on its payment page.
   await expect(main.locator("header [data-status]")).toHaveCount(0);
-  await expect(main.locator("header").getByRole("link", { name: "View payment" })).toHaveAttribute(
+  await expect(main.getByRole("link", { name: "View payment" })).toHaveAttribute(
     "href",
     `/app/payments/${CONFIRMING_INVOICE.invoiceId}`,
   );
@@ -166,7 +166,8 @@ test("app pages navigate from the breadcrumb and rows, filter and search, link t
     expect(await sidewaysScroll(small)).toBeLessThanOrEqual(0);
   }
   await small.goto(`/app/invoices/${CONFIRMING_INVOICE.invoiceId}`);
-  await expect(small.getByRole("heading", { level: 1, name: "INV-0004" })).toBeVisible();
+  // On a phone the client is the large title, under the number and the title.
+  await expect(small.getByRole("heading", { level: 1, name: "Brightline Studio" })).toBeVisible();
   await expect(small.getByRole("main").getByRole("link", { name: "Invoices" })).toBeVisible();
   expect(await sidewaysScroll(small)).toBeLessThanOrEqual(0);
   expect(await blockingViolations(small)).toEqual([]);
@@ -337,7 +338,10 @@ test("an open invoice's page offers Check status and a settled one does not", as
     }),
   );
   await page.goto(`/app/invoices/${OPEN_INVOICE.invoiceId}`);
-  const check = page.getByRole("button", { name: "Check status" });
+  // Check status sits in More actions; what it found shows in the amount panel.
+  const more = page.getByRole("main").getByRole("button", { name: "More actions" });
+  const check = page.getByRole("menuitem", { name: "Check status" });
+  await more.click();
   await check.click();
   await expect(
     page
@@ -345,10 +349,15 @@ test("an open invoice's page offers Check status and a settled one does not", as
       .getByRole("status")
       .filter({ hasText: /^Nothing/ }),
   ).toHaveText("Nothing on Base Sepolia yet.");
+  await more.click();
   await expect(check).toBeDisabled();
+  await page.keyboard.press("Escape");
   await page.goto(`/app/invoices/${SETTLED_INVOICE.invoiceId}`);
-  await expect(page.getByRole("main").getByText("October retainer")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Check status" })).toHaveCount(0);
+  await expect(
+    page.getByRole("main").getByText("October retainer").filter({ visible: true }),
+  ).toBeVisible();
+  await more.click();
+  await expect(check).toHaveCount(0);
   await context.close();
 });
 
@@ -443,7 +452,7 @@ test("the owner's invoice page shows each state once, in its header", async ({ b
   const confirmation = header.getByRole("status", { name: "Payment confirmation" });
   // A reload signs in and redraws the shell, which under the full suite can outlast one check's wait.
   const shown = () =>
-    expect(header.getByRole("link", { name: "View payment" })).toBeVisible({ timeout: 15_000 });
+    expect(main.getByRole("link", { name: "View payment" })).toBeVisible({ timeout: 15_000 });
 
   // R-69, R-60: the header carries the state; progress and transactions show on the payment page.
   body = { ...OPEN_INVOICE, deposits: [] };
@@ -451,14 +460,16 @@ test("the owner's invoice page shows each state once, in its header", async ({ b
   await shown();
   await expect(main.getByRole("list", { name: "Payment progress" })).toHaveCount(0);
   await expect(header.getByText("Waiting for payment")).toBeVisible();
-  await header.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem", { name: "Copy link" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: /^Open pay page/ })).toHaveAttribute(
+  // The pay link's actions sit in the header, never the link itself; Check status in More actions.
+  await expect(header.getByRole("button", { name: "Copy link" })).toBeVisible();
+  await expect(header.getByRole("link", { name: /^Open pay page/ })).toHaveAttribute(
     "href",
     `http://localhost:3000/pay/${OPEN_INVOICE.payToken}?preview=1`,
   );
+  await expect(header.getByText(/\/pay\//)).toHaveCount(0);
+  await header.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Check status" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(main.getByRole("button", { name: "Check status" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 
   body = {
@@ -521,11 +532,11 @@ test("the owner's invoice page shows each state once, in its header", async ({ b
   };
   await page.reload();
   await shown();
-  await expect(header.getByText("Paid", { exact: true })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
-  // R-91
+  await expect(header.locator("[data-status]")).toHaveText("Paid");
+  // R-91, R-127: Edit is its own button; the step row also names Paid.
+  await expect(main.getByRole("button", { name: "Edit" })).toBeVisible();
   await main.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
+  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
   await page.keyboard.press("Escape");
 
   // R-69
@@ -551,7 +562,8 @@ test("the owner's invoice page shows each state once, in its header", async ({ b
   await page.reload();
   await shown();
   await expect(main.locator("header").getByRole("link", { name: "New invoice" })).toBeVisible();
-  await expect(main.getByRole("button", { name: "Check status" })).toHaveCount(0);
+  await main.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Check status" })).toHaveCount(0);
   await context.close();
 });
 
@@ -608,14 +620,12 @@ test("the owner's invoice page names the next step of every exception", async ({
   body = { ...OPEN_INVOICE, expiresAt: closedAt, closesAt: closedAt, closed: true, deposits: [] };
   await open();
   await expect(main.getByRole("region", { name: "Details" })).toContainText("Checkout closed");
-  // R-77: the next step sits with the header's actions, beside View payment, with no box under the title.
+  // R-77: the next step sits in the header; View payment stays in the amount card.
   await expect(header.getByRole("link", { name: "New invoice" })).toBeVisible();
-  await expect(header.getByRole("link", { name: "New invoice" }).locator("+ a")).toHaveText(
-    "View payment",
-  );
+  await expect(main.getByRole("link", { name: "View payment" })).toBeVisible();
   await expect(main).not.toContainText("can't take money again");
   await header.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
+  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
   await page.keyboard.press("Escape");
   await main.getByRole("link", { name: "New invoice" }).click();
   await expect(page).toHaveURL(`/app/invoices/new?from=${OPEN_INVOICE.invoiceId}`);
@@ -658,7 +668,7 @@ test("the owner's invoice page names the next step of every exception", async ({
     deposits: [paid(OPEN_INVOICE.amount), { ...paid("500000", true), logIndex: 1 }],
   };
   await open();
-  await expect(header.getByRole("link", { name: "View payment" })).toBeVisible();
+  await expect(main.getByRole("link", { name: "View payment" })).toBeVisible();
   await expect(header.getByRole("link", { name: "New invoice" })).toHaveCount(0);
   await expect(main).not.toContainText("is held for the payer");
   expect(await blockingViolations(page)).toEqual([]);
@@ -755,7 +765,7 @@ test("the owner cancels an invoice before any money, after confirming", async ({
   await expect(canceledRow).toBeFocused();
   // R-91
   await header.getByRole("button", { name: "More actions" }).click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Edit", "Duplicate"]);
+  await expect(page.getByRole("menuitem")).toHaveText(["Duplicate"]);
   await context.close();
 });
 
