@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 488,
+  "nextId": 489,
   "tasks": [
     {
       "id": "F332",
@@ -559,6 +559,90 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f487-the-roadmap-says-agentic-payments-are-x4",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F488",
+      "type": "test",
+      "behavior": "The New invoice form tests have time to finish on a busy CI runner",
+      "acceptance": [
+        "The New invoice form tests pass on the staging CI runner, where they timed out at 5 s while the other packages' tests ran beside them."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-unit"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-11 review pass by subagent: vi.setConfig at module scope applies to every test in new-invoice-form.test.tsx (vitest 5.0.5 resets config after each file, so nothing leaks); no assertion changed; the comment gives the reason in two sentences. The CI timeout was in a test body (line 91), which testTimeout covers."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-11T03:34:21Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 13.1,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "3303fbfd72f8fd10",
+        "filesHash": "0f63cbbc5e9acc07",
+        "proof": {
+          "1": "web-unit: the New invoice form file passes its 25 tests and the whole web suite passes with a 15 s budget for that file; on staging CI (runs 42952144931 and 42953083133) its first test timed out at the 5 s default while it takes 0.67 s locally. The staging run after this merge is the final proof."
+        },
+        "review": {
+          "result": "pass",
+          "by": "subagent",
+          "summary": "vi.setConfig at module scope applies to every test in new-invoice-form.test.tsx (vitest 5.0.5 resets config after each file, so nothing leaks); no assertion changed; the comment gives the reason in two sentences. The CI timeout was in a test body (line 91), which testTimeout covers.",
+          "at": "2026-11-11T03:36:04Z",
+          "filesHash": "0f63cbbc5e9acc07"
+        },
+        "commit": "f3918098",
+        "doneAt": "2026-11-11T03:36:06Z"
+      },
+      "branch": "test/f488-the-new-invoice-form-tests-have-time-to",
+      "baseCommit": "fe0e9beaeff75251eca59c7a1a517b5f5a7c5c49",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "test/f488-the-new-invoice-form-tests-have-time-to",
         "base": "main"
       }
     }
