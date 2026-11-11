@@ -478,7 +478,7 @@
         "The landing page and the README describe agentic payments as x402 payments for AI agents."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "landing-e2e"
@@ -549,11 +549,18 @@
           "summary": "The three sentences (landing roadmap, README, PRODUCT.md) are plain, accurate about x402 (an agent pays per request over HTTP), give no date and agree with each other; no test asserts the old text. The only other change is the harness's own task record in docs/tasks.json.",
           "at": "2026-11-11T03:25:34Z",
           "filesHash": "e2e2f3f39850940d"
-        }
+        },
+        "commit": "a0d00794",
+        "doneAt": "2026-11-11T03:25:36Z"
       },
       "branch": "fix/f487-the-roadmap-says-agentic-payments-are-x4",
       "baseCommit": "b86f1338c048a88428771e6f9622930b6eb7d98c",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f487-the-roadmap-says-agentic-payments-are-x4",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
