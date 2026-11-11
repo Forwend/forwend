@@ -59,6 +59,7 @@ It works in live mode only: NEAR Intents has no testnet.
 
 Forwend is entered in [NEAR HACKATHON](https://nearhackathon.com), in the Real-World Money track.
 With NEAR Intents, a client pays a Forwend invoice with almost any token on any chain.
+Watch [the live demo on X](https://x.com/0xEnsp1re/status/2120536074787205365).
 
 - The repository started on 8 Oct 2026. The hackathon was announced on 19 Oct 2026.
 - Before 19 Oct, Forwend had a first version on testnets: invoices, the pay page, balances, the invoice contracts and the backend.
