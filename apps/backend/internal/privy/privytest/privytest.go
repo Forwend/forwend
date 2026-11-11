@@ -40,6 +40,9 @@ type Fake struct {
 	UserReads int
 	// FailUserReads answers that many user reads with 500.
 	FailUserReads int
+	// EdgeCache answers a user read again for its exact URL, as Privy's edge does for 10 s whatever has changed.
+	EdgeCache bool
+	edge      map[string][]byte
 	// SignedInAt is a user's email latest_verified_at (1 when unset). PasskeySignIn, when set, gives every user a
 	// passkey account verified at that time.
 	SignedInAt    map[string]int64
@@ -81,7 +84,7 @@ func New(t *testing.T) *Fake {
 	f := &Fake{t: t, wallets: map[string]map[string]any{}, failedKeys: map[string]bool{}, Emails: map[string]string{},
 		SignedInAt: map[string]int64{}, LinkedAt: map[string]int64{}, Mfa: map[string]map[string]int64{},
 		Hashes: map[string]string{}, Statuses: map[string]string{}, Owners: map[string]string{},
-		sent: map[string]map[string]any{}}
+		sent: map[string]map[string]any{}, edge: map[string][]byte{}}
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	f.URL = srv.URL
@@ -169,6 +172,10 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"success": true})
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/users/"):
+		if cached, ok := f.edge[r.URL.RequestURI()]; f.EdgeCache && ok {
+			_, _ = w.Write(cached)
+			return
+		}
 		f.UserReads++
 		if f.FailUserReads > 0 {
 			f.FailUserReads--
@@ -210,8 +217,12 @@ func (f *Fake) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for kind, at := range f.Mfa[id] {
 			mfa = append(mfa, map[string]any{"type": kind, "verified_at": at})
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": id, "created_at": created, "has_accepted_terms": true,
+		body, _ := json.Marshal(map[string]any{"id": id, "created_at": created, "has_accepted_terms": true,
 			"is_guest": false, "linked_accounts": accounts, "mfa_methods": mfa})
+		if f.EdgeCache {
+			f.edge[r.URL.RequestURI()] = body
+		}
+		_, _ = w.Write(body)
 	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/v1/wallets/") && strings.HasSuffix(r.URL.Path, "/rpc"):
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
