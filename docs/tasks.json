@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 484,
+  "nextId": 485,
   "tasks": [
     {
       "id": "F332",
@@ -1256,6 +1256,30 @@
         "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
         "base": "main"
       }
+    },
+    {
+      "id": "F484",
+      "type": "docs",
+      "behavior": "The repository is ready to be public: a clear README, an MIT license and env examples that list only the keys in use",
+      "acceptance": [
+        "The root README says what Forwend is, how a payment and a cross-chain payment through NEAR Intents work, how to install and use the forwend, @forwend/js and @forwend/react packages, how to run the repository locally, a short roadmap, how to report a vulnerability, and the license.",
+        "The repository has an MIT LICENSE at its root, matching the packages' license (D-103).",
+        "Each .env.example lists only keys the code, tooling or deployment reads, without comments; every key the code reads is listed.",
+        "Nothing that would leak secrets or private data is in any branch, tag or commit that goes public."
+      ],
+      "dependsOn": [],
+      "state": "active",
+      "verification": [
+        "docs-check"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [],
+      "blockedReason": null,
+      "evidence": null,
+      "branch": "docs/f484-the-repository-is-ready-to-be-public-a-c",
+      "baseCommit": "7452b397d9e23e7731b7abae0e2dfdd556dce593"
     }
   ],
   "lastWrapup": {
