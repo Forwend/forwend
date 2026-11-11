@@ -329,7 +329,7 @@
         "Nothing that would leak secrets or private data is in any branch, tag or commit that goes public."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -410,11 +410,18 @@
           "summary": "First pass found four overstated README claims, all corrected: the status note now says test mode runs on testnets and live mode on mainnets as a development deployment until the audit; Send is to a wallet on the same network after a fresh sign-in check; held money goes back only through the refund authority (a time-delayed multisig at launch); Forwend holds none of the payer's money in transit, and cross-chain is live mode only. Checked fine: package names, install lines, API and prop names, prerequisite versions, root scripts, the folder table, every link, no competitor named, and no .env.example key lost (three used keys added). The Security tab link needs private vulnerability reporting, enabled right after the repo goes public.",
           "at": "2026-11-11T03:19:31Z",
           "filesHash": "cda2b5affbf78a06"
-        }
+        },
+        "commit": "42ff7344",
+        "doneAt": "2026-11-11T03:19:32Z"
       },
       "branch": "docs/f484-the-repository-is-ready-to-be-public-a-c",
       "baseCommit": "7452b397d9e23e7731b7abae0e2dfdd556dce593",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "docs/f484-the-repository-is-ready-to-be-public-a-c",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
