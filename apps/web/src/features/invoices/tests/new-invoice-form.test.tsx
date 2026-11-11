@@ -8,6 +8,10 @@ import type { Client } from "@/features/clients/types/clients";
 import { NewInvoiceForm } from "@/features/invoices/components/new-invoice-form";
 import { makeStore } from "@/store/store";
 
+// Each test walks the four steps and waits on the real 400 ms fee quote. On the staging CI runner, beside the other
+// packages' tests, the first one outlasted the 5 s default.
+vi.setConfig({ testTimeout: 15_000 });
+
 // The picker's API search as the form sees it: every saved client already found.
 const found = (clients: Client[]): ClientSearch => ({
   any: true,
