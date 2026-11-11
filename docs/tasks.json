@@ -1148,7 +1148,7 @@
         "The package version, its CHANGELOG heading, the docs' install line, reference version and changelog, packages/node/AGENTS.md and PLAN 11.9.4 name 0.2.1."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "node-unit",
         "web-unit"
@@ -1244,11 +1244,18 @@
           "summary": "One stale version, fixed: the example merchant README named 0.2.0. Checked fine: package.json, the CHANGELOG heading, packages/node/AGENTS.md, the docs install line and reference version, and PLAN 11.9.4 say 0.2.1; other 0.2.0 mentions are historical; npm serves 0.2.1 as latest with its README; the CHANGELOG and /docs entry state the TypeScript-only break; the docs sentence on what the package covers matches client.ts and index.ts.",
           "at": "2026-11-11T02:46:42Z",
           "filesHash": "5d20a9e9192b9d30"
-        }
+        },
+        "commit": "ff9642d4",
+        "doneAt": "2026-11-11T02:46:49Z"
       },
       "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
       "baseCommit": "4926bcf5fe68bab1fca005b92160127f7c913042",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "chore/f483-forwend-0-2-1-is-on-npm-with-the-fee-cro",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
