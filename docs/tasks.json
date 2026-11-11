@@ -1104,7 +1104,7 @@
         "The README links the live demo post on X"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "docs-check"
       ],
@@ -1172,11 +1172,18 @@
           "summary": "Pass on re-review. All 4 earlier findings are fixed: public/PROJECT.md:41 says 'Your invoice is paid in full, as for a direct payment' (true with owner-paid fees, D-122); public/llms.txt:12 says to use a merchant profile with a store and create a key for that store (matches checkoutapi/create.go:28 and docs-api.ts:337); PROJECT.md:49 calls card payments 'a planned step', matching roadmap lines 56-57 and PRODUCT.md:23; PROJECT.md:3 and :6 no longer imply card support today. Minor fixes landed: send on the same network (:27), 'Extra, short or failed' (:42), market-trend line removed, 'settles it to your wallet' in PROJECT.md:30 and llms.txt:7. Rechecked: llms.txt format (H1, blockquote, prose, H2 link lists, Optional), no competitor names or secrets, no sentence over 25 words, docs-check 0 errors, localhost:3000 serves both files identical to the working tree. Accepted as is: R-256 basis D-103 is a weak link but harmless; no kept test for static files, per docs/workflow.md 'Which tests to keep'. X demo link was not opened.",
           "at": "2026-11-11T15:39:34Z",
           "filesHash": "4a53d3d8b009d1a0"
-        }
+        },
+        "commit": "9214756a",
+        "doneAt": "2026-11-11T15:40:49Z"
       },
       "branch": "feat/f494-forwend-com-serves-project-md-with-the-p",
       "baseCommit": "ca1373e874e15bf102ab91ad6eb55f3f80fc23b0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "feat/f494-forwend-com-serves-project-md-with-the-p",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
