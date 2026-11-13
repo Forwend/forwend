@@ -606,6 +606,23 @@ test.describe("pay with another token (R-236 to R-238)", () => {
     await expect(anotherToken(page)).toHaveCount(0);
   });
 
+  test("is offered on the owner's preview, whose quote keeps no pick (R-125)", async ({ page }) => {
+    await page.clock.install({ time: NOW });
+    await mockInvoice(page, LIVE);
+    await routeCrossChain(page, [quote("1262996000")]);
+    const asked = page.waitForRequest(
+      (r) => r.url().endsWith("/crosschain/quotes") && r.method() === "POST",
+    );
+    await page.goto(`/pay/${PAY}?preview=1`);
+    await pickTronUSDT(page);
+    expect((await asked).postDataJSON()).toEqual({
+      originAsset: TRON_USDT,
+      refundTo: REFUND,
+      preview: true,
+    });
+    await expect(page.getByText(DEPOSIT_ADDRESS)).toBeVisible();
+  });
+
   test("a returned payment leaves one line, and the invoice can be paid again", async ({
     page,
   }) => {

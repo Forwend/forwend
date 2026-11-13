@@ -203,7 +203,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
       - So does a short deposit 1Click holds (`INCOMPLETE_DEPOSIT`): the rest may still convert it.
       - A delivered quote counts until its Base deposit came in. Any quote stops an hour past its deadline or deposit.
     - A route's minimum above the amount is 422 `below_minimum`, whose error also carries `minimum`.
-    - It keeps the Base option as the payer's pick (R-57).
+    - It keeps the Base option as the payer's pick (R-57), except with `preview: true` from the owner's preview (R-125).
   - The worker reads each quote's 1Click status (R-234, `invoice/crosschain_track.go`).
     - Every 10 s while converting, 30 s in its price window, then 5 minutes until an hour past its deadline.
     - Then every 30 minutes until 1Click's own address deadline, `quote.deadline` in the signed answer (`address_deadline`).

@@ -343,7 +343,8 @@ function Loaded({
             kept={kept}
             keep={keep}
             embed={embed}
-            crossTarget={preview ? null : crossTarget}
+            crossTarget={crossTarget}
+            preview={preview}
           />
         </div>
       </div>
@@ -550,6 +551,7 @@ function PayBox({
   keep,
   embed,
   crossTarget,
+  preview,
 }: {
   invoice: Invoice;
   linkToken: string;
@@ -569,6 +571,7 @@ function PayBox({
   embed?: EmbedLayout;
   /** The Base USDC option a payer may pay into from another chain (D-123); null where it can't. */
   crossTarget: CrossChainTarget | null;
+  preview: boolean;
 }) {
   // A canceled invoice takes no money on any option; invoice.closed is only the checkout's time.
   const canChoose =
@@ -718,6 +721,7 @@ function PayBox({
               payee={payeeName(invoice)}
               viaTabs={viaTabs}
               onTabsFocused={tabsFocused}
+              preview={preview}
               onDirect={() => {
                 setViaTabs(true);
                 setCrossOpen(false);

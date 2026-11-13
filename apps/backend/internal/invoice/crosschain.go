@@ -201,9 +201,10 @@ func pow10(n int) *big.Int { return new(big.Int).Exp(big.NewInt(10), big.NewInt(
 var refundAddress = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,200}$`)
 
 // QuoteCrossChain asks 1Click for a quote that pays exactly the amount due into the Base option (R-231). A real
-// quote is kept, given again while its window lasts (R-233), and keeps the Base option as the payer's pick. allow
-// spends from the budget all invoices share, only when 1Click is called; a wait over 0 refuses with *TooSoonError.
-func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundTo string, dry bool,
+// quote is kept, given again while its window lasts (R-233), and keeps the Base option as the payer's pick, except
+// from the owner's preview (R-125). allow spends from the budget all invoices share, only when 1Click is called; a
+// wait over 0 refuses with *TooSoonError.
+func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundTo string, dry, preview bool,
 	allow func() time.Duration) (CrossQuote, error) {
 	now := s.currentTime()
 	target, err := s.crossTarget(ctx, payToken, now)
@@ -235,7 +236,7 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 		return CrossQuote{}, err
 	}
 	if q.ID != "" {
-		return q, s.pickBase(ctx, payToken, target)
+		return q, s.pickBase(ctx, payToken, target, preview)
 	}
 	if wait := allow(); wait > 0 {
 		return CrossQuote{}, &TooSoonError{Wait: wait}
@@ -257,13 +258,13 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 		return CrossQuote{}, fmt.Errorf("save cross-chain quote for %s: %w", target.invoice.ID, err)
 	}
 	q.CreatedAt = now
-	return q, s.pickBase(ctx, payToken, target)
+	return q, s.pickBase(ctx, payToken, target, preview)
 }
 
 // pickBase keeps the Base option as the payer's pick, once a quote to it is given, kept or new. It shows only what the
 // payer chose; the deposit on Base still chooses the option (R-56).
-func (s *Service) pickBase(ctx context.Context, payToken string, target crossTarget) error {
-	if target.invoice.OptionCount < 2 || target.invoice.PickedOptionID == target.option.ID {
+func (s *Service) pickBase(ctx context.Context, payToken string, target crossTarget, preview bool) error {
+	if preview || target.invoice.OptionCount < 2 || target.invoice.PickedOptionID == target.option.ID {
 		return nil
 	}
 	if err := s.PickOption(ctx, payToken, target.option.ID); err != nil && !errors.Is(err, ErrPickLocked) {

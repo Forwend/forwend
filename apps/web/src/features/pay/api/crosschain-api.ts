@@ -22,12 +22,12 @@ export const crossChainApi = apiSlice.injectEndpoints({
     /** The deposit address for the token and refund address; the same open quote again while its window lasts. */
     createCrossQuote: build.mutation<
       CrossQuote,
-      { payToken: string; originAsset: string; refundTo: string }
+      { payToken: string; originAsset: string; refundTo: string; preview: boolean }
     >({
-      query: ({ payToken, originAsset, refundTo }) => ({
+      query: ({ payToken, originAsset, refundTo, preview }) => ({
         url: `${crossChain(payToken)}/quotes`,
         method: "POST",
-        body: { originAsset, refundTo },
+        body: { originAsset, refundTo, preview },
       }),
       responseSchema: crossQuoteSchema,
     }),

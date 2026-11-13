@@ -110,7 +110,7 @@ func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc
 	return func(w http.ResponseWriter, r *http.Request) {
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
 		q, err := invoices.QuoteCrossChain(r.Context(), r.PathValue("payToken"), r.URL.Query().Get("originAsset"), "", true,
-			allow)
+			false, allow)
 		writeCrossQuote(w, r, q, err, http.StatusOK)
 	}
 }
@@ -121,6 +121,7 @@ func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFun
 		var body struct {
 			OriginAsset string `json:"originAsset"`
 			RefundTo    string `json:"refundTo"`
+			Preview     bool   `json:"preview"`
 		}
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
@@ -128,7 +129,7 @@ func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFun
 		}
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
 		q, err := invoices.QuoteCrossChain(r.Context(), r.PathValue("payToken"), body.OriginAsset, body.RefundTo, false,
-			allow)
+			body.Preview, allow)
 		writeCrossQuote(w, r, q, err, http.StatusCreated)
 	}
 }

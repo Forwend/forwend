@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 495,
+  "nextId": 496,
   "tasks": [
     {
       "id": "F332",
@@ -1182,6 +1182,120 @@
       "delivery": {
         "mode": "pr",
         "branch": "feat/f494-forwend-com-serves-project-md-with-the-p",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F495",
+      "type": "fix",
+      "behavior": "The owner's pay page preview offers paying with another token, as the payer sees it",
+      "acceptance": [
+        "Given a live invoice with an open Base USDC option, when the owner opens its pay page with ?preview=1, then Pay with shows the Any token tab",
+        "The preview still counts no view and keeps no Show address pick"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "web-e2e",
+        "web-unit"
+      ],
+      "refs": [
+        "R-125",
+        "R-236"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-13 review pass by reviewer: Fresh review PASS after a first FAIL. First review: un-hiding Any token in preview let a preview quote run pickBase, which saved picked_id and wrote a Payer History row; fixed by a preview flag on the quote request that skips pickBase. Second review: guard covers both pickBase calls; payer quotes unchanged; preview:true from anyone only skips the convenience pick (money checks, limits, quote record and worker pick unchanged). Note: a preview quote is still the invoice's newest quote, so another browser opens on Any token with that token for 15 minutes, with no address shown; acceptable."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-13T18:47:12Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 75.6,
+            "log": ""
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.5,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          }
+        ],
+        "taskHash": "24cbcd6f21a5525a",
+        "filesHash": "ed15ce561e75cc2c",
+        "proof": {
+          "1": "web-e2e: crosschain.spec 'is offered on the owner's preview, whose quote keeps no pick' opens /pay/<token>?preview=1 on a live invoice, picks USDT on Tron, gets the deposit address and sends preview: true; before the fix the Any token tab was missing (element(s) not found)",
+          "2": "backend-affected: TestCrossChainQuoteFromTheOwnersPreviewKeepsNoPick posts a quote with preview: true and reads no pickedOptionId; without the gate it failed with 'picked 0xc4cf..., want none'. pay.spec 'the owner's preview keeps no pick on the invoice' passes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Fresh review PASS after a first FAIL. First review: un-hiding Any token in preview let a preview quote run pickBase, which saved picked_id and wrote a Payer History row; fixed by a preview flag on the quote request that skips pickBase. Second review: guard covers both pickBase calls; payer quotes unchanged; preview:true from anyone only skips the convenience pick (money checks, limits, quote record and worker pick unchanged). Note: a preview quote is still the invoice's newest quote, so another browser opens on Any token with that token for 15 minutes, with no address shown; acceptable.",
+          "at": "2026-11-13T18:49:13Z",
+          "filesHash": "ed15ce561e75cc2c"
+        },
+        "commit": "94e91e14",
+        "doneAt": "2026-11-13T18:49:29Z"
+      },
+      "branch": "fix/f495-the-owner-s-pay-page-preview-offers-payi",
+      "baseCommit": "c83d338890616e2683de54ef438bde797275b88a",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f495-the-owner-s-pay-page-preview-offers-payi",
         "base": "main"
       }
     }
