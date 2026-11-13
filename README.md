@@ -158,6 +158,8 @@ These steps get a real NEAR Intents quote on mainnet. They stop before any money
 
 Each visit to the link makes its own checkout, so one judge's steps never change another's.
 
+Watch [the full live demo with real funds on X](https://x.com/0xEnsp1re/status/2120536078885224516) (5 min 44 s).
+
 ### Try it without money
 
 NEAR Intents has no testnet, so a real cross-chain payment needs mainnet funds.
