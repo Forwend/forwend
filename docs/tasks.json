@@ -1194,7 +1194,7 @@
         "The preview still counts no view and keeps no Show address pick"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e",
         "web-unit"
@@ -1286,11 +1286,18 @@
           "summary": "Fresh review PASS after a first FAIL. First review: un-hiding Any token in preview let a preview quote run pickBase, which saved picked_id and wrote a Payer History row; fixed by a preview flag on the quote request that skips pickBase. Second review: guard covers both pickBase calls; payer quotes unchanged; preview:true from anyone only skips the convenience pick (money checks, limits, quote record and worker pick unchanged). Note: a preview quote is still the invoice's newest quote, so another browser opens on Any token with that token for 15 minutes, with no address shown; acceptable.",
           "at": "2026-11-13T18:49:13Z",
           "filesHash": "ed15ce561e75cc2c"
-        }
+        },
+        "commit": "94e91e14",
+        "doneAt": "2026-11-13T18:49:29Z"
       },
       "branch": "fix/f495-the-owner-s-pay-page-preview-offers-payi",
       "baseCommit": "c83d338890616e2683de54ef438bde797275b88a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f495-the-owner-s-pay-page-preview-offers-payi",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
