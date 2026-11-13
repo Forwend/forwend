@@ -141,6 +141,25 @@ The rest of Forwend was built in the same weeks:
 - Send between profiles and to other wallets ([#429](https://github.com/Forwend/forwend/pull/429), [#430](https://github.com/Forwend/forwend/pull/430)).
 - Network and platform fees on each invoice option ([#450](https://github.com/Forwend/forwend/pull/450), [#453](https://github.com/Forwend/forwend/pull/453)).
 
+### Try it on forwend.com
+
+These steps get a real NEAR Intents quote on mainnet. They stop before any money moves.
+
+1. Open [forwend.com/l/rob535qpfsp5](https://forwend.com/l/rob535qpfsp5). You see a payment link that takes any amount from 1.00 USD.
+2. Type `10` and press **Pay**. A new checkout opens for 10.00 USD, with the time it closes.
+3. Choose **Any token**, then **Choose a token**. A list of chains and tokens from NEAR Intents opens.
+4. Search `USDT` and pick **USDT on NEAR**. The page shows about 10.1 USDT to send, the conversion fee and the time to arrive.
+   - Some tokens need a larger amount. USDT on Tron needs at least 100.00 USDC, so the list marks it.
+5. Enter your own NEAR account as the refund address and press **Show address**.
+   - The page shows a QR code and a deposit address from NEAR Intents.
+   - A countdown holds the price for 15 minutes.
+   - It also names your refund account and the refund fee.
+6. Stop here. Sending that USDT would pay the checkout, and USDC would arrive at its receive address on Base.
+
+Each visit to the link makes its own checkout, so one judge's steps never change another's.
+
+Watch [the full live demo with real funds on X](https://x.com/0xEnsp1re/status/2120536078885224516) (5 min 44 s).
+
 ### Try it without money
 
 NEAR Intents has no testnet, so a real cross-chain payment needs mainnet funds.
