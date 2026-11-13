@@ -2699,9 +2699,9 @@ paths:
         minutes before the close; the page holds its price until shownUntil (15 minutes). The api keeps it only when
         1Click's signature and these fields check out, and the pay page checks signed again before it shows
         depositAddress. The same token and refund address get the open quote back while 5 minutes of its window are
-        left (201 again). It keeps
-        the Base option as the payer's pick. An invoice gets 20 quotes an hour (429 too_many_quotes), and all
-        invoices share a budget of new quotes (429 rate_limited). A deposit 1Click converts, or a short one it holds,
+        left (201 again). It keeps the Base option as the payer's pick, unless preview is true (the owner's
+        preview, R-125). An invoice gets 20 quotes an hour (429 too_many_quotes), and all invoices share a budget of
+        new quotes (429 rate_limited). A deposit 1Click converts, or a short one it holds,
         is 409 pick_locked.
       security: []
       parameters:
@@ -2720,6 +2720,7 @@ paths:
               properties:
                 originAsset: { type: string, description: A token's assetId from the tokens list. }
                 refundTo: { type: string, maxLength: 200, description: "The payer's own address on the token's chain." }
+                preview: { type: boolean, description: "From the owner's preview: the quote keeps no pick on the invoice." }
       responses:
         "201":
           description: The quote

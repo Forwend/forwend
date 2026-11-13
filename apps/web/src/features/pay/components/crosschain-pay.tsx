@@ -109,6 +109,8 @@ export interface CrossChainPayProps {
   /** The payer opened this box by the tabs, so its tabs take the focus, once. */
   viaTabs?: boolean;
   onTabsFocused?: () => void;
+  /** The owner's preview (R-125): its quote keeps no pick on the invoice. */
+  preview?: boolean;
 }
 
 const left = (ms: number) => {
@@ -131,6 +133,7 @@ export function CrossChainPay({
   onDirect,
   viaTabs = false,
   onTabsFocused,
+  preview = false,
 }: CrossChainPayProps) {
   const kept = invoice.crossChain ?? null;
   const [picking, setPicking] = useState(false);
@@ -197,6 +200,7 @@ export function CrossChainPay({
       payToken: linkToken,
       originAsset: token.assetId,
       refundTo: refundTo.trim(),
+      preview,
     });
     if ("error" in result) {
       setProblem(quoteProblem(result.error));

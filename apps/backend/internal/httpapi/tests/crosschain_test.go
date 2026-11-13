@@ -265,6 +265,18 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	}
 }
 
+func TestCrossChainQuoteFromTheOwnersPreviewKeepsNoPick(t *testing.T) {
+	e, _ := crossChainEnv(t)
+	pay, _ := liveInvoice(t, e, "key-1", 86400)
+	r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`", "preview": true}`)
+	if r.status != http.StatusCreated || r.body["depositAddress"] == nil {
+		t.Fatalf("quote: %d %v", r.status, r.body)
+	}
+	if got := e.get(t, pay).body["pickedOptionId"]; got != nil {
+		t.Fatalf("picked %v, want none from the owner's preview", got)
+	}
+}
+
 // A slow chain's deposit can take an hour to mine, and 1Click refunds what isn't done by the deadline: its quote gets a
 // longer deadline, and isn't offered when the close leaves too little time.
 func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
