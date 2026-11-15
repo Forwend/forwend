@@ -108,6 +108,8 @@ R-227, D-122; the full schema is in openapi.yaml.
   - So does one read while the L2 sequencer is down, or back for under an hour (`chain.SequencerUptime`).
   - One quote serves a chain's new invoices for a minute (`settlement.QuoteAge`).
   - A read that fails falls back on the chain's last quote for an hour (`settlement.QuoteStale`).
+  - The api and the worker read every chain's quote at start and every 5 minutes (`settlement.QuoteRefresh`).
+    - So that quote is there after a restart or a quiet hour, and a slow RPC doesn't stop a checkout.
   - A quote over 5.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
   - The platform fee is `PLATFORM_FEE_BPS` (0 to 500) of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
     - Unset, each is 0: no platform fee. The api and the worker read the same values.

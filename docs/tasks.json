@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 496,
+  "nextId": 497,
   "tasks": [
     {
       "id": "F332",
@@ -1296,6 +1296,81 @@
       "delivery": {
         "mode": "pr",
         "branch": "fix/f495-the-owner-s-pay-page-preview-offers-payi",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F496",
+      "type": "fix",
+      "behavior": "A new invoice, link or checkout still prices its network fee when a chain's RPC is slow, right after a restart too",
+      "acceptance": [
+        "Given the API or worker just started, when a chain's RPC then fails, then a new invoice still gets that chain's network fee from a quote read in the background at start",
+        "Each process reads every chain's network fee quote at start and every 5 minutes, and stops on shutdown"
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "backend-affected"
+      ],
+      "refs": [
+        "R-227"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-15 review pass by reviewer: Fresh review PASS. Keep reads each chain's quote at start and every 5 min with chain.RequestTimeout, so a slow first endpoint can fail over and NetworkFee always has a quote under ~5 min old to fall back on; the same read() keeps NetworkFeeMax, price-age and sequencer refusals, and refused reads are never stored. kept changes only under mu; test mutates state only after Keep returns. RPC cost ~5 calls per chain per 5 min per process, a few percent of the api's budget share. Notes: invoices still read inline after QuoteAge, so a slow chain can add up to 3 s but no longer fails the invoice; the window before Keep's first read and over an hour of RPC failure still refuse, which is the safe choice."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-15T14:49:34Z",
+        "checks": [
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "backend-affected",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "backend-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 31.2,
+            "log": ""
+          }
+        ],
+        "taskHash": "65f37ae2952afd6d",
+        "filesHash": "2527899e260233c8",
+        "proof": {
+          "1": "backend-affected: TestKeepReadsAQuoteAtStartForAnRPCThatFailsLater starts Keep, then with the RPC down and the quote past QuoteAge a new invoice's NetworkFee still returns the quote Keep read at start; before the fix it failed to build (no Keep) and a fresh Quotes with the RPC down returns an error",
+          "2": "backend-affected: the same test sees Keep read the chain's quote at start and return once its context ends; cmd/api and cmd/worker start Keep with every chain spec under the process context"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Fresh review PASS. Keep reads each chain's quote at start and every 5 min with chain.RequestTimeout, so a slow first endpoint can fail over and NetworkFee always has a quote under ~5 min old to fall back on; the same read() keeps NetworkFeeMax, price-age and sequencer refusals, and refused reads are never stored. kept changes only under mu; test mutates state only after Keep returns. RPC cost ~5 calls per chain per 5 min per process, a few percent of the api's budget share. Notes: invoices still read inline after QuoteAge, so a slow chain can add up to 3 s but no longer fails the invoice; the window before Keep's first read and over an hour of RPC failure still refuse, which is the safe choice.",
+          "at": "2026-11-15T14:50:13Z",
+          "filesHash": "2527899e260233c8"
+        },
+        "commit": "26defbec",
+        "doneAt": "2026-11-15T14:50:14Z"
+      },
+      "branch": "fix/f496-a-new-invoice-link-or-checkout-still-pri",
+      "baseCommit": "7e30be36e00641a3e8e805677f67f840096aeb5f",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f496-a-new-invoice-link-or-checkout-still-pri",
         "base": "main"
       }
     }

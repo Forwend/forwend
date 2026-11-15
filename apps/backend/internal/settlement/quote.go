@@ -3,6 +3,7 @@ package settlement
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"sync"
 	"time"
@@ -16,10 +17,12 @@ import (
 const NetworkFeeMargin = 2
 
 // QuoteAge is how long one chain's quote serves its new invoices. A read that fails then falls back on the last good
-// quote while it is younger than QuoteStale, so one slow RPC doesn't stop invoices.
+// quote while it is younger than QuoteStale, so one slow RPC doesn't stop invoices. Keep reads every QuoteRefresh, so
+// that quote is there after a restart or a quiet hour too.
 const (
-	QuoteAge   = time.Minute
-	QuoteStale = time.Hour
+	QuoteAge     = time.Minute
+	QuoteStale   = time.Hour
+	QuoteRefresh = 5 * time.Minute
 )
 
 // NetworkFeeMax bounds a quote: real ones are cents, and a gas spike stays well under it, so more is a lying RPC or
@@ -58,10 +61,39 @@ func (q *Quotes) NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, erro
 		}
 		return nil, err
 	}
+	q.store(chainID, usd)
+	return usd, nil
+}
+
+// Keep reads each chain's quote now and every QuoteRefresh until ctx ends, with a whole RPC request's time rather than
+// an invoice's few seconds.
+// ponytail: chains are read one after another, so a hung one delays the others' refresh by up to chain.RequestTimeout.
+func (q *Quotes) Keep(ctx context.Context, chainIDs []uint64) {
+	for {
+		for _, id := range chainIDs {
+			read, cancel := context.WithTimeout(ctx, chain.RequestTimeout)
+			usd, err := q.read(read, id)
+			cancel()
+			if err != nil {
+				if ctx.Err() == nil {
+					slog.Warn("could not refresh a network fee quote", "chain", id, "err", chain.Redact(err))
+				}
+				continue
+			}
+			q.store(id, usd)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(QuoteRefresh):
+		}
+	}
+}
+
+func (q *Quotes) store(chainID uint64, usd *big.Rat) {
 	q.mu.Lock()
 	q.kept[chainID] = quote{usd: usd, at: time.Now()}
 	q.mu.Unlock()
-	return usd, nil
 }
 
 func (q *Quotes) read(ctx context.Context, chainID uint64) (*big.Rat, error) {
