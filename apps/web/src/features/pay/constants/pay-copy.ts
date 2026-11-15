@@ -289,8 +289,9 @@ export const LINK_PAY_COPY = {
   loading: "Loading the payment link",
   amount: "Amount",
   amountField: "Amount (USD)",
-  amountHint: (limits: string) => `${limits}. You pay in a stablecoin worth 1 USD each.`,
-  fixedHint: "You pay in a stablecoin worth 1 USD each.",
+  // R-56: a payment is at least 1.00 USD.
+  amountHint: (min: string | null, max: string | null) =>
+    `Min ${min ?? "1.00"} USD${max ? `, max ${max} USD` : ""}`,
   pay: "Pay",
   previous: "Your previous payment",
   purchaseHelp: "Continue this payment, or start a separate purchase.",

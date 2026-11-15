@@ -967,6 +967,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     USD (fixed) or its range (open).
   - Right, in a card in the middle of the screen's height: "Pay with stablecoins", "You pick the token and network on
     the next page", an Amount (USD) field for an open link, then Pay.
+    - The field's hint names only its limits: "Min 1.00 USD", or "Min 10.00 USD, max 500.00 USD".
+    - An amount outside them says so in the same words.
   - A link that is off, ended, full or unready explains why, with no Pay.
   - Pay first records one purchase identity, original amount and offer version in the URL.
   - Returning or refreshing offers Continue this checkout and Start another purchase; independent visitors never share an attempt.

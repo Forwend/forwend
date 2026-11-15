@@ -94,6 +94,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
   }, [refused, link.state]);
   const fixed = link.amountUsd !== null;
   const limits = amountLabel(link);
+  const hint = COPY.amountHint(link.minUsd, link.maxUsd);
 
   // The purchase is in the address from the moment Pay is pressed, so a reload or a retry reuses its idempotency key.
   const savePurchase = (next: LinkPurchase | null) => {
@@ -169,10 +170,10 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
       cents === 0n
         ? COPY.errors.amount
         : cents < 100n // R-56: at least 1.00 USD
-          ? COPY.errors.limits(limits)
+          ? COPY.errors.limits(hint)
           : (link.minUsd && cents < usdCents(link.minUsd)) ||
               (link.maxUsd && cents > usdCents(link.maxUsd))
-            ? COPY.errors.limits(limits)
+            ? COPY.errors.limits(hint)
             : "";
     flushSync(() => {
       setError(shown);
@@ -204,7 +205,6 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         token="USD"
         className="min-w-0 text-amount-lg text-ink"
       />
-      <p className="text-sm text-muted">{COPY.fixedHint}</p>
     </div>
   ) : (
     <div className="flex flex-col gap-1.5">
@@ -279,7 +279,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
                     name="amountUsd"
                     inputMode="decimal"
                     autoComplete="off"
-                    hint={COPY.amountHint(limits)}
+                    hint={hint}
                     error={error}
                   />
                 </>
