@@ -1383,7 +1383,7 @@
         "The link page no longer repeats You pay in a stablecoin worth 1 USD each, under the field or under a fixed amount"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-e2e",
         "web-unit"
@@ -1458,11 +1458,18 @@
           "summary": "Fresh review PASS. Hint correct for every link shape and agrees with submit()'s 1.00 USD floor and min/max; no shared 1.00 constant exists to reuse; removed fixedHint had no other reader; hint stays the field's accessible description and the error still replaces it. Applied review fixes: the limits error now uses the hint's words, and the new test keeps only the no-minimum and max-only hint cases (the 1.00 floor), with the removed-sentence checks dropped in favour of the screenshots.",
           "at": "2026-11-15T14:57:04Z",
           "filesHash": "41b4132629d1ac37"
-        }
+        },
+        "commit": "455577f1",
+        "doneAt": "2026-11-15T14:57:12Z"
       },
       "branch": "fix/f497-a-payment-link-s-amount-field-names-its",
       "baseCommit": "709e174287bf4118f117d379090cec61f46cd0ad",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f497-a-payment-link-s-amount-field-names-its",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
