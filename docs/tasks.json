@@ -1308,7 +1308,7 @@
         "Each process reads every chain's network fee quote at start and every 5 minutes, and stops on shutdown"
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "backend-affected"
       ],
@@ -1361,11 +1361,18 @@
           "summary": "Fresh review PASS. Keep reads each chain's quote at start and every 5 min with chain.RequestTimeout, so a slow first endpoint can fail over and NetworkFee always has a quote under ~5 min old to fall back on; the same read() keeps NetworkFeeMax, price-age and sequencer refusals, and refused reads are never stored. kept changes only under mu; test mutates state only after Keep returns. RPC cost ~5 calls per chain per 5 min per process, a few percent of the api's budget share. Notes: invoices still read inline after QuoteAge, so a slow chain can add up to 3 s but no longer fails the invoice; the window before Keep's first read and over an hour of RPC failure still refuse, which is the safe choice.",
           "at": "2026-11-15T14:50:13Z",
           "filesHash": "2527899e260233c8"
-        }
+        },
+        "commit": "26defbec",
+        "doneAt": "2026-11-15T14:50:14Z"
       },
       "branch": "fix/f496-a-new-invoice-link-or-checkout-still-pri",
       "baseCommit": "7e30be36e00641a3e8e805677f67f840096aeb5f",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f496-a-new-invoice-link-or-checkout-still-pri",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
