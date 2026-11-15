@@ -5,10 +5,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -106,10 +108,12 @@ func run() error {
 			crossChain.Signer = cfg.OneClick.Signer // a test's fake 1Click
 		}
 	}
+	quotes := settlement.NewQuotes(balances.Client)
+	go quotes.Keep(ctx, slices.Sorted(maps.Keys(specs)))
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, users, balances.Read, balances.Client, codes, cfg.PublicWebURL,
-			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: settlement.NewQuotes(balances.Client),
+			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: quotes,
 				Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}}, crossChain),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,

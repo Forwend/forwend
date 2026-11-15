@@ -4,9 +4,11 @@ package main
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"syscall"
 	"time"
@@ -86,7 +88,9 @@ func run() error {
 	// A retainer's later month is quoted like any new invoice (R-227).
 	quotes := balance.NewChainReader(specs, cfg.Chains.RPCRate, budget)
 	defer quotes.Close()
-	invoices.SetPricing(invoice.Pricing{Quotes: settlement.NewQuotes(quotes.Client),
+	fees := settlement.NewQuotes(quotes.Client)
+	go fees.Keep(ctx, slices.Sorted(maps.Keys(specs)))
+	invoices.SetPricing(invoice.Pricing{Quotes: fees,
 		Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}})
 	rates := &ecb.Keeper{Pool: pool, Client: &http.Client{Timeout: 30 * time.Second}, URL: cfg.RatesURL}
 	prices := &price.Keeper{Pool: pool, URL: cfg.Prices.URL, Key: cfg.Prices.Key, Every: cfg.Prices.Every,

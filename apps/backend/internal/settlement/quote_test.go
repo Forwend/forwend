@@ -134,3 +134,42 @@ func TestAStalePriceKeepsTheLastGoodQuote(t *testing.T) {
 		t.Fatalf("a stale price past QuoteStale: %v, want refused naming the heartbeat", err)
 	}
 }
+
+// R-227: Keep reads each chain's quote at start, so a new invoice right after a restart still gets one with the RPC
+// down; Keep stops with its context.
+func TestKeepReadsAQuoteAtStartForAnRPCThatFailsLater(t *testing.T) {
+	a := chaintest.Start(t)
+	client := ethclient.NewClient(a.RPC)
+	reachable := true
+	q := NewQuotes(func(uint64) (*ethclient.Client, error) {
+		if !reachable {
+			return nil, errors.New("rpc down")
+		}
+		return client, nil
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	stopped := make(chan struct{})
+	go func() {
+		q.Keep(ctx, []uint64{chaintest.ChainID})
+		close(stopped)
+	}()
+	for wait := time.Now().Add(10 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		q.mu.Lock()
+		_, kept := q.kept[chaintest.ChainID]
+		q.mu.Unlock()
+		if kept {
+			break
+		}
+		if time.Now().After(wait) {
+			t.Fatal("Keep read no quote at start")
+		}
+	}
+	cancel()
+	<-stopped
+	reachable = false
+	// Past QuoteAge the invoice reads again, and the read fails: the quote Keep read serves.
+	q.kept[chaintest.ChainID] = quote{usd: q.kept[chaintest.ChainID].usd, at: time.Now().Add(-QuoteAge)}
+	if _, err := q.NetworkFee(context.Background(), chaintest.ChainID); err != nil {
+		t.Fatalf("a new invoice with the RPC down after a restart: %v", err)
+	}
+}
