@@ -212,14 +212,12 @@ test.describe("payment link page", () => {
     const { calls } = await mockLink(page, OPEN_LINK, { status: 429, code: "rate_limited" });
     await page.goto(`/l/${SLUG}`);
     const amount = page.getByRole("textbox", { name: "Amount (USD)" });
-    await expect(amount).toHaveAccessibleDescription(
-      "10.00–500.00 USD. You pay in a stablecoin worth 1 USD each.",
-    );
+    await expect(amount).toHaveAccessibleDescription("Min 10.00 USD, max 500.00 USD");
     for (const [typed, message] of [
       ["", "Enter an amount like 25 or 25.50."],
       ["abc", "Enter an amount like 25 or 25.50."],
-      ["5", "Enter an amount within the limits: 10.00–500.00 USD."],
-      ["501", "Enter an amount within the limits: 10.00–500.00 USD."],
+      ["5", "Enter an amount within the limits: Min 10.00 USD, max 500.00 USD."],
+      ["501", "Enter an amount within the limits: Min 10.00 USD, max 500.00 USD."],
     ] as const) {
       await amount.fill(typed);
       await payButton(page).click();
@@ -246,6 +244,19 @@ test.describe("payment link page", () => {
         body: { amountUsd: "25", expectedAmountUsd: "25.00", expectedVersion: "1" },
       },
     ]);
+  });
+
+  test("an open link without a minimum names 1.00 USD as its least", async ({ page }) => {
+    for (const [limits, hint] of [
+      [{ minUsd: null, maxUsd: null }, "Min 1.00 USD"],
+      [{ minUsd: null, maxUsd: "500.00" }, "Min 1.00 USD, max 500.00 USD"],
+    ] as const) {
+      await mockLink(page, { ...OPEN_LINK, ...limits });
+      await page.goto(`/l/${SLUG}`);
+      await expect(page.getByRole("textbox", { name: "Amount (USD)" })).toHaveAccessibleDescription(
+        hint,
+      );
+    }
   });
 
   test("a link that is off, ended or full says why and offers no Pay", async ({ page }) => {

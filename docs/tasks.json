@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 497,
+  "nextId": 498,
   "tasks": [
     {
       "id": "F332",
@@ -1373,6 +1373,96 @@
         "branch": "fix/f496-a-new-invoice-link-or-checkout-still-pri",
         "base": "main"
       }
+    },
+    {
+      "id": "F497",
+      "type": "fix",
+      "behavior": "A payment link's amount field names its limits in a short hint, such as Min 1.00 USD",
+      "acceptance": [
+        "Given an open link with no limits, then the Amount (USD) field's hint reads Min 1.00 USD; with a minimum and a maximum it reads Min 10.00 USD, max 500.00 USD",
+        "The link page no longer repeats You pay in a stablecoin worth 1 USD each, under the field or under a fixed amount"
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "web-e2e",
+        "web-unit"
+      ],
+      "refs": [
+        "R-142"
+      ],
+      "keep": [],
+      "review": false,
+      "notes": [
+        "2026-11-15 review pass by reviewer: Fresh review PASS. Hint correct for every link shape and agrees with submit()'s 1.00 USD floor and min/max; no shared 1.00 constant exists to reuse; removed fixedHint had no other reader; hint stays the field's accessible description and the error still replaces it. Applied review fixes: the limits error now uses the hint's words, and the new test keeps only the no-minimum and max-only hint cases (the 1.00 floor), with the removed-sentence checks dropped in favour of the screenshots."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-15T14:55:51Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.6,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 12.6,
+            "log": ""
+          },
+          {
+            "id": "web-e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 50.7,
+            "log": ""
+          }
+        ],
+        "taskHash": "45d38c228e4a9a7c",
+        "filesHash": "41b4132629d1ac37",
+        "proof": {
+          "1": "web-e2e: link-pay.spec 'an open link takes the payer's amount within its limits' reads the hint Min 10.00 USD, max 500.00 USD and the limits error in the same words; 'an open link without a minimum names 1.00 USD as its least' reads Min 1.00 USD and Min 1.00 USD, max 500.00 USD; both failed before the change. Screenshots: docs/runs/f497-link-pay-before-any-800.jpg, docs/runs/f497-link-pay-after-{any,range}-{1440,390}.png",
+          "2": "web-e2e: screenshots docs/runs/f497-link-pay-after-*.png show no 'stablecoin worth 1 USD' line, against docs/runs/f497-link-pay-before-any-800.jpg; git grep finds no reader of the removed fixedHint; link-pay.spec passes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Fresh review PASS. Hint correct for every link shape and agrees with submit()'s 1.00 USD floor and min/max; no shared 1.00 constant exists to reuse; removed fixedHint had no other reader; hint stays the field's accessible description and the error still replaces it. Applied review fixes: the limits error now uses the hint's words, and the new test keeps only the no-minimum and max-only hint cases (the 1.00 floor), with the removed-sentence checks dropped in favour of the screenshots.",
+          "at": "2026-11-15T14:57:04Z",
+          "filesHash": "41b4132629d1ac37"
+        }
+      },
+      "branch": "fix/f497-a-payment-link-s-amount-field-names-its",
+      "baseCommit": "709e174287bf4118f117d379090cec61f46cd0ad",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
