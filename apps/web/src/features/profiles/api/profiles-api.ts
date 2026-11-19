@@ -18,13 +18,8 @@ import { apiSlice } from "@/shared/api/api-slice";
 
 const NOT_FOUND = 404;
 
-const billingDetailsUrl = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/billing-details`;
-const notificationsUrl = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/notifications`;
-const tokensUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/tokens`;
-const modeUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/mode`;
-const feesUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/fees`;
+const profileUrl = (profileId: string, path: string) =>
+  `/v1/profiles/${encodeURIComponent(profileId)}/${path}`;
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -46,7 +41,6 @@ export const profilesApi = apiSlice.injectEndpoints({
       }),
       argSchema: z.object({ idempotencyKey: z.string().min(1), body: createProfileBodySchema }),
       responseSchema: profileSchema,
-      // The new profile joins the list at once, without asking for the list again.
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -63,7 +57,7 @@ export const profilesApi = apiSlice.injectEndpoints({
     /** null until the profile saves them (404 billing_details_not_found). */
     getBillingDetails: build.query<BillingDetails | null, string>({
       query: (profileId) => ({
-        url: billingDetailsUrl(profileId),
+        url: profileUrl(profileId, "billing-details"),
         validateStatus: (response) => response.ok || response.status === NOT_FOUND,
       }),
       transformResponse: (data: BillingDetails, meta) =>
@@ -74,7 +68,11 @@ export const profilesApi = apiSlice.injectEndpoints({
       BillingDetails,
       { profileId: string; body: BillingDetailsBody }
     >({
-      query: ({ profileId, body }) => ({ url: billingDetailsUrl(profileId), method: "PUT", body }),
+      query: ({ profileId, body }) => ({
+        url: profileUrl(profileId, "billing-details"),
+        method: "PUT",
+        body,
+      }),
       argSchema: z.object({ profileId: z.guid(), body: billingDetailsBodySchema }),
       responseSchema: billingDetailsSchema,
       async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
@@ -88,12 +86,12 @@ export const profilesApi = apiSlice.injectEndpoints({
     }),
     /** The profile's owner email (R-80). */
     getNotifications: build.query<Notifications, string>({
-      query: (profileId) => notificationsUrl(profileId),
+      query: (profileId) => profileUrl(profileId, "notifications"),
       responseSchema: notificationsSchema,
     }),
     saveNotifications: build.mutation<Notifications, { profileId: string; email: boolean }>({
       query: ({ profileId, email }) => ({
-        url: notificationsUrl(profileId),
+        url: profileUrl(profileId, "notifications"),
         method: "PUT",
         body: { email },
       }),
@@ -114,7 +112,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       { profileId: string; livemode: boolean }
     >({
       query: ({ profileId, livemode }) => ({
-        url: modeUrl(profileId),
+        url: profileUrl(profileId, "mode"),
         method: "PUT",
         body: { livemode },
       }),
@@ -147,7 +145,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       { profileId: string; feesPaidBy: FeesPaidBy }
     >({
       query: ({ profileId, feesPaidBy }) => ({
-        url: feesUrl(profileId),
+        url: profileUrl(profileId, "fees"),
         method: "PUT",
         body: { feesPaidBy },
       }),
@@ -169,27 +167,26 @@ export const profilesApi = apiSlice.injectEndpoints({
     /** R-136: every enabled token, on until the profile turns it off. */
     // The schema checks the list itself, as upsertQueryData below runs the endpoint's schemas on it.
     getProfileTokens: build.query<TokenSwitch[], string>({
-      query: (profileId) => tokensUrl(profileId),
+      query: (profileId) => profileUrl(profileId, "tokens"),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
     }),
     /** R-240: whether payers may pay from other chains through NEAR Intents; on by default. */
     getCrossChainSwitch: build.query<boolean, string>({
-      query: (profileId) => tokensUrl(profileId),
+      query: (profileId) => profileUrl(profileId, "tokens"),
       transformResponse: (data: { crossChain: boolean }) => data.crossChain,
       responseSchema: z.boolean(),
     }),
     /** Saves only the switch: the tokens off stay as the API has them. */
     saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
       query: ({ profileId, on }) => ({
-        url: tokensUrl(profileId),
+        url: profileUrl(profileId, "tokens"),
         method: "PUT",
         body: { crossChain: on },
       }),
       argSchema: z.object({ profileId: z.guid(), on: z.boolean() }),
       transformResponse: (data: { crossChain: boolean }) => data.crossChain,
       responseSchema: z.boolean(),
-      // The switch moves at once, as the token boxes do; a refusal puts it back.
       async onQueryStarted({ profileId, on }, { dispatch, queryFulfilled }) {
         const guess = dispatch(
           profilesApi.util.updateQueryData("getCrossChainSwitch", profileId, () => on),
@@ -204,10 +201,13 @@ export const profilesApi = apiSlice.injectEndpoints({
       },
     }),
     saveProfileTokens: build.mutation<TokenSwitch[], { profileId: string; off: TokenRef[] }>({
-      query: ({ profileId, off }) => ({ url: tokensUrl(profileId), method: "PUT", body: { off } }),
+      query: ({ profileId, off }) => ({
+        url: profileUrl(profileId, "tokens"),
+        method: "PUT",
+        body: { off },
+      }),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
-      // The boxes move at once; the API's answer then replaces the guess, and a refusal puts the old ones back.
       async onQueryStarted({ profileId, off }, { dispatch, queryFulfilled }) {
         const guess = dispatch(
           profilesApi.util.updateQueryData("getProfileTokens", profileId, (tokens) => {

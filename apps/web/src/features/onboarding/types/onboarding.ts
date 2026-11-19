@@ -6,6 +6,7 @@ import type {
   ONBOARDING_STEPS,
 } from "@/features/onboarding/constants/onboarding";
 import type { onboardingRequestSchema } from "@/features/onboarding/schemas/onboarding";
+import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Transaction } from "@/features/transactions/types/transactions";
 
 export type OnboardingChoice = (typeof ONBOARDING_CHOICES)[keyof typeof ONBOARDING_CHOICES];
@@ -15,12 +16,7 @@ export type OnboardingRequest = z.infer<typeof onboardingRequestSchema>;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[keyof typeof ONBOARDING_STEPS];
 
 /** What a details step collects for one new profile: its name and the billing details its invoices print. */
-export interface ProfileDetails {
-  name: string;
-  email: string;
-  country: string;
-  address: string;
-}
+export type ProfileDetails = Omit<BillingDetailsBody, "taxId">;
 
 export type ChecklistStepId = (typeof CHECKLIST_STEPS)[keyof typeof CHECKLIST_STEPS];
 

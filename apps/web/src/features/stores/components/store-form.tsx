@@ -12,18 +12,19 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Payee } from "@/features/pay/components/payee";
-import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
+import type { TokenSwitch } from "@/features/profiles/types/tokens";
 import { useSaveStoreLogoMutation, useSaveStoreMutation } from "@/features/stores/api/stores-api";
-import { StoreLogo, useObjectUrl } from "@/features/stores/components/store-logo";
+import { StoreLogo } from "@/features/stores/components/store-logo";
 import {
   BRAND_COLOR_PATTERN,
   COLOR_PICKER_START,
   STORE_LIMITS,
 } from "@/features/stores/constants/stores";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
+import { useObjectUrl } from "@/features/stores/hooks/use-object-url";
 import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
-import { AssetSelection } from "@/shared/components/chains/asset-selection";
+import { AssetSelection, assetKey } from "@/shared/components/chains/asset-selection";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { FieldGroup } from "@/shared/components/field-group";
@@ -40,8 +41,6 @@ export interface StoreFormProps {
   /** The profile's tokens (R-136): the store narrows the ones on. */
   tokens: readonly TokenSwitch[];
 }
-
-const tokenKey = (t: TokenRef) => `${t.chainId}:${t.token}`;
 
 const STEPS = { store: "store", brand: "brand", assets: "assets" } as const;
 const FIELD_STEPS: Record<StoreField, string> = {
@@ -67,7 +66,7 @@ export function StoreForm({
   const [closes, setCloses] = useState(String(store?.defaultExpiresIn ?? defaultClose));
   const [color, setColor] = useState(store?.brandColor ?? "");
   const shownTokens = tokens.filter((t) => t.on);
-  const [tokensOff, setTokensOff] = useState(() => new Set(store?.tokensOff.map(tokenKey)));
+  const [tokensOff, setTokensOff] = useState(() => new Set(store?.tokensOff.map(assetKey)));
   const [errors, setErrors] = useState<Partial<Record<StoreField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,7 +80,7 @@ export function StoreForm({
     { id: STEPS.brand, label: COPY.brandGroup },
     ...(shownTokens.length ? [{ id: STEPS.assets, label: COPY.tokensGroup }] : []),
   ]);
-  const accepted = shownTokens.filter((t) => !tokensOff.has(tokenKey(t)));
+  const accepted = shownTokens.filter((t) => !tokensOff.has(assetKey(t)));
 
   // Every problem the form has now, whichever step holds it.
   const problems = (form: HTMLFormElement) => {
@@ -110,10 +109,10 @@ export function StoreForm({
       // Ones the profile has off stay as the store had them: the store can't turn them on.
       tokensOff: [
         ...(store?.tokensOff ?? []).filter(
-          (t) => !shownTokens.some((s) => tokenKey(s) === tokenKey(t)),
+          (t) => !shownTokens.some((s) => assetKey(s) === assetKey(t)),
         ),
         ...shownTokens
-          .filter((t) => tokensOff.has(tokenKey(t)))
+          .filter((t) => tokensOff.has(assetKey(t)))
           .map(({ chainId, token }) => ({ chainId, token })),
       ],
     };
@@ -260,7 +259,7 @@ export function StoreForm({
             <AssetSelection
               label={COPY.tokensGroup}
               options={shownTokens}
-              selected={new Set(accepted.map(tokenKey))}
+              selected={new Set(accepted.map(assetKey))}
               onChange={(keys, on) => {
                 const next = new Set(tokensOff);
                 for (const key of keys) {

@@ -55,7 +55,6 @@ function serve(answer: () => Promise<Response>) {
   );
 }
 
-// R-136
 it("checks a box the moment it is pressed, and keeps every box usable while it saves", async () => {
   let release = () => {};
   serve(

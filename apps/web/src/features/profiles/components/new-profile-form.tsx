@@ -26,10 +26,8 @@ import {
 } from "@/features/profiles/constants/profile";
 import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
-import type { ProfileKind } from "@/features/profiles/types/profile";
+import type { NewProfileKind, ProfileKind } from "@/features/profiles/types/profile";
 import { APP_ROUTES } from "@/shared/config/routes";
-
-type NewKind = (typeof NEW_PROFILE_KINDS)[number];
 
 const KIND_ICONS = {
   [PROFILE_KINDS.freelancer]: FreelancerIcon,
@@ -42,7 +40,7 @@ export function NewProfileForm() {
   const [createProfile] = useCreateProfileMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, string>());
-  const [kind, setKind] = useState<NewKind>(PROFILE_KINDS.freelancer);
+  const [kind, setKind] = useState<NewProfileKind>(PROFILE_KINDS.freelancer);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState("");

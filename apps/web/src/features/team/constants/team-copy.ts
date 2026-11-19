@@ -1,6 +1,5 @@
 import { ROLES } from "@/features/profiles/constants/profile";
 
-/** R-139: the Team page. */
 export const TEAM_COPY = {
   title: "Team",
   members: "Members",

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MfaProvider, useMfaStep } from "@/features/auth/components/mfa-step";
+import { MfaProvider } from "@/features/auth/components/mfa-provider";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 
 // jsdom lacks the modal methods; the fallback dialog opens with them.
 const proto = HTMLDialogElement.prototype as HTMLDialogElement & Record<string, unknown>;

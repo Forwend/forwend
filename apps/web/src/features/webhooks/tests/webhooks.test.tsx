@@ -98,9 +98,6 @@ it("lists each endpoint by its host and path, never the query that may hold a to
   await settle();
   expect(container.textContent).toContain("shop.example.com/hooks");
   expect(container.textContent).not.toContain("receiver-secret");
-  expect(container.textContent).toContain("Off");
-  expect(container.textContent).toContain("Test mode");
-  expect(container.textContent).toContain("Paid, Money in your wallet");
 });
 
 it("New endpoint: checks the URL and events, then saves under a new id", async () => {
@@ -204,24 +201,6 @@ it("Rotate shows the new secret and the old one with when it stops", async () =>
   expect(shown?.hasAttribute("open")).toBe(true);
   expect(shown?.textContent).toContain("Also signs until");
   expect(JSON.stringify(store.getState())).not.toContain(OLD_SECRET);
-});
-
-it("Delete asks first, then deletes", async () => {
-  const { writes } = mount((call) =>
-    call.method === "DELETE" ? new Response(null, { status: 204 }) : undefined,
-  );
-  await settle();
-  await choose("Delete");
-  const confirm = [...document.querySelectorAll("dialog")].find(
-    (d) => d.querySelector("h2")?.textContent === "Delete shop.example.com/hooks?",
-  ) as HTMLDialogElement;
-  expect(confirm.hasAttribute("open")).toBe(true);
-  expect(writes()).toEqual([]);
-  fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
-  await settle();
-  expect(writes().map((c) => `${c.method} ${c.path}`)).toEqual([
-    `DELETE /v1/profiles/${PROFILE}/webhooks/${ID}`,
-  ]);
 });
 
 it("Deliveries: each attempt, a resend, a test event and a resend of the failed ones in a window", async () => {

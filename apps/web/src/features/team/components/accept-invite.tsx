@@ -11,19 +11,18 @@ import {
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { loginEmail } from "@/features/auth/lib/privy-user";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ROLE_LABELS } from "@/features/profiles/constants/profile";
 import { saveChosenProfileId } from "@/features/profiles/lib/chosen-profile";
 import { useAcceptInviteMutation, useGetInvitationQuery } from "@/features/team/api/team-api";
 import { TEAM_ERRORS } from "@/features/team/constants/team";
 import { INVITE_COPY as COPY } from "@/features/team/constants/team-copy";
-import { formatExpiry } from "@/features/team/lib/team";
+import { notFound } from "@/shared/api/server-reach";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { dateTime } from "@/shared/lib/dates";
 
-const NOT_FOUND = 404;
-
-const status = (error: unknown) => (error as { status?: unknown } | undefined)?.status;
 const code = (error: unknown) =>
   (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
 
@@ -43,7 +42,7 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
   const me = useSignUpQuery();
   const invitation = useGetInvitationQuery(token, { skip: !me.currentData });
   const [accept, accepting] = useAcceptInviteMutation();
-  const email = (user?.email?.address ?? user?.google?.email ?? "").toLowerCase();
+  const email = (loginEmail(user) ?? "").toLowerCase();
 
   const onAccept = async () => {
     try {
@@ -57,7 +56,7 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
     }
   };
 
-  const gone = status(invitation.error) === NOT_FOUND || status(accepting.error) === NOT_FOUND;
+  const gone = notFound(invitation.error) || notFound(accepting.error);
   if (gone) {
     return (
       <div className={PANEL}>
@@ -94,7 +93,7 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
         <DetailRow term={COPY.role}>{ROLE_LABELS[invite.role]}</DetailRow>
         <DetailRow term={COPY.sentTo}>{invite.email}</DetailRow>
         {email ? <DetailRow term={COPY.signedInAs}>{email}</DetailRow> : null}
-        <DetailRow term={COPY.expires}>{formatExpiry(invite.expiresAt)}</DetailRow>
+        <DetailRow term={COPY.expires}>{dateTime(invite.expiresAt)}</DetailRow>
       </DetailList>
       <div className={SECTION}>
         {otherEmail ? (

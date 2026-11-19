@@ -4,7 +4,7 @@ import { buttonClasses, IconButton, ThemeSwitch } from "@forwend/ui-web";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 import { APP_ROUTES } from "@/shared/config/routes";
 import styles from "./landing-header.module.css";

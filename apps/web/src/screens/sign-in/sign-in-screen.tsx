@@ -5,8 +5,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { SignInForm } from "@/features/auth/components/sign-in-form";
-import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { AUTH_COPY, SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { LandscapePage } from "@/shared/components/landscape-page/landscape-page";
 import { APP_ROUTES } from "@/shared/config/routes";
 

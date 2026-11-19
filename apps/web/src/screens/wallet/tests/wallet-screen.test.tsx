@@ -29,7 +29,7 @@ vi.mock("@/features/auth/hooks/use-wallet-mfa", () => ({ useWalletMfa: () => cal
 vi.mock("@privy-io/react-auth", () => ({
   useExportWallet: () => ({ exportWallet: calls.exportWallet }),
 }));
-vi.mock("@/features/auth/components/mfa-step", () => ({
+vi.mock("@/features/auth/hooks/use-mfa-step", () => ({
   useMfaStep: () => ({
     run: (action: () => unknown) => action(),
     step: null,

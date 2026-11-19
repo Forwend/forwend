@@ -18,9 +18,9 @@ import { InviteDialog } from "@/features/team/components/invite-dialog";
 import { MemberActions } from "@/features/team/components/member-actions";
 import { RollAfterRemoval } from "@/features/team/components/roll-after-removal";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
-import { formatExpiry } from "@/features/team/lib/team";
 import type { Invite, ToRoll } from "@/features/team/types/team";
 import { LoadError } from "@/shared/components/load-error";
+import { dateTime } from "@/shared/lib/dates";
 
 export interface TeamMembersProps {
   profileId: string;
@@ -176,11 +176,11 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
                     <span className={NARROW}>
                       {ROLE_LABELS[invite.role]} · {reach(invite.stores)}
                     </span>
-                    <span className={NARROW}>{COPY.expires(formatExpiry(invite.expiresAt))}</span>
+                    <span className={NARROW}>{COPY.expires(dateTime(invite.expiresAt))}</span>
                   </td>
                   <td className={cx(WIDE, "truncate text-muted")}>{reach(invite.stores)}</td>
                   <td className={cx(WIDE, "truncate text-muted tabular-nums")}>
-                    {formatExpiry(invite.expiresAt)}
+                    {dateTime(invite.expiresAt)}
                   </td>
                   <td className={WIDE}>
                     <Badge>{ROLE_LABELS[invite.role]}</Badge>

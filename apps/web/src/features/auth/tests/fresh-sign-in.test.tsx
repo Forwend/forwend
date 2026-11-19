@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FreshSignInProvider, useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { FreshSignInProvider } from "@/features/auth/components/fresh-sign-in-provider";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 
 // Forwend's own code routes (R-137), as the api answers them.

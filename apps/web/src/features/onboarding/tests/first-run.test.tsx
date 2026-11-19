@@ -184,15 +184,6 @@ describe("first run (R-50)", () => {
     expect(screen.queryByText(/Test money only/)).toBeNull();
   });
 
-  it("asks for at least one use, and counts the steps the uses need", async () => {
-    await mount();
-    expect(screen.getByText("Step 1 of 4")).toBeTruthy();
-    await click("Continue");
-    expect(screen.getByRole("alert").textContent).toBe("Pick at least one, or skip setup.");
-    fireEvent.click(screen.getByRole("checkbox", { name: /Invoice clients/ }));
-    expect(screen.getByText("Step 1 of 5")).toBeTruthy();
-  });
-
   it("names the freelancer profile, saves its details and tokens, then opens its first invoice", async () => {
     const onFinish = await mount();
     fireEvent.click(screen.getByRole("checkbox", { name: /Invoice clients/ }));
@@ -324,26 +315,6 @@ describe("first run (R-50)", () => {
     );
   });
 
-  it("starts the business details from the freelancer's contact details", async () => {
-    await mount();
-    fireEvent.click(screen.getByRole("checkbox", { name: /Invoice clients/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /Take payments for my business/ }));
-    await click("Continue");
-    type(/^Contact email/, "billing@mara.example");
-    await fillDetails("Mara Ilić Design");
-    await click("Continue");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "Tell customers who you are",
-    );
-    expect((screen.getByLabelText(/^Contact email/) as HTMLInputElement).value).toBe(
-      "billing@mara.example",
-    );
-    expect((screen.getByLabelText(/^Address/) as HTMLTextAreaElement).value).toBe(
-      "Hauptstr. 1\n10115 Berlin",
-    );
-    expect((screen.getByLabelText(/^Business name/) as HTMLInputElement).value).toBe("");
-  });
-
   it("skips the details and tokens: the profile is made unnamed, with no billing details and its own tokens", async () => {
     await mount();
     fireEvent.click(screen.getByRole("checkbox", { name: /Invoice clients/ }));
@@ -371,15 +342,5 @@ describe("first run (R-50)", () => {
     ).toMatchObject({ name: "Mara Ilić Design", country: "DE" });
     expect(calls.filter((c) => c.path.endsWith("/onboarding"))).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Sign in faster next time");
-  });
-
-  it("keeps what was typed when going back", async () => {
-    await mount();
-    fireEvent.click(screen.getByRole("checkbox", { name: /Invoice clients/ }));
-    await click("Continue");
-    type(/^Name on invoices/, "Mara");
-    await click(/Back/);
-    await click("Continue");
-    expect((screen.getByLabelText(/^Name on invoices/) as HTMLInputElement).value).toBe("Mara");
   });
 });

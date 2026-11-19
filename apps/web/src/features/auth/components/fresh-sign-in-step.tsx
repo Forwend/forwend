@@ -1,154 +1,30 @@
 "use client";
 
-import { BUTTON_VARIANTS, Button, CodeInput, Dialog } from "@forwend/ui-web";
+import { BUTTON_VARIANTS, Button, CodeInput } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
 import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { Mail } from "lucide-react";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSendFreshCodeMutation, useVerifyFreshCodeMutation } from "@/features/auth/api/auth-api";
 import { StepLead } from "@/features/auth/components/step-lead";
 import { FRESH_SIGN_IN_COPY as COPY } from "@/features/auth/constants/auth-copy";
-import { CODE_LENGTH } from "@/features/auth/constants/sign-in";
+import { CODE_LENGTH, FRESH_CODE_ERRORS } from "@/features/auth/constants/sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
-import { type AskFreshSignIn, needsFreshSignIn } from "@/shared/api/fresh-sign-in";
+import { loginEmail } from "@/features/auth/lib/privy-user";
 
-type Answer = (ok: boolean) => void;
-
-/** A form that may ask for a fresh sign-in: the ask opens its step in place of the form's buttons. */
-interface Scope {
-  open: (answer: Answer) => void;
-}
-
-interface Controller {
-  claim: (scope: Scope) => void;
-  release: (scope: Scope) => void;
-}
-
-const FreshSignInContext = createContext<Controller | null>(null);
-
-export interface FreshSignInProviderProps {
-  /** Hands over the function the API calls on reauth_required (R-137). */
-  register: (ask: AskFreshSignIn) => void;
-  children: ReactNode;
-}
-
-// R-137: a request that needs a fresh sign-in asks the form that sent it, in place, so no dialog opens on top of
-// another and the user still sees what they confirm. A request no form claimed asks in a dialog of its own.
-export function FreshSignInProvider({ register, children }: FreshSignInProviderProps) {
-  const claimed = useRef<Scope | null>(null);
-  const [fallback, setFallback] = useState<{ answer: Answer; asked: number } | null>(null);
-  const controller = useMemo<Controller>(
-    () => ({
-      claim: (scope) => {
-        claimed.current = scope;
-      },
-      release: (scope) => {
-        if (claimed.current === scope) claimed.current = null;
-      },
-    }),
-    [],
-  );
-  useEffect(
-    () =>
-      register(
-        () =>
-          new Promise<boolean>((resolve) => {
-            if (claimed.current) claimed.current.open(resolve);
-            else setFallback((f) => ({ answer: resolve, asked: (f?.asked ?? 0) + 1 }));
-          }),
-      ),
-    [register],
-  );
-  return (
-    <FreshSignInContext.Provider value={controller}>
-      {children}
-      <FallbackDialog
-        asked={fallback?.asked ?? 0}
-        answer={(ok) => {
-          fallback?.answer(ok);
-          setFallback(null);
-        }}
-        open={fallback !== null}
-      />
-    </FreshSignInContext.Provider>
-  );
-}
-
-/** For a form whose request may need a fresh sign-in: run sends it, and step is what to show in place of the form's
- * buttons while the user confirms. pending is true then; the form's fields should stay as they were. */
-export function useFreshSignIn() {
-  const controller = useContext(FreshSignInContext);
-  const [answer, setAnswer] = useState<Answer | null>(null);
-  const scope = useRef<Scope>({ open: (a) => setAnswer(() => a) });
-  // A form that unmounts mid-confirm gives up; one whose dialog only closes calls cancel in its onClose.
-  useEffect(() => {
-    const own = scope.current;
-    return () => controller?.release(own);
-  }, [controller]);
-  const latest = useRef(answer);
-  latest.current = answer;
-  useEffect(() => () => latest.current?.(false), []);
-  const run = useCallback(
-    async <T,>(send: () => Promise<T>): Promise<T> => {
-      controller?.claim(scope.current);
-      try {
-        return await send();
-      } finally {
-        controller?.release(scope.current);
-      }
-    },
-    [controller],
-  );
-  // Whether the last ask was given up: then a form shows no error, but a retry refused after a sign-in still fails.
-  const gaveUp = useRef(false);
-  const done = useCallback(
-    (ok: boolean) => {
-      if (!answer) return;
-      gaveUp.current = !ok;
-      answer(ok);
-      setAnswer(null);
-    },
-    [answer],
-  );
-  const step = answer ? <ConfirmStep onDone={done} /> : null;
-  return {
-    run,
-    step,
-    pending: answer !== null,
-    // For a dialog's own close: it gives up as the step's Cancel does.
-    cancel: () => done(false),
-    cancelled: (error: unknown) => gaveUp.current && needsFreshSignIn(error),
-  };
-}
-
-/** Opens a dialog's open function while a fresh sign-in is pending, for an action that has no form of its own. */
-export function useOpenWhilePending(pending: boolean, open: (() => void) | undefined) {
-  const latest = useRef(open);
-  latest.current = open;
-  useEffect(() => {
-    if (pending) latest.current?.();
-  }, [pending]);
+export interface FreshSignInStepProps {
+  onDone: (ok: boolean) => void;
 }
 
 // A code sent to the login email, as the two-step views look: the mail mark, where the code went, the boxes, one
 // status line under them, then Confirm full width and a quiet Cancel.
-function ConfirmStep({ onDone }: { onDone: (ok: boolean) => void }) {
+export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
   const { user } = usePrivy();
   // Forwend's own code (R-137): a Privy sign-in made while signed in keeps the session and its sign-in time, so the
   // api can't tell it happened (D-49).
   const [sendCode] = useSendFreshCodeMutation();
   const [verifyCode] = useVerifyFreshCodeMutation();
-  // The api sends the code to the login email, or a Google-only account's Google address.
-  const email = user?.email?.address ?? user?.google?.email;
+  const email = loginEmail(user);
   const [noEmail, setNoEmail] = useState(false);
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
@@ -177,11 +53,11 @@ function ConfirmStep({ onDone }: { onDone: (ok: boolean) => void }) {
       const code = (failure.data as { error?: { code?: string } } | undefined)?.error?.code;
       const waitUntil = Date.now() + (failure.retryAfterSeconds ?? 0) * 1000;
       // This session's code sent a moment ago is still the one to enter.
-      if (code === "code_sent_recently") {
+      if (code === FRESH_CODE_ERRORS.sentRecently) {
         setSent(true);
         setResendAt(waitUntil);
-      } else if (code === "no_login_email") setNoEmail(true);
-      else if (code === "too_many_codes") {
+      } else if (code === FRESH_CODE_ERRORS.noLoginEmail) setNoEmail(true);
+      else if (code === FRESH_CODE_ERRORS.tooMany) {
         setTooMany(true);
         setResendAt(waitUntil);
       } else setSendFailed(true);
@@ -336,42 +212,4 @@ function useNow(until: number) {
     return () => clearInterval(timer);
   }, [until]);
   return now;
-}
-
-// For a request no form claimed. The step mounts only once asked, so its focus lands after the dialog opens.
-function FallbackDialog({ asked, open, answer }: { asked: number; open: boolean; answer: Answer }) {
-  const latest = useRef(answer);
-  latest.current = answer;
-  const box = useRef<HTMLDivElement>(null);
-  return (
-    <Dialog
-      triggerLabel={COPY.title}
-      title={COPY.title}
-      closeLabel={COPY.close}
-      trigger={(show) => <OpenWhenAsked asked={asked} open={show} />}
-      onClose={() => latest.current(false)}
-    >
-      <div ref={box}>
-        {open ? (
-          <ConfirmStep
-            onDone={(ok) => {
-              latest.current(ok);
-              box.current?.closest("dialog")?.close();
-            }}
-          />
-        ) : null}
-      </div>
-    </Dialog>
-  );
-}
-
-// The dialog opens from a request, not a button: each ask opens it once. open is new on every render, and opening an
-// open dialog throws, so only a new ask runs it.
-export function OpenWhenAsked({ asked, open }: { asked: number; open: () => void }) {
-  const latest = useRef(open);
-  latest.current = open;
-  useEffect(() => {
-    if (asked > 0) latest.current();
-  }, [asked]);
-  return null;
 }

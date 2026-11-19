@@ -4,7 +4,6 @@ import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 export const FIRST_RUN_COPY = {
   pageTitle: "Get started",
   stepCount: (at: number, all: number) => `Step ${at} of ${all}`,
-  steps: "Setup steps",
   signOut: "Sign out",
   back: "Back",
   continue: "Continue",
@@ -95,7 +94,6 @@ export const FIRST_RUN_COPY = {
     lastOn: "Keep at least one token on.",
     loading: "Loading tokens",
     failed: "We could not load the tokens. Try again.",
-    retry: "Try again",
   },
   passkey: {
     title: "Sign in faster next time",
@@ -146,8 +144,6 @@ export const CHECKLIST_COPY = {
   progress: (done: number, all: number) => `${done} of ${all} done`,
   skip: "Skip",
   skipStep: (title: string) => `Skip: ${title}`,
-  done: "Done",
-  notDone: "Not done",
   passkeyFailed: "The passkey was not added. Try again.",
   steps: {
     [CHECKLIST_STEPS.passkey]: {

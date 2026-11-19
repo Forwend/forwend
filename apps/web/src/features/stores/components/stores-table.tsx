@@ -30,7 +30,7 @@ export interface StoresTableProps {
   canAdd: boolean;
 }
 
-// R-134. A merchant profile always has its first store, so the list is never empty.
+// A merchant profile always has its first store, so the list is never empty.
 export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps) {
   const list = useListStoresQuery(profileId);
   const stores = list.currentData ?? [];

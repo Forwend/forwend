@@ -1,4 +1,4 @@
-import { CTA } from "@/features/waitlist/constants/waitlist";
+import { CTA } from "@/screens/kit/constants/sample-cta";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
 import { COMP_UI, NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";

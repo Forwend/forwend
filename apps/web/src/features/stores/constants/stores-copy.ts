@@ -1,6 +1,5 @@
 import { STORE_LIMITS } from "@/features/stores/constants/stores";
 
-/** R-134. */
 export const STORES_COPY = {
   payments: "Open in Payments",
   detailTitle: "Store",
@@ -30,7 +29,6 @@ export const STORES_COPY = {
   originCount: (count: number) => (count === 1 ? "1 origin" : `${count} origins`),
   noOrigins: "None",
   failed: "We could not load your stores.",
-  retry: "Try again",
   gone: "This store is not in your list anymore.",
   backToList: "Back to stores",
   storeGroup: "Store",
@@ -38,9 +36,8 @@ export const STORES_COPY = {
   logo: "Logo",
   logoAlt: (name: string) => `${name} logo`,
   noLogo: "No logo yet. Pay pages and PDFs show the Forwend mark or your initial.",
-  logoHint:
-    "PNG or JPEG, at most 1 MB and 1024 px a side. This store's pay pages and invoice PDFs show it.",
-  logoHintNew: "PNG or JPEG, at most 1 MB and 1024 px a side. It uploads when you save the store.",
+  logoHint: `PNG or JPEG, at most 1 MB and ${STORE_LIMITS.logoSide} px a side. This store's pay pages and invoice PDFs show it.`,
+  logoHintNew: `PNG or JPEG, at most 1 MB and ${STORE_LIMITS.logoSide} px a side. It uploads when you save the store.`,
   uploadLogo: "Upload logo",
   replaceLogo: "Replace logo",
   removeLogo: "Remove logo",
@@ -50,7 +47,6 @@ export const STORES_COPY = {
   colorHint:
     "Like #1f6a8c. It tints the pay page's backdrop and colors the line under the PDF header.",
   pickColor: "Pick the accent color",
-  checkoutGroup: "Checkout",
   tokensGroup: "Accepted assets",
   optionCount: (count: number) => (count === 1 ? "1 option" : `${count} options`),
   tokensHint:

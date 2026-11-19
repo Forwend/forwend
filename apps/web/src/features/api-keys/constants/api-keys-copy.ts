@@ -1,4 +1,4 @@
-import type { OVERLAP_HOURS } from "@/features/api-keys/constants/api-keys";
+import { KEY_NAME_MAX, type OVERLAP_HOURS } from "@/features/api-keys/constants/api-keys";
 import type { KeyScope } from "@/features/api-keys/types/api-keys";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 
@@ -6,7 +6,6 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 const keyText = (last4: string, livemode: boolean) =>
   `${livemode ? "fw_live_" : "fw_test_"}…${last4}`;
 
-/** R-145: the Developers page's API keys. */
 export const API_KEYS_COPY = {
   title: "Developers",
   intro: "Keys for your server. Never put one in a web page or an app.",
@@ -77,7 +76,7 @@ export const API_KEYS_COPY = {
   keep: "Keep",
   revoked: (name: string) => `${name} revoked`,
   errors: {
-    name: "Enter a name of up to 100 characters.",
+    name: `Enter a name of up to ${KEY_NAME_MAX} characters.`,
     scopes: "Pick at least one.",
     failed: "Could not save. Try again.",
     revokeFailed: "Could not revoke the key. Try again.",

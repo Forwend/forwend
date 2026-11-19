@@ -8,7 +8,7 @@ import { useCreateKeyMutation } from "@/features/api-keys/api/api-keys-api";
 import { KEY_NAME_MAX, KEY_SCOPES } from "@/features/api-keys/constants/api-keys";
 import { API_KEYS_COPY as COPY } from "@/features/api-keys/constants/api-keys-copy";
 import type { KeyScope } from "@/features/api-keys/types/api-keys";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 

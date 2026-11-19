@@ -1,153 +1,34 @@
 "use client";
 
-import { BUTTON_VARIANTS, Button, CodeInput, Dialog } from "@forwend/ui-web";
+import { BUTTON_VARIANTS, Button, CodeInput } from "@forwend/ui-web";
 import {
   errorIndicatesMaxMfaRetries,
   errorIndicatesMfaTimeout,
   errorIndicatesMfaVerificationFailed,
   type MfaMethod,
   useMfa,
-  useRegisterMfaListener,
 } from "@privy-io/react-auth";
 import { Fingerprint, ShieldAlert, Smartphone } from "lucide-react";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { OpenWhenAsked } from "@/features/auth/components/fresh-sign-in";
+import { useEffect, useRef, useState } from "react";
 import { StepLead } from "@/features/auth/components/step-lead";
-import { TWO_STEP_COPY as COPY, FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
+import { TWO_STEP_COPY as COPY } from "@/features/auth/constants/auth-copy";
 import { CODE_LENGTH } from "@/features/auth/constants/sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
+import type { TwoStepMethod } from "@/features/auth/types/two-step";
 
-interface Scope {
-  open: (methods: MfaMethod[]) => void;
-}
-
-interface Controller {
-  claim: (scope: Scope) => void;
-  release: (scope: Scope) => void;
-}
-
-const MfaContext = createContext<Controller | null>(null);
-
-// D-49, R-219: Privy asks for its MFA before it signs, shows a key or turns MFA off, and shows no window of its own
-// (noPromptOnMfaRequired): one would open under Forwend's dialogs. The form that started the action shows the ask in
-// place of its buttons, as Confirm it's you does; an ask no form claimed shows in a small dialog of its own.
-export function MfaProvider({ children }: { children: ReactNode }) {
-  const claimed = useRef<Scope | null>(null);
-  const [fallback, setFallback] = useState({ asked: 0, methods: [] as MfaMethod[] });
-  const controller = useMemo<Controller>(
-    () => ({
-      claim: (scope) => {
-        claimed.current = scope;
-      },
-      release: (scope) => {
-        if (claimed.current === scope) claimed.current = null;
-      },
-    }),
-    [],
-  );
-  // One object for good: Privy subscribes again whenever it changes.
-  const listener = useMemo(
-    () => ({
-      onMfaRequired: ({ mfaMethods }: { mfaMethods: MfaMethod[] }) => {
-        if (claimed.current) claimed.current.open(mfaMethods);
-        else setFallback((f) => ({ asked: f.asked + 1, methods: mfaMethods }));
-      },
-    }),
-    [],
-  );
-  useRegisterMfaListener(listener);
-  return (
-    <MfaContext.Provider value={controller}>
-      {children}
-      <FallbackDialog asked={fallback.asked} methods={fallback.methods} />
-    </MfaContext.Provider>
-  );
-}
-
-/** For a form whose action may need Privy's MFA: run starts the action, and step is what to show in place of the
- * form's buttons while Privy waits for it. busy is true while Privy checks an answer: closing then would cancel
- * nothing, since Privy goes on. onVerified runs once Privy takes the answer. */
-export function useMfaStep({ onVerified }: { onVerified?: () => void } = {}) {
-  const controller = useContext(MfaContext);
-  const { cancel } = useMfa();
-  const [methods, setMethods] = useState<MfaMethod[] | null>(null);
-  const [busy, setBusy] = useState(false);
-  const asked = useRef(false);
-  const scope = useRef<Scope>({
-    open: (m) => {
-      asked.current = true;
-      setMethods(m);
-    },
-  });
-  // An action Privy never settles, such as its export window closed early, keeps no claim once it is answered.
-  const end = useCallback(() => {
-    controller?.release(scope.current);
-    asked.current = false;
-    setMethods(null);
-    setBusy(false);
-  }, [controller]);
-  // The form went away with Privy still asking, such as the send sheet closed during a setup: the action that asked
-  // ends, and the next ask shows where it is made, not in a form no longer there.
-  const cancelAsk = useRef(cancel);
-  cancelAsk.current = cancel;
-  useEffect(
-    () => () => {
-      controller?.release(scope.current);
-      if (asked.current) cancelAsk.current();
-    },
-    [controller],
-  );
-  const run = useCallback(
-    async <T,>(action: () => Promise<T>): Promise<T> => {
-      controller?.claim(scope.current);
-      try {
-        return await action();
-      } finally {
-        end();
-      }
-    },
-    [controller, end],
-  );
-  const step = methods ? (
-    <MfaStep
-      methods={methods}
-      onBusy={setBusy}
-      onVerified={() => {
-        end();
-        onVerified?.();
-      }}
-      onCancel={cancel}
-    />
-  ) : null;
-  return { run, step, busy, cancel: () => (methods && !busy ? cancel() : undefined) };
-}
-
-// The one ask: the passkey first, one tap, when the user has one for MFA; else, or as well, the app's code.
-function MfaStep({
-  methods,
-  onBusy,
-  onVerified,
-  onCancel,
-}: {
+export interface MfaStepProps {
   methods: MfaMethod[];
   onBusy: (busy: boolean) => void;
   onVerified: () => void;
   onCancel: () => void;
-}) {
+}
+
+// The one ask: the passkey first, one tap, when the user has one for MFA; else, or as well, the app's code.
+export function MfaStep({ methods, onBusy, onVerified, onCancel }: MfaStepProps) {
   const { init, submit } = useMfa();
   const passkey = methods.includes("passkey");
   const totp = methods.includes("totp");
-  // The passkey first, one tap; with an app as well, a link switches to its code.
-  const [view, setView] = useState<"passkey" | "totp" | null>(
+  const [view, setView] = useState<TwoStepMethod | null>(
     passkey ? "passkey" : totp ? "totp" : null,
   );
   const [code, setCode] = useState("");
@@ -192,7 +73,7 @@ function MfaStep({
     answer(() => submit("totp", full), COPY.wrongCode),
   );
 
-  const switchTo = (next: "passkey" | "totp") => {
+  const switchTo = (next: TwoStepMethod) => {
     setView(next);
     setError("");
     setCode("");
@@ -289,49 +170,5 @@ function MfaStep({
         </Button>
       </div>
     </fieldset>
-  );
-}
-
-// For an ask no form claimed. Closing it before Privy took an answer cancels the action that asked.
-function FallbackDialog({ asked, methods }: { asked: number; methods: MfaMethod[] }) {
-  const { cancel } = useMfa();
-  const box = useRef<HTMLDivElement>(null);
-  const settled = useRef(true);
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    if (asked > 0) settled.current = false;
-  }, [asked]);
-  const close = () => box.current?.closest("dialog")?.close();
-  return (
-    <Dialog
-      triggerLabel={FRESH_SIGN_IN_COPY.title}
-      title={FRESH_SIGN_IN_COPY.title}
-      trigger={(open) => <OpenWhenAsked asked={asked} open={open} />}
-      onClose={() => {
-        if (settled.current) return;
-        // Privy goes on with an answer it is checking: the dialog stays until it says.
-        if (busy) {
-          box.current?.closest("dialog")?.showModal();
-          return;
-        }
-        settled.current = true;
-        cancel();
-      }}
-    >
-      <div ref={box}>
-        {asked > 0 ? (
-          <MfaStep
-            key={asked}
-            methods={methods}
-            onBusy={setBusy}
-            onVerified={() => {
-              settled.current = true;
-              close();
-            }}
-            onCancel={close}
-          />
-        ) : null}
-      </div>
-    </Dialog>
   );
 }

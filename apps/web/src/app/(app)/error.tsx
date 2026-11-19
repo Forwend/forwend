@@ -1,6 +1,6 @@
 "use client";
 
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { PageError } from "@/shared/components/landscape-page/page-error";
 
 const BODY = "This page failed to show. Your balances and payments are not affected.";

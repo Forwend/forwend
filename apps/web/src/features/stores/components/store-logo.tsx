@@ -3,13 +3,14 @@
 import { Button, TONES, useToast } from "@forwend/ui-web";
 import { ImageUp, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   useDeleteStoreLogoMutation,
   useSaveStoreLogoMutation,
 } from "@/features/stores/api/stores-api";
 import { LOGO_TYPES, STORE_LIMITS } from "@/features/stores/constants/stores";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
+import { useObjectUrl } from "@/features/stores/hooks/use-object-url";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
 
@@ -18,12 +19,12 @@ export interface StoreLogoProps {
   /** A saved store: a chosen file uploads at once, apart from the form's Save. */
   store?: Store;
   /** A new store's chosen file, which the form uploads once the store is saved. */
-  pending?: File | null;
-  onPending?: (file: File | null) => void;
+  pending: File | null;
+  onPending: (file: File | null) => void;
 }
 
-// R-135. The API checks the image; this only spares a request the API would refuse.
-export function StoreLogo({ profileId, store, pending = null, onPending }: StoreLogoProps) {
+// The API checks the image; this only spares a request the API would refuse.
+export function StoreLogo({ profileId, store, pending, onPending }: StoreLogoProps) {
   const [saveLogo, saving] = useSaveStoreLogoMutation();
   const [deleteLogo, deleting] = useDeleteStoreLogoMutation();
   const toast = useToast();
@@ -45,7 +46,7 @@ export function StoreLogo({ profileId, store, pending = null, onPending }: Store
       return;
     }
     setError("");
-    if (!store) return onPending?.(file);
+    if (!store) return onPending(file);
     try {
       await saveLogo({ profileId, storeId: store.storeId, logo: file }).unwrap();
       toast({ tone: TONES.success, title: COPY.logoSaved });
@@ -59,7 +60,7 @@ export function StoreLogo({ profileId, store, pending = null, onPending }: Store
   };
   const remove = async () => {
     setError("");
-    if (!store) return onPending?.(null);
+    if (!store) return onPending(null);
     try {
       await deleteLogo({ profileId, storeId: store.storeId }).unwrap();
       toast({ tone: TONES.success, title: COPY.logoRemoved });
@@ -132,19 +133,4 @@ export function StoreLogo({ profileId, store, pending = null, onPending }: Store
       </p>
     </div>
   );
-}
-
-/** A local file's address for an image preview, released when the file changes or the preview goes. */
-export function useObjectUrl(file: File | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!file) {
-      setUrl(null);
-      return;
-    }
-    const next = URL.createObjectURL(file);
-    setUrl(next);
-    return () => URL.revokeObjectURL(next);
-  }, [file]);
-  return url;
 }

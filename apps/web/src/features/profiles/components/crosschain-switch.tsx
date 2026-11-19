@@ -5,6 +5,7 @@ import {
   useGetCrossChainSwitchQuery,
   useSaveCrossChainSwitchMutation,
 } from "@/features/profiles/api/profiles-api";
+import { SaveStatus } from "@/features/profiles/components/save-status";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 
 export interface CrossChainSwitchProps {
@@ -24,14 +25,7 @@ export function CrossChainSwitch({ profileId }: CrossChainSwitchProps) {
         checked={on.currentData}
         onCheckedChange={(checked) => void save({ profileId, on: checked })}
       />
-      <p role="status" className="min-h-5 text-sm text-muted">
-        {isLoading ? COPY.saving : isError ? null : isSuccess ? COPY.savedAll : null}
-      </p>
-      {isError ? (
-        <p role="alert" className="text-sm text-danger">
-          {COPY.saveFailed}
-        </p>
-      ) : null}
+      <SaveStatus saving={isLoading} saved={isSuccess} failed={isError} />
     </div>
   );
 }

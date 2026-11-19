@@ -19,7 +19,7 @@ const api = vi.hoisted(() => ({
   },
 }));
 vi.mock("@/features/auth/hooks/use-wallet-mfa", () => ({ useWalletMfa: () => api.mfa }));
-vi.mock("@/features/auth/components/fresh-sign-in", () => ({
+vi.mock("@/features/auth/hooks/use-fresh-sign-in", () => ({
   useFreshSignIn: () => ({
     run: (send: () => unknown) => send(),
     step: null,
@@ -28,7 +28,7 @@ vi.mock("@/features/auth/components/fresh-sign-in", () => ({
     cancel: vi.fn(),
   }),
 }));
-vi.mock("@/features/auth/components/mfa-step", () => ({
+vi.mock("@/features/auth/hooks/use-mfa-step", () => ({
   useMfaStep: () => ({
     run: (action: () => unknown) => action(),
     step: null,

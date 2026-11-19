@@ -77,7 +77,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { CTA } from "@/features/waitlist/constants/waitlist";
+import { CTA } from "@/screens/kit/constants/sample-cta";
 import { KitGroup } from "@/screens/kit/kit-section";
 
 // A fixed day, so the kit shows the same months in every screenshot.

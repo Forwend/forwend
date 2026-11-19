@@ -19,7 +19,7 @@ import { useRevokeKeyMutation, useRollKeyMutation } from "@/features/api-keys/ap
 import { DEFAULT_OVERLAP_HOURS, OVERLAP_HOURS } from "@/features/api-keys/constants/api-keys";
 import { API_KEYS_COPY as COPY } from "@/features/api-keys/constants/api-keys-copy";
 import type { ApiKey } from "@/features/api-keys/types/api-keys";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 
 export interface KeyActionsProps {
   profileId: string;

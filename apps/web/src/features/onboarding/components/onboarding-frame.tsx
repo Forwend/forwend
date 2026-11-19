@@ -2,7 +2,7 @@
 
 import { Button } from "@forwend/ui-web";
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { FIRST_RUN_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
 import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 
