@@ -23,7 +23,6 @@ const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30))
 afterEach(cleanup);
 
 describe("new job form", () => {
-  // R-100, R-101.
   it("sends the schedule in cents-exact decimals and retries with the same key", async () => {
     const sent: { key: string | null; body: unknown }[] = [];
     vi.stubGlobal(

@@ -28,7 +28,7 @@ export const balancesSchema = z.object({
 });
 
 /** GET /v1/profiles/{id}/balance-history, BalanceHistoryPoint: the end of one UTC day; the last point is now. */
-export const balanceHistoryPointSchema = z.object({
+const balanceHistoryPointSchema = z.object({
   at: apiTime,
   estimatedUsd: usdAmount.nullable(),
   receivedUsd: usdAmount.nullable(),

@@ -77,7 +77,6 @@ const LOOK = {
   waiting: { Icon: ArrowDownLeft, tint: "bg-surface-2 text-muted" },
 } satisfies Record<string, { Icon: LucideIcon; tint: string }>;
 
-// R-81.
 const EVENTS = {
   [INVOICE_EVENTS.paid]: { what: COPY.paid, look: LOOK.done },
   [INVOICE_EVENTS.settled]: { what: COPY.inWallet, look: LOOK.wallet },

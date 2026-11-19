@@ -2,15 +2,13 @@
 
 import { BUTTON_VARIANTS, Button, Dialog, TextField, TONES, useToast } from "@forwend/ui-web";
 import { useRef, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { useSendInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useMarkPaymentDoneMutation } from "@/features/jobs/api/jobs-api";
 import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents, namedField } from "@/features/jobs/lib/jobs";
+import { namedField, usdText } from "@/features/jobs/lib/jobs";
 import type { Job, JobPayment } from "@/features/jobs/types/jobs";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const COPY = JOBS_COPY.detail;
 const CONFLICT = 409;
@@ -89,8 +87,8 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
     >
       <p>
         {COPY.markDoneBody(
-          `${formatUsd(apiCents(payment.amountUsd))} ${MONEY_COPY.usd}`,
-          JOBS_COPY.detail.dueDays(payment.dueDays),
+          usdText(payment.amountUsd),
+          COPY.dueDays(payment.dueDays),
           job.client.email,
         )}
       </p>

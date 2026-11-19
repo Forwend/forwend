@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
 import { makeStore } from "@/store/store";
 
@@ -69,16 +70,17 @@ describe("usePricedBalances", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <Provider store={store}>{children}</Provider>
     );
-    const { result } = renderHook(() => usePricedBalances("p"), { wrapper });
+    const { result } = renderHook(
+      () => ({ priced: usePricedBalances("p"), read: useGetBalancesQuery("p") }),
+      { wrapper },
+    );
 
     // The balances have answered; the prices have not.
-    await waitFor(() =>
-      expect(store.getState().api.queries['getBalances("p")']?.status).toBe("fulfilled"),
-    );
-    expect(result.current.balances).toBeNull();
+    await waitFor(() => expect(result.current.read.currentData).toBeDefined());
+    expect(result.current.priced.balances).toBeNull();
 
     await act(async () => pricesAnswer(answer(PRICES)));
-    await waitFor(() => expect(result.current.balances?.tokens[0]?.wallet).toBe("2500000"));
-    expect(result.current.prices?.[0]?.usd).toBe("1");
+    await waitFor(() => expect(result.current.priced.balances?.tokens[0]?.wallet).toBe("2500000"));
+    expect(result.current.priced.prices?.[0]?.usd).toBe("1");
   });
 });

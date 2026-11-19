@@ -112,7 +112,6 @@ const inOctober = () => {
 };
 
 describe("records", () => {
-  // R-109.
   it("links the invoice money in paid, and names what else a transaction was", () => {
     renderType({
       ...base,
@@ -129,7 +128,6 @@ describe("records", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
   });
 
-  // R-108, R-109.
   it("labels money in, clears the label, and says when the API refuses", async () => {
     const calls: Call[] = [];
     answer(calls, 204);
@@ -150,7 +148,6 @@ describe("records", () => {
     expect(screen.getByText("This transaction takes no type any more.")).toBeTruthy();
   });
 
-  // R-109.
   it("exports the days chosen as the API's CSV, and says when it fails", async () => {
     inOctober();
     const calls: Call[] = [];
@@ -186,7 +183,6 @@ describe("records", () => {
     const dialog = document.querySelector("dialog");
     expect(dialog?.open).toBe(false);
 
-    // R-118.
     answer(
       [],
       422,
@@ -216,7 +212,6 @@ describe("records", () => {
     click.mockRestore();
   });
 
-  // R-111.
   it("saves the records currency when chosen, and keeps the saved one when that fails", async () => {
     const calls: Call[] = [];
     let saved: string | null = null;
@@ -408,7 +403,6 @@ describe("records", () => {
       expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  // R-111.
   it("shows a value as money in its currency, with its rate's day", () => {
     render(
       <TooltipProvider>
@@ -440,7 +434,6 @@ describe("records", () => {
     ).toBeTruthy();
   });
 
-  // R-113.
   it("downloads the statement of both days, and names what is missing", async () => {
     inOctober();
     const calls: Call[] = [];

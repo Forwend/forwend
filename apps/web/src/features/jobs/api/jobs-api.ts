@@ -110,7 +110,6 @@ export const jobsApi = apiSlice
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
       }),
-      /** R-105. */
       withdrawChange: build.mutation<void, { profileId: string; jobId: string; position: number }>({
         query: ({ profileId, jobId, position }) => ({
           url: `${jobUrl(profileId, jobId)}/payments/${position}`,

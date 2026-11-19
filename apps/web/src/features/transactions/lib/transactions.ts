@@ -1,11 +1,15 @@
 import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
+import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import type { Send } from "@/features/send/types/send";
 import {
   TRANSACTION_CLASSES,
   TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
 } from "@/features/transactions/constants/transactions";
-import type { Transaction } from "@/features/transactions/types/transactions";
+import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
+import type { Transaction, TransactionClass } from "@/features/transactions/types/transactions";
+
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
 
 /** A transfer is "Confirming" until its block is final; unknown values never claim it is final. */
 export function transactionStatus(t: Transaction): PaymentStatus {
@@ -23,9 +27,25 @@ export function transactionFee(t: Transaction): bigint | null {
   return fee == null ? null : BigInt(fee);
 }
 
+/** Minted or Burned for a transfer from or to the zero address; null for any other. */
+export function mintOrBurn(t: Transaction): string | null {
+  if (t.counterparty.toLowerCase() !== ZERO_ADDRESS) return null;
+  return t.direction === TRANSACTION_DIRECTIONS.in
+    ? TRANSACTIONS_COPY.minted
+    : TRANSACTIONS_COPY.burned;
+}
+
+/** What the transfer was: the invoice or payment it paid, else its class. */
+export function typeName(t: Transaction): string {
+  if (t.invoice && !t.labelable)
+    return TRANSACTIONS_COPY.invoicePaid(invoiceNumber(t.invoice.number), t.invoice.clientName);
+  if (t.payment && !t.labelable) return TRANSACTIONS_COPY.classes[TRANSACTION_CLASSES.payment];
+  return TRANSACTIONS_COPY.classes[t.classification as TransactionClass] ?? t.classification;
+}
+
 /** A signed send no block holds yet, as a row (R-215). Its transfer's own row takes its place once recorded; it has
  * no log yet, so its key's log index is -1, and no USD value, since no row shows one. */
-export function sendingRow(s: Send & { txHash: string }): Transaction {
+function sendingRow(s: Send & { txHash: string }): Transaction {
   return {
     chainId: s.chainId,
     token: s.token,
@@ -56,7 +76,7 @@ export function sendingRows(sends: Send[], recorded: Transaction[]): Transaction
     .map(sendingRow);
 }
 
-export interface DayGroup<T> {
+interface DayGroup<T> {
   /** The local calendar day, YYYY-MM-DD. */
   day: string;
   /** Its first item's time, which names the day. */

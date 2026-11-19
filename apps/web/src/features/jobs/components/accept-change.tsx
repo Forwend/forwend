@@ -4,8 +4,7 @@ import { useAcceptChangeMutation } from "@/features/jobs/api/jobs-api";
 import { ConsentForm } from "@/features/jobs/components/consent-form";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import type { JobPayment } from "@/features/jobs/types/jobs";
-
-const NOT_FOUND = 404;
+import { notFound } from "@/shared/api/server-reach";
 
 export interface AcceptChangeProps {
   token: string;
@@ -38,7 +37,7 @@ export function AcceptChange({ token, change, onAccepted, onGone }: AcceptChange
             email,
           }).unwrap();
         } catch (failure) {
-          if ((failure as { status?: unknown }).status !== NOT_FOUND) throw failure;
+          if (!notFound(failure)) throw failure;
           onGone();
           return;
         }

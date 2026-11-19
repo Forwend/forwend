@@ -3,10 +3,11 @@
 import { Button, EmptyState, Money, SearchField, Skeleton } from "@forwend/ui-web";
 import { Wallet } from "lucide-react";
 import { useState } from "react";
+import { BALANCE_FIELDS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { notFinal } from "@/features/balances/lib/balances";
+import { fieldUnits, formatUsd } from "@/features/balances/lib/balances";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
-import { findPrice, formatUsdCents, latestUsd, usdCents } from "@/features/prices/lib/prices";
+import { findPrice, latestUsd, usdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
@@ -25,6 +26,13 @@ export interface BalancesListProps {
 
 const isEmpty = (t: TokenBalance) =>
   [t.wallet, t.pending, t.held].every((v) => v === null || v === "0");
+
+// Money on its way or on hold, beside what is in the wallet.
+const PARTS = [
+  { label: BALANCES_COPY.movingLabel, field: BALANCE_FIELDS.settling },
+  { label: BALANCES_COPY.notFinalLabel, field: BALANCE_FIELDS.notFinal },
+  { label: BALANCES_COPY.heldLabel, field: BALANCE_FIELDS.held },
+] as const;
 
 const COLUMNS = "md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,1fr))]";
 // Phones: the token on the left, what is in the wallet on the right. Wide screens: a column per kind of money.
@@ -80,11 +88,10 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
         <ColumnTitles />
         <ul className="divide-y divide-line">
           {shown.map((t) => {
-            const parts = [
-              { label: BALANCES_COPY.movingLabel, value: t.settling ?? t.pending },
-              { label: BALANCES_COPY.notFinalLabel, value: notFinal(t) },
-              { label: BALANCES_COPY.heldLabel, value: t.held },
-            ];
+            const parts = PARTS.map(({ label, field }) => ({
+              label,
+              value: fieldUnits(t, field) ?? "0",
+            }));
             const usd = latestUsd(findPrice(prices ?? [], t.chainId, t.token));
             return (
               <li key={`${t.chainId}:${t.token}`} className={ROW}>
@@ -105,8 +112,7 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
                       />
                       {usd ? (
                         <span className="text-xs text-muted tabular-nums">
-                          {formatUsdCents(usdCents(BigInt(t.wallet), t.decimals, usd))}{" "}
-                          {MONEY_COPY.usd}
+                          {formatUsd(usdCents(BigInt(t.wallet), t.decimals, usd))} {MONEY_COPY.usd}
                         </span>
                       ) : null}
                     </>

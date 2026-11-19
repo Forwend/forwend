@@ -3,9 +3,9 @@
 import { formatTokenAmount, TONES, useToast } from "@forwend/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
-import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
 import { useGetInvoiceEventsQuery } from "@/features/invoices/api/invoices-api";
+import { INVOICE_EVENTS } from "@/features/invoices/constants/invoices";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
@@ -37,7 +37,7 @@ function ProfileToasts({ profileId }: { profileId: string }) {
     if (!items) return;
     const { seen: known, events } = newPaymentEvents(seen.current, items);
     seen.current = known;
-    for (const { kind, item } of events) {
+    for (const item of events) {
       const units = BigInt(item.amount);
       const amount = `${formatTokenAmount({ baseUnits: units, decimals: item.decimals, fractionDigits: exactDigits(units, item.decimals) })} ${item.symbol}`;
       const payment = item.number
@@ -45,7 +45,7 @@ function ProfileToasts({ profileId }: { profileId: string }) {
         : (item.title ?? MONEY_COPY.checkout(item.invoiceId));
       toast({
         tone: TONES.success,
-        ...(kind === PAYMENT_EVENTS.settled
+        ...(item.kind === INVOICE_EVENTS.settled
           ? ACTIVITY_COPY.toasts.settled(amount, payment)
           : ACTIVITY_COPY.toasts.paid(amount, payment)),
       });

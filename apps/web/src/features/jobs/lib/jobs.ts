@@ -1,17 +1,8 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
-import {
-  JOB_FIELDS,
-  JOB_LIMITS,
-  PAYMENT_STEPS,
-  RECORD_EVENTS,
-} from "@/features/jobs/constants/jobs";
-import type {
-  JobField,
-  JobPayment,
-  PaymentStep,
-  PublicJob,
-  RecordEvent,
-} from "@/features/jobs/types/jobs";
+import { formatUsd } from "@/features/balances/lib/balances";
+import { JOB_LIMITS, PAYMENT_STEPS, RECORD_EVENTS } from "@/features/jobs/constants/jobs";
+import type { JobPayment, PaymentStep, PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
+import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { usdCents } from "@/shared/lib/money";
 
 /** A typed payment's USD cents, exact as the API takes it (R-100); null when it isn't one or is under 1.00. */
@@ -27,19 +18,15 @@ export function dueDays(text: string): number | null {
   return days >= 0 && days <= JOB_LIMITS.dueDays ? days : null;
 }
 
-/** The API always sends 2 decimals ("300.00"), so dropping the point gives cents. */
-export function apiCents(amountUsd: string): bigint {
-  return BigInt(amountUsd.replace(".", ""));
+/** An API amount ("300.00") as the job pages show it: "300.00 USD". */
+export function usdText(amountUsd: string): string {
+  return `${formatUsd(usdCents(amountUsd))} ${MONEY_COPY.usd}`;
 }
 
 /** The API's 422 names the field only in its message: "invalid job request: email must be …". */
 export function namedField<F extends string>(message: string, fields: readonly F[]): F | null {
   const name = message.split(": ")[1]?.split(" ")[0];
   return fields.find((field) => field === name) ?? null;
-}
-
-export function invalidJobField(message: string): JobField | null {
-  return namedField(message, Object.values(JOB_FIELDS));
 }
 
 const RECORD_ORDER = Object.values(RECORD_EVENTS);

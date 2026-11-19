@@ -1,47 +1,31 @@
 "use client";
 
-import {
-  AmountField,
-  Button,
-  EmptyState,
-  formatTokenAmount,
-  IconButton,
-  RowButton,
-  Sheet,
-  Skeleton,
-  StepTransition,
-  TextField,
-} from "@forwend/ui-web";
+import { EmptyState, Sheet, Skeleton, StepTransition } from "@forwend/ui-web";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { ChevronRight, Users, WalletMinimal, X } from "lucide-react";
+import { WalletMinimal } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
 import { FRESH_SIGN_IN_COPY, TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import { parseTokenAmount } from "@/features/invoices/lib/invoices";
-import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import {
   useCancelSendMutation,
   useGetSendFeeQuery,
   usePrepareSendMutation,
 } from "@/features/send/api/send-api";
+import { SendAddressStep } from "@/features/send/components/send-address-step";
+import { SendAmountStep } from "@/features/send/components/send-amount-step";
+import { SendAssetStep } from "@/features/send/components/send-asset-step";
 import { SendProgress } from "@/features/send/components/send-progress";
+import { SendRecipientStep } from "@/features/send/components/send-recipient-step";
 import { SendReview } from "@/features/send/components/send-review";
-import {
-  ADDRESS_LENGTH,
-  FEE_DECIMALS,
-  SEND_MODES,
-  SEND_STEPS,
-} from "@/features/send/constants/send";
+import { SEND_MODES, SEND_STEPS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSendApproval } from "@/features/send/hooks/use-send-approval";
 import {
-  feeLabel,
-  isWalletAddress,
   matchesRequest,
-  maxAmount,
   roomForFee,
   sendError,
   sendOptions,
@@ -55,10 +39,7 @@ import type {
   SendOption,
   SendStep,
 } from "@/features/send/types/send";
-import { MoneyChip } from "@/shared/components/chains/money-chip";
-import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
-import { exactDigits } from "@/shared/lib/money";
 
 export interface SendSheetProps {
   open: boolean;
@@ -208,17 +189,6 @@ export function SendSheet({
   const fee = feeRead.currentData ? BigInt(feeRead.currentData.amount) : null;
   // Max waits for the fee: a full balance would leave no room for it. The server checks an amount typed meanwhile.
   const room = option ? roomForFee(option.balance, fee) : null;
-  const shownAmount = (value: bigint, o: SendOption) =>
-    `${formatTokenAmount({ baseUnits: value, decimals: o.decimals, fractionDigits: exactDigits(value, o.decimals) })} ${o.symbol}`;
-
-  const submitAddress = (event: FormEvent) => {
-    event.preventDefault();
-    if (!isWalletAddress(address)) {
-      setAddressError(SEND_COPY.addressInvalid);
-      return;
-    }
-    toMoney({ address: address.trim() });
-  };
 
   const submitAmount = async (event: FormEvent) => {
     event.preventDefault();
@@ -298,190 +268,52 @@ export function SendSheet({
       </div>
     );
   } else if (step === SEND_STEPS.to) {
-    body =
-      own.length === 0 ? (
-        <EmptyState
-          compact
-          icon={Users}
-          title={SEND_COPY.noOtherProfiles}
-          description={SEND_COPY.noOtherProfilesHint}
-        />
-      ) : (
-        <div className="flex flex-col gap-5">
-          <Choices title={SEND_COPY.yourProfiles}>
-            {own.map((p) => (
-              <Choice
-                key={p.profileId}
-                icon={<Initial text={profileLabel(p)} />}
-                label={profileLabel(p)}
-                onClick={() => toMoney({ profile: p })}
-              />
-            ))}
-          </Choices>
-          {mode === SEND_MODES.send ? (
-            <Choices title={SEND_COPY.anotherWallet}>
-              <Choice
-                icon={
-                  <span className="grid size-9 place-items-center rounded-pill bg-surface-2 text-muted">
-                    <WalletMinimal aria-hidden className="size-[var(--fw-icon-sm)]" />
-                  </span>
-                }
-                label={SEND_COPY.walletAddress}
-                note={SEND_COPY.walletAddressNote}
-                onClick={() => go(SEND_STEPS.address)}
-              />
-            </Choices>
-          ) : null}
-        </div>
-      );
+    body = (
+      <SendRecipientStep
+        mode={mode}
+        own={own}
+        onProfile={(p) => toMoney({ profile: p })}
+        onAddress={() => go(SEND_STEPS.address)}
+      />
+    );
   } else if (step === SEND_STEPS.address) {
     body = (
-      // The sheet's title names the field. As in wallets: Paste sits in the field and gives way to Clear; a whole
-      // address that isn't valid says so at once, and Continue waits for a valid one.
-      <form noValidate onSubmit={submitAddress} className="flex flex-col gap-5">
-        <TextField
-          label={SEND_COPY.walletAddress}
-          labelHidden
-          placeholder={SEND_COPY.addressPlaceholder}
-          value={address}
-          autoFocus
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          autoComplete="off"
-          inputClassName="font-mono"
-          onChange={(e) => {
-            setAddress(e.target.value);
-            setAddressError(null);
-          }}
-          onBlur={() => {
-            if (address.trim() && !isWalletAddress(address))
-              setAddressError(SEND_COPY.addressInvalid);
-          }}
-          hint={SEND_COPY.addressHint}
-          error={
-            addressError ??
-            (address.trim().length >= ADDRESS_LENGTH && !isWalletAddress(address)
-              ? SEND_COPY.addressInvalid
-              : undefined)
-          }
-          end={
-            address ? (
-              <IconButton
-                label={SEND_COPY.clearAddress}
-                onClick={() => {
-                  setAddress("");
-                  setAddressError(null);
-                }}
-              >
-                <X aria-hidden className="size-[var(--fw-icon-sm)]" />
-              </IconButton>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={async () => {
-                  const text = await navigator.clipboard?.readText().catch(() => "");
-                  if (text) setAddress(text.trim());
-                }}
-              >
-                {SEND_COPY.paste}
-              </Button>
-            )
-          }
-        />
-        <Button type="submit" className="w-full" disabled={!isWalletAddress(address)}>
-          {SEND_COPY.continue}
-        </Button>
-      </form>
+      <SendAddressStep
+        address={address}
+        error={addressError}
+        onAddress={setAddress}
+        onError={setAddressError}
+        onContinue={(to) => toMoney({ address: to })}
+      />
     );
   } else if (step === SEND_STEPS.asset) {
-    body =
-      options.length === 0 ? (
-        <EmptyState compact icon={WalletMinimal} title={SEND_COPY.nothingToSend} />
-      ) : (
-        // The sheet's title already says What to send.
-        <Choices title={SEND_COPY.what} titleHidden>
-          {options.map((o) => (
-            <Choice
-              key={`${o.chainId}-${o.token}`}
-              icon={<TokenMark chainId={o.chainId} symbol={o.symbol} />}
-              note={o.sendable ? shownAmount(o.balance, o) : SEND_COPY.notSendable}
-              disabled={!o.sendable}
-              onClick={() => {
-                setOption(o);
-                setAmount("");
-                setAmountError(null);
-                go(SEND_STEPS.amount);
-              }}
-            />
-          ))}
-        </Choices>
-      );
+    body = (
+      <SendAssetStep
+        options={options}
+        onChoose={(o) => {
+          setOption(o);
+          setAmount("");
+          setAmountError(null);
+          go(SEND_STEPS.amount);
+        }}
+      />
+    );
   } else if (step === SEND_STEPS.amount && option) {
     body = (
-      <form noValidate onSubmit={submitAmount} className="flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-4 pt-2">
-          <MoneyChip chainId={option.chainId} symbol={option.symbol} />
-          <AmountField
-            bare
-            label={SEND_COPY.amount}
-            unit={option.symbol}
-            placeholder="0"
-            value={amount}
-            autoFocus
-            onChange={(e) => {
-              setAmount(e.target.value);
-              setAmountError(null);
-            }}
-            error={amountError ?? undefined}
-          />
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-muted tabular-nums">
-              {/* Cut, never rounded up: the wallet never seems to hold more than it does. */}
-              {SEND_COPY.available(
-                `${formatTokenAmount({
-                  baseUnits: option.balance,
-                  decimals: option.decimals,
-                  fractionDigits: Math.min(
-                    exactDigits(option.balance, option.decimals),
-                    FEE_DECIMALS,
-                  ),
-                })} ${option.symbol}`,
-              )}
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={room === null}
-              onClick={() => {
-                if (room === null) return;
-                setAmount(maxAmount(room, option.decimals));
-                setAmountError(null);
-              }}
-            >
-              {SEND_COPY.max}
-            </Button>
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-line pt-4 text-sm">
-          <span className="text-muted">{SEND_COPY.networkFee}</span>
-          <span className="font-medium text-ink tabular-nums">
-            {fee === null ? (
-              feeRead.isError ? (
-                SEND_COPY.feeAtReview
-              ) : (
-                <Skeleton className="inline-block h-4 w-20 align-middle" />
-              )
-            ) : (
-              feeLabel(fee, option)
-            )}
-          </span>
-        </div>
-        <Button type="submit" className="w-full" loading={preparing.isLoading}>
-          {SEND_COPY.continue}
-        </Button>
-      </form>
+      <SendAmountStep
+        option={option}
+        amount={amount}
+        error={amountError}
+        fee={fee}
+        feeFailed={feeRead.isError}
+        room={room}
+        preparing={preparing.isLoading}
+        onAmount={(value) => {
+          setAmount(value);
+          setAmountError(null);
+        }}
+        onSubmit={submitAmount}
+      />
     );
   } else if (step === SEND_STEPS.review && prepared && option && recipient) {
     body = (
@@ -534,65 +366,5 @@ export function SendSheet({
         </StepTransition>
       ) : null}
     </Sheet>
-  );
-}
-
-function Choices({
-  title,
-  titleHidden = false,
-  children,
-}: {
-  title: string;
-  /** The list keeps its name for screen readers where the sheet's title already shows it. */
-  titleHidden?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section aria-label={title} className="flex flex-col gap-2">
-      {titleHidden ? null : <h3 className="text-sm font-medium text-muted">{title}</h3>}
-      <ul className="flex flex-col gap-1">{children}</ul>
-    </section>
-  );
-}
-
-function Choice({
-  icon,
-  label,
-  note,
-  disabled,
-  onClick,
-}: {
-  icon: ReactNode;
-  label?: string;
-  note?: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <li>
-      <RowButton onClick={onClick} disabled={disabled}>
-        <span className="min-w-0 shrink-0">{icon}</span>
-        {label ? (
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-        ) : null}
-        <span className={label ? "text-xs text-muted" : "ml-auto text-xs text-muted tabular-nums"}>
-          {note}
-        </span>
-        {disabled ? null : (
-          <ChevronRight aria-hidden className="size-[var(--fw-icon-sm)] shrink-0 text-muted" />
-        )}
-      </RowButton>
-    </li>
-  );
-}
-
-function Initial({ text }: { text: string }) {
-  return (
-    <span
-      aria-hidden
-      className="grid size-9 place-items-center rounded-pill bg-surface-2 text-sm font-medium text-ink"
-    >
-      {text.slice(0, 1)}
-    </span>
   );
 }

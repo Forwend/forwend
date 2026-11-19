@@ -11,17 +11,15 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 export interface ReceivedChartProps {
   series: HistorySeries;
   label: string;
-  compact?: boolean;
   className?: string;
 }
 
-export function ReceivedChart({ series, label, compact, className }: ReceivedChartProps) {
+export function ReceivedChart({ series, label, className }: ReceivedChartProps) {
   const total = useMemo(() => runningTotal(series), [series]);
   return (
     <BalanceChart
       series={total}
       label={label}
-      compact={compact}
       className={className}
       readoutNote={(i) => {
         const day = series.values[i] ?? 0n;

@@ -21,7 +21,6 @@ export const ACTIVITY_COPY = {
   partHeld: "Payment received, extra held for the customer",
   extraHeld: "Extra held",
   extraHeldNote: "extra held",
-  retry: "Try again",
   search: "Search activity",
   searchPlaceholder: "Amount, token or hash",
   // The bell's words (R-81), with the payment each names.

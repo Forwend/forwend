@@ -22,7 +22,6 @@ export const TRANSACTIONS_COPY = {
   introBusiness:
     "Every transfer in and out of the profile's wallet, across all stores. Payments has each customer payment.",
   recentTransactions: "Recent transactions",
-  payments: "Payments",
   viewAll: "View all",
   received: "Received",
   sent: "Sent",

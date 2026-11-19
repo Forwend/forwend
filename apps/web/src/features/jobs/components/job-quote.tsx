@@ -4,6 +4,7 @@ import { BigAmount, buttonClasses, PAYMENT_STATUS, Skeleton, StatusPill } from "
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatUsd } from "@/features/balances/lib/balances";
+import { countryName } from "@/features/clients/lib/clients";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useAcceptJobMutation, useGetPublicJobQuery } from "@/features/jobs/api/jobs-api";
 import { AcceptChange } from "@/features/jobs/components/accept-change";
@@ -11,20 +12,19 @@ import { ConsentForm } from "@/features/jobs/components/consent-form";
 import { JobRecord } from "@/features/jobs/components/job-record";
 import { PaymentStep } from "@/features/jobs/components/payment-step";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents, isPendingChange } from "@/features/jobs/lib/jobs";
+import { isPendingChange, usdText } from "@/features/jobs/lib/jobs";
 import type { JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
 import { Backdrop } from "@/features/pay/components/backdrop";
 import { Payee } from "@/features/pay/components/payee";
 import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
+import { notFound } from "@/shared/api/server-reach";
 import { LoadError } from "@/shared/components/load-error";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { dateTime } from "@/shared/lib/dates";
+import { usdCents } from "@/shared/lib/money";
 
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "fw-panel";
 const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
-const NOT_FOUND = 404;
-const usd = (amountUsd: string) => `${formatUsd(apiCents(amountUsd))} ${MONEY_COPY.usd}`;
 // The pay link carries its token (D-86).
 const payHref = (p: JobPayment) => `/pay/${p.payToken}`;
 const payable = (p: JobPayment) => p.payToken !== null && p.status === PAYMENT_STATUS.open;
@@ -39,7 +39,6 @@ export function JobQuote({ token }: { token: string }) {
   const job = query.currentData?.acceptedAt
     ? query.currentData
     : (accepted.data ?? query.currentData);
-  const status = (query.error as { status?: unknown } | undefined)?.status;
   useEffect(() => {
     if (justAccepted) heading.current?.focus();
   }, [justAccepted]);
@@ -64,7 +63,7 @@ export function JobQuote({ token }: { token: string }) {
     return (
       <div className={`flex w-full flex-col gap-4 lg:col-span-2 lg:pt-8 ${LEFT_PAD}`}>
         <h1 className="text-2xl font-semibold tracking-tight text-ink">{COPY.title}</h1>
-        {status === NOT_FOUND ? (
+        {notFound(query.error) ? (
           <p role="alert" className="text-muted">
             {COPY.notFound}
           </p>
@@ -97,7 +96,7 @@ export function JobQuote({ token }: { token: string }) {
             </h1>
             <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <BigAmount
-                value={formatUsd(apiCents(job.totalUsd))}
+                value={formatUsd(usdCents(job.totalUsd))}
                 unit={MONEY_COPY.usd}
                 className="text-3xl sm:text-4xl"
               />
@@ -130,7 +129,7 @@ export function JobQuote({ token }: { token: string }) {
                 payment={p}
                 first={n === 0}
                 last={n === job.payments.length - 1}
-                amount={usd(p.amountUsd)}
+                amount={usdText(p.amountUsd)}
               >
                 <p className="font-medium break-words text-ink">{p.title}</p>
                 <p className="text-sm text-muted">
@@ -145,7 +144,7 @@ export function JobQuote({ token }: { token: string }) {
                     <span className="font-medium text-ink">{COPY.change.label}</span>
                     {" · "}
                     {p.acceptedAt && p.acceptedName
-                      ? COPY.change.accepted(p.acceptedName, TIME.format(new Date(p.acceptedAt)))
+                      ? COPY.change.accepted(p.acceptedName, dateTime(p.acceptedAt))
                       : COPY.change.waiting}
                   </p>
                 ) : null}
@@ -191,7 +190,7 @@ export function JobQuote({ token }: { token: string }) {
           </ol>
           <p className="flex items-baseline justify-between gap-3 border-t border-line-strong pt-3">
             <span className="text-sm text-muted">{COPY.total}</span>
-            <span className="font-semibold tabular-nums text-ink">{usd(job.totalUsd)}</span>
+            <span className="font-semibold tabular-nums text-ink">{usdText(job.totalUsd)}</span>
           </p>
         </section>
 
@@ -213,7 +212,7 @@ export function JobQuote({ token }: { token: string }) {
               i.name,
               i.email,
               i.address,
-              COUNTRY.of(i.country) ?? i.country,
+              countryName(i.country),
               i.taxId ? `${COPY.taxId} ${i.taxId}` : null,
             ]
               .filter(Boolean)
@@ -240,7 +239,7 @@ export function JobQuote({ token }: { token: string }) {
               </h2>
               <div className="flex flex-col items-start gap-3 px-4 py-3 sm:px-5">
                 <p role="status" className="text-sm text-ink">
-                  {COPY.accepted.by(job.acceptedName, TIME.format(new Date(job.acceptedAt)))}
+                  {COPY.accepted.by(job.acceptedName, dateTime(job.acceptedAt))}
                 </p>
                 {deposit ? (
                   <>
