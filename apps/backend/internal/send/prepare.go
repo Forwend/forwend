@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/settlement"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -314,7 +313,7 @@ func covers(ctx context.Context, client *ethclient.Client, out Send) error {
 	if err != nil {
 		return errors.Join(ErrUnavailable, fmt.Errorf("read the latest block: %w", err))
 	}
-	held, err := ledger.BalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
+	held, err := chain.TokenBalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
 	if err != nil {
 		return errors.Join(ErrUnavailable, fmt.Errorf("read token balance: %w", err))
 	}

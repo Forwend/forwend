@@ -4,8 +4,6 @@ import (
 	"context"
 	"math/big"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 )
 
 // ReceiverState is what the chain's scan has verified for a receive address. The scan reads every watched address
@@ -28,9 +26,7 @@ type ReceiverState struct {
 	TotalDeposits, PendingDeposits, UnbookedDeposits, UnprovedDeposits, UnbookedOutflows int64
 }
 
-func ReadReceiverStates(ctx context.Context, db interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, ids []string) (map[string]*ReceiverState, error) {
+func ReadReceiverStates(ctx context.Context, db querier, ids []string) (map[string]*ReceiverState, error) {
 	rows, err := db.Query(ctx, `SELECT i.id,i.payment_status,i.settlement_status,i.refund_status,
    c.last_finalized_block,c.last_finalized_time,coalesce(c.updated_at,i.created_at),a.invoice_id IS NOT NULL,a.next_check_at,
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status <> 'reorged'),

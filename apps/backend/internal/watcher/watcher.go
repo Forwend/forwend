@@ -6,28 +6,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"maps"
-	"math/big"
 	"slices"
-	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var transferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
+var TransferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
 
 const (
 	// MaxRange is the most blocks one eth_getLogs call covers; RPCs reject larger result sets (S-4). A range every
@@ -59,26 +51,6 @@ type Chain struct {
 
 func NewChain(pool *pgxpool.Pool, chainID uint64, client *rpc.Client) *Chain {
 	return &Chain{pool: pool, chainID: chainID, rpc: client, eth: ethclient.NewClient(client), span: MaxRange, batchSize: MaxBatch}
-}
-
-// The hash is never computed in Go: go-ethereum gets it wrong on Tempo (S-4).
-type header struct {
-	Number    hexutil.Uint64 `json:"number"`
-	Hash      common.Hash    `json:"hash"`
-	Timestamp hexutil.Uint64 `json:"timestamp"`
-}
-
-type receiver struct{ invoiceID, token string }
-
-type deposit struct {
-	invoiceID, token        string
-	txHash, blockHash, from string
-	to                      string
-	logIndex, blockNumber   uint64
-	blockTime               uint64
-	amount                  *big.Int
-	final                   bool
-	finalized               uint64 // the chain's finalized block in the scan that saw it
 }
 
 type logKey struct {
@@ -130,11 +102,11 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 	if recovery != nil {
 		recovery.next = latest + 1
 	}
-	open, err := c.pending(ctx, "chain_transfers", 0)
+	open, err := c.pending(ctx, "chain_transfers")
 	if err != nil {
 		return err
 	}
-	openWallet, err := c.pending(ctx, "wallet_transfers", 0)
+	openWallet, err := c.pending(ctx, "wallet_transfers")
 	if err != nil {
 		return err
 	}
@@ -272,30 +244,6 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uin
 	return logs, walletLogs, outflowLogs, lo, nil
 }
 
-func depositsOf(logs []types.Log, headers map[uint64]header, invoices map[common.Address]receiver,
-	finalized uint64) ([]deposit, map[logKey]bool) {
-	var deposits []deposit
-	seen := map[logKey]bool{}
-	for _, l := range logs {
-		h, ok := headers[l.BlockNumber]
-		if !ok || h.Hash != l.BlockHash {
-			continue // this node's view moved since eth_getLogs; the next scan sees it again
-		}
-		inv := invoices[common.BytesToAddress(l.Topics[2].Bytes())]
-		d := deposit{
-			// The emitting contract, not the invoice's token: the foreign key then also rejects a mismatch.
-			invoiceID: inv.invoiceID, token: hexutil.Encode(l.Address[:]), txHash: hexutil.Encode(l.TxHash[:]),
-			blockHash: hexutil.Encode(l.BlockHash[:]), from: hexutil.Encode(l.Topics[1][12:]),
-			to: hexutil.Encode(l.Topics[2][12:]), logIndex: uint64(l.Index), blockNumber: l.BlockNumber,
-			blockTime: uint64(h.Timestamp), amount: new(big.Int).SetBytes(l.Data), final: l.BlockNumber <= finalized,
-			finalized: finalized,
-		}
-		deposits = append(deposits, d)
-		seen[logKey{d.blockHash, d.logIndex}] = true
-	}
-	return deposits, seen
-}
-
 // A new chain starts at its finalized block: earlier deposits and wallet transfers are never looked for. Detected rows
 // below the start are read at their own heights, so one that never confirms can't hold the scan back.
 // ponytail: add a start block to chains if a chain is enabled after invoices on it exist.
@@ -313,217 +261,13 @@ func (c *Chain) start(ctx context.Context) (uint64, error) {
 	return uint64(from), nil
 }
 
-// A confirmed row may be booked and never changes; a reorged one comes back if its block is canonical again.
-func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposit) error {
-	for _, d := range deposits {
-		status := "detected"
-		if d.final {
-			status = "confirmed"
-		}
-		row, err := tx.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
-		}
-		_, err = row.Exec(ctx, `
-			INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
-			    block_hash, block_number, block_time, from_address, to_address, amount, status, detected_finalized_block)
-			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-			ON CONFLICT (chain_id, block_hash, log_index) DO UPDATE SET status = excluded.status
-			WHERE chain_transfers.status <> 'confirmed' AND chain_transfers.status <> excluded.status`,
-			c.chainID, d.token, d.invoiceID, d.txHash, d.logIndex, d.blockHash, d.blockNumber, d.blockTime,
-			d.from, d.to, d.amount.String(), status, d.finalized)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.ConstraintName == "chain_transfers_live_log" {
-			// The same transaction is already recorded under another block: one bad node must not stop the chain's
-			// scan, and an operator decides which block is real.
-			_ = row.Rollback(ctx)
-			slog.Error("ALERT deposit recorded under another block was mined again; skipped", "chain", c.chainID,
-				"tx", d.txHash, "log", d.logIndex, "block", d.blockHash)
-			continue
-		}
-		if err == nil {
-			err = row.Commit(ctx)
-		}
-		if err != nil {
-			return fmt.Errorf("record chain %d deposit %s/%d: %w", c.chainID, d.txHash, d.logIndex, err)
-		}
-	}
-	return nil
-}
-
-func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, error) {
-	// Past MAX_HOLD (30 days after the settle deadline) only the refund authority moves the money: not watching those
-	// keeps topic lists bounded. One with a detected deposit stays, or that row would hold every scan's start for good.
-	// Two disjoint parts, so each reads only its rows from an index.
-	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices
-		WHERE chain_id = $1 AND settle_deadline > extract(epoch FROM now())::bigint - $2
-		UNION ALL SELECT receive_address, id, token_contract FROM invoices
-		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
-		  AND id IN (SELECT invoice_id FROM chain_transfers WHERE status = 'detected')`,
-		c.chainID, int64(watchedAfterDeadline/time.Second))
-	if err != nil {
-		return nil, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
-	}
-	defer rows.Close()
-	out := map[common.Address]receiver{}
-	for rows.Next() {
-		var addr, id, token string
-		if err := rows.Scan(&addr, &id, &token); err != nil {
-			return nil, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
-		}
-		out[common.HexToAddress(addr)] = receiver{id, token}
-	}
-	return out, rows.Err()
-}
-
-var watchedAfterDeadline = 30 * 24 * time.Hour
-
-// mayHoldMoneySQL is ledger.MayHoldMoneySQL, the invoices_money_chain index's predicate; a test keeps them equal. The
-// watcher can't import ledger: the ledger's tests run the watcher.
-const mayHoldMoneySQL = `refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired'`
-
-// holding adds to the watched invoices the receivers past the watch window that still hold booked money: the refund
-// authority may still settle, refund or recover it (R-183). Settled ones can hold only money held for the payer, and
-// expired ones only late money, which is held too: the status filter keeps the ledger sums off most old invoices.
-func (c *Chain) holding(ctx context.Context, invoices map[common.Address]receiver) (map[common.Address]receiver, error) {
-	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
-		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
-		  AND (`+mayHoldMoneySQL+`)
-		  AND (SELECT coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
-		       WHERE t.invoice_id = i.id AND e.account = 'receiver') > 0`,
-		c.chainID, int64(watchedAfterDeadline/time.Second))
-	if err != nil {
-		return nil, fmt.Errorf("read chain %d receivers holding money: %w", c.chainID, err)
-	}
-	defer rows.Close()
-	out := maps.Clone(invoices)
-	for rows.Next() {
-		var addr, id, token string
-		if err := rows.Scan(&addr, &id, &token); err != nil {
-			return nil, fmt.Errorf("read chain %d receivers holding money: %w", c.chainID, err)
-		}
-		out[common.HexToAddress(addr)] = receiver{id, token}
-	}
-	return out, rows.Err()
-}
-
 // scanChunks log ranges at most per scan, so a long backlog is caught up over several scans.
 var scanChunks uint64 = 20
 
-// go-ethereum nodes refuse more topic or address values with "exceed max topics"; a smaller block range doesn't help.
-var topicLimit = 1000
-
-func parts[T any](items []T) [][]T {
-	var out [][]T
-	for len(items) > topicLimit {
-		out, items = append(out, items[:topicLimit]), items[topicLimit:]
-	}
-	return append(out, items)
-}
-
-// narrow halves the log range after a refusal and reports that the query should be asked again; growAfter accepted
-// queries double it back. The pool already sent a refused query to every endpoint, so no endpoint takes this range.
-// Rate limits never narrow it: smaller ranges only mean more requests.
-func (c *Chain) narrow(err error) bool {
-	switch {
-	case err == nil:
-		if c.span < MaxRange {
-			if c.accepted++; c.accepted >= growAfter {
-				c.span, c.accepted = min(2*c.span, MaxRange), 0
-			}
-		}
-	case chain.TooLarge(err) && c.span > 1:
-		c.span, c.accepted = c.span/2, 0
-		return true
-	}
-	return false
-}
-
-func (c *Chain) filterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
-	logs, err := c.eth.FilterLogs(ctx, q)
-	if err == nil || !chain.TooLarge(err) || q.FromBlock.Cmp(q.ToBlock) != 0 {
-		return logs, err
-	}
-	var receipts []struct {
-		Logs []types.Log `json:"logs"`
-	}
-	if err := c.rpc.CallContext(ctx, &receipts, "eth_getBlockReceipts", hexutil.EncodeBig(q.FromBlock)); err != nil {
-		return nil, fmt.Errorf("read block %s receipts: %w", q.FromBlock, err)
-	}
-	logs = nil
-	for _, r := range receipts {
-		for _, l := range r.Logs {
-			if matches(q, l) {
-				logs = append(logs, l)
-			}
-		}
-	}
-	return logs, nil
-}
-
-func matches(q ethereum.FilterQuery, l types.Log) bool {
-	if len(q.Addresses) > 0 && !slices.Contains(q.Addresses, l.Address) {
-		return false
-	}
-	for i, want := range q.Topics {
-		if len(want) > 0 && (i >= len(l.Topics) || !slices.Contains(want, l.Topics[i])) {
-			return false
-		}
-	}
-	return true
-}
-
-func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
-	tokens := map[common.Address]bool{}
-	var receivers []common.Hash
-	for addr, inv := range invoices {
-		tokens[common.HexToAddress(inv.token)] = true
-		receivers = append(receivers, common.BytesToHash(addr.Bytes()))
-	}
-	if tokens[arcUSDC] {
-		tokens[arcEmitter] = true // Arc USDC sent as the native coin logs only there
-	}
-	var tokenList []common.Address
-	for t := range tokens {
-		tokenList = append(tokenList, t)
-	}
-	var logs []types.Log
-	for _, part := range parts(receivers) {
-		found, err := c.filterLogs(ctx, ethereum.FilterQuery{
-			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
-			Addresses: tokenList, Topics: [][]common.Hash{{transferTopic}, nil, part},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("read chain %d logs %d-%d: %w", c.chainID, lo, hi, err)
-		}
-		logs = append(logs, found...)
-	}
-	logs, err := c.arcTwins(ctx, "chain_transfers", invoiceLogs(logs, invoices))
-	return nativeSends(logs), err
-}
-
-// invoiceLogs keeps the non-zero Transfer logs of each invoice's own token to its receive address, Arc's system logs
-// still unconverted (nativeSends).
-func invoiceLogs(logs []types.Log, invoices map[common.Address]receiver) []types.Log {
-	var out []types.Log
-	for _, l := range logs {
-		if l.Removed || len(l.Topics) != 3 || l.Topics[0] != transferTopic || len(l.Data) != 32 ||
-			new(big.Int).SetBytes(l.Data).Sign() == 0 {
-			continue
-		}
-		inv, ok := invoices[common.BytesToAddress(l.Topics[2].Bytes())]
-		// Only the invoice's own token counts: anyone can emit Transfer from a look-alike contract.
-		if ok && (strings.EqualFold(l.Address.Hex(), inv.token) || l.Address == arcEmitter && common.HexToAddress(inv.token) == arcUSDC) {
-			out = append(out, l)
-		}
-	}
-	return out
-}
-
 // table is chain_transfers or wallet_transfers.
-func (c *Chain) pending(ctx context.Context, table string, from uint64) ([]pending, error) {
+func (c *Chain) pending(ctx context.Context, table string) ([]pending, error) {
 	rows, err := c.pool.Query(ctx, `SELECT id, block_number, block_hash, log_index FROM `+table+`
-		WHERE chain_id = $1 AND status = 'detected' AND block_number >= $2`, c.chainID, from)
+		WHERE chain_id = $1 AND status = 'detected'`, c.chainID)
 	if err != nil {
 		return nil, fmt.Errorf("read chain %d detected %s: %w", c.chainID, table, err)
 	}
@@ -537,43 +281,6 @@ func (c *Chain) pending(ctx context.Context, table string, from uint64) ([]pendi
 		out = append(out, p)
 	}
 	return out, rows.Err()
-}
-
-// headers leaves out a block the node doesn't have.
-func (c *Chain) headers(ctx context.Context, numbers []uint64) (header, map[uint64]header, error) {
-	unique := map[uint64]bool{}
-	var finalized *header
-	batch := []rpc.BatchElem{{Method: "eth_getBlockByNumber", Args: []any{"finalized", false}, Result: &finalized}}
-	results := map[uint64]**header{}
-	for _, n := range numbers {
-		if unique[n] {
-			continue
-		}
-		unique[n] = true
-		var h *header
-		results[n] = &h
-		batch = append(batch, rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []any{hexutil.EncodeUint64(n), false}, Result: &h})
-	}
-	// RPC providers cap batch sizes; finalized stays in the first chunk with the first blocks.
-	if err := c.batchCall(ctx, batch); err != nil {
-		return header{}, nil, fmt.Errorf("read chain %d blocks: %w", c.chainID, err)
-	}
-
-	for _, b := range batch {
-		if b.Error != nil {
-			return header{}, nil, fmt.Errorf("read chain %d block %v: %w", c.chainID, b.Args[0], b.Error)
-		}
-	}
-	if finalized == nil {
-		return header{}, nil, fmt.Errorf("read chain %d finalized block: not found", c.chainID)
-	}
-	out := map[uint64]header{}
-	for n, h := range results {
-		if *h != nil {
-			out[n] = **h
-		}
-	}
-	return *finalized, out, nil
 }
 
 // record marks reorged rows first, so a re-mined copy of one can be live.
@@ -603,55 +310,8 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 	if err := RecordOutflows(ctx, tx, c.chainID, outflows); err != nil {
 		return err
 	}
-	var final []int64
-	for _, t := range transfers {
-		status := "detected"
-		if t.final {
-			status = "confirmed"
-		}
-		// As for deposits: a confirmed row is final and never changes; a reorged one comes back.
-		var id int64
-		err = tx.QueryRow(ctx, `
-			INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction, counterparty,
-			    tx_hash, log_index, block_hash, block_number, block_time, amount, status)
-			VALUES ($1, 'evm', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-			ON CONFLICT (chain_id, block_hash, log_index, wallet_address, direction) DO UPDATE SET status = excluded.status
-			WHERE wallet_transfers.status <> 'confirmed' AND wallet_transfers.status <> excluded.status
-			RETURNING id`,
-			c.chainID, t.token, t.wallet, t.direction, t.counterparty, t.txHash, t.logIndex, t.blockHash, t.blockNumber,
-			t.blockTime, t.amount.String(), status).Scan(&id)
-		if errors.Is(err, pgx.ErrNoRows) { // already recorded as it is
-			continue
-		} else if err != nil {
-			return fmt.Errorf("record chain %d wallet transfer %s/%d: %w", c.chainID, t.txHash, t.logIndex, err)
-		}
-		if t.direction == "out" && t.final {
-			final = append(final, id)
-		}
-	}
-	// Money out of a profile wallet that no send the owner approved explains: a stolen session can sign through Privy
-	// without Forwend's screens (D-49), so the owner hears at once. Checked once final: by then the browser reported its
-	// send's hash, or the send waits approved for this transfer, or its approval ended within the hour before. Only the
-	// same wallet, token, recipient and amount explain it, so a hash reported on another send can't hide the transfer.
-	// A relayed send Privy hasn't given a hash yet explains its own transfer for DropAfter, as an approved one does.
-	// A send's network fee is the one other transfer its transaction explains: a Tempo send's (chain.TempoFee), or a
-	// relayed send's paymaster's (chain.PaymasterFee), for which only Privy gives the hash, never the browser or the
-	// chain (R-225). Checked after the whole batch is recorded, so a fee logged before the send's own transfer is still
-	// explained.
-	for _, id := range final {
-		if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, wallet_transfer_id, payload)
-			SELECT $2, w.id, '{}' FROM wallet_transfers w WHERE w.id = $1
-			  AND NOT EXISTS (SELECT 1 FROM sends s WHERE s.chain_id = w.chain_id AND s.approved_at IS NOT NULL
-			      AND s.from_address = w.wallet_address AND s.token_contract = w.token_contract
-			      AND (s.to_address = w.counterparty AND s.amount = w.amount
-			          AND (s.tx_hash = w.tx_hash OR s.tx_hash IS NULL AND w.created_at >= s.approved_at
-			              AND (s.status = 'approved' OR s.status = 'submitted' AND s.privy_transaction_id IS NOT NULL
-			                      AND w.created_at < s.submitted_at + interval '30 minutes'
-			                  OR s.status = 'expired' AND w.created_at < s.finished_at + interval '1 hour'))
-			          OR `+chain.TempoFee("w", "s")+` OR `+chain.PaymasterFee("w", "s")+`))
-			ON CONFLICT DO NOTHING`, id, outbox.WalletOutflow); err != nil {
-			return fmt.Errorf("tell the owner of wallet transfer %d: %w", id, err)
-		}
+	if err := c.recordWalletTransfers(ctx, tx, transfers); err != nil {
+		return err
 	}
 
 	if recovery != nil {
@@ -685,40 +345,4 @@ func (c *Chain) record(ctx context.Context, reorged []int64, deposits []deposit,
 		return fmt.Errorf("move chain %d cursor: %w", c.chainID, err)
 	}
 	return tx.Commit(ctx)
-}
-
-func (c *Chain) batchCall(ctx context.Context, batch []rpc.BatchElem) error {
-	for offset := 0; offset < len(batch); {
-		size := min(c.batchSize, len(batch)-offset)
-		part := batch[offset : offset+size]
-		var err error
-		if size == 1 {
-			part[0].Error = nil
-			err = c.rpc.CallContext(ctx, part[0].Result, part[0].Method, part[0].Args...)
-			var responseError rpc.Error
-			if errors.As(err, &responseError) {
-				part[0].Error, err = err, nil
-			}
-		} else {
-			err = c.rpc.BatchCallContext(ctx, part)
-		}
-		limited := chain.BatchTooLarge(err)
-		for _, call := range part {
-			limited = limited || chain.BatchTooLarge(call.Error)
-		}
-		if limited && size > 1 {
-			c.batchSize, c.batchAccepted = max(1, size/2), 0
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if c.batchSize < MaxBatch && size == c.batchSize {
-			if c.batchAccepted++; c.batchAccepted >= growAfter {
-				c.batchSize, c.batchAccepted = min(2*c.batchSize, MaxBatch), 0
-			}
-		}
-		offset += size
-	}
-	return nil
 }

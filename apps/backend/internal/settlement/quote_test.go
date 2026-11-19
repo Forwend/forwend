@@ -84,7 +84,7 @@ func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	if got, err := q.NetworkFee(ctx, chaintest.ChainID); err != nil || got.Cmp(usd(MinGas)) != 0 {
 		t.Fatalf("Arc-like: %v (%v), want %s", got, err, usd(MinGas).FloatString(2))
 	}
-	if err := a.RPC.Call(nil, "anvil_setCode", tempoFeeManager.Hex(), "0x00"); err != nil {
+	if err := a.RPC.Call(nil, "anvil_setCode", chain.TempoFeeManager.Hex(), "0x00"); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := NewQuotes(q.client).NetworkFee(ctx, chaintest.ChainID); err != nil || got.Cmp(usd(TempoMinGas)) != 0 {

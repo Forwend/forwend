@@ -23,9 +23,9 @@ import (
 )
 
 var (
-	settledTopic   = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
+	SettledTopic   = crypto.Keccak256Hash([]byte("Settled(bytes32,address,uint256)"))
 	refundedTopic  = crypto.Keccak256Hash([]byte("Refunded(bytes32,address,uint256)"))
-	recoveredTopic = crypto.Keccak256Hash([]byte("Recovered(bytes32,address,address,uint256)"))
+	RecoveredTopic = crypto.Keccak256Hash([]byte("Recovered(bytes32,address,address,uint256)"))
 	feesPaidTopic  = crypto.Keccak256Hash([]byte("FeesPaid(bytes32,address,uint256,uint256)"))
 )
 
@@ -52,7 +52,7 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 	for len(addresses) > 0 {
 		part := addresses[:min(size, len(addresses))]
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
-			Addresses: part, Topics: [][]common.Hash{{settledTopic, feesPaidTopic, refundedTopic, recoveredTopic}}})
+			Addresses: part, Topics: [][]common.Hash{{SettledTopic, feesPaidTopic, refundedTopic, RecoveredTopic}}})
 		if len(part) > 1 && chain.AddressesTooMany(err) {
 			size = len(part) / 2
 			continue
@@ -118,7 +118,7 @@ func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint
 			block := new(big.Int).SetUint64(l.BlockNumber)
 			var err error
 			transfers, err = c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: block, ToBlock: block,
-				Addresses: []common.Address{key.token}, Topics: [][]common.Hash{{transferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
+				Addresses: []common.Address{key.token}, Topics: [][]common.Hash{{TransferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
 			if err != nil {
 				return nil, fmt.Errorf("read chain %d receiver %s transfers: %w", c.chainID, l.Address.Hex(), err)
 			}
@@ -138,8 +138,8 @@ func ReceiptOutflows(invoiceID string, receiver common.Address, r *types.Receipt
 	var out []Outflow
 	for _, l := range transfers {
 		if l.Address == receiver && len(l.Topics) > 0 &&
-			(l.Topics[0] == settledTopic || l.Topics[0] == feesPaidTopic || l.Topics[0] == refundedTopic ||
-				l.Topics[0] == recoveredTopic) {
+			(l.Topics[0] == SettledTopic || l.Topics[0] == feesPaidTopic || l.Topics[0] == refundedTopic ||
+				l.Topics[0] == RecoveredTopic) {
 			out = append(out, Outflow{InvoiceID: invoiceID, Log: l, Transfers: transfers, Time: at, Verified: verified})
 		}
 	}
@@ -205,7 +205,7 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 	}
 	kind, destination, reason := "", common.BytesToAddress(l.Topics[2].Bytes()), "awaiting_booking"
 	switch l.Topics[0] {
-	case settledTopic:
+	case SettledTopic:
 		kind = "settlement"
 		if len(l.Topics) != 3 || destination != common.HexToAddress(recipient) {
 			reason = "invalid_terms"
@@ -215,7 +215,7 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 		if len(l.Topics) != 3 {
 			reason = "invalid_terms"
 		}
-	case recoveredTopic:
+	case RecoveredTopic:
 		kind = "recovery"
 		if len(l.Topics) != 4 {
 			return fmt.Errorf("receiver %s emitted malformed recovery: %w", o.InvoiceID, errBadEvent)

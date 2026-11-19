@@ -9,12 +9,7 @@ import (
 )
 
 // book writes a balanced transaction, so intoReceiver = toCreator + toHeld; a positive toCreator or toHeld is owed.
-func book(ctx context.Context, tx pgx.Tx, invoiceID, kind string, transferID *int64, intoReceiver, toCreator, toHeld *big.Int) error {
-	_, err := bookTransaction(ctx, tx, invoiceID, kind, transferID, intoReceiver, toCreator, toHeld)
-	return err
-}
-
-func bookTransaction(ctx context.Context, tx pgx.Tx, invoiceID, kind string, transferID *int64, intoReceiver, toCreator, toHeld *big.Int) (int64, error) {
+func book(ctx context.Context, tx pgx.Tx, invoiceID, kind string, transferID *int64, intoReceiver, toCreator, toHeld *big.Int) (int64, error) {
 	var id int64
 	if err := tx.QueryRow(ctx, `INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id) VALUES ($1, $2, $3)
 		RETURNING id`, invoiceID, kind, transferID).Scan(&id); err != nil {

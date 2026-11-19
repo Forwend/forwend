@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -945,7 +946,7 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *t
 			if status, settlement, _ := e.intent(t, id); status != "confirmed" || settlement != "settled" || e.balance(t, wallet) != 5000000 {
 				t.Fatalf("intent %s, invoice %s, recipient %d", status, settlement, e.balance(t, wallet))
 			}
-			logs, err := e.client.FilterLogs(ctx, ethereum.FilterQuery{Addresses: []common.Address{common.HexToAddress(receive)}, Topics: [][]common.Hash{{settledEvent}}})
+			logs, err := e.client.FilterLogs(ctx, ethereum.FilterQuery{Addresses: []common.Address{common.HexToAddress(receive)}, Topics: [][]common.Hash{{watcher.SettledTopic}}})
 			if err != nil || len(logs) != 1 {
 				t.Fatalf("actual settlement logs: %v, %v", logs, err)
 			}
@@ -1784,7 +1785,7 @@ func TestReplacementNeverPassesTheCeiling(t *testing.T) {
 func TestTempoSettleGasFloor(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
-	if err := e.anvil.RPC.Call(nil, "anvil_setCode", tempoFeeManager, hexutil.Encode([]byte{0x60, 0, 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3})); err != nil {
+	if err := e.anvil.RPC.Call(nil, "anvil_setCode", chain.TempoFeeManager, hexutil.Encode([]byte{0x60, 0, 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3})); err != nil {
 		t.Fatal(err)
 	}
 	id, _ := e.paidInvoice(t)
@@ -1908,7 +1909,7 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	if got.OptionID != usdtOption.ID || !got.OptionLocked || got.SettlementStatus != "settled" {
 		t.Fatalf("invoice shows option %s locked %v settlement %s", got.OptionID, got.OptionLocked, got.SettlementStatus)
 	}
-	// The read lists the held USDC payment under its own option, and only the USDT one as the invoice's (F143).
+	// The read lists the held USDC payment under its own option, and only the USDT one as the invoice's.
 	if len(got.Deposits) != 1 || len(got.Options[1].Deposits) != 1 || got.Options[1].ID != usdtOption.ID {
 		t.Fatalf("invoice deposits %+v, options %+v", got.Deposits, got.Options)
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -155,7 +156,7 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.run(t)
-	// Owed in full but the finalized balance does not hold it yet: money seen, not a partial payment (F145).
+	// Owed in full but the finalized balance does not hold it yet: money seen, not a partial payment.
 	want(t, "booked on the scan's word, not final in the balance", e.state(t, id),
 		state{payment: Detected, refund: "none", receiver: 5000000, owed: 5000000})
 
@@ -213,7 +214,6 @@ func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
 	want(t, "paid", e.state(t, id), state{payment: Paid, refund: "none", receiver: 5000000, owed: 5000000})
 }
 
-// D-26.
 func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	e := newChainEnv(t)
 	e.endpoint(t, "all", allEvents, true, false)
@@ -263,15 +263,11 @@ func TestDepositsBookInChainOrder(t *testing.T) {
 // A 0 balance could let an invoice expire with money in it.
 func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
 	e := newChainEnv(t)
-	client := ethclient.NewClient(e.anvil.RPC)
-	block, err := client.BlockNumber(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = BalanceAt(context.Background(), client, chaintest.ChainID, "0x00000000000000000000000000000000000000c0",
-		"0x1111111111111111111111111111111111111111", block)
-	if !errors.Is(err, ErrNoToken) {
-		t.Fatalf("got %v, want ErrNoToken", err)
+	read := BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(e.anvil.RPC)})
+	_, _, err := read(context.Background(), chaintest.ChainID, "0x00000000000000000000000000000000000000c0",
+		"0x1111111111111111111111111111111111111111")
+	if !errors.Is(err, chain.ErrNoToken) {
+		t.Fatalf("got %v, want chain.ErrNoToken", err)
 	}
 }
 

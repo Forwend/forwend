@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 const (
@@ -85,7 +84,7 @@ func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder st
 	raw, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%s", chainID, token, holder, final.Hash.Hex()), balanceTTL,
 		func(ctx context.Context) (string, error) {
 			balance, err := chain.TokenBalanceAtHash(ctx, client, chainID, token, holder, final.Hash)
-			if errors.Is(err, ledger.ErrNoToken) {
+			if errors.Is(err, chain.ErrNoToken) {
 				balance, err = new(big.Int), nil // a token deployed after that block holds nothing there
 			}
 			if err != nil {

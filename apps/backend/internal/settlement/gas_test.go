@@ -124,7 +124,7 @@ func TestCheckGasInFeeToken(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			// PUSH20 chosen, PUSH1 0, MSTORE, PUSH1 32, PUSH1 0, RETURN: every call answers the chosen token.
-			setCode(tempoFeeManager, append(append([]byte{0x73}, c.chosen.Bytes()...), 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3))
+			setCode(chain.TempoFeeManager, append(append([]byte{0x73}, c.chosen.Bytes()...), 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3))
 			// Set in storage: a mint would mine a block and move the base fee.
 			hold := func(units *big.Int) {
 				t.Helper()

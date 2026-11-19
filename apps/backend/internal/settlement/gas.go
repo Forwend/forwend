@@ -13,10 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 // MinGas covers one receiver deploy (159,990 gas on Anvil) and one settle, each plus a fifth. On Arbitrum it
@@ -43,6 +41,36 @@ var maxFeePerGas = map[uint64]*big.Int{
 	31338:   big.NewInt(1000e9), // a second Anvil, in tests
 }
 
+// Fees are a transaction's tip and fee cap on the chain: twice the base fee plus the tip, never above the chain's
+// ceiling in maxFeePerGas (R-189).
+func Fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
+	tip, err = client.SuggestGasTipCap(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read gas tip: %w", err)
+	}
+	head, err := client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read base fee: %w", err)
+	}
+	if head.BaseFee == nil {
+		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
+	}
+	ceiling, ok := maxFeePerGas[chainID]
+	if !ok {
+		return nil, nil, fmt.Errorf("chain %d has no fee ceiling (settlement.maxFeePerGas)", chainID)
+	}
+	feeCap = minBig(new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), ceiling)
+	return minBig(tip, feeCap), feeCap, nil
+}
+
+// minBig returns a copy, so a ceiling in maxFeePerGas is never handed out to be changed.
+func minBig(a, b *big.Int) *big.Int {
+	if a.Cmp(b) <= 0 {
+		return new(big.Int).Set(a)
+	}
+	return new(big.Int).Set(b)
+}
+
 // GasAlertSettlements: below this many deploys and settles at the current fees, the signer alerts every GasCheckEvery.
 const (
 	GasAlertSettlements = 20
@@ -51,9 +79,8 @@ const (
 
 // Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the executor's fee token, else PathUSD.
 var (
-	tempoFeeManager = chain.TempoFeeManager
-	pathUSD         = common.HexToAddress("0x20c0000000000000000000000000000000000000")
-	userTokens      = crypto.Keccak256([]byte("userTokens(address)"))[:4]
+	pathUSD    = common.HexToAddress("0x20c0000000000000000000000000000000000000")
+	userTokens = selector("userTokens(address)")
 )
 
 // CheckGas alerts unless the executor holds MinGas at the chain's current fee cap. A shortfall is not a setup mistake
@@ -121,7 +148,8 @@ func feeToken(ctx context.Context, client *ethclient.Client, executor common.Add
 // on a chain without the fee manager.
 func UserFeeToken(ctx context.Context, client *ethclient.Client, account common.Address) (token common.Address,
 	tempo bool, err error) {
-	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
+	manager := chain.TempoFeeManager
+	code, err := client.CodeAt(ctx, manager, nil)
 	if err != nil {
 		return common.Address{}, false, fmt.Errorf("read the fee manager's code: %w", err)
 	}
@@ -129,7 +157,7 @@ func UserFeeToken(ctx context.Context, client *ethclient.Client, account common.
 		return common.Address{}, false, nil
 	}
 	data := append(append([]byte{}, userTokens...), common.LeftPadBytes(account.Bytes(), 32)...)
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &tempoFeeManager, Data: data}, nil)
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &manager, Data: data}, nil)
 	if err != nil {
 		return common.Address{}, true, fmt.Errorf("read the account's fee token: %w", err)
 	}
@@ -147,7 +175,7 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 	if err != nil {
 		return fmt.Errorf("chain %d: read the latest block: %w", chainID, err)
 	}
-	have, err := ledger.BalanceAt(ctx, client, chainID, token.Hex(), executor.Hex(), block)
+	have, err := chain.TokenBalanceAt(ctx, client, chainID, token.Hex(), executor.Hex(), block)
 	if err != nil {
 		return fmt.Errorf("chain %d: read the executor's fee token balance: %w", chainID, err)
 	}

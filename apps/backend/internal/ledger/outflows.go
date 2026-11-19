@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -165,7 +164,7 @@ func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, a
 	if fromHeld.Cmp(held) > 0 || fromPayable.Cmp(payable) > 0 {
 		return outflowRefusal(ctx, tx, m.ID, "unexplained_outflow")
 	}
-	tid, err := bookTransaction(ctx, tx, invoiceID, m.Kind, nil, new(big.Int).Neg(value),
+	tid, err := book(ctx, tx, invoiceID, m.Kind, nil, new(big.Int).Neg(value),
 		new(big.Int).Neg(fromPayable), new(big.Int).Neg(fromHeld))
 	if err != nil {
 		return false, err
@@ -213,16 +212,4 @@ func currentPayable(ctx context.Context, tx pgx.Tx, invoiceID string) (*big.Int,
 		return nil, err
 	}
 	return n.Neg(n), nil
-}
-
-func ensureNoReturnedFunds(ctx context.Context, tx pgx.Tx, invoiceID string) error {
-	var returned bool
-	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))`, invoiceID).Scan(&returned)
-	if err != nil {
-		return err
-	}
-	if returned {
-		return errors.New("confirmed return prevents reopening")
-	}
-	return nil
 }

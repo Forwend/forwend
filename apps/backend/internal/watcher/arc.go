@@ -14,11 +14,11 @@ import (
 )
 
 // On Arc, USDC is the native coin; its ERC-20 interface at arcUSDC shows the same balance in 6 decimals. Every USDC
-// movement also logs Transfer from arcEmitter in 18 decimals, and a plain native send logs only that
-// (docs.arc.io/arc/references/usdc-system-events). No contract can emit a log from arcEmitter: it has no code.
+// movement also logs Transfer from ArcEmitter in 18 decimals, and a plain native send logs only that
+// (docs.arc.io/arc/references/usdc-system-events). No contract can emit a log from ArcEmitter: it has no code.
 var (
 	arcUSDC    = common.HexToAddress("0x3600000000000000000000000000000000000000")
-	arcEmitter = common.HexToAddress("0xfffffffffffffffffffffffffffffffffffffffe")
+	ArcEmitter = common.HexToAddress("0xfffffffffffffffffffffffffffffffffffffffe")
 	arcScale   = big.NewInt(1e12)
 )
 
@@ -33,7 +33,7 @@ func twins(logs []types.Log) map[int]bool {
 	system := map[txLog]int{}
 	var tokens []int
 	for i, l := range logs {
-		if l.Address == arcEmitter {
+		if l.Address == ArcEmitter {
 			system[txLog{l.TxHash, l.Index}] = i
 		} else {
 			tokens = append(tokens, i)
@@ -66,7 +66,7 @@ func nativeSends(logs []types.Log) []types.Log {
 	twin := twins(logs)
 	var out []types.Log
 	for i, l := range logs {
-		if l.Address == arcEmitter {
+		if l.Address == ArcEmitter {
 			if twin[i] {
 				continue
 			}
@@ -94,7 +94,7 @@ func (c *Chain) arcTwins(ctx context.Context, table string, logs []types.Log) ([
 	var hashes []string
 	var indexes []int64
 	for i, l := range logs {
-		if l.Address == arcEmitter && !twin[i] {
+		if l.Address == ArcEmitter && !twin[i] {
 			hashes, indexes = append(hashes, hexutil.Encode(l.TxHash[:])), append(indexes, int64(l.Index))
 		}
 	}
@@ -127,7 +127,7 @@ func (c *Chain) arcTwins(ctx context.Context, table string, logs []types.Log) ([
 	receipts := map[common.Hash]**receipt{}
 	var batch []rpc.BatchElem
 	for i, l := range logs {
-		if l.Address != arcEmitter || twin[i] || recorded[txLog{l.TxHash, l.Index}] || receipts[l.TxHash] != nil {
+		if l.Address != ArcEmitter || twin[i] || recorded[txLog{l.TxHash, l.Index}] || receipts[l.TxHash] != nil {
 			continue
 		}
 		var r *receipt
@@ -145,14 +145,14 @@ func (c *Chain) arcTwins(ctx context.Context, table string, logs []types.Log) ([
 	out := slices.Clone(logs)
 	for i, l := range logs {
 		r := receipts[l.TxHash]
-		if l.Address != arcEmitter || twin[i] || r == nil {
+		if l.Address != ArcEmitter || twin[i] || r == nil {
 			continue
 		}
 		if *r == nil || (*r).BlockHash != l.BlockHash {
 			return nil, fmt.Errorf("read chain %d receipt %s: not in block %s", c.chainID, l.TxHash, l.BlockHash)
 		}
 		for _, t := range (*r).Logs {
-			if t.Address == arcUSDC && len(t.Topics) == 3 && t.Topics[0] == transferTopic && len(t.Data) == 32 &&
+			if t.Address == arcUSDC && len(t.Topics) == 3 && t.Topics[0] == TransferTopic && len(t.Data) == 32 &&
 				t.Index > l.Index && t.Index <= l.Index+2 && sameMovement(l, t) &&
 				!slices.ContainsFunc(out, func(o types.Log) bool { return o.TxHash == t.TxHash && o.Index == t.Index }) {
 				out = append(out, t)

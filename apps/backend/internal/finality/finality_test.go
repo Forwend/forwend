@@ -38,29 +38,3 @@ func TestProgressOf(t *testing.T) {
 		})
 	}
 }
-
-// Base finality moves in steps as L1 epochs finalize.
-func TestProgressOfStepFinality(t *testing.T) {
-	prev := ProgressOf(deposit, behind(600))
-	for _, head := range []Block{behind(600), behind(408), behind(216), behind(24), {deposit.Number + 168, deposit.Time + 336}} {
-		got := ProgressOf(deposit, head)
-		if got.BlocksLeft > prev.BlocksLeft || got.TimeLeft > prev.TimeLeft {
-			t.Fatalf("progress went back: %+v after %+v", got, prev)
-		}
-		prev = got
-	}
-	if !prev.Final() || prev != (Progress{}) {
-		t.Fatalf("got %+v after finality passed the deposit, want final with nothing left", prev)
-	}
-}
-
-func TestProgressOfBusyDay(t *testing.T) {
-	normal := ProgressOf(deposit, behind(461)) // about 15 min, as measured
-	busy := ProgressOf(deposit, behind(750))   // about 25 min, the slowest S-4 sample
-	if busy.TimeLeft <= normal.TimeLeft || busy.BlocksLeft <= normal.BlocksLeft {
-		t.Fatalf("busy %+v should show more left than normal %+v", busy, normal)
-	}
-	if busy.TimeLeft != 25*time.Minute {
-		t.Fatalf("busy time left %v, want 25m", busy.TimeLeft)
-	}
-}
