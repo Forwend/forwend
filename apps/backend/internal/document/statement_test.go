@@ -85,7 +85,6 @@ func TestStatementIsTheSameEachTime(t *testing.T) {
 	}
 }
 
-// R-112.
 func TestStatementPagesKeepTheTableTogether(t *testing.T) {
 	// Lines of every count over several pages, under holder blocks of 1 to 4 address lines: the table then starts at
 	// different heights, so the total meets the end of the first page too.

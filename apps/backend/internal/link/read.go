@@ -23,15 +23,19 @@ const linkColumns = `l.id::text, coalesce(l.store_id::text, ''), l.slug, l.title
 	(SELECT reserved FROM payment_link_usage u WHERE u.link_id = l.id),
 	l.created_at, l.updated_at, l.livemode, l.revision, coalesce(l.fees_paid_by, '')`
 
+// fields are l's scan targets in linkColumns order.
+func (l *Link) fields() []any {
+	return []any{&l.ID, &l.StoreID, &l.Slug, &l.Title, &l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt,
+		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision,
+		&l.FeesPaidBy}
+}
+
 func scanLink(row pgx.CollectableRow) (Link, error) {
 	var l Link
-	err := row.Scan(&l.ID, &l.StoreID, &l.Slug, &l.Title, &l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt,
-		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision,
-		&l.FeesPaidBy)
+	err := row.Scan(l.fields()...)
 	return l, err
 }
 
-// DefaultLimit and MaxLimit bound a page of links.
 const (
 	DefaultLimit = 50
 	MaxLimit     = 100

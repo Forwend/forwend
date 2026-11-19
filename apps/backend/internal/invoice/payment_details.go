@@ -26,7 +26,7 @@ type PaymentOption struct {
 	HeldHistory       heldHistory
 }
 
-// PaymentReturn is held money the refund authority sent back to a payer, once the ledger booked it (PLAN 11.10.3).
+// PaymentReturn is held money the refund authority sent back to a payer, once the ledger booked it.
 type PaymentReturn struct {
 	TxHash, To string
 	Amount     *big.Int

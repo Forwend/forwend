@@ -14,7 +14,6 @@ import (
 
 var linkSlug = regexp.MustCompile(`^[a-z0-9]{12}$`)
 
-// R-140, D-54, D-94.
 func TestPaymentLinks(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -253,7 +252,7 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 	viaLink := func(key string) string {
 		t.Helper()
 		inv, _, err := invoice.NewService(e.pool).Create(t.Context(), e.aliceProfile, key, invoice.Request{ChainID: 84532,
-			Token: usdc, Amount: "2000000", Details: invoice.Details{DueDate: yesterday}, LinkID: linkID})
+			Token: usdc, Amount: "2000000", Details: invoice.Details{DueDate: yesterday}, Caller: invoice.Caller{LinkID: linkID}})
 		if err != nil || inv.Number != nil {
 			t.Fatalf("a link invoice: number %v, %v", inv.Number, err)
 		}
@@ -352,7 +351,7 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`)
 	choosing, _, err := invoice.NewService(e.pool).Create(t.Context(), e.aliceProfile, "choosing",
-		invoice.Request{AmountUSD: "12.5", LinkID: linkID})
+		invoice.Request{AmountUSD: "12.5", Caller: invoice.Caller{LinkID: linkID}})
 	if err != nil || len(choosing.Options) != 2 || choosing.Options[1].Token != usdc {
 		t.Fatalf("a link invoice the payer picks the token of: %v %v", choosing.Options, err)
 	}

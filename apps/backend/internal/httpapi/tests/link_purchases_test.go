@@ -111,7 +111,7 @@ func TestLinkCreationReadsCapacityAfterAConcurrentReopenCommits(t *testing.T) {
 	store := storeIDs(t, e, shop)[0]
 	const linkID = "eeeeeeee-0000-4000-8000-000000000051"
 	template := e.call(t, "PUT", "/v1/profiles/"+shop+"/links/"+linkID, "did:privy:alice", "", `{"title":"One seat","amountUsd":"5","maxPayments":1}`)
-	inv, _, err := invoice.NewService(e.pool).Create(ctx, shop, "legacy-partial", invoice.Request{AmountUSD: "5", StoreID: store, LinkID: linkID})
+	inv, _, err := invoice.NewService(e.pool).Create(ctx, shop, "legacy-partial", invoice.Request{AmountUSD: "5", StoreID: store, Caller: invoice.Caller{LinkID: linkID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestLinkRetriesKeepLegacyHashesAndTheExactPublicInput(t *testing.T) {
 	template := e.call(t, "PUT", path, alice, "", `{"title":"Coffee","amountUsd":"2"}`)
 	pay := "/v1/links/" + template.body["slug"].(string) + "/pay"
 	legacy, _, err := invoice.NewService(e.pool).Create(ctx, shop, "link:"+id+":legacy", invoice.Request{
-		AmountUSD: "2", StoreID: store, LinkID: id, Details: invoice.Details{Title: "Coffee"},
+		AmountUSD: "2", StoreID: store, Caller: invoice.Caller{LinkID: id}, Details: invoice.Details{Title: "Coffee"},
 	})
 	if err != nil {
 		t.Fatal(err)

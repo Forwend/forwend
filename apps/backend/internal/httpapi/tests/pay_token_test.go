@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// D-86.
 func TestPublicRoutesTakeOnlyThePayToken(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)

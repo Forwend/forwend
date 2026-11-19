@@ -11,23 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-type attentionItemJSON struct {
-	paymentio.Payment
-	Problems []problemJSON `json:"problems"`
-}
-
-type webhookProblemJSON struct {
-	EndpointID      string                `json:"endpointId"`
-	StoreID         *string               `json:"storeId"`
-	Description     string                `json:"description"`
-	Enabled         bool                  `json:"enabled"`
-	Livemode        bool                  `json:"livemode"`
-	Failed          int64                 `json:"failed"`
-	DisabledPending int64                 `json:"disabledPending"`
-	LastProblemAt   string                `json:"lastProblemAt"`
-	Action          invoice.PaymentAction `json:"action"`
-}
-
 func attention(invoices *invoice.Service, webURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query, err := readQuery(r)

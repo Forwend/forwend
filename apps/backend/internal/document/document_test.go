@@ -251,7 +251,6 @@ func drawnAt(t *testing.T, pdf []byte, text string) (float64, bool) {
 	}
 }
 
-// R-88.
 func TestLineUnit(t *testing.T) {
 	usdc := invoice.Option{ID: "main", Asset: chain.Asset{Symbol: "USDC", Decimals: 6}}
 	dai := invoice.Option{ID: "other", Asset: chain.Asset{Symbol: "DAI", Decimals: 18}}

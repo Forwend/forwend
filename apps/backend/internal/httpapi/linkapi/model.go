@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/forwend/forwend/apps/backend/internal/job"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
@@ -49,7 +49,7 @@ func usd(cents int64) *string {
 	if cents == 0 {
 		return nil
 	}
-	s := job.USD(cents)
+	s := invoice.USD(cents)
 	return &s
 }
 

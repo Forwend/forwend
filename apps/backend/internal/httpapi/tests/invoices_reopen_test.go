@@ -13,7 +13,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// R-130.
 func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

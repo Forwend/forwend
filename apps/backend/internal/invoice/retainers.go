@@ -71,8 +71,7 @@ func (s *Service) startRetainer(ctx context.Context, tx pgx.Tx, profileID, invoi
 	if running >= MaxRetainers {
 		return fmt.Errorf("%w: a profile has at most %d running retainers", ErrInvalid, MaxRetainers)
 	}
-	// The later months reuse the request, stored as JSON with Go's field names: renaming a Request field needs a
-	// migration of retainers.request.
+	// The later months reuse the request, stored as JSON.
 	t := r
 	t.DueDate, t.SupplyDate, t.ExpiresInSeconds, t.Repeat, t.Details.Agreed = "", "", nil, nil, nil
 	t.Replaces = ""
@@ -165,7 +164,7 @@ func (s *Service) MakeRetainerInvoices(ctx context.Context) error {
 		seconds := int64((m.due.AddDate(0, 0, DueGraceDays+1).Sub(s.currentTime()) + time.Second - 1) / time.Second)
 		r.DueDate, r.ExpiresInSeconds = m.due.Format(time.DateOnly), &seconds
 		r.Reminders = r.Reminders && !m.remindersStopped
-		r.cycle, r.By = &cycle{retainer: m.retainer, n: m.n}, history.System
+		r.cycle, r.Caller.By = &cycle{retainer: m.retainer, n: m.n}, history.System
 		key := fmt.Sprintf("retainer:%s:%d", m.retainer, m.n)
 		if _, _, err := s.Create(ctx, m.profile, key, r); err != nil && !errors.Is(err, errRetainerStopped) {
 			errs = append(errs, fmt.Errorf("retainer %s month %d: %w", m.retainer, m.n, err),

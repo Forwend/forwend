@@ -121,7 +121,7 @@ func TestReopenCannotTakeAnotherCustomersReservedLinkSlot(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE invoices SET link_id = $2 WHERE id = $1", closed.ID, linkID); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Create(ctx, profileID, "another-purchase", Request{AmountUSD: "5", LinkID: linkID}); err != nil {
+	if _, _, err := s.Create(ctx, profileID, "another-purchase", Request{AmountUSD: "5", Caller: Caller{LinkID: linkID}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.Reopen(ctx, profileID, closed.ID); !errors.Is(err, ErrLinkAtCapacity) {

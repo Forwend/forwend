@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
@@ -64,7 +65,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	if position == last && position > 1 {
 		r.Note = finalNote(j, p)
 	}
-	r.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {
+	r.Caller.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {
 		// The job row lock orders this with a proposal: a schedule that changed since the read is read again. The count
 		// is its own statement, so it sees what committed while the lock waited.
 		if _, err := tx.Exec(ctx, "SELECT 1 FROM jobs WHERE id = $1 FOR UPDATE", j.ID); err != nil {
@@ -83,7 +84,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	}
 	// A concurrent call the same UTC day makes the same request with the same key, so it gets this invoice back; one
 	// with other values (a payment paid in between changes the final note) finds the invoice made.
-	_, _, err = s.invoices.Create(ctx, profileID, fmt.Sprintf("job:%s:%d", j.ID, position), r)
+	_, _, err = s.invoices.Create(ctx, profileID, paymentKey(j.ID, position), r)
 	if errors.Is(err, errScheduleChanged) {
 		return s.MarkDone(ctx, profileID, id, position, link)
 	}
@@ -101,7 +102,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 // finalNote (R-103, D-81) fits the invoice's note length.
 func finalNote(j Job, final Payment) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Final invoice for %s. Job total: %s USD.\nEarlier payments:", j.Title, USD(j.TotalCents()))
+	fmt.Fprintf(&b, "Final invoice for %s. Job total: %s USD.\nEarlier payments:", j.Title, invoice.USD(j.TotalCents()))
 	for _, p := range j.Payments[:final.Position-1] {
 		paid := "not paid yet"
 		switch p.Status {
@@ -112,8 +113,8 @@ func finalNote(j Job, final Payment) string {
 		case "expired":
 			paid = "not paid, closed"
 		}
-		fmt.Fprintf(&b, "\n- %s (INV-%04d): %s USD, %s", p.Title, p.Number, USD(p.AmountCents), paid)
+		fmt.Fprintf(&b, "\n- %s (%s): %s USD, %s", p.Title, document.Number(p.Number), invoice.USD(p.AmountCents), paid)
 	}
-	fmt.Fprintf(&b, "\nThis invoice: %s, %s USD.", final.Title, USD(final.AmountCents))
+	fmt.Fprintf(&b, "\nThis invoice: %s, %s USD.", final.Title, invoice.USD(final.AmountCents))
 	return b.String()
 }

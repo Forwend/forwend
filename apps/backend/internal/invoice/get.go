@@ -163,7 +163,7 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 			return Invoice{}, err
 		}
 		inv.Receipts = receipts[inv.ID]
-		head, err := s.head(ctx, inv.ChainID)
+		head, err := readHead(ctx, s.pool, inv.ChainID)
 		if err != nil {
 			return Invoice{}, err
 		}
@@ -262,10 +262,6 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	}
 }
 
-func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, error) {
-	return readHead(ctx, s.pool, chainID)
-}
-
 func readHead(ctx context.Context, db paymentReader, chainID uint64) (finality.Block, error) {
 	var head finality.Block
 	err := db.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
@@ -274,15 +270,6 @@ func readHead(ctx context.Context, db paymentReader, chainID uint64) (finality.B
 		return finality.Block{}, fmt.Errorf("read chain %d cursor: %w", chainID, err)
 	}
 	return head, nil
-}
-
-func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
-	return readPaymentOptions(ctx, s.pool, id)
-}
-
-func readPaymentOptions(ctx context.Context, db paymentReader, id string) ([]Option, error) {
-	options, err := readPaymentOptionsFor(ctx, db, []string{id}, false)
-	return options[id], err
 }
 
 func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, activeOnly bool) (map[string][]Option, error) {
@@ -317,7 +304,6 @@ func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, 
 	return result, rows.Err()
 }
 
-// R-88.
 func readLines(ctx context.Context, q paymentReader, id string) ([]Line, error) {
 	rows, err := q.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
 		FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, id)

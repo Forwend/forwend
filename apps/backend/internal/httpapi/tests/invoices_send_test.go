@@ -9,7 +9,6 @@ import (
 const clientBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000",
 	"client": {"name": "Client Ltd", "email": "ap@client.example"}}`
 
-// R-94.
 func TestSendInvoiceToClient(t *testing.T) {
 	e := invoiceAPI(t)
 	send := func(profile, id, key string) reply {
@@ -95,7 +94,6 @@ func TestSendInvoiceToClient(t *testing.T) {
 	}
 }
 
-// R-116.
 func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)

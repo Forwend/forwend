@@ -21,11 +21,7 @@ type createBody struct {
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	} `json:"customer"`
-	Items []struct {
-		Description string `json:"description"`
-		Quantity    string `json:"quantity"`
-		UnitPrice   string `json:"unitPrice"`
-	} `json:"items"`
+	Items []paymentio.Line `json:"items"`
 }
 
 type sessionJSON struct {

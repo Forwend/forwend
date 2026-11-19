@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
@@ -97,7 +96,7 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 			var seen bool
 			// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner editing. A
 			// deposit 1Click converts is on its way, as money seen is (R-233).
-			if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL+" OR "+ConvertingSQL, main.ID).Scan(&seen); err != nil {
+			if err := tx.QueryRow(ctx, "SELECT "+moneySeenSQL, main.ID).Scan(&seen); err != nil {
 				return fmt.Errorf("read invoice %s transfers: %w", main.ID, err)
 			}
 			if seen {

@@ -101,7 +101,6 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	return j, nil
 }
 
-// DefaultLimit and MaxLimit bound a page of jobs.
 const (
 	DefaultLimit = 50
 	MaxLimit     = 100

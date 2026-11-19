@@ -4,7 +4,6 @@ package job
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/profile"
@@ -96,10 +95,6 @@ type Job struct {
 	// Livemode is the profile's mode when the job was quoted: every invoice of the job is of it (R-221).
 	Livemode  bool
 	profileID string
-}
-
-func USD(cents int64) string {
-	return fmt.Sprintf("%d.%02d", cents/100, cents%100)
 }
 
 // TotalCents counts a change only once the client accepted it (R-105).

@@ -11,7 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
-// R-127.
 func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -70,7 +69,6 @@ func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
 	}
 }
 
-// R-128.
 func TestOwnerEditsReferenceNoteAndDueDateBeforePayment(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

@@ -1,6 +1,7 @@
 package invoice
 
 import (
+	"encoding/hex"
 	"errors"
 	"math/big"
 	"os"
@@ -16,7 +17,7 @@ import (
 )
 
 // Mirrors InvoiceTypes.sol safeToSettle.
-func TestBuildTermsRefusesWhatSettleRefuses(t *testing.T) {
+func TestReceiveAddressRefusesWhatSettleRefuses(t *testing.T) {
 	expires := time.Unix(1800000000, 0)
 	for name, recipient := range map[string]string{
 		"zero":           hexAddress([20]byte{}),
@@ -24,12 +25,12 @@ func TestBuildTermsRefusesWhatSettleRefuses(t *testing.T) {
 		"implementation": hexAddress(address.Implementation),
 		"token":          usdc,
 	} {
-		_, _, err := buildTerms([32]byte{1}, 84532, usdc, recipient, big.NewInt(1), nil, nil, expires, expires.Add(SettleWindow))
+		_, err := receiveAddress([32]byte{1}, 84532, usdc, recipient, big.NewInt(1), nil, nil, expires, expires.Add(SettleWindow))
 		if !errors.Is(err, ErrInvalid) {
 			t.Errorf("recipient = %s: got %v, want ErrInvalid", name, err)
 		}
 	}
-	if _, _, err := buildTerms([32]byte{1}, 84532, usdc, "0x1111111111111111111111111111111111111111", big.NewInt(1), nil, nil,
+	if _, err := receiveAddress([32]byte{1}, 84532, usdc, "0x1111111111111111111111111111111111111111", big.NewInt(1), nil, nil,
 		expires, expires.Add(SettleWindow)); err != nil {
 		t.Fatalf("ordinary wallet: %v", err)
 	}
@@ -124,18 +125,24 @@ func TestLimitsMatchTheWeb(t *testing.T) {
 	}
 }
 
-// R-151: metadata joins the hash only when set, so a request without it hashes as it did before.
-func TestRequestHashTakesMetadataOnlyWhenSet(t *testing.T) {
-	hash := func(m map[string]string) string {
-		return string(requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{Metadata: m}, nil, false, nil,
-			"", ""))
+// bareRequestHash is the stored hash of a 5 USDC request with nothing else set: a retry must keep matching it.
+const bareRequestHash = "3f3f910f034e73c69a1251817cfd5c302aa620d1cead7d320f3fccc886ec73ed"
+
+func TestRequestHashKeepsStoredHashes(t *testing.T) {
+	hash := func(r Request) string {
+		return hex.EncodeToString(requestHash(r, 84532, usdc, big.NewInt(5000000), DefaultExpiresIn, nil))
 	}
-	if hash(nil) != hash(map[string]string{}) || hash(nil) != string(requestHash(84532, usdc, big.NewInt(5000000),
-		DefaultExpiresIn, Details{}, nil, false, nil, "", "")) {
-		t.Fatal("no metadata changed the hash")
+	if got := hash(Request{Details: Details{Metadata: map[string]string{}}}); got != bareRequestHash {
+		t.Fatalf("bare request: %s, want %s", got, bareRequestHash)
 	}
-	if hash(map[string]string{"a": "1", "b": "2"}) != hash(map[string]string{"b": "2", "a": "1"}) ||
-		hash(map[string]string{"a": "1"}) == hash(nil) || hash(map[string]string{"a": "1"}) == hash(map[string]string{"a": "2"}) {
+	checkout := Request{Caller: Caller{Purpose: PurposeCheckout}, FeesPaidBy: FeesPaidByClient}
+	if got, want := hash(checkout), "fa453d7fca9d3f971f80dda992e15c5822969479dd22fe91bbac9fc581b016de"; got != want {
+		t.Fatalf("checkout with the client's fees: %s, want %s", got, want)
+	}
+	metadata := func(m map[string]string) string { return hash(Request{Details: Details{Metadata: m}}) }
+	if metadata(map[string]string{"a": "1", "b": "2"}) != metadata(map[string]string{"b": "2", "a": "1"}) ||
+		metadata(map[string]string{"a": "1"}) == bareRequestHash ||
+		metadata(map[string]string{"a": "1"}) == metadata(map[string]string{"a": "2"}) {
 		t.Fatal("metadata does not decide the hash")
 	}
 }

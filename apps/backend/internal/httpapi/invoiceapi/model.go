@@ -18,20 +18,16 @@ type createInvoiceBody struct {
 	AmountUSD string `json:"amountUsd"`
 	ExpiresIn *int64 `json:"expiresIn"`
 	// owner or client (D-122); left out: the profile's choice.
-	FeesPaidBy string `json:"feesPaidBy"`
-	Title      string `json:"title"`
-	Note       string `json:"note"`
-	DueDate    string `json:"dueDate"`
-	SupplyDate string `json:"supplyDate"`
-	Reference  string `json:"reference"`
-	SenderName string `json:"senderName"`
-	ReturnURL  string `json:"returnUrl"`
-	Reminders  bool   `json:"reminders"`
-	Lines      []struct {
-		Description string `json:"description"`
-		Quantity    string `json:"quantity"`
-		UnitPrice   string `json:"unitPrice"`
-	} `json:"lines"`
+	FeesPaidBy  string           `json:"feesPaidBy"`
+	Title       string           `json:"title"`
+	Note        string           `json:"note"`
+	DueDate     string           `json:"dueDate"`
+	SupplyDate  string           `json:"supplyDate"`
+	Reference   string           `json:"reference"`
+	SenderName  string           `json:"senderName"`
+	ReturnURL   string           `json:"returnUrl"`
+	Reminders   bool             `json:"reminders"`
+	Lines       []paymentio.Line `json:"lines"`
 	AgreedValue *struct {
 		Currency string `json:"currency"`
 		Amount   string `json:"amount"`
@@ -40,8 +36,7 @@ type createInvoiceBody struct {
 	Repeat *struct {
 		EndDate string `json:"endDate"`
 	} `json:"repeat"`
-	Replaces string `json:"replaces"`
-	// Raw, so a value of another shape is invalid_value, as other wrong values are, not a malformed body.
+	Replaces string          `json:"replaces"`
 	Metadata json.RawMessage `json:"metadata"`
 	StoreID  string          `json:"storeId"`
 	Client   struct {
@@ -146,17 +141,16 @@ func toDepositSummaryJSON(summary *invoice.DepositSummary) *depositSummaryJSON {
 type invoiceDetailJSON struct {
 	DepositSummary *depositSummaryJSON `json:"depositSummary,omitempty"`
 	invoiceJSON
-	PaidAt    *string `json:"paidAt"`
-	SettledAt *string `json:"settledAt"`
-	// R-79.
-	CanceledAt *string       `json:"canceledAt"`
-	Deposits   []depositJSON `json:"deposits"`
-	Options    []optionJSON  `json:"options"`
+	PaidAt     *string             `json:"paidAt"`
+	SettledAt  *string             `json:"settledAt"`
+	CanceledAt *string             `json:"canceledAt"`
+	Deposits   []paymentio.Deposit `json:"deposits"`
+	Options    []optionJSON        `json:"options"`
 	// In the base units of the option whose id is the invoice's (R-88); empty without a breakdown.
 	Lines []lineJSON `json:"lines"`
 	// When Check status may run again; null when it may now (R-55).
 	NextCheckAt *string `json:"nextCheckAt"`
-	// R-128, newest first.
+	// Newest first.
 	Updates []updateJSON `json:"updates"`
 	// R-129: null unless a Revise replaced it.
 	ReplacedBy *revisionJSON `json:"replacedBy"`
@@ -215,8 +209,8 @@ type optionJSON struct {
 	Decimals       int                 `json:"decimals"`
 	Amount         string              `json:"amount"`
 	paymentio.Fees
-	ReceiveAddress string        `json:"receiveAddress"`
-	Deposits       []depositJSON `json:"deposits"`
+	ReceiveAddress string              `json:"receiveAddress"`
+	Deposits       []paymentio.Deposit `json:"deposits"`
 }
 
 // Owner reads only; settlementWait is null when the money is not waiting.
@@ -274,7 +268,6 @@ type sendJSON struct {
 	FailedAt    *string `json:"failedAt"`
 }
 
-// R-96.
 type remindersJSON struct {
 	On        bool           `json:"on"`
 	StoppedAt *string        `json:"stoppedAt"`
@@ -301,8 +294,6 @@ type invoicesJSON struct {
 	Items      []invoiceJSON `json:"items"`
 	NextCursor *string       `json:"nextCursor"`
 }
-
-type depositJSON = paymentio.Deposit
 
 // withClient is for the owner only.
 func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
@@ -351,7 +342,7 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 
 func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON {
 	out := invoiceDetailJSON{invoiceJSON: toInvoiceJSON(inv, withClient), PaidAt: httpio.OrNullTime(inv.PaidAt),
-		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Deposits: []depositJSON{}, Options: []optionJSON{},
+		SettledAt: httpio.OrNullTime(inv.SettledAt), CanceledAt: httpio.OrNullTime(inv.CanceledAt), Options: []optionJSON{},
 		Lines:       []lineJSON{},
 		NextCheckAt: httpio.OrNullTime(inv.NextCheckAt), Updates: []updateJSON{}, ReplacedBy: toRevisionJSON(inv.ReplacedBy),
 		CrossChain: paymentio.FromCrossChain(inv.CrossChain), CrossChainOn: inv.CrossChainOn}
@@ -362,19 +353,15 @@ func toInvoiceDetailJSON(inv invoice.Invoice, withClient bool) invoiceDetailJSON
 	for _, o := range inv.Options {
 		out.Options = append(out.Options, optionJSON{ClosesAt: o.ClosesAt.Format(time.RFC3339), Amounts: paymentio.FromAmounts(o.Amounts), OptionID: o.ID, ChainID: o.ChainID, Network: o.Network,
 			Token: o.Token, Symbol: o.Symbol, Decimals: o.Decimals, Amount: o.Amount.String(), Fees: paymentio.FromFees(o.Amount, o.Fees),
-			ReceiveAddress: o.ReceiveAddress, Deposits: toDepositsJSON(o.Deposits), DepositSummary: toDepositSummaryJSON(o.DepositSummary)})
+			ReceiveAddress: o.ReceiveAddress, Deposits: paymentio.Deposits(o.Deposits), DepositSummary: toDepositSummaryJSON(o.DepositSummary)})
 	}
 	for _, l := range inv.Lines {
 		out.Lines = append(out.Lines, lineJSON{Description: l.Description, Quantity: l.Quantity,
 			UnitPrice: l.UnitPrice.String(), Amount: l.Amount.String()})
 	}
-	out.Deposits = toDepositsJSON(inv.Deposits)
+	out.Deposits = paymentio.Deposits(inv.Deposits)
 	out.DepositSummary = toDepositSummaryJSON(inv.DepositSummary)
 	return out
-}
-
-func toDepositsJSON(deposits []invoice.Deposit) []depositJSON {
-	return paymentio.Deposits(deposits)
 }
 
 func toOwnerInvoiceJSON(inv invoice.Invoice) ownerInvoiceJSON {
@@ -422,7 +409,6 @@ type recheckJSON struct {
 	Unreadable  []uint64 `json:"unreadable"`
 }
 
-// R-96.
 type stoppedJSON struct {
 	Number int64   `json:"number"`
 	From   *string `json:"from"`

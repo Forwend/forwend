@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// MaxPayments is the highest payment cap an owner can set.
 const MaxPayments = 1_000_000
 
 var (

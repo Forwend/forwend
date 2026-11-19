@@ -9,7 +9,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// R-88.
 func TestInvoiceLines(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

@@ -177,7 +177,6 @@ func mustContain(t *testing.T, text string, want ...string) {
 	}
 }
 
-// D-52.
 func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -442,7 +441,6 @@ func qrDrawn(t *testing.T, pdf []byte) bool {
 	}
 }
 
-// R-88.
 func TestInvoicePDFLines(t *testing.T) {
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`",

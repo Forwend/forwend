@@ -30,7 +30,6 @@ func (e invoiceEnv) deposit(t *testing.T, id, amount string) {
 	}
 }
 
-// R-95.
 func TestOwedToYou(t *testing.T) {
 	e := invoiceAPI(t)
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }
