@@ -31,14 +31,10 @@ export interface DeliveriesProps {
 const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" });
 const HOUR = 60 * 60 * 1000;
 
-/** What the last action here did, said in place: the sheet is where it was asked for. */
 type Said = { failed: boolean; text: string } | null;
 
-// R-149: the endpoint's newest deliveries with each attempt, a resend for any one, a test event, and a resend of the
-// failed ones in a window.
 export function Deliveries({ profileId, endpoint }: DeliveriesProps) {
   const arg = { profileId, endpointId: endpoint.endpointId };
-  // The worker sends while the sheet is open: a test event turns Delivered without a reload.
   const deliveries = useListDeliveriesQuery(arg, LIVE_QUERY);
   const [sendTest, testing] = useSendTestMutation();
   const [resendFailed, resending] = useResendFailedMutation();

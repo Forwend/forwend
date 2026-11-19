@@ -1,4 +1,4 @@
-/** Which form shows the next ask in place of its buttons; an ask no form claimed shows in its provider's own dialog. */
+/** Which form shows the next ask in place of its buttons; else its provider's dialog does. */
 export interface Claim<Scope> {
   claim: (scope: Scope) => void;
   release: (scope: Scope) => void;

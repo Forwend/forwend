@@ -17,14 +17,12 @@ export interface InviteDialogProps {
   stores: readonly Store[];
 }
 
-// R-139: the API asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export function InviteDialog({ profileId, stores }: InviteDialogProps) {
   const [invite, { isLoading }] = useInviteMutation();
   const fresh = useFreshSignIn();
   const toast = useToast();
   const form = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
-  // The role with the least reach comes first, so giving more is a choice.
   const [role, setRole] = useState<MemberRole>(ROLES.developer);
   const [chosen, setChosen] = useState<string[]>([]);
   const [errors, setErrors] = useState<ReturnType<typeof grantError>>({});

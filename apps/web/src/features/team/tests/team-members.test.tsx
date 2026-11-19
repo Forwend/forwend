@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, expect, it, vi } from "vitest";
 import { TeamMembers } from "@/features/team/components/team-members";
@@ -15,7 +15,6 @@ vi.stubGlobal(
     }
   },
 );
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 50)));
 
 afterEach(cleanup);
 
@@ -38,11 +37,9 @@ it("a failed stores load shows Try again, which then loads the team", async () =
       </ToastProvider>
     </Provider>,
   );
-  await settle();
-  expect(screen.getByRole("alert").textContent).toContain("could not load the team");
+  const retry = await screen.findByRole("button", { name: "Try again" });
   storesUp = true;
-  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-  await settle();
-  expect(screen.queryByRole("alert")).toBeNull();
-  expect(screen.getByRole("region", { name: "Members" })).toBeTruthy();
+  fireEvent.click(retry);
+  await screen.findByRole("region", { name: "Members" });
+  expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
 });

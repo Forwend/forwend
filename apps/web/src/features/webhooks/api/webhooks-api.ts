@@ -26,7 +26,6 @@ const hookUrl = (profileId: string, endpointId: string) =>
 type EndpointArg = { profileId: string; endpointId: string };
 const endpointArg = z.object({ profileId: z.guid(), endpointId: z.guid() });
 
-// R-149: saving an endpoint and revealing or rotating its secret ask for a fresh sign-in first (D-63).
 export const webhooksApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [ENDPOINTS_TAG, DELIVERIES_TAG] })
   .injectEndpoints({
@@ -56,7 +55,7 @@ export const webhooksApi = apiSlice
         argSchema: endpointArg,
         invalidatesTags: [ENDPOINTS_TAG],
       }),
-      // A mutation, not a query, so the secrets leave the store once shown (as API keys do).
+      // A mutation, not a query, so the secrets leave the store once shown.
       revealSecrets: build.mutation<WebhookSecret[], EndpointArg>({
         query: ({ profileId, endpointId }) => `${hookUrl(profileId, endpointId)}/secret`,
         argSchema: endpointArg,

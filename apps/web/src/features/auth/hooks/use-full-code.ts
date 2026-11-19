@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CODE_LENGTH } from "@/features/auth/constants/sign-in";
 
-/** A full code is tried once however it arrived (typed, pasted or autofilled). The returned retry tries the same
- * code again, as a Sign in or Confirm button does. */
+/** Tries a full code once however it arrived; the returned retry tries it again. */
 export function useFullCode(
   code: string,
   enabled: boolean,

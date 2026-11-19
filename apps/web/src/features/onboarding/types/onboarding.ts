@@ -15,7 +15,6 @@ export type OnboardingRequest = z.infer<typeof onboardingRequestSchema>;
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[keyof typeof ONBOARDING_STEPS];
 
-/** What a details step collects for one new profile: its name and the billing details its invoices print. */
 export type ProfileDetails = Omit<BillingDetailsBody, "taxId">;
 
 export type ChecklistStepId = (typeof CHECKLIST_STEPS)[keyof typeof CHECKLIST_STEPS];
@@ -25,14 +24,10 @@ export interface ChecklistStep {
   done: boolean;
 }
 
-/** What the steps are read from (D-53: never stored). */
 export interface ChecklistFacts {
   passkeyLinked: boolean;
-  /** Only asked for freelancer profiles. */
   hasBillingDetails: boolean;
-  /** The newest page of the profile's invoices (a personal profile's requests). */
   invoices: readonly Pick<InvoiceSummary, "paymentStatus">[];
-  /** The newest wallet transfers. */
   transactions: readonly Pick<Transaction, "direction" | "status">[];
 }
 

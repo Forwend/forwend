@@ -6,7 +6,6 @@ export interface SaveStatusProps {
   failed: boolean;
 }
 
-/** A setting that saves at once says so in one quiet line rather than a toast per change. */
 export function SaveStatus({ saving, saved, failed }: SaveStatusProps) {
   return (
     <>

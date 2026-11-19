@@ -6,7 +6,6 @@ export function profileLabel(profile: Profile): string {
   return profile.name ? `${kind} · ${profile.name}` : kind;
 }
 
-/** Whether the user's role on the profile allows it; the API refuses it otherwise (D-93). */
 export function can(profile: Profile, permission: Permission): boolean {
   return profile.permissions.includes(permission);
 }

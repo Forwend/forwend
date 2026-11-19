@@ -15,11 +15,9 @@ export interface GrantFieldsProps {
   chosen: readonly string[];
   onChosen: (storeIds: string[]) => void;
   storesError?: string;
-  /** While the user confirms it's them, the role stays as it was sent. */
   disabled?: boolean;
 }
 
-// D-93: an Admin reaches every store; a Developer or Finance member only the ones chosen here.
 export function GrantFields({
   role,
   onRole,

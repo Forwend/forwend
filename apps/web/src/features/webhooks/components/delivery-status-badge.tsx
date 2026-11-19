@@ -3,7 +3,6 @@ import { DELIVERY_STATUSES } from "@/features/webhooks/constants/webhooks";
 import { WEBHOOKS_COPY as COPY } from "@/features/webhooks/constants/webhooks-copy";
 import type { DeliveryStatus } from "@/features/webhooks/types/webhooks";
 
-// Waiting is neither good nor bad yet, so it stays neutral, as a confirming payment does.
 const TONE: Record<DeliveryStatus, Tone> = {
   [DELIVERY_STATUSES.pending]: TONES.neutral,
   [DELIVERY_STATUSES.succeeded]: TONES.success,

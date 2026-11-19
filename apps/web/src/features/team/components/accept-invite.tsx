@@ -26,7 +26,6 @@ import { dateTime } from "@/shared/lib/dates";
 const code = (error: unknown) =>
   (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
 
-// Its padding matches DetailRow's, so the facts line up with the heading.
 const PANEL = "fw-panel w-full max-w-md overflow-hidden";
 const SECTION = "flex flex-col gap-3 px-4 py-5 sm:px-5";
 const ACTION = "w-full sm:w-auto sm:self-start";
@@ -35,7 +34,6 @@ export interface AcceptInviteProps {
   token: string;
 }
 
-// R-139: for a signed-in user. Signing up first (POST /v1/me) makes the account the invite joins.
 export function AcceptInvite({ token }: AcceptInviteProps) {
   const { user, logout } = usePrivy();
   const router = useRouter();
@@ -47,12 +45,11 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
   const onAccept = async () => {
     try {
       const { profileId } = await accept(token).unwrap();
-      // The app opens on the new list, which has the team's profile and the first run marked done.
       await me.refetch();
       if (user) saveChosenProfileId(user.id, profileId);
       router.push(APP_ROUTES.home);
     } catch {
-      // Said below.
+      // Shown below.
     }
   };
 
@@ -139,7 +136,6 @@ function Heading({ title, body }: { title: string; body: string }) {
   );
 }
 
-/** The invite panel before it can say anything: while sign-in is checked and while the invite loads. */
 export function InviteSkeleton({ label }: { label: string }) {
   return (
     <div role="status" className={PANEL}>

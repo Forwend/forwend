@@ -3,19 +3,16 @@ import { MEMBER_ROLES, TEAM_ERRORS } from "@/features/team/constants/team";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import type { GrantBody, MemberRole } from "@/features/team/types/team";
 
-/** A role an invite or a change can give; the owner shows as an Admin, which the owner is for good (D-93). */
 export function memberRole(role: string): MemberRole {
   return MEMBER_ROLES.find((r) => r === role) ?? ROLES.admin;
 }
 
-/** D-93: an Admin reaches every store, so the grant names none; a Developer or Finance member needs at least one.
- * null when the stores are missing. */
+/** An Admin reaches every store, so names none; others need one. null when missing. */
 export function grant(role: MemberRole, stores: readonly string[]): GrantBody | null {
   if (role === ROLES.admin) return { role, stores: [] };
   return stores.length > 0 ? { role, stores: [...stores] } : null;
 }
 
-/** Where an invite or a role change's error shows: under the email, under the stores, or for the whole form. */
 export function grantError(failure: unknown): { email?: string; stores?: string; form?: string } {
   const { data } = failure as { data?: { error?: { code?: string; message?: string } } };
   const code = data?.error?.code;

@@ -27,18 +27,14 @@ import type { WebhookEndpoint } from "@/features/webhooks/types/webhooks";
 
 export interface EndpointDialogProps {
   profileId: string;
-  /** A merchant's stores, one of which an endpoint may take alone; null for a freelancer. */
   stores: readonly Store[] | null;
-  /** The endpoint to edit; none makes a new one. */
   endpoint?: WebhookEndpoint;
-  /** Opens the dialog from a menu item; the New endpoint button otherwise. */
   trigger?: (open: () => void) => ReactNode;
 }
 
-// Not "": the select reads an empty value as nothing chosen and shows its placeholder. Store ids are UUIDs.
+// Not "": the select reads an empty value as nothing chosen.
 const ALL_STORES = "all";
 
-// R-149: saving asks for a fresh sign-in when the last one is older than 15 minutes (D-63).
 export function EndpointDialog({ profileId, stores, endpoint, trigger }: EndpointDialogProps) {
   const [save, saving] = useSaveEndpointMutation();
   const fresh = useFreshSignIn();
@@ -61,7 +57,7 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
     setValues((v) => ({ ...v, ...patch }));
   const eventsError = useId();
   const close = () => form.current?.closest("dialog")?.close();
-  // The endpoint as it is when the dialog opens: a Turn off or a save since must not be undone by the next one.
+  // As the endpoint is now: a Turn off since must not be undone by this save.
   const load = () => {
     setValues(initial());
     setErrors({});
@@ -102,7 +98,7 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
       close();
     } catch (error) {
       if (fresh.cancelled(error)) return;
-      // A 422 is a value the API refuses, most often an address that is not public (R-146).
+      // A 422 is most often an address that is not public.
       setErrors({
         form:
           (error as { status?: unknown }).status === 422 ? COPY.errors.refused : COPY.errors.failed,
@@ -152,7 +148,6 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
             hint={COPY.descriptionHint}
             error={errors.description}
           />
-          {/* All stores also takes the stores made later, so the choice counts with one store too. */}
           {stores && stores.length > 0 ? (
             <SelectField
               disabled={fresh.pending}

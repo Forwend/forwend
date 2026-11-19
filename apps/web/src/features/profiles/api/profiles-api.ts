@@ -23,12 +23,11 @@ const profileUrl = (profileId: string, path: string) =>
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    /** POST /v1/me: signs the user up on the first call, then returns their profiles (oldest first). */
+    /** Signs the user up on the first call. */
     signUp: build.query<Me, void>({
       query: () => ({ url: "/v1/me", method: "POST" }),
       responseSchema: meSchema,
     }),
-    /** POST /v1/profiles: one profile per idempotency key, so a retried request never makes two. */
     createProfile: build.mutation<
       Profile,
       { idempotencyKey: string; body: { kind: ProfileKind; name: string } }
@@ -50,11 +49,11 @@ export const profilesApi = apiSlice.injectEndpoints({
             }),
           );
         } catch {
-          // The form shows the error.
+          // Shown by the form.
         }
       },
     }),
-    /** null until the profile saves them (404 billing_details_not_found). */
+    /** null until saved (404 billing_details_not_found). */
     getBillingDetails: build.query<BillingDetails | null, string>({
       query: (profileId) => ({
         url: profileUrl(profileId, "billing-details"),
@@ -80,11 +79,10 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getBillingDetails", profileId, data));
         } catch {
-          // The form shows the error.
+          // Shown by the form.
         }
       },
     }),
-    /** The profile's owner email (R-80). */
     getNotifications: build.query<Notifications, string>({
       query: (profileId) => profileUrl(profileId, "notifications"),
       responseSchema: notificationsSchema,
@@ -101,12 +99,11 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getNotifications", profileId, data));
         } catch {
-          // The page shows the error.
+          // Shown by the page.
         }
       },
     }),
-    /** R-221: Developer mode, false livemode. Every other cached read was of the old mode, so each reads again; the
-     *  profile list only changes the mode, so the app shell stays as it is. */
+    /** Every other cached read was of the old mode, so each reads again. */
     saveProfileMode: build.mutation<
       { livemode: boolean },
       { profileId: string; livemode: boolean }
@@ -135,11 +132,10 @@ export const profilesApi = apiSlice.injectEndpoints({
               );
           }
         } catch {
-          // The page shows the error.
+          // Shown by the page.
         }
       },
     }),
-    /** D-122: who pays the profile's new invoices' fees; the profile list keeps it. */
     saveProfileFees: build.mutation<
       { feesPaidBy: FeesPaidBy },
       { profileId: string; feesPaidBy: FeesPaidBy }
@@ -160,24 +156,21 @@ export const profilesApi = apiSlice.injectEndpoints({
             }),
           );
         } catch {
-          // The page shows the error.
+          // Shown by the page.
         }
       },
     }),
-    /** R-136: every enabled token, on until the profile turns it off. */
-    // The schema checks the list itself, as upsertQueryData below runs the endpoint's schemas on it.
+    // upsertQueryData runs this schema on the list, so it checks the list itself.
     getProfileTokens: build.query<TokenSwitch[], string>({
       query: (profileId) => profileUrl(profileId, "tokens"),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
     }),
-    /** R-240: whether payers may pay from other chains through NEAR Intents; on by default. */
     getCrossChainSwitch: build.query<boolean, string>({
       query: (profileId) => profileUrl(profileId, "tokens"),
       transformResponse: (data: { crossChain: boolean }) => data.crossChain,
       responseSchema: z.boolean(),
     }),
-    /** Saves only the switch: the tokens off stay as the API has them. */
     saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
       query: ({ profileId, on }) => ({
         url: profileUrl(profileId, "tokens"),
@@ -195,7 +188,7 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getCrossChainSwitch", profileId, data));
         } catch {
-          // The page shows the error.
+          // Shown by the page.
           guess.undo();
         }
       },
@@ -219,7 +212,7 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getProfileTokens", profileId, data));
         } catch {
-          // The page shows the error.
+          // Shown by the page.
           guess.undo();
         }
       },

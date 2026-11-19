@@ -10,7 +10,6 @@ import { useFullCode } from "@/features/auth/hooks/use-full-code";
 import type { SignInStep } from "@/features/auth/types/sign-in";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
 
-// The page moves on to /app once Privy reports the user signed in.
 export function SignInForm() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { loginWithPasskey } = useLoginWithPasskey();
@@ -21,7 +20,7 @@ export function SignInForm() {
   const [fieldError, setFieldError] = useState("");
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
-  // Google answers after the redirect, so read its result from state; onError fires for every method.
+  // Google answers after the redirect, so its result is read from state.
   const { initOAuth, loading: googleBusy, state: google } = useLoginWithOAuth();
   useEffect(() => {
     if (google.status === "error") setFormError(SIGN_IN_COPY.errors.google);
@@ -80,13 +79,12 @@ export function SignInForm() {
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
             {SIGN_IN_COPY.codeTitle}
           </h1>
-          {/* The address on its own line, so a long one never breaks in the middle of the sentence. */}
           <p className="text-muted">
             {SIGN_IN_COPY.codeSentTo}
             <span className="block font-medium break-words text-ink">{email.trim()}</span>
           </p>
         </div>
-        {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. */}
+        {/* Stays enabled while checked: disabling it would drop keyboard focus. */}
         <CodeInput
           label={SIGN_IN_COPY.codeLabel}
           length={CODE_LENGTH}
@@ -204,7 +202,7 @@ export function SignInForm() {
   );
 }
 
-// Always rendered so screen readers announce a change; one reserved line, so keep each message short.
+// Always rendered, so screen readers announce each change.
 function Messages({ error, notice }: { error: string; notice: string }) {
   return (
     <div className="min-h-5 text-sm">

@@ -21,13 +21,12 @@ export interface FreshSignInScope {
 
 export const FreshSignInContext = createContext<Claim<FreshSignInScope> | null>(null);
 
-/** For a form whose request may need a fresh sign-in: run sends it, and step is what to show in place of the form's
- * buttons while the user confirms. pending is true then; the form's fields should stay as they were. */
+/** run sends a request that may need a fresh sign-in; step replaces the form's buttons. */
 export function useFreshSignIn() {
   const controller = useContext(FreshSignInContext);
   const [answer, setAnswer] = useState<FreshSignInAnswer | null>(null);
   const scope = useRef<FreshSignInScope>({ open: (a) => setAnswer(() => a) });
-  // A form that unmounts mid-confirm gives up; one whose dialog only closes calls cancel in its onClose.
+  // A form that unmounts mid-confirm gives up.
   useEffect(() => {
     const own = scope.current;
     return () => controller?.release(own);
@@ -46,7 +45,7 @@ export function useFreshSignIn() {
     },
     [controller],
   );
-  // Whether the last ask was given up: then a form shows no error, but a retry refused after a sign-in still fails.
+  // A retry refused after a real sign-in must still show its error.
   const gaveUp = useRef(false);
   const done = useCallback(
     (ok: boolean) => {
@@ -61,7 +60,6 @@ export function useFreshSignIn() {
     run,
     step: answer ? createElement(FreshSignInStep, { onDone: done }) : null,
     pending: answer !== null,
-    // For a dialog's own close: it gives up as the step's Cancel does.
     cancel: () => done(false),
     cancelled: (error: unknown) => gaveUp.current && needsFreshSignIn(error),
   };

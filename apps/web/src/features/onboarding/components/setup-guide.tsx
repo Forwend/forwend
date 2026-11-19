@@ -37,9 +37,6 @@ function stepCopy(id: ChecklistStepId, kind: ProfileKind) {
   return COPY.steps[id];
 }
 
-// R-50, D-53: read from data the app already loads. A small card at the sidebar's foot (the phone's More sheet) shows
-// the progress; opened, only the next step, so setup never takes over the overview. It goes once every step is done
-// or skipped.
 export function SetupGuide() {
   const { profile, openReceive, openRequest } = useAppSession();
   const { profileId, kind } = profile;
@@ -104,8 +101,6 @@ export function SetupGuide() {
 
   return (
     <section aria-labelledby="setup-guide" className="rounded-lg border border-line bg-surface">
-      {/* Closed, it is one row with the progress; it opens on the next step and stays until every step is done or
-          skipped. */}
       <h2 id="setup-guide">
         <button
           type="button"
@@ -124,7 +119,6 @@ export function SetupGuide() {
           />
         </button>
       </h2>
-      {/* One segment per step, so the count reads at a glance. */}
       <ol aria-hidden className="flex gap-1 px-3 pb-3">
         {shown.map((step) => (
           <li

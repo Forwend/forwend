@@ -26,7 +26,7 @@ export function ProfileSheet({
   open,
   onOpenChange,
 }: ProfileSheetProps) {
-  // Close when the window turns desktop-wide (a tablet rotated), or the sheet stays over the desktop page.
+  // Close when the window turns desktop-wide, or the sheet stays over the page.
   useEffect(() => {
     const desktop = window.matchMedia(DESKTOP_QUERY);
     const onChange = () => desktop.matches && onOpenChange(false);

@@ -8,13 +8,11 @@ import type { ToRoll } from "@/features/team/types/team";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface RollAfterRemovalProps {
-  /** The member who lost access and what they could still use; null when there is nothing to roll. */
   roll: { who: string; toRoll: ToRoll } | null;
   onClose: () => void;
 }
 
-/** D-93: a removed or demoted Admin keeps what they copied: API keys they made and webhook secrets they could reveal.
- * The owner rolls them on the Developers page, which shows each new secret once. */
+/** A removed Admin keeps the keys and webhook secrets they copied, so the owner rolls them. */
 export function RollAfterRemoval({ roll, onClose }: RollAfterRemovalProps) {
   const open = useRef<() => void>(() => {});
   useEffect(() => {

@@ -22,9 +22,8 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 const COPY = FIRST_RUN_COPY.ready;
 
-/** The first thing to do for each goal, in this order whatever order they were picked in. */
+/** In this order, whatever order the goals were picked in. */
 const ACTIONS: readonly {
-  /** The action opens in the profile this choice made. */
   choice: OnboardingChoice;
   href: string;
   title: string;
@@ -59,16 +58,13 @@ const ACTIONS: readonly {
 
 export interface ReadyStepProps {
   picked: readonly OnboardingChoice[];
-  /** Opens the address in the profile of that kind. */
   onAction: (kind: ProfileKind, href: string) => void;
-  /** Developer mode (D-120): the faucet's test USDC is the money to try it with. */
   testnet: boolean;
 }
 
 const CARD =
   "group flex items-center gap-3 rounded-lg border bg-surface p-4 text-left sm:gap-4 sm:p-5 text-ink transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-// The same box as the main action's icon, so every card's text starts at one line.
 const TILE =
   "grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-accent sm:size-11";
 
@@ -80,7 +76,6 @@ export function ReadyLead() {
   );
 }
 
-/** The first thing to do with each profile, the main one first, then test money and the docs' first payment. */
 export function ReadyStep({ picked, onAction, testnet }: ReadyStepProps) {
   const [main, ...more] = ACTIONS.filter((action) => picked.includes(action.choice));
   return (

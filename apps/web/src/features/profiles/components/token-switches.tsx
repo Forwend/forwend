@@ -11,8 +11,6 @@ export interface TokenSwitchesProps {
   saved: readonly TokenSwitch[];
 }
 
-// R-136: each change saves at once, said by one quiet line rather than a toast per box. The last token on can't be
-// turned off, as the API refuses it.
 export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
   const [save, { isLoading, isError, isSuccess }] = useSaveProfileTokensMutation();
   const selected = new Set(saved.filter((t) => t.on).map(assetKey));
@@ -29,7 +27,7 @@ export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
     try {
       await save({ profileId, off }).unwrap();
     } catch {
-      // Said below; the boxes stay as saved.
+      // Shown below.
     }
   };
   return (

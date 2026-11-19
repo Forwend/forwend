@@ -21,12 +21,10 @@ export interface DetailsStepProps {
   kind: NewProfileKind;
   value: ProfileDetails;
   onChange: (field: keyof ProfileDetails, value: string) => void;
-  /** Only when the user builds with the API: the store's first allowed origin. */
   website?: { value: string; onChange: (value: string) => void };
   errors: Partial<Record<DetailsField, string>>;
 }
 
-/** Who gets paid: the profile's name and the billing details its invoices print (billing details need all four). */
 export function DetailsStep({ kind, value, onChange, website, errors }: DetailsStepProps) {
   const text = COPY[kind];
   const countries = useMemo(countryOptions, []);
@@ -88,7 +86,6 @@ export function DetailsStep({ kind, value, onChange, website, errors }: DetailsS
   );
 }
 
-/** The invoice these details make, drawn as the PDF draws it; the client and items are an example. */
 export function DetailsPreview({
   kind,
   value,

@@ -5,12 +5,10 @@ import { CopyValue } from "@/shared/components/copy-value";
 import { dateTime } from "@/shared/lib/dates";
 
 export interface EndpointSecretsProps {
-  /** Newest first: during a rotation's 24 hours the old one signs too. */
   secrets: readonly WebhookSecret[];
   onDone: () => void;
 }
 
-// R-149: shown only after a fresh sign-in, and dropped from the page once closed.
 export function EndpointSecrets({ secrets, onDone }: EndpointSecretsProps) {
   return (
     <div className="flex flex-col gap-4">

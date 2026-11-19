@@ -38,7 +38,6 @@ export interface EndpointActionsProps {
 
 type Chosen = "deliveries" | "edit" | "toggle" | "secret" | "rotate" | "delete";
 
-// R-149: saving, the secret and its rotation need a fresh sign-in, which the API asks for (D-63); the rest do not.
 export function EndpointActions({ profileId, stores, endpoint }: EndpointActionsProps) {
   const arg = { profileId, endpointId: endpoint.endpointId };
   const where = endpointPlace(endpoint.url);
@@ -47,13 +46,13 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
   const [rotate, rotating] = useRotateSecretMutation();
   const [remove, removing] = useDeleteEndpointMutation();
   const toast = useToast();
-  // What opens once the menu has closed and handed focus back (as on API keys).
+  // What opens once the menu has closed and handed focus back.
   const chosen = useRef<Chosen | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const open = useRef<
     Partial<Record<"edit" | "secret" | "rotate" | "delete" | "toggle", () => void>>
   >({});
-  // Each protected action confirms it's you in its own dialog, so the user sees what they confirm (R-137).
+  // One per action, so each confirms in its own dialog and the user sees what they confirm.
   const secretFresh = useFreshSignIn();
   const rotateFresh = useFreshSignIn();
   const toggleFresh = useFreshSignIn();
@@ -73,14 +72,14 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
 
   const showSecrets = (list: WebhookSecret[]) => {
     setSecrets(list);
-    // Already open when it asked for a fresh sign-in first; opening an open dialog throws.
+    // Already open when it asked for a fresh sign-in; opening an open dialog throws.
     if (!secretBody.current?.closest("dialog")?.open) open.current.secret?.();
   };
   const revealSecrets = async () => {
     try {
       const pending = reveal(arg);
       showSecrets(await secretFresh.run(() => pending.unwrap()));
-      // The answer held the secrets: drop them from the store too.
+      // Drop the secrets from the store.
       pending.reset();
     } catch (error) {
       secretBody.current?.closest("dialog")?.close();
@@ -160,7 +159,7 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
             if (choice === "toggle") return void toggle();
             if (choice === "secret") return void revealSecrets();
             event.preventDefault();
-            // The trigger holds focus as the dialog opens, so the dialog hands it back there when it closes.
+            // The dialog hands focus back to what held it as it opened.
             trigger.current?.focus();
             if (choice === "deliveries") return setSheet(true);
             open.current[choice]?.();
