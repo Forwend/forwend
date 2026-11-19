@@ -9,13 +9,10 @@ import { notFound } from "@/shared/api/server-reach";
 export interface AcceptChangeProps {
   token: string;
   change: JobPayment;
-  /** Called once accepted: the form goes, so the page moves focus to the change. */
   onAccepted: (position: number) => void;
-  /** Called when the change was withdrawn or replaced: the page reads the job again, which takes this form away. */
   onGone: () => void;
 }
 
-// R-106: proposedAt goes back exactly as read, so the consent names this change and no other (R-105).
 export function AcceptChange({ token, change, onAccepted, onGone }: AcceptChangeProps) {
   const [accept, { isLoading }] = useAcceptChangeMutation();
   return (

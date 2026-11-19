@@ -43,7 +43,6 @@ function show(
   );
 }
 
-// The headline figure, whole part and cents, which sit in separate spans.
 const total = () => document.querySelector("[data-money] > span")?.textContent;
 
 describe("BalanceFigure", () => {
@@ -62,7 +61,6 @@ describe("BalanceFigure", () => {
       symbol: "USDT",
     };
     show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" });
-    // 2.50 at 1 plus 2.50 at 0.9990 is 4.9975, cut to cents.
     expect(total()).toBe("4.99");
     cleanup();
     show(

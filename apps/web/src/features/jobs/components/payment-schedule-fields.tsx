@@ -18,9 +18,7 @@ const GRID =
 export interface PaymentScheduleFieldsProps {
   payments: PaymentDraft[];
   errors: Record<string, Partial<Record<PaymentField, string>>>;
-  /** The API's refusal of the schedule as a whole. */
   error?: string;
-  /** The payments' sum in USD cents. */
   total: bigint;
   deposit: boolean;
   onDeposit: (deposit: boolean) => void;
@@ -29,7 +27,6 @@ export interface PaymentScheduleFieldsProps {
   onRemove: (id: string) => void;
 }
 
-/** The job's payments: a row each, then their total and whether the first is a deposit. */
 export function PaymentScheduleFields({
   payments,
   errors,
@@ -43,7 +40,6 @@ export function PaymentScheduleFields({
 }: PaymentScheduleFieldsProps) {
   const depositId = useId();
   const list = useRef<HTMLUListElement>(null);
-  // Add and remove take away the focused button: focus moves to the new row, or the one in its place.
   const focusRow = (row: number) =>
     list.current?.querySelectorAll("li")[row]?.querySelector("input")?.focus();
   return (

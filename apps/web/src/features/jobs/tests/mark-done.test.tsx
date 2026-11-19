@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MarkDone } from "@/features/jobs/components/mark-done";
@@ -67,7 +67,6 @@ const job: Job = {
   acceptedAt: "2026-10-18T10:00:00Z",
   createdAt: "2026-10-18T09:00:00Z",
 };
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
 
 afterEach(cleanup);
 
@@ -121,7 +120,7 @@ describe("mark done", () => {
       target: { value: "https://drive.example/logo" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Mark done and send" }));
-    await settle();
+    await waitFor(() => expect(calls).toHaveLength(2));
     expect(calls[0]).toMatchObject({
       method: "POST",
       url: `/api/v1/profiles/${PROFILE}/jobs/${JOB_ID}/payments/2/done`,
@@ -133,7 +132,6 @@ describe("mark done", () => {
     });
     expect(calls[1]?.key).toMatch(/^[0-9a-f-]{36}$/);
     expect(onDone).toHaveBeenCalledWith(2);
-    // The send failed here: the toast says the invoice is made but not emailed.
     expect(
       await screen.findByText(/INV-0002 is made, but it could not be emailed now/),
     ).toBeTruthy();

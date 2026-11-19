@@ -16,17 +16,14 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 export interface BalanceFigureProps {
   balances: Balances | null;
-  /** Market prices (D-115); undefined until read or after a failed read, which shows no USD value. */
   prices: readonly TokenPrice[] | undefined;
   failed: boolean;
   onRetry: () => void;
-  /** The change over a range, right under the total. */
   change?: ReactNode;
-  /** Off where a card beside it already shows the money moving, not final and held. */
   pending?: boolean;
 }
 
-// Never a made-up 0 while loading or after a failed read. The parent is the size container.
+// Never a made-up 0 while loading or after a failed read.
 export function BalanceFigure({
   balances,
   prices,
@@ -43,7 +40,6 @@ export function BalanceFigure({
   if (!balances && failed) {
     return <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />;
   }
-  // The change line keeps its place under the placeholder, as it sits under the figure.
   if (!balances)
     return (
       <div className={`flex w-full flex-col gap-2 ${align}`}>
@@ -56,7 +52,6 @@ export function BalanceFigure({
 
   return (
     <div className={`flex w-full flex-col gap-2 ${align}`}>
-      {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
       <p
         className="max-w-full px-7 sm:px-0"
         style={{ "--chars": text.length + MONEY_COPY.usd.length / 3 } as CSSProperties}

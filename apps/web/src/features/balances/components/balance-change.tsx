@@ -6,7 +6,6 @@ import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
-/** The balance's change over the past month. Direction in words and an icon, not color alone. */
 export function BalanceChange({ series }: { series: HistorySeries }) {
   const change = seriesChange(series);
   const rangeName = BALANCES_COPY.rangeNames[DEFAULT_RANGE];

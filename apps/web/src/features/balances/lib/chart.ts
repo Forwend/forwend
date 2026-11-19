@@ -1,9 +1,9 @@
-/** Geometry only, lossy: shown amounts are always formatted from the bigint. */
+// Geometry only: shown amounts are always formatted from the bigint.
 export function toNumber(value: bigint, decimals: number): number {
   return Number(value) / 10 ** decimals;
 }
 
-/** Monotone cubic (Fritsch–Carlson): never overshoots, so a balance never dips under zero. */
+// Monotone cubic: it never overshoots, so a balance never dips under zero.
 export function smoothPath(points: readonly (readonly [number, number])[]): string {
   const n = points.length;
   const first = points[0];
@@ -16,7 +16,6 @@ export function smoothPath(points: readonly (readonly [number, number])[]): stri
     if (i === n - 1) return slope(n - 2);
     const a = slope(i - 1);
     const b = slope(i);
-    // A peak, a trough or a flat step: the curve arrives level, so it cannot overshoot.
     if (a * b <= 0) return 0;
     return (3 * (dx(i - 1) + dx(i))) / ((2 * dx(i) + dx(i - 1)) / a + (dx(i) + 2 * dx(i - 1)) / b);
   });

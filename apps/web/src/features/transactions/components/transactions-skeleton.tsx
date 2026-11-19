@@ -3,11 +3,9 @@ import { TransactionsTableHead } from "@/features/transactions/components/transa
 
 export interface TransactionsSkeletonProps {
   count: number;
-  /** The overview's card has its own frame; the page's list draws one. */
   preview: boolean;
 }
 
-/** The loading form: the real headers, each cell its own shape; on phones, rows of the real rows' two lines. */
 export function TransactionsSkeleton({ count, preview }: TransactionsSkeletonProps) {
   const rows = Array.from({ length: count }, (_, i) => i);
   return (

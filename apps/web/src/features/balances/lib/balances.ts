@@ -8,15 +8,13 @@ export function formatUsd(cents: bigint): string {
   return formatTokenAmount({ baseUnits: cents, decimals: USD_DECIMALS });
 }
 
-// An older read has no settling part: its pending is the nearest it has, and it has no confirming or partial part.
+// An older API read has no settling part: its pending is the nearest.
 const settling = (t: TokenBalance) => t.settling ?? t.pending;
 
-/** Confirming and partly paid money: not the creator's for certain yet, as some may turn out held for the payer. */
 function notFinal(t: TokenBalance): string {
   return (BigInt(t.pending) - BigInt(settling(t))).toString();
 }
 
-/** A token's base units for one field; null for a wallet balance not read yet. */
 export function fieldUnits(t: TokenBalance, field: BalanceField): string | null {
   if (field === BALANCE_FIELDS.notFinal) return notFinal(t);
   if (field === BALANCE_FIELDS.settling) return settling(t);
@@ -25,8 +23,7 @@ export function fieldUnits(t: TokenBalance, field: BalanceField): string | null 
   return t[field];
 }
 
-/** Holdings at market prices (D-115), cut to cents once. null while a balance is unread or a held token has no
- * fresh price: never valued at 1 USD instead. */
+// null while a balance is unread or a token has no price: never valued at 1 USD.
 export function marketUsd(
   balances: Balances,
   field: BalanceField,

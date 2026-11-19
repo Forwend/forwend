@@ -24,11 +24,8 @@ import { dayName } from "@/shared/lib/dates";
 interface TransactionsTableProps {
   profileId: string;
   title: string;
-  /** One quiet line under the page's heading: what the list holds. */
   intro?: string;
-  /** The overview's card of this many rows, instead of the Transactions page. */
   preview?: number;
-  /** The empty page's next step, such as Receive. */
   emptyAction?: ReactNode;
 }
 
@@ -49,16 +46,12 @@ function ProfileTransactions({
   const days = groupByDay(rows);
   const dayId = useId();
   const filtered = page && filters.filtered;
-  // A profile with no transactions at all: search, the filter and Export have nothing to act on, so the page is the
-  // empty state alone, as on Invoices and Payment links.
   const none = page && Boolean(data) && rows.length === 0 && !filtered;
   const Heading = page ? "h1" : "h2";
   const DayHeading = page ? "h2" : "h3";
-  // A new filter or search loads in place of as many rows as were shown.
   const [skeletonRows, setSkeletonRows] = useState(preview ?? SKELETON_ROWS);
   if (rows.length > 0 && rows.length !== skeletonRows) setSkeletonRows(rows.length);
-  // A phone row opens a sheet. It reads the live row, so a status or a saved type shows at once; the last snapshot
-  // stands in once the row has left the list (a Sending row handing over) and while the sheet closes.
+  // The sheet reads the live row; the snapshot stands in once the row leaves the list.
   const [openedKey, setOpenedKey] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Transaction | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -81,7 +74,6 @@ function ProfileTransactions({
       <div
         className={`flex flex-wrap items-center justify-between gap-3 ${page ? "lg:contents" : "fw-panel-head"}`}
       >
-        {/* As the page's heading, the header's breadcrumb names it on desktop, so it shows only below that. */}
         <Heading
           id={`${profileId}-transactions`}
           className={
@@ -92,7 +84,6 @@ function ProfileTransactions({
         >
           {title}
         </Heading>
-        {/* On a phone the title row carries Export, as on Payments. */}
         {page && !none ? (
           <div className="sm:hidden">
             <ExportTransactions profileId={profileId} disabled={!filtered && rows.length === 0} />
@@ -133,7 +124,6 @@ function ProfileTransactions({
               }))}
             />
           }
-          // The export ignores the direction and search, so only a profile with no transactions has nothing to export.
           actions={
             <div className="max-sm:hidden">
               <ExportTransactions profileId={profileId} disabled={!filtered && rows.length === 0} />
@@ -157,7 +147,6 @@ function ProfileTransactions({
           icon={ArrowLeftRight}
           title={TRANSACTIONS_COPY.emptyTitle}
           description={TRANSACTIONS_COPY.emptyText}
-          // An overview card has its own frame.
           compact={!page}
           page={page}
           action={emptyAction}
@@ -171,7 +160,6 @@ function ProfileTransactions({
           description={searched ? `${searched[0]?.toUpperCase()}${searched.slice(1)}.` : undefined}
         />
       ) : (
-        // Columns show by the list's own width, as on every record table, so a collapsed sidebar shows more.
         <div
           className={`@container ${page ? "fw-panel overflow-hidden" : ""} ${stale ? "opacity-60 transition-opacity duration-[var(--fw-duration-fast)]" : ""}`}
         >

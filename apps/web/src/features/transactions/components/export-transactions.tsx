@@ -19,7 +19,6 @@ import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/tra
 import { notFound } from "@/shared/api/server-reach";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// R-118: more transactions in the days than one file holds.
 const tooMany = (failure: unknown) =>
   (failure as { data?: { error?: { code?: unknown } } }).data?.error?.code ===
   TOO_MANY_TRANSACTIONS;
@@ -46,7 +45,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
   const [to, setTo] = useState("");
   const [dayError, setDayError] = useState("");
   const [error, setError] = useState("");
-  // Each opening starts the records currency afresh: the dialog keeps its content while closed.
+  // The dialog keeps its content while closed: each opening remounts the currency field.
   const [opened, setOpened] = useState(0);
   const actions = useRef<HTMLFormElement>(null);
   const days = useRef<HTMLDivElement>(null);
@@ -57,7 +56,6 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
     actions.current?.closest("dialog")?.close();
   };
 
-  // The picker keeps From on or before To; a statement needs both.
   const checkDays = (statementDays: boolean) => {
     const shown = statementDays && (!from || !to) ? COPY.statementDays : "";
     flushSync(() => {
@@ -103,7 +101,6 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
       triggerLabel={COPY.export}
       title={COPY.exportTitle}
       trigger={(open) => (
-        // Phones show only the icon, so the accessible name says what it does.
         <Button
           variant={BUTTON_VARIANTS.secondary}
           aria-label={COPY.export}

@@ -11,12 +11,10 @@ export interface SendAssetStepProps {
   onChoose: (option: SendOption) => void;
 }
 
-/** Each token on each network the wallet holds, with its whole balance. */
 export function SendAssetStep({ options, onChoose }: SendAssetStepProps) {
   if (options.length === 0)
     return <EmptyState compact icon={WalletMinimal} title={SEND_COPY.nothingToSend} />;
   return (
-    // The sheet's title already says What to send.
     <Choices title={SEND_COPY.what} titleHidden>
       {options.map((o) => (
         <Choice

@@ -35,8 +35,7 @@ export interface ReceiveSheetProps {
 
 const STEPS = { token: "token", network: "network", address: "address" } as const;
 
-// The address never shows without the warning naming its network and token, so it hides while tokens load or fail.
-// As Send: one step at a time, each fading in place, with Back; the title names the token once it is chosen.
+// The address never shows without the warning that names its network and token.
 export function ReceiveSheet({
   open,
   onOpenChange,
@@ -46,10 +45,8 @@ export function ReceiveSheet({
   onRetry,
 }: ReceiveSheetProps) {
   const [symbol, setSymbol] = useState<string | null>(null);
-  // One search box for whichever list shows; a pick clears it.
   const [find, setFind] = useState("");
   const [network, setNetwork] = useState<string | null>(null);
-  // Every opening starts from the token, so the address shows only for a choice made this time.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
@@ -58,7 +55,6 @@ export function ReceiveSheet({
       setNetwork(null);
     }
   }
-  // The API lists EVM chains only today.
   const options = (balances?.tokens ?? []).map((t) => ({
     symbol: t.symbol,
     network: String(t.chainId),
@@ -69,7 +65,6 @@ export function ReceiveSheet({
   const chosen = choice.option;
   const shown = chosen && address ? addressFor(chosen, { [CHAIN_FAMILIES.evm]: address }) : null;
   const step = !choice.symbol ? STEPS.token : !chosen ? STEPS.network : STEPS.address;
-  // A step chosen for the owner, as the only token or network, has no Back to it.
   const back =
     step === STEPS.address && choice.networks.length > 1
       ? () => setNetwork(null)
@@ -83,7 +78,6 @@ export function ReceiveSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={title} onBack={back}>
-      {/* A closed sheet holds no step, so each opening starts on the first. */}
       {open ? (
         <StepTransition step={step} label={title}>
           {body()}
@@ -98,7 +92,6 @@ export function ReceiveSheet({
     ) : !balances && failed ? (
       <LoadError message={RECEIVE_COPY.receiveFailed} onRetry={onRetry} />
     ) : !balances ? (
-      // Shaped like the token choice that comes first.
       <div aria-hidden className="flex flex-col gap-2">
         <Skeleton className="h-4 w-14" />
         {[0, 1, 2].map((i) => (
@@ -161,13 +154,12 @@ export function ReceiveSheet({
       </div>
     ) : (
       <div className="flex flex-col gap-4">
-        {/* What this address takes, in one line, as Send's amount step shows what is sent. */}
         <div className="flex justify-center">
           <MoneyChip chainId={chosen.chainId} symbol={chosen.symbol} />
         </div>
         {shown ? (
           <>
-            {/* The tile follows the theme; the code itself stays dark on light, as scanners need. */}
+            {/* The code stays dark on light in both themes: scanners need it. */}
             <div className="grid place-items-center rounded-lg bg-surface-2 p-5">
               <QrCode
                 value={shown}
@@ -186,7 +178,6 @@ export function ReceiveSheet({
           network={chainName(chosen.chainId)}
           lookalike={lookalikeOf(chosen.chainId, chosen.symbol)}
         />
-        {/* R-38: smaller deposits aren't listed in activity; the balance, read from the chain, still has them. */}
         <div className="flex items-center justify-between gap-3 text-xs text-muted">
           <span>{RECEIVE_COPY.minimum}</span>
           <span className="flex items-center gap-1.5 text-ink tabular-nums">
@@ -195,7 +186,6 @@ export function ReceiveSheet({
               <button
                 type="button"
                 aria-label={RECEIVE_COPY.minimumLabel}
-                // On a touch screen a 44px band takes the tap; the icon keeps its size.
                 className="relative grid place-items-center rounded-full text-muted outline-none before:absolute hover:text-ink focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
               >
                 <Info aria-hidden className="size-[var(--fw-icon-sm)]" />

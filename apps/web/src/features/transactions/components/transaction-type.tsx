@@ -29,12 +29,10 @@ export interface TransactionTypeProps {
 export function TransactionType({ profileId, t }: TransactionTypeProps) {
   const [label] = useLabelTransactionMutation();
   const toast = useToast();
-  // The choice shows at once and the select keeps focus, until the list read after saving shows it.
   const [chosen, setChosen] = useState<string | null>(null);
   if (chosen !== null && chosen === t.classification) setChosen(null);
   const needsReview = !!t.payment?.policyException || !!t.payment?.unreconciled;
   if (!t.labelable) {
-    // Money that paid a payment opens it: the invoice number and client, or a checkout's payment.
     const paid = t.invoice?.invoiceId ?? t.payment?.paymentId;
     return paid ? (
       <RecordLink href={`${APP_ROUTES.payments}/${paid}`}>{typeName(t)}</RecordLink>

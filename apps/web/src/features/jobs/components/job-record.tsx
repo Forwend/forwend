@@ -7,7 +7,7 @@ import type { Job, PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
 import { dateTime } from "@/shared/lib/dates";
 
 const number = (event: RecordEvent) => invoiceNumber(event.payment?.number ?? 0);
-// Only the owner's read gives the emails the client typed to accept the quote and each change.
+// Only the owner's read has the emails the client typed.
 const acceptedEmail = (read: object) =>
   "acceptedEmail" in read ? (read.acceptedEmail as string | null) : null;
 
@@ -39,7 +39,7 @@ export interface JobRecordProps {
   job: PublicJob | Job;
 }
 
-// R-104: dispute evidence, so every time is the server's. The same timeline as the payment and invoice pages.
+// Dispute evidence: every time shown is the server's.
 export function JobRecord({ job }: JobRecordProps) {
   return (
     <section aria-labelledby="job-record" className="fw-panel">

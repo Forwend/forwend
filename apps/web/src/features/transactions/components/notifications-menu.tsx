@@ -62,9 +62,7 @@ function readSeen(profileId: string): number {
 
 export interface NotificationsMenuProps {
   profileId: string;
-  /** Whether the profile's role reads its transactions (D-93); without, only the invoice events show. */
   transfers: boolean;
-  /** Where View all leads: Payments for a business, Transactions for a personal profile. */
   viewAllHref: string;
   className?: string;
 }
@@ -87,7 +85,6 @@ interface Row {
   key: string;
   at: string;
   href: string;
-  /** What happened, then the payment or sender it names. */
   title: string;
   detail: string;
   look: (typeof LOOK)[keyof typeof LOOK];
@@ -114,7 +111,6 @@ const eventRow = (e: InvoiceEvent): Row | null => {
   };
 };
 
-// A transfer that pays a payment is that payment's money reaching the wallet; any other is money sent to the address.
 const transferRow = (t: Transaction): Row => {
   const paymentId = t.payment?.paymentId ?? t.invoice?.invoiceId;
   const confirming = t.status !== TRANSACTION_STATUSES.confirmed;
@@ -129,7 +125,6 @@ const transferRow = (t: Transaction): Row => {
     href: paymentId
       ? `${APP_ROUTES.payments}/${paymentId}`
       : `${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`,
-    // Still confirming, it is on its way, not in the wallet.
     title: `${confirming ? COPY.confirming : paymentId ? COPY.inWallet : COPY.received} · ${name}`,
     detail: `${chainName(t.chainId)} · ${TIME.format(new Date(t.at))}`,
     look: confirming ? LOOK.waiting : paymentId ? LOOK.wallet : LOOK.received,
@@ -137,7 +132,7 @@ const transferRow = (t: Transaction): Row => {
   };
 };
 
-// "New" means since the menu was last opened, remembered per profile in this browser.
+// "New" counts rows since the menu was last opened, per profile in this browser.
 export function NotificationsMenu({
   profileId,
   transfers,
@@ -149,7 +144,7 @@ export function NotificationsMenu({
     { ...LIVE_QUERY, skip: !transfers },
   );
   const events = useGetInvoiceEventsQuery(profileId, LIVE_QUERY);
-  // currentData: after a profile switch, never the last profile's transfers or events.
+  // currentData, not data: after a profile switch, never the last profile's rows.
   const settled = new Set(
     (events.currentData ?? [])
       .filter((event) => event.kind === INVOICE_EVENTS.settled)
@@ -159,7 +154,6 @@ export function NotificationsMenu({
     (!events.currentData && events.isError) || (transfers && !list.currentData && list.isError);
   const loading =
     (!events.currentData && !events.isError) || (transfers && !list.currentData && !list.isError);
-  // A settled payment's own event already says its money is in the wallet, so its transfer is not listed again.
   const rows = [
     ...(list.currentData?.items ?? [])
       .filter(

@@ -18,11 +18,10 @@ const INVALID_VALUE = 422;
 export interface ProposeChangeProps {
   profileId: string;
   jobId: string;
-  /** Called once added: the button goes while the change waits, so the page moves focus to it. */
   onProposed: () => void;
 }
 
-// R-106. One key per filled-in form, so a double click or a retry adds one change.
+// One idempotency key per filled-in form, so a double click or retry adds one change.
 export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangeProps) {
   const [propose, { isLoading }] = useProposeChangeMutation();
   const toast = useToast();
@@ -66,7 +65,6 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
         data?: { error?: { code?: string } };
       };
       const code = data?.error?.code;
-      // The job is read again after a 409, which takes this dialog away: the reason goes in a toast, which stays.
       if (code === CHANGE_ERRORS.pending || code === CHANGE_ERRORS.finished) {
         actions.current?.closest("dialog")?.close();
         document.getElementById("job-payments")?.focus();

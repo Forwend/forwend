@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { useSendApproval } from "@/features/send/hooks/use-send-approval";
 import type { Send } from "@/features/send/types/send";
+import { makeStore } from "@/store/store";
 
-const api = vi.hoisted(() => ({
-  approve: vi.fn(),
-  submit: vi.fn(async (): Promise<unknown> => ({})),
+const privy = vi.hoisted(() => ({
   sign: vi.fn(async () => ({ txHash: "0xhash" })),
   mfa: {
     needed: false,
@@ -16,10 +17,10 @@ const api = vi.hoisted(() => ({
     forget: vi.fn(async () => {}),
   },
 }));
-vi.mock("@/features/auth/hooks/use-wallet-mfa", () => ({ useWalletMfa: () => api.mfa }));
+vi.mock("@/features/auth/hooks/use-wallet-mfa", () => ({ useWalletMfa: () => privy.mfa }));
 vi.mock("@/features/auth/hooks/use-fresh-sign-in", () => ({
   useFreshSignIn: () => ({
-    run: (send: () => unknown) => send(),
+    run: (request: () => unknown) => request(),
     step: null,
     cancelled: () => false,
     cancel: vi.fn(),
@@ -33,126 +34,170 @@ vi.mock("@/features/auth/hooks/use-mfa-step", () => ({
     cancel: vi.fn(),
   }),
 }));
-vi.mock("@/features/send/api/send-api", () => ({
-  useApproveSendMutation: () => [() => ({ unwrap: api.approve })],
-  useSubmitSendMutation: () => [() => ({ unwrap: api.submit })],
-}));
 vi.mock("@/features/send/hooks/use-sign-send", () => ({
-  useSignSend: () => ({ sign: api.sign, canSign: true }),
+  useSignSend: () => ({ sign: privy.sign, canSign: true }),
 }));
 
-const send = {
+const NodeRequest = globalThis.Request;
+vi.stubGlobal(
+  "Request",
+  class extends NodeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
+    }
+  },
+);
+
+const send: Send = {
   sendId: "11111111-1111-4111-8111-111111111111",
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+  symbol: "USDC",
+  decimals: 6,
   from: "0x1111111111111111111111111111111111111111",
   to: "0x2222222222222222222222222222222222222222",
+  toProfileId: null,
   amount: "1000000",
   status: "prepared",
+  final: false,
   txHash: null,
-} as unknown as Send;
+  failure: null,
+  networkFee: { amount: "0", paidBy: "forwend" },
+  gas: null,
+  warnings: [],
+  createdAt: "2026-11-06T10:00:00Z",
+};
+
+// Answers each approve in turn; every other request succeeds.
+function server(...approvals: (() => Response | Promise<Response>)[]) {
+  const requests: { path: string; body: string }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (request: Request) => {
+      const path = new URL(request.url).pathname.split("/").at(-1) ?? "";
+      requests.push({ path, body: await request.text() });
+      if (path === "approve") return (approvals.shift() ?? (() => Response.json(send)))();
+      return Response.json({ ...send, status: "sending", txHash: "0xhash" });
+    }),
+  );
+  return {
+    approves: () => requests.filter((r) => r.path === "approve").length,
+    submits: () => requests.filter((r) => r.path === "submit").map((r) => JSON.parse(r.body)),
+  };
+}
+const status = (value: string) => () => Response.json({ ...send, status: value });
 
 function approval() {
   const signing: boolean[] = [];
   const onSubmitted = vi.fn();
-  const hook = renderHook(() =>
-    useSendApproval({
-      profileId: "p1",
-      send,
-      onSigning: (on) => {
-        signing.push(on);
-      },
-      onSubmitted,
-    }),
+  const store = makeStore({ getAccessToken: async () => "token" });
+  const hook = renderHook(
+    () =>
+      useSendApproval({
+        profileId: "p1",
+        send,
+        onSigning: (on) => {
+          signing.push(on);
+        },
+        onSubmitted,
+      }),
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <Provider store={store}>{children}</Provider>
+      ),
+    },
   );
   return { hook, signing, onSubmitted };
 }
 
 afterEach(() => {
   vi.clearAllMocks();
-  api.mfa.needed = false;
-  api.mfa.enrolled = false;
+  privy.mfa.needed = false;
+  privy.mfa.enrolled = false;
 });
 
-describe("approving a send (R-137, D-49)", () => {
-  it("signs only a send the server approved just now", async () => {
-    api.approve.mockResolvedValueOnce({ ...send, status: "expired" });
+describe("approving a send", () => {
+  it("signs only a send the server approved just now, and reports its hash", async () => {
+    const api = server(status("expired"), status("approved"));
     const stale = approval();
     await act(() => stale.hook.result.current.start());
     expect(stale.hook.result.current.error).toBe(SEND_COPY.outOfDate);
-    expect(api.sign).not.toHaveBeenCalled();
+    expect(privy.sign).not.toHaveBeenCalled();
     expect(stale.signing).toEqual([]);
 
-    api.approve.mockResolvedValueOnce({ ...send, status: "approved" });
     const current = approval();
     await act(() => current.hook.result.current.start());
-    expect(api.sign).toHaveBeenCalledTimes(1);
-    expect(current.onSubmitted).toHaveBeenCalledTimes(1);
-    // The lock comes on for signing and stays: the progress step lifts it once the server holds the hash.
+    expect(privy.sign).toHaveBeenCalledOnce();
+    expect(api.submits()).toEqual([{ txHash: "0xhash" }]);
+    expect(current.onSubmitted).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "sending", txHash: "0xhash" }),
+      null,
+    );
     expect(current.signing).toEqual([true]);
   });
 
   it("holds the sheet locked from the hold on, while the approve answer is on its way", async () => {
-    let answer: (s: Send) => void = () => {};
-    api.approve.mockReturnValueOnce(new Promise<Send>((r) => (answer = r)));
+    let answer: (response: Response) => void = () => {};
+    const api = server(() => new Promise<Response>((resolve) => (answer = resolve)));
     const { hook } = approval();
     expect(hook.result.current.locked).toBe(false);
     act(() => void hook.result.current.start());
-    // Closing or Back now could leave a send that is signed anyway once the answer comes.
+    await waitFor(() => expect(api.approves()).toBe(1));
     expect(hook.result.current.locked).toBe(true);
-    await act(async () => answer({ ...send, status: "expired" }));
-    expect(hook.result.current.locked).toBe(false);
+    await act(async () => answer(status("expired")()));
+    await waitFor(() => expect(hook.result.current.locked).toBe(false));
   });
 
-  // A signature whose answer was lost may have gone out: the server refuses a second approve, so it is never signed again.
   it("never signs a send approved before", async () => {
-    api.approve.mockRejectedValueOnce({ status: 409, data: { error: { code: "send_approved" } } });
+    const api = server(() =>
+      Response.json({ error: { code: "send_approved", message: "approved" } }, { status: 409 }),
+    );
     const { hook, signing } = approval();
     await act(() => hook.result.current.start());
     expect(hook.result.current.error).toBe(SEND_COPY.alreadyApproved);
-    expect(api.sign).not.toHaveBeenCalled();
+    expect(privy.sign).not.toHaveBeenCalled();
+    expect(api.submits()).toEqual([]);
     expect(signing).toEqual([]);
   });
 
-  // R-219: Privy asks for the owner's second step before it signs, so it is set up first, as the sheet's next step.
   it("sets up two-step as the next step, and approves and signs nothing meanwhile", async () => {
-    api.mfa.needed = true;
+    privy.mfa.needed = true;
+    const api = server();
     const { hook } = approval();
     await act(() => hook.result.current.start());
     expect(hook.result.current.settingUp).toBe(true);
-    expect(api.approve).not.toHaveBeenCalled();
-    expect(api.sign).not.toHaveBeenCalled();
+    expect(api.approves()).toBe(0);
+    expect(privy.sign).not.toHaveBeenCalled();
     act(() => hook.result.current.cancelConfirm());
     expect(hook.result.current.settingUp).toBe(false);
   });
 
-  // D-49: the code comes before the approve, so closing it leaves nothing approved; the next hold starts afresh.
-  it("asks for the two-step code before approving, and approves nothing when it is closed", async () => {
-    api.mfa.enrolled = true;
-    api.mfa.verify.mockRejectedValueOnce(new Error("MFA canceled"));
+  it("approves nothing when the two-step code is closed, and drops the code after a send", async () => {
+    privy.mfa.enrolled = true;
+    privy.mfa.verify.mockRejectedValueOnce(new Error("MFA canceled"));
+    const api = server(status("approved"));
     const closed = approval();
     await act(() => closed.hook.result.current.start());
-    expect(api.approve).not.toHaveBeenCalled();
+    expect(api.approves()).toBe(0);
     expect(closed.hook.result.current.error).toBeNull();
     expect(closed.hook.result.current.working).toBe(false);
 
-    api.approve.mockResolvedValueOnce({ ...send, status: "approved" });
     const { hook } = approval();
     await act(() => hook.result.current.start());
-    expect(api.mfa.verify).toHaveBeenCalledBefore(api.approve);
-    expect(api.sign).toHaveBeenCalledTimes(1);
-    // The code was for this send: Privy's 15 minutes end with it.
-    expect(api.mfa.forget).toHaveBeenCalledTimes(1);
+    expect(api.approves()).toBe(1);
+    expect(privy.sign).toHaveBeenCalledOnce();
+    expect(privy.mfa.forget).toHaveBeenCalledOnce();
   });
 
   it("starts one send however many times Send is held", async () => {
-    let answer: (s: Send) => void = () => {};
-    api.approve.mockReturnValueOnce(new Promise<Send>((r) => (answer = r)));
+    let answer: (response: Response) => void = () => {};
+    const api = server(() => new Promise<Response>((resolve) => (answer = resolve)));
     const { hook } = approval();
     act(() => void hook.result.current.start());
     await act(() => hook.result.current.start());
-    await act(async () => answer({ ...send, status: "approved" }));
-    expect(api.approve).toHaveBeenCalledTimes(1);
-    expect(api.sign).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.approves()).toBe(1));
+    await act(async () => answer(status("approved")()));
+    await waitFor(() => expect(privy.sign).toHaveBeenCalledOnce());
+    expect(api.approves()).toBe(1);
   });
 });

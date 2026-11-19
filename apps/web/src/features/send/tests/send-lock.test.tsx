@@ -1,20 +1,24 @@
 // @vitest-environment jsdom
 import { TooltipProvider } from "@forwend/ui-web";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sendApi } from "@/features/send/api/send-api";
 import { SendProgress } from "@/features/send/components/send-progress";
-import type { Send } from "@/features/send/types/send";
+import type { Relay, Send } from "@/features/send/types/send";
+import { makeStore } from "@/store/store";
 
-const api = vi.hoisted(() => ({
-  submit: vi.fn(async (_body?: unknown): Promise<unknown> => ({})),
-  read: { currentData: undefined as unknown, fulfilledTimeStamp: 1, error: undefined as unknown },
-}));
-vi.mock("@/features/send/api/send-api", () => ({
-  useSubmitSendMutation: () => [(body: unknown) => ({ unwrap: () => api.submit(body) })],
-  useGetSendQuery: () => ({ ...api.read, refetch: () => {} }),
-}));
+const NodeRequest = globalThis.Request;
+vi.stubGlobal(
+  "Request",
+  class extends NodeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
+    }
+  },
+);
 
-const send = {
+const send: Send = {
   sendId: "11111111-1111-4111-8111-111111111111",
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
@@ -24,14 +28,16 @@ const send = {
   to: "0x2222222222222222222222222222222222222222",
   toProfileId: null,
   amount: "1000000",
-  status: "prepared",
+  status: "sending",
   final: false,
   txHash: null,
   failure: null,
   networkFee: { amount: "0", paidBy: "forwend" },
+  gas: null,
   warnings: [],
   createdAt: "2026-11-06T10:00:00Z",
-} as unknown as Send;
+};
+const paymaster: Send = { ...send, networkFee: { amount: "12000", paidBy: "paymaster" } };
 const option = {
   chainId: 84532,
   token: send.token,
@@ -40,141 +46,151 @@ const option = {
   balance: 5n,
   sendable: true,
 };
-const recipient = { address: send.to };
+type Answer = () => Response | Promise<Response>;
+const json =
+  (body: unknown, status = 200) =>
+  () =>
+    Response.json(body, { status });
+const down = () => Promise.reject(new TypeError("Failed to fetch"));
 
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
-
-describe("the send sheet's lock (R-214)", () => {
-  it("lets the sheet close when the server refuses the hash or can't be read, not when one report fails", async () => {
-    api.read.currentData = { ...send, status: "sending", txHash: null };
-    const holding = (error: unknown) => {
-      api.submit.mockRejectedValue(error);
-      const seen: boolean[] = [];
-      render(
+function progress({
+  read,
+  submit = json(send),
+  initial,
+  relay = null,
+}: {
+  read: Answer;
+  submit?: Answer;
+  initial: Send;
+  relay?: Relay | null;
+}) {
+  const submits: unknown[] = [];
+  let posts = 0;
+  let reads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (request: Request) => {
+      if (request.method === "POST") {
+        posts += 1;
+        submits.push(JSON.parse(await request.text()));
+        return submit();
+      }
+      reads += 1;
+      return read();
+    }),
+  );
+  const store = makeStore({ getAccessToken: async () => "token" });
+  const holding: boolean[] = [];
+  render(
+    <Provider store={store}>
+      <TooltipProvider>
         <SendProgress
           profileId="p1"
-          initial={{ ...send, status: "sending", txHash: "0xhash" } as Send}
+          initial={initial}
+          relay={relay}
           option={option}
-          recipient={recipient}
+          recipient={{ address: send.to }}
           onSent={() => {}}
           onHolding={(on) => {
-            seen.push(on);
+            holding.push(on);
           }}
           onDone={() => {}}
-        />,
-        { wrapper: TooltipProvider },
+        />
+      </TooltipProvider>
+    </Provider>,
+  );
+  // The store tells subscribers on the next animation frame.
+  const reread = () =>
+    act(async () => {
+      await store.dispatch(
+        sendApi.endpoints.getSend.initiate(
+          { profileId: "p1", sendId: send.sendId },
+          { forceRefetch: true, subscribe: false },
+        ),
       );
-      return seen;
-    };
-    const refused = holding({ status: 422, data: { error: { code: "invalid_value" } } });
-    await waitFor(() => expect(refused.at(-1)).toBe(false));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+  return { submits, holding, posts: () => posts, reads: () => reads, reread };
+}
+
+afterEach(cleanup);
+
+describe("the send sheet's lock", () => {
+  it("lets the sheet close when the server refuses the hash, not when one report fails", async () => {
+    const refused = progress({
+      read: json(send),
+      submit: json({ error: { code: "invalid_value", message: "no" } }, 422),
+      initial: { ...send, txHash: "0xhash" },
+    });
+    await waitFor(() => expect(refused.holding.at(-1)).toBe(false));
+    expect(refused.submits).toEqual([{ txHash: "0xhash" }]);
     cleanup();
-    const down = holding({ status: "FETCH_ERROR" });
-    await waitFor(() => expect(api.submit).toHaveBeenCalled());
-    // The rejection is handled and any state it sets rendered before the check.
-    await act(() => new Promise((r) => setTimeout(r, 0)));
-    expect(down.at(-1)).toBe(true);
-    cleanup();
-    // A server that can't be read lifts it: the owner may leave, and the transfer still shows in Transactions.
-    api.read.error = { status: "FETCH_ERROR" };
-    const unread = holding({ status: "FETCH_ERROR" });
-    await waitFor(() => expect(unread.at(-1)).toBe(false));
-    api.read.error = undefined;
+
+    const lost = progress({
+      read: json(send),
+      submit: down,
+      initial: { ...send, txHash: "0xhash" },
+    });
+    await waitFor(() => expect(lost.submits).toHaveLength(1));
+    await lost.reread();
+    await waitFor(() => expect(lost.submits).toHaveLength(2));
+    expect(lost.holding.at(-1)).toBe(true);
   });
 
-  it("sends a paymaster send's signature again while the server shows it unsent, then shows it not sent", async () => {
-    const paymaster = { ...send, networkFee: { amount: "12000", paidBy: "paymaster" } } as Send;
-    const progress = (readAt: number) => {
-      api.read.currentData = { ...paymaster, status: "expired" };
-      api.read.fulfilledTimeStamp = readAt;
-      const seen: boolean[] = [];
-      const view = render(
-        <SendProgress
-          profileId="p1"
-          initial={{ ...paymaster, status: "sending" } as Send}
-          relay={{ signature: "sig-1", until: 1_000 }}
-          option={option}
-          recipient={recipient}
-          onSent={() => {}}
-          onHolding={(on) => {
-            seen.push(on);
-          }}
-          onDone={() => {}}
-        />,
-        { wrapper: TooltipProvider },
-      );
-      return { view, seen };
-    };
-    // Its request is still valid: the same signature goes again, and the sheet never locks for it.
-    const live = progress(500);
-    await waitFor(() =>
-      expect(api.submit).toHaveBeenCalledWith(expect.objectContaining({ signature: "sig-1" })),
-    );
-    expect(live.seen.every((on) => !on)).toBe(true);
-    expect(live.view.queryByText("Not sent")).toBeNull();
+  it("lets the sheet close when the server can't be read", async () => {
+    const unread = progress({ read: down, submit: down, initial: { ...send, txHash: "0xhash" } });
+    await waitFor(() => expect(unread.holding.at(-1)).toBe(false));
+  });
+
+  it("sends a paymaster send's signature again while it is valid, then shows it not sent", async () => {
+    const live = progress({
+      read: json({ ...paymaster, status: "expired" }),
+      submit: json(paymaster),
+      initial: paymaster,
+      relay: { signature: "sig-1", until: Date.now() + 60_000 },
+    });
+    await waitFor(() => expect(live.submits).toContainEqual({ signature: "sig-1" }));
+    expect(live.holding.every((on) => !on)).toBe(true);
+    expect(screen.queryByText("Not sent")).toBeNull();
     cleanup();
-    vi.clearAllMocks();
-    // Past its expiry, Privy would refuse it: nothing is sent, and the send ends as not sent.
-    const late = progress(1_000);
-    await act(() => new Promise((r) => setTimeout(r, 0)));
-    expect(api.submit).not.toHaveBeenCalled();
-    expect(late.view.getByText("Not sent")).toBeTruthy();
-    api.read.fulfilledTimeStamp = 1;
+
+    const late = progress({
+      read: json({ ...paymaster, status: "expired" }),
+      initial: paymaster,
+      relay: { signature: "sig-1", until: Date.now() - 1 },
+    });
+    expect(await screen.findByText("Not sent")).toBeTruthy();
+    expect(late.submits).toEqual([]);
   });
 
   it("keeps following an expired wallet-paid send, whose hash it reports again", async () => {
-    api.read.currentData = { ...send, status: "expired", txHash: null };
-    const view = render(
-      <SendProgress
-        profileId="p1"
-        initial={{ ...send, status: "sending", txHash: "0xhash" } as Send}
-        relay={null}
-        option={option}
-        recipient={recipient}
-        onSent={() => {}}
-        onHolding={() => {}}
-        onDone={() => {}}
-      />,
-      { wrapper: TooltipProvider },
-    );
-    await waitFor(() =>
-      expect(api.submit).toHaveBeenCalledWith(expect.objectContaining({ txHash: "0xhash" })),
-    );
-    expect(view.queryByText("Not sent")).toBeNull();
+    const view = progress({
+      read: json({ ...send, status: "expired" }),
+      initial: { ...send, txHash: "0xhash" },
+    });
+    await waitFor(() => expect(view.submits).toContainEqual({ txHash: "0xhash" }));
+    expect(screen.queryByText("Not sent")).toBeNull();
   });
 
   it("sends a signature once at a time, however often the send is read", async () => {
-    let finish: (v: unknown) => void = () => {};
-    api.submit.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
-    const paymaster = { ...send, networkFee: { amount: "12000", paidBy: "paymaster" } } as Send;
-    api.read.currentData = { ...paymaster, status: "approved" };
-    const props = {
-      profileId: "p1",
-      initial: { ...paymaster, status: "sending" } as Send,
-      relay: { signature: "sig-1", until: 10_000 },
-      option,
-      recipient,
-      onSent: () => {},
-      onHolding: () => {},
-      onDone: () => {},
-    };
-    api.read.fulfilledTimeStamp = 100;
-    const view = render(<SendProgress {...props} />, { wrapper: TooltipProvider });
-    await waitFor(() => expect(api.submit).toHaveBeenCalledTimes(1));
-    api.read.fulfilledTimeStamp = 200;
-    view.rerender(<SendProgress {...props} />);
-    await act(() => new Promise((r) => setTimeout(r, 0)));
-    expect(api.submit).toHaveBeenCalledTimes(1);
-    finish({});
-    await act(() => new Promise((r) => setTimeout(r, 0)));
-    api.read.fulfilledTimeStamp = 300;
-    view.rerender(<SendProgress {...props} />);
-    await waitFor(() => expect(api.submit).toHaveBeenCalledTimes(2));
-    api.read.fulfilledTimeStamp = 1;
-    api.submit.mockReset();
-    api.submit.mockResolvedValue({});
+    let finish: () => void = () => {};
+    const view = progress({
+      read: json({ ...paymaster, status: "approved" }),
+      submit: () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json(paymaster));
+        }),
+      initial: paymaster,
+      relay: { signature: "sig-1", until: Date.now() + 60_000 },
+    });
+    await waitFor(() => expect(view.posts()).toBe(1));
+    const reads = view.reads();
+    await view.reread();
+    await view.reread();
+    expect(view.reads()).toBeGreaterThan(reads + 1);
+    expect(view.posts()).toBe(1);
+    finish();
+    await view.reread();
+    await waitFor(() => expect(view.posts()).toBe(2));
   });
 });

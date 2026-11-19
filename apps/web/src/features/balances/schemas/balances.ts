@@ -1,33 +1,27 @@
 import { z } from "zod";
 import { apiTime, baseUnits, count, evmAddress, usdAmount } from "@/shared/schemas/api";
 
-/** GET /v1/profiles/{id}/balances, TokenBalance. Amounts are base units. */
 export const tokenBalanceSchema = z.object({
   chainId: count,
   token: evmAddress,
   symbol: z.string(),
   decimals: count,
-  // null when the wallet balance could not be read.
-  wallet: baseUnits.nullable(),
+  wallet: baseUnits.nullable(), // null when unread
   finalizedBlock: count.nullable(),
   pending: baseUnits,
   held: baseUnits,
-  // The parts of pending: paid and moving to the wallet, still confirming, and partly paid (may expire into held).
-  settling: baseUnits.optional(),
+  settling: baseUnits.optional(), // pending = settling + confirming + partial
   confirming: baseUnits.optional(),
   partial: baseUnits.optional(),
   livemode: z.boolean().optional(),
-  // Send offers it: the token is the gas coin the wallet pays with, or a paymaster takes the fee in it (R-216, R-225).
   sendable: z.boolean().optional(),
 });
 
 export const balancesSchema = z.object({
   tokens: z.array(tokenBalanceSchema),
-  // At 1 USD per stablecoin; null when any balance is missing.
-  estimatedUsdTotal: usdAmount.nullable(),
+  estimatedUsdTotal: usdAmount.nullable(), // at 1 USD per stablecoin
 });
 
-/** GET /v1/profiles/{id}/balance-history, BalanceHistoryPoint: the end of one UTC day; the last point is now. */
 const balanceHistoryPointSchema = z.object({
   at: apiTime,
   estimatedUsd: usdAmount.nullable(),

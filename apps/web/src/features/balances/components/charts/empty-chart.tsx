@@ -4,11 +4,9 @@ import { flatSeries } from "@/features/balances/lib/balance-history";
 
 export interface EmptyChartProps {
   days: number;
-  /** Centered over the frame: an error with Try again, or a short note. */
   children: ReactNode;
 }
 
-/** A chart with nothing to draw keeps its frame and dates, faded, so the card holds its shape and reads as a chart. */
 export function EmptyChart({ days, children }: EmptyChartProps) {
   return (
     <div className="relative h-full">

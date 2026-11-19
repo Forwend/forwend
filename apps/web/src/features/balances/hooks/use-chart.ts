@@ -7,7 +7,7 @@ export function useChart(points: (width: number) => number[]) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [active, setActive] = useState<number | null>(null);
-  // Only keyboard moves are announced; a pointer sweeping across the days would read out every one.
+  // Announce keyboard moves only: a pointer sweep would read out every day.
   const [byKey, setByKey] = useState(false);
 
   useEffect(() => {
@@ -56,7 +56,6 @@ export function useChart(points: (width: number) => number[]) {
     active,
     announce: byKey,
     handlers: {
-      // On touch the readout stays after the finger lifts.
       onPointerDown: onPointer,
       onPointerMove: onPointer,
       onPointerLeave: (event: PointerEvent<SVGSVGElement>) => {
@@ -64,7 +63,6 @@ export function useChart(points: (width: number) => number[]) {
       },
       onPointerCancel: () => setActive(null),
       onKeyDown,
-      // A press focuses the chart after pointerdown chose a point; keep that point.
       onFocus: () => setActive((now) => now ?? points(size.width).length - 1),
       onBlur: () => setActive(null),
     },

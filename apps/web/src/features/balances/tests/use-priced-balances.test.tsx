@@ -7,7 +7,7 @@ import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
 import { makeStore } from "@/store/store";
 
-// The app calls the API same-origin ("/api/…"); the test's Request needs an absolute URL.
+// The app calls the API same-origin; the test's Request needs an absolute URL.
 const NodeRequest = globalThis.Request;
 vi.stubGlobal(
   "Request",
@@ -75,7 +75,6 @@ describe("usePricedBalances", () => {
       { wrapper },
     );
 
-    // The balances have answered; the prices have not.
     await waitFor(() => expect(result.current.read.currentData).toBeDefined());
     expect(result.current.priced.balances).toBeNull();
 

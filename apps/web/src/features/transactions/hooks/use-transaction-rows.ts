@@ -17,7 +17,6 @@ import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
 
 const SENDING_POLL_MS = 3000;
 
-/** A preview reads one short page; the full list pages by cursor and stays live while it shows its first page. */
 export function useTransactionRows(profileId: string, preview: number | undefined) {
   const filters = useListFilters(
     "direction",
@@ -31,6 +30,7 @@ export function useTransactionRows(profileId: string, preview: number | undefine
   );
   const paged = useGetTransactionPagesInfiniteQuery(
     preview ? skipToken : { profileId, direction: filters.apiFilter, q: filters.apiQuery },
+    // Polling refetches every loaded page, so only the first page stays live.
     { ...LIVE_QUERY, pollingInterval: pages > 1 ? 0 : LIVE_QUERY.pollingInterval },
   );
   const list = preview ? recent : paged;
@@ -39,18 +39,15 @@ export function useTransactionRows(profileId: string, preview: number | undefine
   const data = preview
     ? recent.data
     : pagedData && { items: pagedData.pages.flatMap((page) => page.items) };
-  // R-215: signed sends come first as Sending until the watcher records them. A search or Received only hides them.
   const showsSends =
     Boolean(preview) || (!filters.apiQuery && filters.apiFilter !== TRANSACTION_DIRECTIONS.in);
   const [waiting, setWaiting] = useState(false);
   const pending = useListPendingSendsQuery(showsSends ? profileId : skipToken, {
     ...LIVE_QUERY,
-    // About a block while one waits, so its row hands over to the recorded transfer soon after.
     pollingInterval: waiting ? SENDING_POLL_MS : LIVE_QUERY.pollingInterval,
   });
   const recorded = data?.items ?? [];
   const sending = sendingRows(pending.currentData?.sends ?? [], recorded);
-  // A send that leaves the pending list has its own row now: read the list again rather than wait for its poll.
   const sendingCount = useRef(sending.length);
   const { refetch } = list;
   useEffect(() => {
@@ -63,7 +60,6 @@ export function useTransactionRows(profileId: string, preview: number | undefine
     list,
     paged,
     data,
-    // A preview keeps its size: Sending rows come first and push the oldest out.
     rows: [...sending, ...recorded].slice(0, preview),
     stale: !preview && !paged.currentData && Boolean(pagedData),
   };

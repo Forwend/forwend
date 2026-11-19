@@ -19,7 +19,6 @@ import { hasChainBadge } from "@/shared/components/chains/chain-badge";
 import { chainName } from "@/shared/lib/chains";
 import { timeOfDay } from "@/shared/lib/dates";
 
-/** The phone row's title: the invoice and client it paid, else the other side's address. */
 function rowTitle(t: Transaction): ReactNode {
   const minted = mintOrBurn(t);
   if (minted) return minted;
@@ -43,12 +42,10 @@ function rowTitle(t: Transaction): ReactNode {
 
 export interface TransactionPhoneRowProps {
   t: Transaction;
-  /** The overview's preview names no type (R-109). */
   typed: boolean;
   onOpen: () => void;
 }
 
-/** Two lines a row: what it was and its amount, then its status and time. A tap opens the rest, the fee too. */
 export function TransactionPhoneRow({ t, typed, onOpen }: TransactionPhoneRowProps) {
   const status = transactionStatus(t);
   const untyped =

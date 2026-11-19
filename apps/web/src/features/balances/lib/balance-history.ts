@@ -7,9 +7,7 @@ import type {
 import { totalUsdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
 
-/** Each point's tokens together in USD cents at the latest market price, as the total beside the chart (R-178). null
- * without prices, with a missing balance, or when an amount has no price: never a made-up value. Money in and out
- * value their running sum and give each day its difference, so a range's total is cut to cents once. */
+// Flows sum first and difference per day, so a range's total is cut to cents once.
 export function historySeries(
   history: BalanceHistory,
   field: HistoryField,
@@ -54,7 +52,6 @@ export function runningTotal(series: HistorySeries): HistorySeries {
   return { dates: series.dates, values: series.values.map((v) => (sum += v)) };
 }
 
-/** `days` UTC days of zero ending today: the chart's frame when there is no history to draw. */
 export function flatSeries(days: number, now = Date.now()): HistorySeries {
   const today = new Date(now);
   const end = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());

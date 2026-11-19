@@ -16,14 +16,10 @@ export interface PaymentStepProps {
   payment: JobPayment;
   first: boolean;
   last: boolean;
-  /** The payment's lines; the amount sits at their end. */
   children: ReactNode;
   amount: ReactNode;
 }
 
-/** One payment on a job's timeline: its mark, joined to the next by a line, then its lines and amount. The row's
- * text says its state, so the mark is for the eye only. Paid is ink and the invoice under way olive, as on the pay
- * page's progress. */
 export function PaymentStep({ payment, first, last, children, amount }: PaymentStepProps) {
   const step = paymentStep(payment);
   return (

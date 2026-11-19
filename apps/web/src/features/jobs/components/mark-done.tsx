@@ -18,11 +18,9 @@ export interface MarkDoneProps {
   profileId: string;
   job: Job;
   payment: JobPayment;
-  /** Called once its invoice is made: the button goes, so the page moves focus to that invoice. */
   onDone: (position: number) => void;
 }
 
-// R-103: marking it done makes its invoice; Send to client then emails it within its limits (R-94).
 export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
   const [markDone, { isLoading }] = useMarkPaymentDoneMutation();
   const [send] = useSendInvoiceMutation();
@@ -48,11 +46,10 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
         status?: unknown;
         data?: { error?: { code?: string; message?: string } };
       };
-      // A 422 names the link only when the link is wrong; the profile's limits on new invoices are 422 too.
+      // Invoice limits also answer 422: only a message naming the link is a link error.
       if (status === INVALID_VALUE && namedField(data?.error?.message ?? "", ["deliveryLink"]))
         setLinkError(COPY.markDoneLinkError);
       else if (data?.error?.code === CHANGE_ERRORS.pending) {
-        // The job is read again, which takes this step's button and dialog away: the reason goes in a toast.
         actions.current?.closest("dialog")?.close();
         document.getElementById("job-payments")?.focus();
         toast({ tone: TONES.warning, title: COPY.markDoneChangeWaits });

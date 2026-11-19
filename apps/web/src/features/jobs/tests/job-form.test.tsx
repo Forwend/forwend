@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { JobForm } from "@/features/jobs/components/job-form";
@@ -18,7 +18,6 @@ vi.stubGlobal(
 );
 
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
 
 afterEach(cleanup);
 
@@ -40,22 +39,18 @@ describe("new job form", () => {
         <JobForm profileId={PROFILE} />
       </Provider>,
     );
-    const next = async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-      await settle();
-    };
-    // Continue checks only the step on screen, and never sends.
-    await next();
+    const next = () => fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    next();
     expect(sent).toHaveLength(0);
     expect(document.activeElement).toBe(screen.getByLabelText("Title"));
 
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Logo design" } });
-    await next();
+    next();
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Bob Ltd" } });
     fireEvent.change(screen.getByLabelText("Billing email"), {
       target: { value: "ap@bob.example" },
     });
-    await next();
+    next();
     expect(sent).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("Amount in USD of payment 1"), {
       target: { value: "300" },
@@ -65,11 +60,12 @@ describe("new job form", () => {
     });
     const payments = within(screen.getByRole("group", { name: "Payments" }));
     expect(payments.getByText("1,000.50 USD")).toBeTruthy();
-    for (const _ of [1, 2]) {
-      fireEvent.click(screen.getByRole("button", { name: "Create job" }));
-      await settle();
+    const create = () => screen.getByRole("button", { name: "Create job" }) as HTMLButtonElement;
+    for (const tries of [1, 2]) {
+      fireEvent.click(create());
+      await waitFor(() => expect(sent).toHaveLength(tries));
+      await waitFor(() => expect(create().disabled).toBe(false));
     }
-    expect(sent).toHaveLength(2);
     expect(sent[1]?.key).toBe(sent[0]?.key);
     expect(sent[0]?.body).toEqual({
       title: "Logo design",

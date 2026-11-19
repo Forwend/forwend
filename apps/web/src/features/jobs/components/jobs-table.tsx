@@ -36,7 +36,6 @@ export interface JobsTableProps {
 export function JobsTable({ profileId }: JobsTableProps) {
   const search = useListSearch();
   const list = useListJobsInfiniteQuery({ profileId, q: search.apiQuery });
-  // A new search keeps the last rows in place, dimmed and busy, until its own answer arrives.
   const data = list.currentData ?? (list.isFetching ? list.data : undefined);
   const stale = !list.currentData && Boolean(data);
   const rows = data?.pages.flatMap((page) => page.items) ?? [];
@@ -48,12 +47,10 @@ export function JobsTable({ profileId }: JobsTableProps) {
       aria-busy={(!list.currentData && !list.isError) || undefined}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
         <h1 id="jobs-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {COPY.title}
         </h1>
-        {/* An empty list offers it in its own block instead. */}
         {noJobs ? null : <NewJobLink size="sm" className="lg:hidden" />}
       </div>
       {!noJobs ? (
