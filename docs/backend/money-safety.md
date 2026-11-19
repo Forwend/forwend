@@ -252,7 +252,7 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   - It is an hour, or two hours for a slow chain (`intents.SlowChains`, Bitcoin-like), bounded by the close.
   - A slow chain's deposit can take an hour to mine. Its token is offered only while its deadline is 90 minutes away.
 - The deposit address can't be recomputed as a receive address can (R-45). Instead, a quote must pass D-124:
-  - its ed25519 signature verifies with `intents.ManagerKey`, the key the 1Click SDK pins;
+  - its ed25519 signature verifies with the key the 1Click SDK pins (`managerKey` in `internal/intents`);
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
   - it delivers exactly that amount, has a deposit address and needs no memo.
   - every value is read with exact keys: Go's struct decoding would let a `DepositAddress` key replace `depositAddress`.

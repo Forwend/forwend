@@ -33,12 +33,12 @@ var SequencerUptime = map[uint64]common.Address{
 	42161: common.HexToAddress("0xFdB631F5EE196F0ed6FAa767959853A9F217697D"),
 }
 
-// SequencerGrace: once the sequencer is back, prices wait this long for the feeds to catch up.
-const SequencerGrace = time.Hour
+// sequencerGrace: once the sequencer is back, prices wait this long for the feeds to catch up.
+const sequencerGrace = time.Hour
 
-// PriceSlack is how much later than its heartbeat a feed may answer: its update is a transaction that can wait for a
+// priceSlack is how much later than its heartbeat a feed may answer: its update is a transaction that can wait for a
 // block, and a testnet oracle with a short heartbeat runs late now and then.
-const PriceSlack = 10 * time.Minute
+const priceSlack = 10 * time.Minute
 
 // EthUSDDecimals is the decimals of every EthUSD feed's answer.
 const EthUSDDecimals = 8
@@ -46,7 +46,7 @@ const EthUSDDecimals = 8
 var latestRoundData = common.Hex2Bytes("feaf968c")
 
 // EthPrice reads the chain's ETH/USD feed: the dollars one ether costs, with EthUSDDecimals decimals. It refuses a
-// price older than its heartbeat and PriceSlack, or read while the L2 sequencer is down or back for under SequencerGrace:
+// price older than its heartbeat and priceSlack, or read while the L2 sequencer is down or back for under sequencerGrace:
 // such a price sets network fees and the floor of the executor's swap (R-227, R-229).
 func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*big.Int, error) {
 	feed, ok := EthUSD[chainID]
@@ -60,7 +60,7 @@ func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*b
 	if price.Sign() <= 0 {
 		return nil, fmt.Errorf("chain %d ETH/USD feed answered no price", chainID)
 	}
-	if age := time.Since(updated); age > feed.Heartbeat+PriceSlack {
+	if age := time.Since(updated); age > feed.Heartbeat+priceSlack {
 		return nil, fmt.Errorf("chain %d ETH/USD feed last answered %s ago, past its %s heartbeat", chainID,
 			age.Round(time.Second), feed.Heartbeat)
 	}
@@ -77,9 +77,9 @@ func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*b
 		return nil, fmt.Errorf("chain %d's sequencer is down: its ETH/USD price can't be trusted", chainID)
 	case since.Unix() == 0:
 		return nil, fmt.Errorf("chain %d's sequencer uptime feed has no valid round", chainID)
-	case time.Since(since) < SequencerGrace:
+	case time.Since(since) < sequencerGrace:
 		return nil, fmt.Errorf("chain %d's sequencer came back %s ago: prices wait %s", chainID,
-			time.Since(since).Round(time.Second), SequencerGrace)
+			time.Since(since).Round(time.Second), sequencerGrace)
 	}
 	return price, nil
 }

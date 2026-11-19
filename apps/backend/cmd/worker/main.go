@@ -90,8 +90,7 @@ func run() error {
 	defer quotes.Close()
 	fees := settlement.NewQuotes(quotes.Client)
 	go fees.Keep(ctx, slices.Sorted(maps.Keys(specs)))
-	invoices.SetPricing(invoice.Pricing{Quotes: fees,
-		Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}})
+	invoices.SetPricing(invoice.Pricing{Quotes: fees, Plan: invoice.FeePlan(cfg.Fees)})
 	rates := &ecb.Keeper{Pool: pool, Client: &http.Client{Timeout: 30 * time.Second}, URL: cfg.RatesURL}
 	prices := &price.Keeper{Pool: pool, URL: cfg.Prices.URL, Key: cfg.Prices.Key, Every: cfg.Prices.Every,
 		// The key's header would follow a redirect to any host.
@@ -109,40 +108,23 @@ func run() error {
 	defer housekeeping.Wait()
 	defer stopHousekeeping()
 	housekeeping.Go(func() {
-		for {
-			keepHouse(ctx, cfg, invoices, rates, prices, tokens, sender, pool)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(cfg.Chains.PollInterval):
-			}
-		}
+		repeat(ctx, cfg.Chains.PollInterval, func() { keepHouse(ctx, cfg, invoices, rates, prices, tokens, sender, pool) })
 	})
 	// So do the minimum checks (D-126): a dry quote can take seconds. They keep their own pace, not the chains' poll.
 	housekeeping.Go(func() {
-		for {
+		repeat(ctx, intents.ProbeGap, func() {
 			if err := tokens.Probe(ctx, time.Now()); err != nil {
 				slog.Warn("check 1Click minimums", "err", err)
 			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(intents.ProbeGap):
-			}
-		}
+		})
 	})
 	// 1Click's status reads have their own loop: a slow answer never delays a chain round or an email.
 	housekeeping.Go(func() {
-		for {
+		repeat(ctx, cfg.Chains.PollInterval, func() {
 			if err := invoices.TrackCrossChain(ctx, time.Now()); err != nil {
 				slog.Error("track cross-chain quotes", "err", err)
 			}
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(cfg.Chains.PollInterval):
-			}
-		}
+		})
 	})
 	for {
 		if err := lock.Held(ctx); err != nil {
@@ -153,6 +135,18 @@ func run() error {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(cfg.Chains.PollInterval):
+		}
+	}
+}
+
+// repeat runs fn, then again every d, until ctx ends.
+func repeat(ctx context.Context, d time.Duration, fn func()) {
+	for {
+		fn()
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(d):
 		}
 	}
 }

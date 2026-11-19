@@ -46,23 +46,18 @@ func Start(t *testing.T) *Anvil {
 	return StartChain(t, ChainID)
 }
 
-func StartArchive(t *testing.T) *Anvil {
-	t.Helper()
-	return startChain(t, ChainID, t.TempDir())
-}
-
 func StartChain(t *testing.T, chainID uint64) *Anvil {
 	t.Helper()
-	return startChain(t, chainID, "")
+	return startChain(t, chainID)
 }
 
 // StartFork runs Anvil on a fork of the chain at url, with that chain's id and contracts. It caches nothing on disk.
 func StartFork(t *testing.T, url string) *Anvil {
 	t.Helper()
-	return startChain(t, 0, "", "--fork-url", url, "--no-storage-caching")
+	return startChain(t, 0, "--fork-url", url, "--no-storage-caching")
 }
 
-func startChain(t *testing.T, chainID uint64, archive string, fork ...string) *Anvil {
+func startChain(t *testing.T, chainID uint64, fork ...string) *Anvil {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -72,17 +67,10 @@ func startChain(t *testing.T, chainID uint64, archive string, fork ...string) *A
 	l.Close()
 	// One slot per epoch: safe = latest - 1, finalized = latest - 2. No states on disk: Anvil otherwise writes them to
 	// ~/.foundry/anvil/tmp and never removes them, even on a clean exit (Anvil 1.5); tests read only recent blocks.
-	persisted := "0"
-	if archive != "" {
-		persisted = "20000"
-	}
 	cmd := exec.Command("anvil", append([]string{"--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent",
-		"--max-persisted-states", persisted}, fork...)...)
+		"--max-persisted-states", "0"}, fork...)...)
 	if chainID != 0 {
 		cmd.Args = append(cmd.Args, "--chain-id", fmt.Sprint(chainID))
-	}
-	if archive != "" {
-		cmd.Args = append(cmd.Args, "--cache-path", archive)
 	}
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start anvil (install Foundry): %v", err)

@@ -83,11 +83,9 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// R-108.
 var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token", "Network", "Counterparty",
 	"Transaction", "Status", "USD value", "Classification", "Invoice", "Client"}
 
-// R-108, R-118.
 func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		from, to, err := dayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
@@ -154,7 +152,6 @@ func dayRange(from, to string) (time.Time, time.Time, error) {
 	return httpio.DayRange(from, to)
 }
 
-// R-108.
 func putTransactionLabel(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -192,7 +189,6 @@ type recordsCurrencyJSON struct {
 	Currency *string `json:"currency"`
 }
 
-// R-110.
 func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currency, err := activities.RecordsCurrency(r.Context(), r.PathValue("profileId"))
@@ -204,7 +200,6 @@ func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// R-110.
 func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body recordsCurrencyJSON
@@ -224,7 +219,6 @@ func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// R-112, R-118.
 func getStatement(activities *activity.Service, profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q, id := r.URL.Query(), r.PathValue("profileId")

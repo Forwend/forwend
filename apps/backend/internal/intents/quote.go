@@ -61,10 +61,10 @@ func (c *Client) Quote(ctx context.Context, ask Ask, dry bool) (Quote, error) {
 }
 
 // A signed quote is shown only while fresh (D-124): signed within PriceWindow of now, and its address takes deposits for
-// AddressLeast more. An older one replayed could send a payer's money to an address 1Click no longer serves.
+// addressLeast more. An older one replayed could send a payer's money to an address 1Click no longer serves.
 const (
 	PriceWindow  = 15 * time.Minute
-	AddressLeast = time.Hour
+	addressLeast = time.Hour
 )
 
 func request(ask Ask, dry bool) map[string]any {
@@ -130,8 +130,8 @@ func Check(answer []byte, ask Ask, dry bool, key string, now time.Time) (Quote, 
 	switch {
 	case err != nil || now.Sub(signedAt) > PriceWindow:
 		return Quote{}, fmt.Errorf("%w: signed at %q, over %s ago", ErrMismatch, text(a.top, "timestamp"), PriceWindow)
-	case !dry && (q.AddressDeadline == nil || q.AddressDeadline.Before(now.Add(AddressLeast))):
-		return Quote{}, fmt.Errorf("%w: its address takes deposits for under %s", ErrMismatch, AddressLeast)
+	case !dry && (q.AddressDeadline == nil || q.AddressDeadline.Before(now.Add(addressLeast))):
+		return Quote{}, fmt.Errorf("%w: its address takes deposits for under %s", ErrMismatch, addressLeast)
 	case !ok1 || !ok2 || !ok3 || q.AmountIn.Sign() <= 0 || q.MinAmountIn.Sign() <= 0 || q.MinAmountIn.Cmp(q.AmountIn) > 0:
 		return Quote{}, fmt.Errorf("%w: amounts", ErrMismatch)
 	case q.AmountOut.Cmp(ask.Amount) != 0 || text(a.quote, "minAmountOut") != ask.Amount.String():

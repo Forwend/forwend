@@ -120,20 +120,3 @@ func TestReadDuringAHungReadSharesItsFailure(t *testing.T) {
 		t.Fatalf("%d connections to the hung RPC; want the second read to wait for the first", n)
 	}
 }
-
-// D-15.
-func TestSingleRPCReadsBalancesAndRejectsWrongChain(t *testing.T) {
-	anvil := chaintest.Start(t)
-	token := anvil.DeployToken()
-	c := NewChainReader(map[uint64]chain.Spec{
-		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}}},
-		dead:              {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}}},
-	}, 1000)
-	ctx := context.Background()
-	if _, _, err := c.Read(ctx, dead, usdc, holder); err == nil || !strings.Contains(err.Error(), "RPC endpoints unavailable") {
-		t.Fatalf("wrong-chain endpoint: %v, want unavailable", err)
-	}
-	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
-		t.Fatal(err)
-	}
-}

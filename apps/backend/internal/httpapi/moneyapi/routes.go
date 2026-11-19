@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// R-108, R-110, R-112.
 func Routes(mux *http.ServeMux, g mid.Guards, balances *balance.Service, activities *activity.Service,
 	profiles *profile.Service) {
 	mux.Handle("GET /v1/profiles/{profileId}/balances", g.Can(auth.MoneyRead)(getBalances(balances)))

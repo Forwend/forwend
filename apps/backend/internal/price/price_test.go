@@ -46,16 +46,16 @@ func TestListGivesEachEnabledTokenItsCoinPrice(t *testing.T) {
 	// The disabled Arc chain's USDT is left out; OUSD has its coin but no price yet.
 	want := []Token{{ChainID: 42431, Token: ousd, Symbol: "OUSD", CoinID: "open-usd", Stale: true},
 		{ChainID: 421614, Token: eurc, Symbol: "EURC", Stale: true}, usdcAt(false)}
-	if got := list(fetched.Add(MaxFetchAge)); !reflect.DeepEqual(got, want) {
+	if got := list(fetched.Add(maxFetchAge)); !reflect.DeepEqual(got, want) {
 		t.Fatalf("prices %+v", got)
 	}
 	want[2] = usdcAt(true)
-	if got := list(fetched.Add(MaxFetchAge + time.Second)); !reflect.DeepEqual(got, want) {
+	if got := list(fetched.Add(maxFetchAge + time.Second)); !reflect.DeepEqual(got, want) {
 		t.Fatalf("an old read is not stale: %+v", got)
 	}
 
 	// CoinGecko's own time counts too: a read just now of a price it last updated over a day ago is stale.
-	source = fetched.Add(-MaxSourceAge - time.Second)
+	source = fetched.Add(-maxSourceAge - time.Second)
 	if err := k.store(ctx, []Coin{{"usd-coin", "0.999542", source}}, fetched); err != nil {
 		t.Fatal(err)
 	}

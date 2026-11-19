@@ -113,8 +113,7 @@ func run() error {
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, users, balances.Read, balances.Client, codes, cfg.PublicWebURL,
-			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: quotes,
-				Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}}, crossChain),
+			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: quotes, Plan: invoice.FeePlan(cfg.Fees)}, crossChain),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

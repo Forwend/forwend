@@ -37,7 +37,7 @@ type BelowMinimum struct{ Minimum string }
 func (e *BelowMinimum) Error() string { return "below the route's minimum of " + e.Minimum }
 
 // Client calls 1Click. Key is the optional partner key (Q-18): never log it. Signer is the key quotes must be signed
-// with: ManagerKey, or a test fake's.
+// with: managerKey, or a test fake's.
 type Client struct {
 	HTTP   *http.Client
 	URL    string
@@ -53,7 +53,7 @@ func NewClient(url, key string, allowLoopback bool) *Client {
 	// A quote waits for solvers' answers before 1Click sends its headers.
 	c.Transport.(*http.Transport).ResponseHeaderTimeout = 20 * time.Second
 	c.Timeout = 25 * time.Second
-	return &Client{HTTP: c, URL: url, Key: key, Signer: ManagerKey}
+	return &Client{HTTP: c, URL: url, Key: key, Signer: managerKey}
 }
 
 var (

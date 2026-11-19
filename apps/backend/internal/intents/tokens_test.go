@@ -31,7 +31,7 @@ func TestKeeperKeepsTheListAndDropsWhat1ClickDropped(t *testing.T) {
 		{"assetId": "nep141:tiny.omft.near", "blockchain": "eth", "symbol": "TINY", "decimals": 18, "price": 1.9e-7},
 	}
 	keeper := &intents.Keeper{Pool: pool, Client: fake.Client(), Every: intents.TokensEvery}
-	every := 10 * time.Minute // R-232
+	every := 10 * time.Minute
 	start := time.Now()
 	if err := keeper.Tick(ctx, start); err != nil {
 		t.Fatal(err)

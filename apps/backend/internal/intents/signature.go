@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-// ManagerKey is the ed25519 key 1Click signs its quotes with (D-124), as the 1Click SDK pins it.
-const ManagerKey = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"
+// managerKey is the ed25519 key 1Click signs its quotes with (D-124), as the 1Click SDK pins it.
+const managerKey = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"
 
 // ErrSignature: the answer is not a quote 1Click signed, or a field changed after it signed it.
 var ErrSignature = errors.New("1Click signature does not verify")

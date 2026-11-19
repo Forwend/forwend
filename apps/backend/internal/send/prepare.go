@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"slices"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
@@ -15,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/settlement"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -30,12 +30,14 @@ type Request struct {
 	Amount      *big.Int
 }
 
-var (
-	selTransfer  = common.Hex2Bytes("a9059cbb")
-	selBalanceOf = common.Hex2Bytes("70a08231")
-	// An EIP-7702 account's code is this prefix and the delegate's address: a wallet, not a contract.
-	delegation = common.Hex2Bytes("ef0100")
-)
+// An EIP-7702 account's code is this prefix and the delegate's address: a wallet, not a contract.
+var delegation = common.Hex2Bytes("ef0100")
+
+// transferCall is the calldata of the token's transfer(to, amount).
+func transferCall(to string, amount *big.Int) []byte {
+	return slices.Concat(common.Hex2Bytes("a9059cbb"), common.LeftPadBytes(common.HexToAddress(to).Bytes(), 32),
+		common.LeftPadBytes(amount.Bytes(), 32))
+}
 
 // Prepare checks a send out of the profile's wallet and keeps it for the browser to sign (R-211). It replaces the
 // wallet's earlier unsigned send on the chain, and fails with ErrBusy while a signed one is still on its way.
@@ -43,33 +45,12 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 	if req.Amount == nil || req.Amount.Sign() <= 0 {
 		return Send{}, fmt.Errorf("%w: amount must be a positive number of base units", ErrInvalid)
 	}
-	var family string
-	var nativeGas bool
-	var feeAsset *string
-	var decimals int
-	err := s.pool.QueryRow(ctx, `
-		SELECT c.chain_family, t.native_gas, t.fee_asset, t.decimals FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
-		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
-		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
-		int64(req.ChainID), strings.ToLower(req.Token), profileID).Scan(&family, &nativeGas, &feeAsset, &decimals)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Send{}, fmt.Errorf("%w: token is not enabled on this network in the profile's mode", ErrInvalid)
-	} else if err != nil {
-		return Send{}, fmt.Errorf("read chain: %w", err)
-	}
-	// The wallet pays its own fee in the token (D-121): as the chain's gas coin (R-216), or through a paymaster (R-225).
-	if !nativeGas && feeAsset == nil {
-		return Send{}, fmt.Errorf("%w: this network's gas is paid in another coin, so it offers no Send yet", ErrInvalid)
+	terms, err := s.tokenTerms(ctx, profileID, req.ChainID, req.Token)
+	if err != nil {
+		return Send{}, err
 	}
 	out := Send{ProfileID: profileID, ChainID: req.ChainID, Token: strings.ToLower(req.Token), Amount: req.Amount,
-		FeeAsset: feeAsset}
-	err = s.pool.QueryRow(ctx, "SELECT address FROM profile_wallets WHERE profile_id = $1 AND chain_family = $2",
-		profileID, family).Scan(&out.From)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Send{}, fmt.Errorf("%w: this profile has no wallet yet", ErrInvalid)
-	} else if err != nil {
-		return Send{}, fmt.Errorf("read wallet: %w", err)
-	}
+		FeeAsset: terms.feeAsset, From: terms.wallet}
 	if err := s.recipient(ctx, &out, req); err != nil {
 		return Send{}, err
 	}
@@ -83,15 +64,15 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 	if err := checkOnChain(ctx, client, &out); err != nil {
 		return Send{}, err
 	}
-	if feeAsset != nil {
+	if terms.feeAsset != nil {
 		if out.NetworkFee, err = paymasterFee(ctx, client, out.ChainID, out.From, out.Token, out.To, out.Amount,
-			decimals); err != nil {
+			terms.decimals); err != nil {
 			return Send{}, err
 		}
 		if err := covers(ctx, client, out); err != nil {
 			return Send{}, err
 		}
-	} else if err := s.estimate(ctx, client, &out, decimals); err != nil {
+	} else if err := s.estimate(ctx, client, &out, terms.decimals); err != nil {
 		return Send{}, err
 	}
 	if out.ToProfileID == nil {
@@ -106,6 +87,39 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 		}
 	}
 	return s.keep(ctx, out)
+}
+
+// tokenTerms is what a send of a token on a chain from the profile's wallet needs.
+type tokenTerms struct {
+	feeAsset *string
+	decimals int
+	wallet   string
+}
+
+// tokenTerms reads the token's terms in the profile's mode. The wallet pays its own fee in the token (D-121): as the
+// chain's gas coin (R-216), or through a paymaster (R-225).
+func (s *Service) tokenTerms(ctx context.Context, profileID string, chainID uint64, token string) (tokenTerms, error) {
+	var t tokenTerms
+	var nativeGas bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT t.native_gas, t.fee_asset, t.decimals, coalesce(w.address, '') FROM chains c
+		JOIN tokens t ON t.chain_id = c.chain_id
+		LEFT JOIN profile_wallets w ON w.profile_id = $3 AND w.chain_family = c.chain_family
+		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
+		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
+		int64(chainID), strings.ToLower(token), profileID).Scan(&nativeGas, &t.feeAsset, &t.decimals, &t.wallet)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return tokenTerms{}, fmt.Errorf("%w: token is not enabled on this network in the profile's mode", ErrInvalid)
+	case err != nil:
+		return tokenTerms{}, fmt.Errorf("read chain: %w", err)
+	case !nativeGas && t.feeAsset == nil:
+		return tokenTerms{}, fmt.Errorf("%w: this network's gas is paid in another coin, so it offers no Send yet",
+			ErrInvalid)
+	case t.wallet == "":
+		return tokenTerms{}, fmt.Errorf("%w: this profile has no wallet yet", ErrInvalid)
+	}
+	return t, nil
 }
 
 // recipient sets To (and ToProfileID for one of the owner's profiles) or refuses the address.
@@ -177,7 +191,7 @@ func parseAddress(s string) (string, error) {
 func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) error {
 	from, to, token := common.HexToAddress(out.From), common.HexToAddress(out.To), common.HexToAddress(out.Token)
 	raw, err := client.CallContract(ctx, ethereum.CallMsg{To: &token,
-		Data: append(bytes.Clone(selBalanceOf), common.LeftPadBytes(from.Bytes(), 32)...)}, nil)
+		Data: slices.Concat(common.Hex2Bytes("70a08231"), common.LeftPadBytes(from.Bytes(), 32))}, nil)
 	if err := refused(err); err != nil {
 		return err
 	}
@@ -187,9 +201,8 @@ func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) erro
 	if new(big.Int).SetBytes(raw).Cmp(out.Amount) < 0 {
 		return fmt.Errorf("%w: amount is more than the wallet holds", ErrInvalid)
 	}
-	data := append(bytes.Clone(selTransfer), common.LeftPadBytes(to.Bytes(), 32)...)
-	data = append(data, common.LeftPadBytes(out.Amount.Bytes(), 32)...)
-	ok, err := client.CallContract(ctx, ethereum.CallMsg{From: from, To: &token, Data: data}, nil)
+	ok, err := client.CallContract(ctx, ethereum.CallMsg{From: from, To: &token, Data: transferCall(out.To, out.Amount)},
+		nil)
 	if err := refused(err); err != nil {
 		return err
 	}
@@ -276,6 +289,16 @@ func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 // nativeDecimals: an EVM chain's gas coin counts in 18 decimals (Arc's USDC too), whatever its token interface uses.
 const nativeDecimals = 18
 
+// gasScale is how many units of the gas coin make one base unit of a token with decimals.
+func gasScale(decimals int) *big.Int {
+	return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(nativeDecimals-decimals)), nil)
+}
+
+// ceilDiv is a/b rounded up: a fee shown is never less than the wallet pays.
+func ceilDiv(a, b *big.Int) *big.Int {
+	return new(big.Int).Div(new(big.Int).Add(a, new(big.Int).Sub(b, big.NewInt(1))), b)
+}
+
 // estimate sets the gas the wallet pays (R-216). The amount and that fee must both fit the wallet's gas-coin balance.
 func (s *Service) estimate(ctx context.Context, client *ethclient.Client, out *Send, decimals int) error {
 	gas, fee, wei, err := feeFor(ctx, client, out.ChainID, out.From, out.Token, out.To, out.Amount, decimals)
@@ -300,8 +323,7 @@ func (s *Service) estimate(ctx context.Context, client *ethclient.Client, out *S
 	if err != nil {
 		return errors.Join(ErrUnavailable, fmt.Errorf("read gas balance: %w", err))
 	}
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(nativeDecimals-decimals)), nil)
-	if need := new(big.Int).Add(new(big.Int).Mul(out.Amount, scale), wei); held.Cmp(need) < 0 {
+	if need := new(big.Int).Add(new(big.Int).Mul(out.Amount, gasScale(decimals)), wei); held.Cmp(need) < 0 {
 		return fmt.Errorf("%w: amount plus the network fee is more than the wallet holds", ErrInvalid)
 	}
 	out.NetworkFee, out.Gas = fee, &gas
@@ -314,7 +336,7 @@ func covers(ctx context.Context, client *ethclient.Client, out Send) error {
 	if err != nil {
 		return errors.Join(ErrUnavailable, fmt.Errorf("read the latest block: %w", err))
 	}
-	held, err := ledger.BalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
+	held, err := chain.TokenBalanceAt(ctx, client, out.ChainID, out.Token, out.From, block)
 	if err != nil {
 		return errors.Join(ErrUnavailable, fmt.Errorf("read token balance: %w", err))
 	}
@@ -345,9 +367,7 @@ func paymasterFee(ctx context.Context, client *ethclient.Client, chainID uint64,
 	units := new(big.Int).Mul(gas.MaxFeePerGas, new(big.Int).SetUint64(gas.Limit+userOpGas))
 	units.Mul(units, price)
 	units.Mul(units, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(nativeDecimals+chain.EthUSDDecimals), nil)
-	units.Add(units, new(big.Int).Sub(scale, big.NewInt(1)))
-	units.Div(units, scale)
+	units = ceilDiv(units, new(big.Int).Exp(big.NewInt(10), big.NewInt(nativeDecimals+chain.EthUSDDecimals), nil))
 	if units.Sign() == 0 {
 		units.SetInt64(1)
 	}
@@ -359,24 +379,21 @@ func paymasterFee(ctx context.Context, client *ethclient.Client, chainID uint64,
 func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from, token, to string, amount *big.Int,
 	decimals int) (Gas, *big.Int, *big.Int, error) {
 	tokenAddr := common.HexToAddress(token)
-	data := append(bytes.Clone(selTransfer), common.LeftPadBytes(common.HexToAddress(to).Bytes(), 32)...)
-	word := common.LeftPadBytes(amount.Bytes(), 32)
-	data = append(data, word...)
+	data := transferCall(to, amount)
 	gas, err := client.EstimateGas(ctx, ethereum.CallMsg{From: common.HexToAddress(from), To: &tokenAddr, Data: data})
 	if err := refused(err); err != nil {
 		return Gas{}, nil, nil, err
 	}
 	// Priced as if every amount byte were non-zero (16 gas, not 4): the fee is then the same for any amount, so the
 	// fee shown before the amount is known still covers Max.
-	gas += 12 * uint64(bytes.Count(word, []byte{0}))
+	gas += 12 * uint64(bytes.Count(data[36:], []byte{0}))
 	gas = gas * 6 / 5
 	tip, feeCap, err := settlement.Fees(ctx, client, chainID)
 	if err != nil {
 		return Gas{}, nil, nil, errors.Join(ErrUnavailable, err)
 	}
 	wei := new(big.Int).Mul(feeCap, new(big.Int).SetUint64(gas))
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(nativeDecimals-decimals)), nil)
-	fee := new(big.Int).Div(new(big.Int).Add(wei, new(big.Int).Sub(scale, big.NewInt(1))), scale)
+	fee := ceilDiv(wei, gasScale(decimals))
 	if fee.Sign() == 0 { // a chain quoting no fee at all: a wallet-paid send still shows one unit, never Free
 		fee.SetInt64(1)
 	}
@@ -387,40 +404,25 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 // units (R-216, R-225), and whether a paymaster takes it. The amount step shows it and keeps room for it in Max;
 // Prepare checks it again. An empty to estimates a send to the wallet itself.
 func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token, to string) (*big.Int, bool, error) {
-	var nativeGas bool
-	var feeAsset *string
-	var decimals int
-	var wallet string
-	err := s.pool.QueryRow(ctx, `
-		SELECT t.native_gas, t.fee_asset, t.decimals, w.address FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
-		JOIN profile_wallets w ON w.profile_id = $3 AND w.chain_family = c.chain_family
-		WHERE c.chain_id = $1 AND t.contract = $2 AND c.enabled AND t.enabled
-		  AND c.livemode = (SELECT livemode FROM profiles WHERE id = $3)`,
-		int64(chainID), strings.ToLower(token), profileID).Scan(&nativeGas, &feeAsset, &decimals, &wallet)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, false, fmt.Errorf("%w: token is not enabled on this network, or the profile has no wallet", ErrInvalid)
-	} else if err != nil {
-		return nil, false, fmt.Errorf("read chain: %w", err)
-	}
-	if !nativeGas && feeAsset == nil {
-		return nil, false, fmt.Errorf("%w: this network's gas is paid in another coin, so it offers no Send yet",
-			ErrInvalid)
+	terms, err := s.tokenTerms(ctx, profileID, chainID, token)
+	if err != nil {
+		return nil, false, err
 	}
 	client, err := s.client(chainID)
 	if err != nil {
 		return nil, false, err
 	}
 	if to == "" {
-		to = wallet
+		to = terms.wallet
 	} else if to, err = parseAddress(to); err != nil {
 		return nil, false, err
 	}
 	// A one-unit transfer to the recipient costs what a send of any amount will (feeFor).
-	if feeAsset != nil {
-		fee, err := paymasterFee(ctx, client, chainID, wallet, token, to, big.NewInt(1), decimals)
+	if terms.feeAsset != nil {
+		fee, err := paymasterFee(ctx, client, chainID, terms.wallet, token, to, big.NewInt(1), terms.decimals)
 		return fee, true, err
 	}
-	_, fee, _, err := feeFor(ctx, client, chainID, wallet, token, to, big.NewInt(1), decimals)
+	_, fee, _, err := feeFor(ctx, client, chainID, terms.wallet, token, to, big.NewInt(1), terms.decimals)
 	return fee, false, err
 }
 

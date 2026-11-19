@@ -15,11 +15,11 @@ import (
 // (D-115). open-usd is Open USD, whose Tempo contract is our OUSD; origin-dollar is another coin also called OUSD.
 var coinIDs = map[string]string{"USDC": "usd-coin", "USDT": "tether", "OUSD": "open-usd"}
 
-// A price is stale when the worker read it over MaxFetchAge ago (four failed rounds), or CoinGecko last updated it
-// over MaxSourceAge ago.
+// A price is stale when the worker read it over maxFetchAge ago (four failed rounds), or CoinGecko last updated it
+// over maxSourceAge ago.
 const (
-	MaxFetchAge  = time.Hour
-	MaxSourceAge = 24 * time.Hour
+	maxFetchAge  = time.Hour
+	maxSourceAge = 24 * time.Hour
 )
 
 // Token is an enabled token's price. CoinID is "" for a symbol without a coin; USD and the times are empty without a
@@ -59,7 +59,7 @@ func List(ctx context.Context, pool *pgxpool.Pool, now time.Time) ([]Token, erro
 		if t.USD != "" {
 			t.SourceUpdatedAt, t.FetchedAt = source.UTC(), fetched.UTC()
 		}
-		t.Stale = t.USD == "" || now.Sub(t.FetchedAt) > MaxFetchAge || now.Sub(t.SourceUpdatedAt) > MaxSourceAge
+		t.Stale = t.USD == "" || now.Sub(t.FetchedAt) > maxFetchAge || now.Sub(t.SourceUpdatedAt) > maxSourceAge
 		return t, nil
 	})
 	if err != nil {

@@ -20,7 +20,7 @@ const sample = `<?xml version="1.0" encoding="UTF-8"?><gesmes:Envelope xmlns:ges
 	`</gesmes:Envelope>`
 
 func TestParse(t *testing.T) {
-	rates, err := Parse(strings.NewReader(sample))
+	rates, err := parse(strings.NewReader(sample))
 	if err != nil || len(rates) != 4 || rates[0].Currency != "USD" || rates[0].PerEUR != "1.1253" ||
 		!rates[0].Day.Equal(time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)) || rates[3].Currency != "GBP" {
 		t.Fatalf("rates %+v %v", rates, err)
@@ -32,13 +32,12 @@ func TestParse(t *testing.T) {
 		strings.Replace(sample, `time="2026-10-15"`, `time="15.10.2026"`, 1),
 		"not xml",
 	} {
-		if _, err := Parse(strings.NewReader(bad)); err == nil {
+		if _, err := parse(strings.NewReader(bad)); err == nil {
 			t.Fatalf("parsed %q", bad)
 		}
 	}
 }
 
-// R-110.
 func TestKeeperReadsWhenDue(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.Migrated(t, database.Migrate)
@@ -76,15 +75,15 @@ func TestKeeperReadsWhenDue(t *testing.T) {
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM ecb_rates").Scan(&rows); err != nil || rows != 4 || usd() != "1.1253" {
 		t.Fatalf("stored %d rates, USD %s, %v", rows, usd(), err)
 	}
-	tick(now.Add(Every-time.Minute), 1, false)
+	tick(now.Add(every-time.Minute), 1, false)
 	body = strings.Replace(sample, `rate="1.1253"`, `rate="1.13"`, 1)
-	tick(now.Add(Every), 2, false)
+	tick(now.Add(every), 2, false)
 	if usd() != "1.13" {
 		t.Fatalf("the corrected rate %s, want 1.13", usd())
 	}
 	status = http.StatusServiceUnavailable
-	failed := now.Add(2 * Every)
+	failed := now.Add(2 * every)
 	tick(failed, 3, true)
-	tick(failed.Add(Retry-time.Minute), 3, false)
-	tick(failed.Add(Retry), 4, true)
+	tick(failed.Add(retry-time.Minute), 3, false)
+	tick(failed.Add(retry), 4, true)
 }

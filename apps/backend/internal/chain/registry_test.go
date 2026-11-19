@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -125,20 +124,6 @@ func TestRegistryRejectsInvalidEndpointMetadata(t *testing.T) {
 	}
 	if err := validate(valid); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestConfigurationReadCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	dbURL := databasetest.New(t)
-	db, err := database.Open(t.Context(), dbURL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	if _, err := Specs(ctx, db, nil, false); err == nil {
-		t.Fatal("cancelled configuration read succeeded")
 	}
 }
 

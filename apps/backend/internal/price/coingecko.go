@@ -16,9 +16,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Retry is the wait after a failed read. maxAnswer bounds the answer, which for three coins is about 200 bytes.
+// retry is the wait after a failed read. maxAnswer bounds the answer, which for three coins is about 200 bytes.
 const (
-	Retry     = 2 * time.Minute
+	retry     = 2 * time.Minute
 	maxAnswer = 64 << 10
 )
 
@@ -31,9 +31,9 @@ type Coin struct {
 
 var usdValue = regexp.MustCompile(`^[0-9]{1,6}(\.[0-9]{1,18})?$`)
 
-// Parse reads a /simple/price answer for ids. A coin missing or with a null price has none this time. Any other
+// parse reads a /simple/price answer for ids. A coin missing or with a null price has none this time. Any other
 // price that is not a positive decimal with its update time fails the whole answer, and so does one without prices.
-func Parse(answer []byte, ids []string) ([]Coin, error) {
+func parse(answer []byte, ids []string) ([]Coin, error) {
 	var coins map[string]struct {
 		USD       *json.Number `json:"usd"`
 		UpdatedAt *int64       `json:"last_updated_at"`
@@ -75,7 +75,7 @@ func (k *Keeper) Tick(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	if err := k.refresh(ctx, now); err != nil {
-		k.due = now.Add(Retry)
+		k.due = now.Add(retry)
 		return err
 	}
 	k.due = now.Add(k.Every)
@@ -109,7 +109,7 @@ func (k *Keeper) refresh(ctx context.Context, now time.Time) error {
 	if len(answer) > maxAnswer {
 		return fmt.Errorf("read CoinGecko prices: answer over %d bytes", maxAnswer)
 	}
-	coins, err := Parse(answer, ids)
+	coins, err := parse(answer, ids)
 	if err != nil {
 		return err
 	}

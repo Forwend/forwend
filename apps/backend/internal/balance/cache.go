@@ -6,12 +6,9 @@ import (
 	"time"
 )
 
-// cache shares chain reads between requests: one read per key at a time, a value kept for ttl, an error not kept.
-// Values are strings so Redis can replace memoryCache across replicas (docs/backend/architecture.md#scaling).
-type cache interface {
-	get(ctx context.Context, key string, ttl time.Duration, read func(context.Context) (string, error)) (string, error)
-}
-
+// memoryCache shares chain reads between requests: one read per key at a time, a value kept for ttl, an error not
+// kept. Values are strings so a shared store such as Redis can take its place across replicas
+// (docs/backend/architecture.md#scaling).
 type memoryCache struct {
 	mu      sync.Mutex
 	entries map[string]*entry

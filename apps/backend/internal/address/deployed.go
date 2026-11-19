@@ -8,19 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// FactoryDeployed refuses a chain without the factory: invoices there would pay addresses no one can settle. It asks
-// the clients in turn: one can fail with an error the pool does not move past.
-func FactoryDeployed(ctx context.Context, chainID uint64, clients ...*ethclient.Client) error {
-	var err error
-	for _, client := range clients {
-		var code []byte
-		if code, err = client.CodeAt(ctx, common.Address(Factory), nil); err != nil {
-			continue
-		}
-		if len(code) == 0 {
-			return fmt.Errorf("chain %d: no factory at %s", chainID, common.Address(Factory).Hex())
-		}
-		return nil
+// FactoryDeployed refuses a chain without the factory: invoices there would pay addresses no one can settle.
+func FactoryDeployed(ctx context.Context, chainID uint64, client *ethclient.Client) error {
+	code, err := client.CodeAt(ctx, common.Address(Factory), nil)
+	if err != nil {
+		return fmt.Errorf("chain %d: read the factory: %w", chainID, err)
 	}
-	return fmt.Errorf("chain %d: read the factory: %w", chainID, err)
+	if len(code) == 0 {
+		return fmt.Errorf("chain %d: no factory at %s", chainID, common.Address(Factory).Hex())
+	}
+	return nil
 }
