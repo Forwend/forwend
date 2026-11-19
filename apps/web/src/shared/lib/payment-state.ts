@@ -16,19 +16,15 @@ import { PAYMENT_STATE_COPY } from "@/shared/constants/payment-state-copy";
 import type { ApiPaymentState, PaymentStateFilter } from "@/shared/types/payment-state";
 
 /** The facts a payment record carries, whichever list or detail read it came from. */
-export interface PaymentFacts {
+interface PaymentFacts {
   paymentStatus: string;
   confirming?: boolean;
   closed: boolean;
-  /** The backend's derived state (D-114), when the read has it. */
-  state?: string | null;
-  /** Exact base units held for the payer: a paid payment with any reads Overpaid. */
-  held?: string | null;
-  /** A numbered invoice's due date (YYYY-MM-DD): waiting past it reads Overdue. */
-  dueDate?: string | null;
+  state?: string | null; // the backend's derived state, when the read has it
+  held?: string | null; // base units; any held makes a paid payment Overpaid
+  dueDate?: string | null; // YYYY-MM-DD; waiting past it reads Overdue
 }
 
-/** Each API state's status: the label and icon a pill or a filter shows for it. */
 export const STATE_STATUS: Readonly<Record<ApiPaymentState, PaymentStatus>> = {
   [API_PAYMENT_STATES.waiting]: PAYMENT_STATUS.open,
   [API_PAYMENT_STATES.confirming]: PAYMENT_STATUS.confirming,
@@ -49,12 +45,11 @@ const RAW: Readonly<Record<string, PaymentStatus>> = {
   [API_PAYMENT_STATUSES.canceled]: PAYMENT_STATUS.canceled,
 };
 
-/** One payment status for every list, detail, activity row and toast (D-114). Unknown values read Detected, never
- * as arrived money; a closed payment that can no longer complete reads expired (R-77). */
+/** One payment status for every reader; unknown values read Detected, never as arrived money. */
 export function paymentStatusOf(facts: PaymentFacts, today = new Date()): PaymentStatus {
   const raw = rawStatus(facts);
   const state = facts.state ? STATE_STATUS[facts.state as ApiPaymentState] : undefined;
-  // Expired, partly paid is a kind of expired: it names money the merchant keeps, and lets an invoice reopen (R-130).
+  // Expired, partly paid is a kind of expired: it names money the merchant keeps, and lets an invoice reopen.
   const status =
     state && !(state === PAYMENT_STATUS.expired && raw === PAYMENT_STATUS.expiredPartiallyPaid)
       ? state
@@ -92,7 +87,7 @@ const WALLET: Readonly<Record<string, WalletState>> = {
   [API_WALLET_STATES.refused]: WALLET_STATE.refused,
 };
 
-export interface WalletFacts {
+interface WalletFacts {
   settlementStatus: string;
   wallet?: string | null;
 }
@@ -109,8 +104,7 @@ function isoDay(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** What a payment list with no rows was searched and filtered by, as one sentence: "Search “mara”, status Expired.".
- * Further filters, already worded ("source Invoice") or null when unset, follow. Undefined when nothing narrowed it. */
+/** What an empty payment list was narrowed by, as one sentence; undefined when nothing narrowed it. */
 export function narrowedBy(
   query: string | undefined,
   state: PaymentStateFilter,

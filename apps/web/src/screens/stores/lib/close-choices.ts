@@ -4,7 +4,7 @@ import type { ExpiryChoice } from "@/features/invoices/types/invoices";
 
 const CHOICES = Object.entries(EXPIRY_CHOICES) as [ExpiryChoice, number][];
 
-/** A store's default close is one of New invoice's choices (R-134), in seconds. */
+/** New invoice's expiry choices, in seconds, for a store's default close. */
 export const CLOSE_CHOICES = CHOICES.map(([choice, seconds]) => ({
   value: String(seconds),
   label: NEW_INVOICE_COPY.expiry[choice],

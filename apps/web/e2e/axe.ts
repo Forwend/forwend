@@ -5,7 +5,7 @@ export async function blockingViolations(page: Page) {
   // Reduced motion makes every fade instant, so a toast that times out mid-scan is never read half-faded.
   const reduced = await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
   await page.emulateMedia({ reducedMotion: "reduce" });
-  // Wait for opening fades before reading colors; skip endless and scroll-driven animations, which never finish.
+  // Wait for fades before reading colors; skip endless and scroll-driven ones, which never finish.
   await page.evaluate(() =>
     Promise.all(
       document

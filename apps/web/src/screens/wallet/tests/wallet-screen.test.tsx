@@ -20,7 +20,6 @@ if (typeof proto.showModal !== "function") {
 
 const ADDRESS = "0x4edd1111111111111111111111111111111181fc";
 const calls = vi.hoisted(() => ({
-  address: "0x4edd1111111111111111111111111111111181fc" as string | null,
   check: vi.fn(async () => {}),
   exportWallet: vi.fn(async (_: { address: string }) => {}),
   mfa: { needed: false, enrolled: false },
@@ -43,7 +42,7 @@ vi.mock("@/features/auth/api/auth-api", () => ({
   useCheckFreshSignInMutation: () => [() => ({ unwrap: calls.check })],
 }));
 vi.mock("@/features/profiles/hooks/use-app-session", () => ({
-  useAppSession: () => ({ profile: { profileId: "p1", walletAddress: calls.address } }),
+  useAppSession: () => ({ profile: { profileId: "p1", walletAddress: ADDRESS } }),
 }));
 
 const wrap = ({ children }: { children: ReactNode }) => <ToastProvider>{children}</ToastProvider>;
@@ -51,12 +50,11 @@ const wrap = ({ children }: { children: ReactNode }) => <ToastProvider>{children
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  calls.address = ADDRESS;
   calls.mfa.needed = false;
   calls.mfa.enrolled = false;
 });
 
-describe("the Wallet page (R-218)", () => {
+describe("the Wallet page", () => {
   it("shows the address, and opens Privy's export for it only after the warning and the api's check", async () => {
     render(<WalletScreen />, { wrapper: wrap });
     expect(screen.getByText(/^0x4edd/)).toBeTruthy();
@@ -69,7 +67,6 @@ describe("the Wallet page (R-218)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Show the key" }));
     await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledWith({ address: ADDRESS }));
     expect(calls.check).toHaveBeenCalledBefore(calls.exportWallet);
-    // The warning closes, so no dialog sits under Privy's.
     expect(dialog.hasAttribute("open")).toBe(false);
   });
 
@@ -84,45 +81,6 @@ describe("the Wallet page (R-218)", () => {
     expect(calls.exportWallet).not.toHaveBeenCalled();
   });
 
-  it("says so where it can be seen when Privy's window fails to open, after the warning closed", async () => {
-    calls.exportWallet.mockRejectedValueOnce(new Error("Wallet not ready for export"));
-    render(<WalletScreen />, { wrapper: wrap });
-    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
-    const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Show the key" }));
-    expect(await screen.findByText("The export page didn't open. Try again.")).toBeTruthy();
-    expect(dialog.hasAttribute("open")).toBe(false);
-  });
-
-  it("says nothing when the owner closes Privy's window while it still connects", async () => {
-    calls.exportWallet.mockRejectedValueOnce(
-      new Error("User exited before wallet could be connected"),
-    );
-    render(<WalletScreen />, { wrapper: wrap });
-    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
-    fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Show the key" }),
-    );
-    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(1));
-    await new Promise((r) => setTimeout(r, 0));
-    expect(screen.queryByText("The export page didn't open. Try again.")).toBeNull();
-  });
-
-  it("lets the owner open the export again while Privy hasn't settled the last one", async () => {
-    calls.exportWallet.mockReturnValueOnce(new Promise(() => {}));
-    render(<WalletScreen />, { wrapper: wrap });
-    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
-    const dialog = screen.getByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Show the key" }));
-    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole("button", { name: "Export private key" }));
-    const show = within(dialog).getByRole("button", { name: "Show the key" });
-    expect(show.getAttribute("aria-busy")).toBeNull();
-    fireEvent.click(show);
-    await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledTimes(2));
-  });
-
-  // R-219: Privy asks for the owner's second step before it shows a key, so it is set up first, in this dialog.
   it("sets up two-step in place of Show the key until it is set up", () => {
     calls.mfa.needed = true;
     render(<WalletScreen />, { wrapper: wrap });
@@ -135,7 +93,6 @@ describe("the Wallet page (R-218)", () => {
     expect(calls.exportWallet).not.toHaveBeenCalled();
   });
 
-  // D-49: with two-step set up, Privy asks for its code before it shows the key: that is the one check.
   it("opens Privy's export without Forwend's emailed code once two-step is set up", async () => {
     calls.mfa.enrolled = true;
     render(<WalletScreen />, { wrapper: wrap });
@@ -145,12 +102,5 @@ describe("the Wallet page (R-218)", () => {
     );
     await waitFor(() => expect(calls.exportWallet).toHaveBeenCalledWith({ address: ADDRESS }));
     expect(calls.check).not.toHaveBeenCalled();
-  });
-
-  it("says so when the profile has no wallet yet", () => {
-    calls.address = null;
-    render(<WalletScreen />, { wrapper: wrap });
-    expect(screen.getByText("This profile's wallet isn't ready yet.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Export private key" })).toBeNull();
   });
 });

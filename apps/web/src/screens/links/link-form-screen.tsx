@@ -8,11 +8,11 @@ import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface LinkFormScreenProps {
-  /** The link to edit; a new link without one. */
-  linkId?: string;
+  linkId?: string; // none: a new link
 }
 
 export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
@@ -22,7 +22,6 @@ export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
     { skip: !linkId },
   );
   const link = list.currentData;
-  // A merchant's link is for one of its stores, of the ones the user reaches (R-138).
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
   const loading =
@@ -33,11 +32,9 @@ export function LinkFormScreen({ linkId }: LinkFormScreenProps) {
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <header className="flex min-w-0 flex-col gap-2">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
+        <PageTitle className="break-words">
           {linkId ? (link?.title ?? COPY.editTitle) : COPY.newTitle}
-        </h1>
-        {/* One line: the form below fills the rest of the screen's height. */}
+        </PageTitle>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className="text-muted">{COPY.intro}</p>
           {link && !link.livemode ? <Badge tone={TONES.warning}>{COPY.testMode}</Badge> : null}

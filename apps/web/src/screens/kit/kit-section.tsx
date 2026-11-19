@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import type { KitSectionTitle } from "@/screens/kit/types/kit-content";
 
 interface KitSectionProps {
-  title: KitSectionTitle;
+  id: string;
+  title: string;
   note?: string;
   children: ReactNode;
 }
@@ -12,8 +12,7 @@ interface KitGroupProps {
   children: ReactNode;
 }
 
-export function KitSection({ title, note, children }: KitSectionProps) {
-  const id = title.toLowerCase().replace(/\s+/g, "-");
+export function KitSection({ id, title, note, children }: KitSectionProps) {
   return (
     <section aria-labelledby={id} className="border-t border-line py-14 first-of-type:border-t-0">
       <h2 id={id} className="font-display font-medium tracking-tight text-3xl">

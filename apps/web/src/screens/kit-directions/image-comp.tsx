@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { CTA } from "@/screens/kit/constants/sample-cta";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
-import { NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";
 import { compVars } from "@/screens/kit-directions/lib/comp";
 import type { ImageCompSpec } from "@/screens/kit-directions/types/directions";
@@ -36,7 +35,7 @@ export function ImageComp({ image, comp, name }: ImageCompProps) {
         className="-z-20 object-cover"
       />
       <div className="absolute inset-0 -z-10" style={{ background: comp.scrim }} />
-      <CompNav variant={NAV_VARIANTS.bar} />
+      <CompNav />
       <div className={`flex flex-col ${layout.copy}`}>
         <h3
           className="text-[clamp(2.4rem,5.6vw,4.6rem)] leading-[1.02] tracking-[-0.02em] text-balance"

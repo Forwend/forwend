@@ -7,19 +7,19 @@ export interface Direction {
   letter: string;
   name: string;
   summary: string;
-  /** Hero image for this direction (source and prompt in docs/web/images.md). */
   image: { src: string; width: number; height: number };
 }
 
-export type ImageCompLayout = "center" | "left" | "split";
-
 export interface ImageCompSpec {
   palette: Readonly<Record<string, string>>;
-  /** CSS variable set by next/font, e.g. "--font-sora". */
-  fontVar: string;
-  layout: ImageCompLayout;
+  fontVar: string; // e.g. "--font-sora"
+  layout: "center" | "left" | "split";
   headline: string;
   body: string;
-  /** Gradient laid over the image so the text reads. */
-  scrim: string;
+  scrim: string; // CSS gradient laid over the image
+}
+
+export interface ImageDirection extends Omit<Direction, "id"> {
+  id: string;
+  comp: ImageCompSpec;
 }

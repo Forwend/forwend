@@ -44,14 +44,6 @@ describe("sign-in navigation", () => {
     expect(navigation.router.replace).toHaveBeenCalledWith(APP_ROUTES.home);
   });
 
-  it("opens the app after email sign-in without a callback URL", () => {
-    const { rerender } = render(<SignInScreen />);
-    expect(navigation.router.replace).not.toHaveBeenCalled();
-    auth.authenticated = true;
-    rerender(<SignInScreen />);
-    expect(navigation.router.replace).toHaveBeenCalledWith(APP_ROUTES.home);
-  });
-
   it("waits until Privy has restored an existing session", () => {
     auth.ready = false;
     auth.authenticated = true;

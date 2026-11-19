@@ -116,7 +116,6 @@ const crossChain = {
   convertedAt: "2026-11-09T14:15:00Z",
 } as NonNullable<PaymentDetail["crossChain"]>;
 
-/** Sample payments for the kit's payment page parts (R-248): sample amounts, times and transactions. */
 export const SAMPLE_PAYMENTS: readonly { title: string; payment: PaymentDetail }[] = [
   {
     title: "Paid through NEAR Intents, in the wallet",

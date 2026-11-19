@@ -3,9 +3,7 @@ import type { ReactNode } from "react";
 export interface InitialsAvatarProps {
   name: string | null;
   small?: boolean;
-  /** Shown without a name, such as a request's document icon. */
-  fallback?: ReactNode;
-  /** Rides on the corner, such as a network's logo. */
+  fallback?: ReactNode; // shown without a name
   children?: ReactNode;
 }
 

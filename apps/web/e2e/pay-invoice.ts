@@ -1,8 +1,6 @@
 import type { Page } from "@playwright/test";
 
-// The pay page fixture the pay and example-merchant specs share.
-// ID is keccak256(PAY) (D-86). RECEIVE is factory.predict of these terms (R-15), so the page shows it
-// only while every term is unchanged.
+// ID is keccak256(PAY); RECEIVE is factory.predict of these terms, so change none of them alone.
 export const PAY = "7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 export const ID = "0x0bc3ec4e72d7b5f3cc8a059ea1a0f06cc9d24ea5e71a2acfd86fea75540e9a31";
 export const RECEIVE = "0x9404a075f2f597196c889f6a70e561e9d07de554";

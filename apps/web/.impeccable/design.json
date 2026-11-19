@@ -471,7 +471,7 @@
       },
       {
         "name": "The Token-Only Rule",
-        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors (the art tokens and the images) are for art only and never appear in UI components. The hex values in `src/shared/constants/art-colors.ts` and `src/screens/kit-directions/constants/comp.ts` belong to the old direction comps and the Open Graph image, not to new UI.",
+        "body": "Tailwind's default palette is removed; only token colors exist as utilities. Art colors (the art tokens and the images) are for art only and never appear in UI components. The hex values in `src/shared/constants/art-colors.ts` and `src/screens/kit-directions/` belong to the old direction comps and the Open Graph image, not to new UI.",
         "section": "colors"
       },
       {

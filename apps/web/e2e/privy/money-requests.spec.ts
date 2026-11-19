@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import { session } from "./session";
 
 // R-71. Returns false when this database has no enabled network.

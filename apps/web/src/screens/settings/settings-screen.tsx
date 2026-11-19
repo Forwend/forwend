@@ -21,8 +21,7 @@ interface SignInMethod {
   detail: string | null;
 }
 
-/** R-137. Privy can't list sessions or end one alone, so this shows what is known: the sign-in methods and this
- * device, with the one way to end every session. */
+/** Privy can't list sessions or end one alone, so this offers only ending every session. */
 export function SettingsScreen() {
   const { signOut } = useAppSession();
   const { user } = usePrivy();
@@ -60,7 +59,6 @@ export function SettingsScreen() {
               </DetailRow>
             ))}
           </DetailList>
-          {/* Passkeys have rows of their own: where each was made, when it was used, and Remove (R-217). */}
           <Passkeys />
         </div>
       </SettingsGroup>

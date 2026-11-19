@@ -31,14 +31,13 @@ import { AppHeader } from "@/screens/app-shell/app-header";
 import { AppSidebar } from "@/screens/app-shell/app-sidebar";
 import { CommandMenu } from "@/screens/app-shell/command-menu";
 import { DeveloperModeStrip } from "@/screens/app-shell/developer-mode-strip";
+import { useCollapsedSidebar } from "@/screens/app-shell/hooks/use-collapsed-sidebar";
 import { firstPage, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { PhoneTabBar } from "@/screens/app-shell/phone-tab-bar";
 import { useRetryUnreachable, useServerUnreachable } from "@/shared/api/server-reach";
 import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-
-const COLLAPSED_KEY = "forwend:sidebar-collapsed";
 
 const SHELL_COPY = {
   loading: "Loading your profiles",
@@ -47,8 +46,7 @@ const SHELL_COPY = {
   skip: "Skip to content",
 } as const;
 
-// Signed in: POST /v1/me (signs up on the first visit), then the frame around the chosen profile's page.
-// The frame owns what opens from anywhere: Receive, a personal profile's Request, ⌘K and the phone profile sheet.
+// Signs up on the first visit (POST /v1/me), then frames the chosen profile's page.
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const { ready, authenticated, logout, user } = usePrivy();
   const router = useRouter();
@@ -63,19 +61,16 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [sending, setSending] = useState<SendMode | null>(null);
   const [searching, setSearching] = useState(false);
   const [choosing, setChoosing] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, toggleCollapsed] = useCollapsedSidebar();
   const active = profiles ? chosenProfile(profiles, activeId ?? savedId) : undefined;
   const money = active ? can(active, PERMISSIONS.moneyRead) : false;
   const moves = active ? can(active, PERMISSIONS.moneyMove) : false;
-  // Transfer needs another profile of the owner's with a wallet to move money to.
   const transfers =
     moves && active && profiles ? transferTargets(profiles, active).length > 0 : false;
-  // Receive's and Send's token lists, read only while one is open: a closed sheet polls nothing.
   const balances = useGetBalancesQuery(
     active && money && (receiving || sending) ? active.profileId : skipToken,
     LIVE_QUERY,
   );
-  // One strip under the header says the server can't be reached, in place of each view's own refresh notice.
   const down = useServerUnreachable();
   useRetryUnreachable(down);
 
@@ -89,15 +84,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const switchProfile = useCallback(
     (profileId: string) => {
       rememberProfile(profileId);
-      // Another profile starts at its own overview (R-76).
       router.push(APP_ROUTES.home);
     },
     [rememberProfile, router],
   );
 
-  // R-50: the first run has its own address. Until it is done every app page sends there, keeping the page asked for
-  // in the tab; once done the address returns to that page, else the overview. A run that saves its profiles midway
-  // stays open (setupOpen) until its finish step is left, though onboardedAt is set by then.
+  // setupOpen keeps a first run open past onboardedAt until its finish step is left.
   const onboarded = me.currentData ? me.currentData.onboardedAt !== null : null;
   const [setupOpen, setSetupOpen] = useState(false);
   const firstRun = onboarded === null ? null : !onboarded || setupOpen;
@@ -118,31 +110,11 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     if (ready && !authenticated) router.replace(APP_ROUTES.signIn);
   }, [ready, authenticated, router]);
 
-  // D-93: a page the profile's role can't use is hidden, so its address leads to the role's first page instead.
   const allowed = !active || pageAllowed(active, pathname);
   useEffect(() => {
     if (active && !allowed) router.replace(firstPage(active));
   }, [active, allowed, router]);
 
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
-    } catch {
-      // Storage blocked: the sidebar starts open.
-    }
-  }, []);
-  const toggleCollapsed = () => {
-    setCollapsed((was) => {
-      try {
-        localStorage.setItem(COLLAPSED_KEY, was ? "0" : "1");
-      } catch {
-        // Storage blocked: the choice lasts for this page view.
-      }
-      return !was;
-    });
-  };
-
-  // Signing out also gives the next user a fresh, empty store (StoreProvider).
   const signOut = useCallback(async () => {
     await logout();
     router.replace(APP_ROUTES.signIn);
@@ -158,7 +130,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             openReceive: () => setReceiving(true),
             openSend: moves ? () => setSending(SEND_MODES.send) : null,
             openTransfer: transfers ? () => setSending(SEND_MODES.transfer) : null,
-            // A request is a form of its own, on a page (R-71).
             openRequest: () => router.push(APP_ROUTES.newInvoice),
             signOut,
           }
@@ -166,7 +137,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     [profiles, active, moves, transfers, switchProfile, router, signOut],
   );
 
-  // Signed up users always have a personal profile; none means the answer is wrong, not that it is loading.
+  // Every user has a personal profile, so none is an error, not loading.
   if (me.isError || (profiles && !active)) {
     return (
       <main className="grid min-h-dvh place-items-center bg-bg px-4">
@@ -182,8 +153,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       </main>
     );
   }
-  // Also after sign out, until the redirect: never show the shell to a signed-out visitor. And while the first run's
-  // address is still being reached or left.
+  // Also in the gap after sign out: the shell never shows to a signed-out visitor.
   if (
     !ready ||
     !authenticated ||
@@ -200,7 +170,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     );
   }
 
-  // R-50
   if (firstRun) {
     return (
       <FirstRun
@@ -233,24 +202,12 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             {SHELL_COPY.skip}
           </a>
           {money ? <PaymentToasts profileId={active.profileId} /> : null}
-          <AppSidebar
-            profiles={profiles}
-            active={active}
-            onSwitch={switchProfile}
-            pathname={pathname}
-            email={email}
-            onSignOut={signOut}
-            collapsed={collapsed}
-          />
+          <AppSidebar pathname={pathname} email={email} collapsed={collapsed} />
           <div className={`min-w-0 ${collapsed ? "lg:pl-16" : "lg:pl-64"}`}>
             <AppHeader
-              active={active}
               pathname={pathname}
               email={email}
-              onSignOut={signOut}
               onSearch={() => setSearching(true)}
-              onReceive={() => setReceiving(true)}
-              onSend={moves ? () => setSending(SEND_MODES.send) : null}
               collapsed={collapsed}
               onToggleCollapsed={toggleCollapsed}
             />
@@ -263,14 +220,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             <main
               id="app-content"
               tabIndex={-1}
-              // A page whose only content is an empty or error state: the workspace is the screen under the header, and
-              // every box down to the state grows, so the state stands in the middle of what is left.
+              // A page that is only an empty or error state fills the screen under the header.
               className="fw-safe-x pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] max-sm:[body:has([data-phone-flow])_&]:pt-0 max-sm:[body:has([data-phone-flow])_&]:pb-0 outline-none has-[[data-page-empty]]:flex has-[[data-page-empty]]:min-h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))] has-[[data-page-empty]]:flex-col sm:pt-8 lg:pb-10 [&_*:has([data-page-empty])]:grow"
             >
               {children}
             </main>
           </div>
-          <PhoneTabBar active={active} pathname={pathname} onProfiles={() => setChoosing(true)} />
+          <PhoneTabBar pathname={pathname} onProfiles={() => setChoosing(true)} />
           <ProfileSheet
             profiles={profiles}
             active={active}
@@ -301,17 +257,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
               if (!balances.isUninitialized) balances.refetch();
             }}
           />
-          <CommandMenu
-            open={searching}
-            onOpenChange={setSearching}
-            profiles={profiles}
-            active={active}
-            onSwitch={switchProfile}
-            onReceive={() => setReceiving(true)}
-            onSend={moves ? () => setSending(SEND_MODES.send) : null}
-            onTransfer={transfers ? () => setSending(SEND_MODES.transfer) : null}
-            onRequest={() => router.push(APP_ROUTES.newInvoice)}
-          />
+          <CommandMenu open={searching} onOpenChange={setSearching} />
         </div>
       </AppSessionContext>
     </ToastProvider>

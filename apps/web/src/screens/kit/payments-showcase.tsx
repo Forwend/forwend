@@ -104,10 +104,8 @@ export function PaymentsShowcase() {
           explorerHref={`https://basescan.org/address/${SAMPLE_ADDRESS}`}
         />
         <Address address={SAMPLE_ADDRESS} />
-        {/* Short, with the full address in a tooltip on hover, focus or tap; plain text among other text. */}
         <TruncatedAddress address={SAMPLE_ADDRESS} />
         <TruncatedAddress address={SAMPLE_ADDRESS} mono={false} />
-        {/* Every character, in groups of four: the address someone checks before money moves. */}
         <div className="w-full max-w-xs">
           <FullAddress address={SAMPLE_ADDRESS} />
         </div>

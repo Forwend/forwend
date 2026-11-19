@@ -8,9 +8,7 @@ export interface CopyValueProps {
   label: string;
   value: string;
   hint: string;
-  /** The button's name for screen readers, which says what it copies. */
   copyLabel: string;
-  /** A value that is an address: Open shows it in a new tab, named for screen readers. */
   open?: { label: string; name: string };
 }
 

@@ -22,7 +22,7 @@ export const API_DEPOSIT_STATUSES = {
   confirmed: "confirmed",
 } as const;
 
-/** Payment.state values: the backend's derived payment status (D-114). */
+/** Payment.state values: the backend's derived payment status. */
 export const API_PAYMENT_STATES = {
   waiting: "waiting",
   confirming: "confirming",
@@ -33,10 +33,10 @@ export const API_PAYMENT_STATES = {
   canceled: "canceled",
 } as const;
 
-/** The status filter on every payment list (Payments, Invoices): All, then the API's states. */
+/** The status filter on every payment list: All, then the API's states. */
 export const PAYMENT_STATE_FILTERS = { all: "all", ...API_PAYMENT_STATES } as const;
 
-/** Payment.wallet values: where the merchant's share of a paid payment is (D-114). */
+/** Payment.wallet values: where the merchant's share of a paid payment is. */
 export const API_WALLET_STATES = {
   none: "none",
   pending: "pending",

@@ -5,7 +5,7 @@ import { STOP_REMINDERS_COPY } from "@/features/invoices/constants/invoices-copy
 import { PublicStoreProvider } from "@/providers/public-store-provider";
 import { StopRemindersScreen } from "@/screens/stop-reminders/stop-reminders-screen";
 
-// Outside the (app) group: the client follows it from a reminder email, with no account. The token is a secret link.
+// Outside the (app) group: opened from a reminder email with no account; the token is a secret link.
 export const metadata: Metadata = {
   title: STOP_REMINDERS_COPY.title,
   robots: { index: false, follow: false },

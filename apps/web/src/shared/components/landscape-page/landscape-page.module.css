@@ -34,7 +34,7 @@
     color-mix(in oklab, var(--fw-bg) 20%, transparent)
   );
 }
-/* The bottom padding matches the bar above, so the form sits in the middle of the screen, not of the space under the bar. */
+/* Bottom padding matches the bar above, so the form centers on the screen, not under the bar. */
 .main {
   position: relative;
   display: flex;

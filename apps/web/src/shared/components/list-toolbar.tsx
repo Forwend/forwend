@@ -2,15 +2,12 @@ import type { ReactNode } from "react";
 
 export interface ListToolbarProps {
   search: ReactNode;
-  /** Left out on a list with search alone (Clients), so the search reaches the row's end on phones. */
   filter?: ReactNode;
-  /** A segmented filter: on phones it takes its own full row under the search, as an app's scope bar does. */
   wideFilter?: boolean;
   actions?: ReactNode;
 }
 
-/** The search takes the free room first (grow 1000 to 1), so on a phone the filter ends its row; when it can't fit,
- * the filter and actions wrap to the next row together, still at its end. */
+/** The search grows first, so the filter ends its row and wraps with the actions when it can't fit. */
 export function ListToolbar({ search, filter, wideFilter, actions }: ListToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 sm:gap-3">

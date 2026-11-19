@@ -1,8 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { readPayPage } from "../scripts/canary-pay-page";
+import { blockingViolations } from "./axe";
 import { ID, MAIN_OPTION, mockInvoice, NOW, OPEN, PAY, RECEIVE } from "./pay-invoice";
-import { blockingViolations } from "./privy/axe";
 import { API_PORT, PUBLIC_URL, SUPPORT_EMAIL } from "./servers";
 import { panelsOffMargin, sidewaysScroll } from "./sideways";
 

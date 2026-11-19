@@ -3,12 +3,10 @@ import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 
 export interface AssetIconProps {
   chainId: number;
-  /** Left out for a network alone. */
-  symbol?: string;
+  symbol?: string; // undefined for a network alone
 }
 
-/** A 20px mark for a picker row: the token's logo with its network's on the corner, or the network's alone.
- * Decorative: the option's label names both. */
+/** A decorative 20px mark: the token's logo with its network's on the corner, or the network's alone. */
 export function AssetIcon({ chainId, symbol }: AssetIconProps) {
   const chain = CHAINS[chainId]?.icon;
   if (!symbol) {

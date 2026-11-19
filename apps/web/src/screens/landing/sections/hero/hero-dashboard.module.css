@@ -18,7 +18,6 @@
   grid-template-columns: 15rem minmax(0, 1fr);
   height: 50rem;
   font-size: 0.875rem;
-  /* The overview continues below the frame, as a page that scrolls. */
   mask-image: linear-gradient(to bottom, #000 82%, transparent);
 }
 
@@ -153,7 +152,6 @@
   min-height: 17rem;
   overflow: hidden;
 }
-/* As on the real card: the art shows on the right and fades out under the figures. */
 .balanceArt {
   position: absolute;
   z-index: -1;
@@ -249,7 +247,6 @@
   display: flex;
   flex-direction: column;
 }
-/* The real card's chart area: it fills the card under the figures. */
 .chart {
   flex: 1;
   min-height: 12rem;
@@ -305,7 +302,6 @@
     display: none;
   }
 }
-/* Phones show what reads at phone size: the balance and the latest payments, near their real size. */
 @media (max-width: 40rem) {
   .stage {
     margin-top: 2.25rem;
@@ -326,7 +322,7 @@
   .balance {
     min-height: 0;
   }
-  /* The figures sit centered over the art here, so the painting gives way to soft ridges in the art colors. */
+  /* The figures sit centered over the art here, so soft ridges replace the painting. */
   .balanceArt,
   [data-theme="dark"] .balanceArt {
     background-image:

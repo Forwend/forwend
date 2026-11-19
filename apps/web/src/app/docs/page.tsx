@@ -1,28 +1,14 @@
-import type { Metadata } from "next";
 import { DOCS } from "@/screens/docs/constants/docs-content";
 import { DocsScreen } from "@/screens/docs/docs-screen";
+import { docsMetadata } from "@/screens/docs/lib/docs-metadata";
 import { docsPath } from "@/shared/config/docs-routes";
-import { SITE } from "@/shared/config/site";
 
-export const metadata: Metadata = {
+export const metadata = docsMetadata({
   title: DOCS.title,
+  heading: DOCS.heading,
   description: DOCS.description,
-  alternates: { canonical: docsPath() },
-  openGraph: {
-    type: "website",
-    siteName: SITE.name,
-    url: docsPath(),
-    title: DOCS.heading,
-    description: DOCS.description,
-    images: ["/opengraph-image"],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: DOCS.heading,
-    description: DOCS.description,
-    images: ["/opengraph-image"],
-  },
-};
+  path: docsPath(),
+});
 
 export default function DocsPage() {
   return <DocsScreen />;

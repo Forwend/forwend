@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { PublicStoreProvider } from "@/providers/public-store-provider";
 
-// A payment link's page and the checkout its Pay opens share one request cache, so the checkout opens with its
-// invoice already read instead of an empty page.
+// A link's page and the checkout its Pay opens share one cache, so the checkout opens already loaded.
 export default function CheckoutLayout({ children }: Readonly<{ children: ReactNode }>) {
   return <PublicStoreProvider>{children}</PublicStoreProvider>;
 }

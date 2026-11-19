@@ -18,7 +18,6 @@
   color: var(--fw-muted);
 }
 
-/* A Now / Next / Later timeline: one rail, solid ink up to the current step, which pulses, then dashed. */
 .timeline {
   position: relative;
   display: flex;

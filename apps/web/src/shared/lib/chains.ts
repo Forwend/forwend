@@ -6,7 +6,7 @@ import {
   CROSS_CHAIN_TARGET,
 } from "@/shared/constants/chains";
 import { CHAIN_LOGOS, TOKEN_LOGOS } from "@/shared/constants/logos";
-import { foldText } from "@/shared/lib/search";
+import { matchesWords } from "@/shared/lib/search";
 
 export function chainName(chainId: number): string {
   return CHAINS[chainId]?.name ?? `Chain ${chainId}`;
@@ -17,10 +17,7 @@ export const TOKEN_SEARCH_FROM = 10;
 
 /** A token search matches its symbol or its network's name, so "usdc base" finds USDC on Base. */
 export function tokenMatches(t: { symbol: string; chainId: number }, query: string): boolean {
-  const text = foldText(`${t.symbol} ${chainName(t.chainId)}`);
-  return foldText(query)
-    .split(/\s+/)
-    .every((word) => text.includes(word));
+  return matchesWords(`${t.symbol} ${chainName(t.chainId)}`, query);
 }
 
 export function lookalikeOf(chainId: number, symbol: string): string | undefined {
@@ -44,26 +41,24 @@ export function txLink(chainId: number, txHash: string): { name: string; href: s
   return { name: explorer.name, href: `${explorer.url}/tx/${txHash}` };
 }
 
-/** NEAR Intents 1Click's name of a chain as payers know it: "tron" is Tron (D-123). */
+/** NEAR Intents 1Click's name of a chain as payers know it: "tron" is Tron. */
 export function blockchainName(blockchain: string): string {
   return BLOCKCHAIN_NAMES[blockchain] ?? blockchain.toUpperCase();
 }
 
-/** 1Click returned the payer's money, or will: it doesn't pay the invoice, which can be paid again (R-238). A short
- * deposit hasn't ended: 1Click holds it until the deadline, and the rest may still arrive. */
+/** 1Click returned the money, or will, so the invoice can be paid again; a short deposit has not ended. */
 export function crossChainEnded(c: { status: string }): boolean {
   return c.status === CROSS_CHAIN_STATUSES.refunded || c.status === CROSS_CHAIN_STATUSES.failed;
 }
 
-/** The option a cross-chain payment delivers to (D-123). */
+/** The option a cross-chain payment delivers to. */
 export function isCrossChainTarget(o: { chainId: number; token: string } | undefined): boolean {
   return (
     o?.chainId === CROSS_CHAIN_TARGET.chainId && o.token.toLowerCase() === CROSS_CHAIN_TARGET.token
   );
 }
 
-/** No money recorded yet, or recorded on the option 1Click delivers to. Money booked first on another option pays the
- * payment instead, and 1Click's USDC is then held for the customer (R-239). */
+/** No money recorded yet, or recorded on 1Click's option; otherwise 1Click's USDC is held for the customer. */
 export function crossChainOptionRecorded(x: {
   optionLocked: boolean;
   optionId: string;
@@ -92,7 +87,7 @@ export function iconOf<T>(icons: Readonly<Record<string, T>>, name: string): T |
   return Object.hasOwn(icons, name) ? icons[name] : undefined;
 }
 
-/** The logo file the web ships for a token, by the CoinGecko id the api names (R-250); null without one. */
+/** The logo file the web ships for a token, by the CoinGecko id the api names; null without one. */
 export function tokenLogo(coingeckoId: string | null | undefined): string | null {
   return coingeckoId && TOKEN_LOGOS.has(coingeckoId) ? `/logos/tokens/${coingeckoId}.webp` : null;
 }

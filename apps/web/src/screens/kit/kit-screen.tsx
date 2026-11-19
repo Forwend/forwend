@@ -1,8 +1,8 @@
 import { ThemeSwitch } from "@forwend/ui-web";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ColorSwatches } from "@/screens/kit/color-swatches";
 import { ComponentsShowcase } from "@/screens/kit/components-showcase";
-import { KIT_SECTIONS } from "@/screens/kit/constants/kit-content";
 import {
   IconSet,
   MotionSamples,
@@ -16,6 +16,54 @@ import { LogoShowcase } from "@/screens/kit/logo-showcase";
 import { MotionShowcase } from "@/screens/kit/motion-showcase";
 import { PaymentsShowcase } from "@/screens/kit/payments-showcase";
 
+const SECTIONS: readonly { title: string; note?: string; content: ReactNode }[] = [
+  {
+    title: "Logo",
+    note: "The mark alone and with the wordmark, in both themes, plus the app icons.",
+    content: <LogoShowcase />,
+  },
+  {
+    title: "Colors",
+    note: "Semantic tokens. Each has a light and a dark value; switch the theme to compare.",
+    content: <ColorSwatches />,
+  },
+  {
+    title: "Typography",
+    note: "One grotesk for headlines, interface and money; mono for addresses, hashes and code.",
+    content: <TypographySamples />,
+  },
+  {
+    title: "Spacing",
+    note: "4px base. Tailwind spacing utilities use this scale.",
+    content: <SpacingScale />,
+  },
+  { title: "Radius", content: <RadiusSamples /> },
+  {
+    title: "Shadows",
+    note: "Every shadow has an offset and a soft blur.",
+    content: <ShadowSamples />,
+  },
+  {
+    title: "Motion",
+    note: "Exponential ease-out from a visible resting state.",
+    content: <MotionSamples />,
+  },
+  {
+    title: "Icons",
+    note: "Lucide plus Forwend icons (Merchant, Freelancer, Payment path), one 1.75 stroke.",
+    content: <IconSet />,
+  },
+  {
+    title: "Animations",
+    note: "Custom loaders and feedback, built from the motion tokens.",
+    content: <MotionShowcase />,
+  },
+  { title: "Components", content: <ComponentsShowcase /> },
+  { title: "Payment components", content: <PaymentsShowcase /> },
+];
+
+const anchor = (title: string) => title.toLowerCase().replace(/\s+/g, "-");
+
 export function KitScreen() {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-24 sm:px-8">
@@ -26,13 +74,9 @@ export function KitScreen() {
             aria-label="Kit sections"
             className="mt-1 flex gap-x-4 overflow-x-auto text-sm text-muted"
           >
-            {KIT_SECTIONS.map((s) => (
-              <a
-                key={s}
-                href={`#${s.toLowerCase().replace(/\s+/g, "-")}`}
-                className="shrink-0 hover:text-ink"
-              >
-                {s}
+            {SECTIONS.map(({ title }) => (
+              <a key={title} href={`#${anchor(title)}`} className="shrink-0 hover:text-ink">
+                {title}
               </a>
             ))}
             <Link href="/kit/directions" className="shrink-0 text-accent underline">
@@ -42,54 +86,11 @@ export function KitScreen() {
         </div>
         <ThemeSwitch />
       </header>
-      <KitSection
-        title="Logo"
-        note="The mark alone and with the wordmark, in both themes, plus the app icons."
-      >
-        <LogoShowcase />
-      </KitSection>
-      <KitSection
-        title="Colors"
-        note="Semantic tokens. Each has a light and a dark value; switch the theme to compare."
-      >
-        <ColorSwatches />
-      </KitSection>
-      <KitSection
-        title="Typography"
-        note="One grotesk for headlines, interface and money; mono for addresses, hashes and code."
-      >
-        <TypographySamples />
-      </KitSection>
-      <KitSection title="Spacing" note="4px base. Tailwind spacing utilities use this scale.">
-        <SpacingScale />
-      </KitSection>
-      <KitSection title="Radius">
-        <RadiusSamples />
-      </KitSection>
-      <KitSection title="Shadows" note="Every shadow has an offset and a soft blur.">
-        <ShadowSamples />
-      </KitSection>
-      <KitSection title="Motion" note="Exponential ease-out from a visible resting state.">
-        <MotionSamples />
-      </KitSection>
-      <KitSection
-        title="Icons"
-        note="Lucide plus Forwend icons (Merchant, Freelancer, Payment path), one 1.75 stroke."
-      >
-        <IconSet />
-      </KitSection>
-      <KitSection
-        title="Animations"
-        note="Custom loaders and feedback, built from the motion tokens."
-      >
-        <MotionShowcase />
-      </KitSection>
-      <KitSection title="Components">
-        <ComponentsShowcase />
-      </KitSection>
-      <KitSection title="Payment components">
-        <PaymentsShowcase />
-      </KitSection>
+      {SECTIONS.map(({ title, note, content }) => (
+        <KitSection key={title} id={anchor(title)} title={title} note={note}>
+          {content}
+        </KitSection>
+      ))}
     </main>
   );
 }

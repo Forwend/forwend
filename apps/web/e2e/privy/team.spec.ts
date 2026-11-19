@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import { mockApi, OWNER } from "./sample-api";
 import { email, session } from "./session";
 

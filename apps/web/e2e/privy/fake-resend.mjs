@@ -1,5 +1,4 @@
-// The live suite's stand-in for Resend: the api sends Confirm it's you codes here (R-137), and the tests read them.
-// It keeps each recipient's newest subject, which carries the code, until a test reads it: a later read waits for a new one.
+// Stand-in for Resend: keeps each recipient's newest code until read; a later read waits for a new one.
 import { createServer } from "node:http";
 
 const port = Number(process.env.FAKE_RESEND_PORT ?? 4319);

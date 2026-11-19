@@ -7,17 +7,13 @@ const CLEAR = "Clear filter and search";
 export interface NoMatchProps {
   onClear: () => void;
   compact?: boolean;
-  /** The page's only content: centered in the workspace, under the toolbar that keeps the filter. */
   page?: boolean;
-  /** The button's words on a list with search alone. */
   clearLabel?: string;
-  /** Names the list: "No transactions match". */
   title?: string;
-  /** What was searched and filtered, so the reader sees why nothing shows. */
   description?: string;
 }
 
-/** A filtered list with no rows (R-75). */
+/** A filtered list with no rows. */
 export function NoMatch({
   onClear,
   compact,

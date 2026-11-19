@@ -23,7 +23,11 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { notFound } from "@/shared/api/server-reach";
 import { CopyValue } from "@/shared/components/copy-value";
-import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
+import {
+  DetailHeader,
+  DetailHeaderSkeleton,
+  RECORD_COLUMNS,
+} from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
@@ -100,9 +104,8 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
           {COPY.notReadyHint}
         </p>
       ) : null}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className={RECORD_COLUMNS}>
         <div className="flex min-w-0 flex-col gap-5">
-          {/* What the link did, at a glance: the counts the list's Activity cell reads in one line. */}
           <dl className="fw-panel grid grid-cols-3 divide-x divide-line">
             {[
               { term: COPY.stats.visits, value: link.visits },
@@ -143,7 +146,6 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
             />
           </section>
         </div>
-        {/* Sharing is what a link is for: on narrower screens it comes first. */}
         <aside className="flex min-w-0 flex-col gap-5 max-xl:-order-1 xl:sticky xl:top-20">
           <section aria-labelledby="link-share" className="fw-panel min-w-0">
             <h2 id="link-share" className="fw-panel-head text-base font-semibold text-ink">
@@ -157,7 +159,6 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
                 hint={COPY.shareHint}
                 open={{ label: COPY.open, name: COPY.openName }}
               />
-              {/* For a counter or a printed flyer: the phone camera opens the same page. */}
               <div className="flex items-center gap-4 rounded-md bg-surface-2 p-3">
                 <QrCode value={address} label={COPY.scan} className="w-24 p-1.5" />
                 <p className="text-sm text-muted">{COPY.scan}</p>

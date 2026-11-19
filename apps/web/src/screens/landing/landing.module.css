@@ -2,7 +2,7 @@
   container: landing / inline-size;
   --landing-width: var(--fw-page-width);
   --landing-gutter: var(--fw-page-gutter);
-  /* The site bar's whole share of the page: its offset, height and two border lines. */
+  /* The 2px is the site bar's two border lines. */
   --landing-nav-height: calc(var(--fw-site-bar-offset) + var(--fw-site-bar-height) + 2px);
   --landing-section-space: clamp(4.5rem, 9vw, 8rem);
   color: var(--fw-ink);

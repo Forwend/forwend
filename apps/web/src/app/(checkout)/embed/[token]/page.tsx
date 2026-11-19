@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// R-168: the checkout in a merchant's page. src/proxy.ts lets only the store's origin the query names frame it.
+// The checkout in a merchant's page. src/proxy.ts lets only the store's origin the query names frame it.
 export default async function EmbedPage({ params, searchParams }: PageProps<"/embed/[token]">) {
   const { token } = await params;
   if (!PAY_TOKEN_PATTERN.test(token)) notFound();
@@ -21,7 +21,7 @@ export default async function EmbedPage({ params, searchParams }: PageProps<"/em
   const theme = Object.values(THEMES).find((t) => t === query[EMBED_PARAMS.theme]);
   return (
     <>
-      {/* The merchant's page picks the theme, set before the first paint as the head script sets the visitor's. */}
+      {/* The merchant's page picks the theme; set before first paint, like the head script. */}
       {theme ? (
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed theme name from THEMES, never the query's text

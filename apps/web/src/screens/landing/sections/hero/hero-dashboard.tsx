@@ -43,10 +43,7 @@ const ACTIONS = [
   { label: "Receive", icon: ArrowDownLeft },
 ] as const;
 
-/**
- * A still picture of the signed-in merchant overview, built from the app's own sidebar groups and cards. It is one
- * image to assistive technology, and inert, so nothing in it takes focus or clicks.
- */
+/** A still picture of the merchant overview, built from the app's own sidebar groups and cards. */
 export function HeroDashboard() {
   return (
     <div className={styles.stage}>

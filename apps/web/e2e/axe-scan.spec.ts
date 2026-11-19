@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { blockingViolations } from "./privy/axe";
+import { blockingViolations } from "./axe";
 import { KIT_URL } from "./servers";
 
 test("the axe scan never reads a toast that times out during it half-faded", async ({ page }) => {

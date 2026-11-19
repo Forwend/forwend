@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import { activityItem, hash, mockApi, sampleInvoice, sampleTransfer } from "./sample-api";
 import { session } from "./session";
 

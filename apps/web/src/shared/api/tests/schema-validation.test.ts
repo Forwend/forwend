@@ -42,7 +42,6 @@ describe("API schema validation", () => {
   });
 
   it("reports a malformed response as a failed request and never hands its money on", async () => {
-    // A float where base units belong: drawing it would show the wrong amount.
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       answer({ tokens: [{ ...BALANCE, wallet: "1.25" }], estimatedUsdTotal: "1.25" }),
     );

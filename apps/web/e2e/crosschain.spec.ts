@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "./axe";
 import { signedQuote } from "./oneclick";
 import { MAIN_OPTION, mockInvoice, NOW, OPEN, PAY } from "./pay-invoice";
-import { blockingViolations } from "./privy/axe";
 import { sidewaysScroll } from "./sideways";
 
 // A live invoice on Base mainnet (D-123): the same terms as OPEN on chain 8453, and the address predict gives them.

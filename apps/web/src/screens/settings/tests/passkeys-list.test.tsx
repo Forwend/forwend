@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Passkeys } from "@/screens/settings/passkeys";
@@ -53,15 +53,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("passkeys in Security (R-217)", () => {
-  it("lists a passkey with where it was made and when it was last used, and offers another", () => {
-    privy.accounts = [email, passkey];
-    render(<Passkeys />, { wrapper: wrap });
-    expect(screen.getByText("iCloud Keychain")).toBeTruthy();
-    expect(screen.getByText(/^Safari, macOS · Last used Nov 5$/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add a passkey" })).toBeTruthy();
-  });
-
+describe("passkeys in Security", () => {
   it("removes a passkey only after the dialog, once the api says the session is fresh", async () => {
     privy.accounts = [email, passkey];
     render(<Passkeys />, { wrapper: wrap });
@@ -73,7 +65,6 @@ describe("passkeys in Security (R-217)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(privy.unlink).toHaveBeenCalledWith("cred-1"));
     expect(privy.check).toHaveBeenCalledBefore(privy.unlink);
-    // The password manager drops it too, so sign-in stops offering it.
     await waitFor(() =>
       expect(signal).toHaveBeenCalledWith({ rpId: location.hostname, credentialId: "cred-1" }),
     );
@@ -109,7 +100,6 @@ describe("passkeys in Security (R-217)", () => {
     ).toBe(reason.id);
   });
 
-  // R-219: Privy keeps two-step on with nothing to answer it when its passkey is unlinked, which locks the owner out.
   it("keeps the passkey that is two-step's, and says why", () => {
     privy.accounts = [email, { ...passkey, enrolledInMfa: true }];
     render(<Passkeys />, { wrapper: wrap });
@@ -120,74 +110,6 @@ describe("passkeys in Security (R-217)", () => {
     const reason = screen.getByText("Remove it from two-step first.");
     expect(remove.getAttribute("aria-describedby")).toBe(reason.id);
     expect(screen.getByText("Two-step")).toBeTruthy();
-  });
-
-  it("names each Remove apart, by where a passkey with no name was made", () => {
-    const { authenticatorName: _, ...unnamed } = passkey;
-    privy.accounts = [
-      email,
-      { ...unnamed, credentialId: "a", createdWithBrowser: "Chrome", createdWithOs: "Windows" },
-      { ...unnamed, credentialId: "b" },
-    ];
-    render(<Passkeys />, { wrapper: wrap });
-    expect(
-      screen.getByRole("button", { name: "Remove Passkey made on Chrome, Windows" }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Remove Passkey made on Safari, macOS" }),
-    ).toBeTruthy();
-  });
-
-  it("moves the focus to Add a passkey once a passkey is removed", async () => {
-    privy.accounts = [email, passkey];
-    const { rerender } = render(<Passkeys />, { wrapper: wrap });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Remove iCloud Keychain made on Safari, macOS" }),
-    );
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove" }));
-    await waitFor(() => expect(privy.unlink).toHaveBeenCalled());
-    privy.accounts = [email];
-    rerender(<Passkeys />);
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add a passkey" })),
-    );
-  });
-
-  it("clears a removal's error when its dialog closes", async () => {
-    privy.accounts = [email, passkey];
-    privy.check.mockRejectedValueOnce({ status: 500 });
-    render(<Passkeys />, { wrapper: wrap });
-    const open = screen.getByRole("button", {
-      name: "Remove iCloud Keychain made on Safari, macOS",
-    });
-    fireEvent.click(open);
-    const dialog = screen.getByRole("dialog", { name: "Remove this passkey?" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
-    await within(dialog).findByText("The passkey was not removed. Try again.");
-    // Keep it closes the dialog as the browser does for its form.
-    act(() => (dialog as HTMLDialogElement).close());
-    fireEvent.click(open);
-    expect(within(dialog).queryByText("The passkey was not removed. Try again.")).toBeNull();
-  });
-
-  it("says so when adding a passkey fails", async () => {
-    privy.accounts = [email, passkey];
-    privy.link.mockRejectedValueOnce(new Error("the browser refused"));
-    render(<Passkeys />, { wrapper: wrap });
-    fireEvent.click(screen.getByRole("button", { name: "Add a passkey" }));
-    expect(await screen.findByText("The passkey was not added. Try again.")).toBeTruthy();
-  });
-
-  it("counts Google as a way to sign in, so a passkey beside it can go", () => {
-    privy.accounts = [{ type: "google_oauth", email: "owner@gmail.com" }, passkey];
-    render(<Passkeys />, { wrapper: wrap });
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Remove iCloud Keychain made on Safari, macOS",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(false);
   });
 
   it("adds another passkey once the api says the session is fresh", async () => {

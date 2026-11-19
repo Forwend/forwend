@@ -9,7 +9,6 @@ import {
   Young_Serif,
 } from "next/font/google";
 
-// Display faces for the comps on /kit/directions only.
 const caslon = Libre_Caslon_Display({
   weight: "400",
   subsets: ["latin"],

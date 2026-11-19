@@ -1,6 +1,5 @@
 export interface PartyProps {
-  /** The name first, then the other lines; empty ones are left out. */
-  lines: (string | null)[];
+  lines: (string | null)[]; // name first; empty lines are left out
 }
 
 export function Party({ lines }: PartyProps) {

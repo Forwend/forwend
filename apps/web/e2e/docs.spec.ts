@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { blockingViolations } from "./privy/axe";
+import { blockingViolations } from "./axe";
 import { PUBLIC_URL } from "./servers";
 import { sidewaysScroll } from "./sideways";
 

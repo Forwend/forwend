@@ -3,7 +3,6 @@ import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 export const SETTINGS_COPY = {
   title: AUTH_COPY.settings,
   yourAccount: "Your account",
-  thisProfile: "This profile",
   account: {
     title: "Security",
     signInWith: "Sign in with",
@@ -52,11 +51,6 @@ export const SETTINGS_COPY = {
     signOut: "Sign out",
     everywhere: "Sign out of all devices",
   },
-  billing: { title: "Billing details" },
-  networks: { title: "Accepted assets" },
-  developerMode: { title: "Developer mode" },
-  notifications: { title: "Notifications" },
-  team: { title: "Team" },
   wallet: {
     title: "Wallet",
     addressNote: "One address on every network.",

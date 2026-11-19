@@ -5,21 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
-import { profileLabel } from "@/features/profiles/lib/profile";
+import { settingsGroups } from "@/screens/app-shell/lib/app-nav";
 import { SETTINGS_COPY as COPY } from "@/screens/settings/constants/settings-copy";
-import { settingsSections } from "@/screens/settings/lib/settings-sections";
 import { SETTINGS_TITLE, SettingsGroup } from "@/shared/components/settings-group";
 import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 
 const ROW =
   "flex min-h-14 items-center gap-3 px-3 text-base text-ink outline-none hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus";
 
-/** Phones: Settings is a list of its pages, as a phone's settings app opens. From large screens the frame's column
- * already lists them, so Settings opens the first page. */
+/** Phones: Settings lists its pages. Large screens already list them, so this opens the first. */
 export function SettingsIndex() {
   const { profile } = useAppSession();
   const router = useRouter();
-  const groups = settingsSections(profile);
+  const groups = settingsGroups(profile);
   const first = groups[0]?.items[0]?.href;
   // Also when a tablet turns wide, where the list is hidden.
   useEffect(() => {
@@ -35,10 +33,7 @@ export function SettingsIndex() {
       <h1 className={SETTINGS_TITLE}>{COPY.title}</h1>
       <nav aria-label={COPY.title} className="flex flex-col gap-6">
         {groups.map((group) => (
-          <SettingsGroup
-            key={group.label}
-            title={group.business ? profileLabel(profile) : group.label}
-          >
+          <SettingsGroup key={group.label} title={group.label}>
             <ul className="fw-panel divide-y divide-line overflow-hidden">
               {group.items.map((item) => (
                 <li key={item.href}>

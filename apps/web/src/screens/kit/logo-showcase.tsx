@@ -14,7 +14,6 @@ const MARK_SIZES = ["size-4", "size-6", "size-10", "size-16"] as const;
 const FAVICON_SIZES = [16, 32, 48] as const;
 
 function OnGround({ theme, children }: OnGroundProps) {
-  // A local data-theme shows each variant on the real light and dark grounds.
   return (
     <div
       data-theme={theme}

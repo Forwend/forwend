@@ -11,6 +11,7 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { NotificationsMenu } from "@/features/transactions/components/notifications-menu";
@@ -18,14 +19,13 @@ import { breadcrumb, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import type { Crumb } from "@/screens/app-shell/types/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// The two search triggers look like the list search fields they lead to: a soft filled field.
 const SEARCH_TRIGGER =
   "relative h-10 items-center gap-2 rounded-md bg-surface-2 px-3.5 text-sm text-muted outline-none pointer-coarse:h-11 transition-colors duration-[var(--fw-duration-fast)] hover:text-ink active:bg-[color-mix(in_oklab,var(--fw-ink)_6%,var(--fw-surface-2))] focus-visible:outline-2 focus-visible:outline-focus";
 
 const CRUMB =
   "block truncate rounded-sm text-muted outline-none hover:text-ink focus-visible:outline-2 focus-visible:outline-focus aria-[current=page]:font-medium aria-[current=page]:text-ink";
 
-export const HEADER_COPY = {
+const HEADER_COPY = {
   breadcrumb: "Breadcrumb",
   search: "Search",
   searchOrJump: "Search or jump to",
@@ -35,32 +35,23 @@ export const HEADER_COPY = {
 } as const;
 
 export interface AppHeaderProps {
-  active: Profile;
   pathname: string;
   email: string;
-  onSignOut: () => void;
   onSearch: () => void;
-  onReceive: () => void;
-  /** Null where the user can't move this profile's money. */
-  onSend: (() => void) | null;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }
 
 export function AppHeader({
-  active,
   pathname,
   email,
-  onSignOut,
   onSearch,
-  onReceive,
-  onSend,
   collapsed,
   onToggleCollapsed,
 }: AppHeaderProps) {
+  const { profile: active, signOut, openReceive, openSend } = useAppSession();
   const CollapseIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
   const money = can(active, PERMISSIONS.moneyRead);
-  // A business follows its payments; a personal profile's money in is its transfers, under Transactions.
   const viewAll =
     active.kind !== PROFILE_KINDS.personal && pageAllowed(active, APP_ROUTES.payments)
       ? APP_ROUTES.payments
@@ -70,7 +61,7 @@ export function AppHeader({
       <div className="lg:hidden">
         <AccountMenu
           email={email}
-          onSignOut={onSignOut}
+          onSignOut={signOut}
           side="bottom"
           trigger={
             <IconButton label={`${AUTH_COPY.account}: ${email}`} size="md">
@@ -110,14 +101,14 @@ export function AppHeader({
       <NotificationsMenu profileId={active.profileId} transfers={money} viewAllHref={viewAll} />
 
       <div className="hidden items-center gap-2 lg:flex">
-        {onSend ? (
-          <Button variant="secondary" onClick={onSend}>
+        {openSend ? (
+          <Button variant="secondary" onClick={openSend}>
             <Send aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.send}
           </Button>
         ) : null}
         {money ? (
-          <Button onClick={onReceive}>
+          <Button onClick={openReceive}>
             <QrCode aria-hidden className="size-[var(--fw-icon-sm)]" />
             {BALANCES_COPY.receive}
           </Button>
@@ -129,11 +120,9 @@ export function AppHeader({
 
 function Breadcrumb({ active, pathname }: { active: Profile; pathname: string }) {
   const { trail, invoiceId } = breadcrumb(pathname, active.kind);
-  // The invoice page reads the same invoice, so this comes from the cache.
   const invoice = useGetProfileInvoiceQuery(
     invoiceId ? { profileId: active.profileId, invoiceId, summary: true } : skipToken,
   );
-  // null: the invoice is still loading. One that fails to load leaves the trail at Invoices.
   const number: Crumb | null = invoice.data
     ? { label: invoiceNumber(invoice.data.number), href: pathname }
     : null;

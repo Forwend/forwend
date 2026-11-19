@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { blockingViolations } from "./axe";
+import { blockingViolations } from "../axe";
 import { freshCode, signIn } from "./session";
 
 // R-218: the owner opens Privy's own export page for the profile's server-made wallet; Forwend never sees the key.

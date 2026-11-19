@@ -11,7 +11,7 @@ const COPY = {
   done: "Done",
 };
 
-/** One filter of a list, as its menu takes it. Each group's first option is its default, such as All. */
+/** One filter of a list; each group's first option is its default, such as All. */
 export type FilterGroup = SelectMenuProps<string>;
 
 /** A typed menu as a group: the sheet only hands back values from the group's own options. */
@@ -19,10 +19,7 @@ export function filterGroup<T extends string>(group: SelectMenuProps<T>): Filter
   return group as unknown as FilterGroup;
 }
 
-/**
- * A list's filter menus. From small screens up they sit in the toolbar; a phone gets one Filters button with a count,
- * whose bottom sheet holds each menu's choices as chips.
- */
+/** A list's filter menus: in the toolbar from small screens up, a Filters button and sheet on phones. */
 export function ListFilters({ groups }: { groups: readonly FilterGroup[] }) {
   const [open, setOpen] = useState(false);
   const on = groups.filter((group) => group.value !== group.options[0]?.value).length;

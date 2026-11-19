@@ -1,4 +1,3 @@
-import { ART } from "@/shared/constants/art-colors";
 import { ridgePath } from "@/shared/lib/art-paths";
 import type { RidgeSpec } from "@/shared/types/art";
 
@@ -6,7 +5,16 @@ const W = 1600;
 
 const H = 1000;
 
-const C = ART.dusk;
+const C = {
+  skyTop: "#1C1930",
+  skyMid: "#4B3452",
+  horizon: "#D4865C",
+  sun: "#F2C48C",
+  ridgeFar: "#3B2E46",
+  ridgeMid: "#262031",
+  ridgeNear: "#16141D",
+  ground: "#0D0C11",
+} as const;
 
 const LAYERS: readonly { spec: RidgeSpec; fill: string }[] = [
   {
@@ -49,11 +57,7 @@ const LAYERS: readonly { spec: RidgeSpec; fill: string }[] = [
   },
 ];
 
-export interface DuskLandscapeProps {
-  className?: string;
-}
-
-export function DuskLandscape({ className }: DuskLandscapeProps) {
+export function DuskLandscape({ className }: { className: string }) {
   return (
     <svg
       className={className}

@@ -10,7 +10,7 @@ import { SETTINGS_TITLE, SettingsGroup } from "@/shared/components/settings-grou
 
 const INVALID = 422; // live mode with no mainnet switched on
 
-/** R-221: the profile's mode. On is test mode on the testnets; off is live mode on the mainnets (D-120). */
+/** On is test mode on the testnets; off is live mode on the mainnets. */
 export function DeveloperModeScreen() {
   const { profile } = useAppSession();
   const [save, { isLoading, isError, error }] = useSaveProfileModeMutation();

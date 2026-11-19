@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { expect, type Page, test } from "@playwright/test";
-import { blockingViolations } from "./axe";
+import { blockingViolations } from "../axe";
 import { freshCode, signIn } from "./session";
 
 // Sent comes from the worker's watcher (R-212), so this file runs one beside the api. Without the email key it sends

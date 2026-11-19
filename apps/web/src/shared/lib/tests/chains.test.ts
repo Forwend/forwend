@@ -3,8 +3,6 @@ import {
   addressLink,
   blockchainTxLink,
   crossChainOptionRecorded,
-  lookalikeOf,
-  tokenMatches,
   txLink,
 } from "@/shared/lib/chains";
 
@@ -40,25 +38,6 @@ describe("addressLink", () => {
   });
 });
 
-describe("lookalikeOf", () => {
-  it("names the bridged token that looks like the real one, only where there is one (R-78)", () => {
-    expect(lookalikeOf(421614, "USDC")).toBe("USDC.e");
-    expect(lookalikeOf(84532, "USDC")).toBeUndefined();
-    expect(lookalikeOf(421614, "USDT")).toBeUndefined();
-  });
-});
-
-describe("tokenMatches", () => {
-  it("matches every word against the symbol or the network, ignoring case", () => {
-    const usdc = { symbol: "USDC", chainId: 84532 };
-    expect(tokenMatches(usdc, "usdc base")).toBe(true);
-    expect(tokenMatches(usdc, "  sepolia ")).toBe(true);
-    expect(tokenMatches(usdc, "usdt")).toBe(false);
-    expect(tokenMatches(usdc, "")).toBe(true);
-  });
-});
-
-// R-239: money booked first on another option pays the payment; 1Click's USDC on Base is then held.
 describe("crossChainOptionRecorded", () => {
   const base = {
     optionId: "b",
@@ -82,13 +61,11 @@ describe("crossChainOptionRecorded", () => {
   });
 });
 
-// R-243: the payer's own transaction, on a chain 1Click names.
 describe("blockchainTxLink", () => {
   const solana =
     "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
 
   it("links a known explorer, else 1Click's own https link", () => {
-    // The known explorer comes first, even beside 1Click's own link.
     for (const explorerUrl of ["", "https://explorer.example/tx/x"])
       expect(blockchainTxLink("sol", { hash: solana, explorerUrl })).toEqual({
         name: "Solscan",

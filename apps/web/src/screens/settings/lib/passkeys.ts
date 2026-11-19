@@ -3,19 +3,15 @@ import { PRIVY_PASSKEY } from "@/features/auth/constants/sign-in";
 
 export interface PasskeyRow {
   credentialId: string;
-  /** The password manager that keeps it, when the browser says (iCloud Keychain, Google Password Manager). */
-  name: string | null;
-  /** The browser and system it was made on. */
-  madeOn: string | null;
+  name: string | null; // password manager, e.g. iCloud Keychain
+  madeOn: string | null; // browser and system
   added: Date | null;
   lastUsed: Date | null;
-  /** Privy's second step (R-219): removing it leaves two-step on with nothing that can answer it. */
-  twoStep: boolean;
+  twoStep: boolean; // enrolled as Privy's second step
 }
 
 const SIGN_IN_TYPES: readonly string[] = ["email", "google_oauth", PRIVY_PASSKEY];
 
-/** The account's passkeys, newest first (R-217). */
 export function passkeysOf(accounts: readonly LinkedAccountWithMetadata[]): PasskeyRow[] {
   return accounts
     .flatMap((a) =>

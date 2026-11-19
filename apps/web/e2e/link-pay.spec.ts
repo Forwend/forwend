@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { blockingViolations } from "./privy/axe";
+import { blockingViolations } from "./axe";
 import { sampleInvoice } from "./privy/sample-api";
 import { sidewaysScroll } from "./sideways";
 

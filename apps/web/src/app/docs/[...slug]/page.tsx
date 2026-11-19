@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DOCS_PAGES } from "@/screens/docs/constants/docs-content";
 import { DocsScreen } from "@/screens/docs/docs-screen";
+import { docsMetadata } from "@/screens/docs/lib/docs-metadata";
 import { docsPath } from "@/shared/config/docs-routes";
-import { SITE } from "@/shared/config/site";
 
 interface DocsTopicProps {
   params: Promise<{ slug: string[] }>;
@@ -17,26 +17,12 @@ export async function generateMetadata({ params }: DocsTopicProps): Promise<Meta
   const { slug } = await params;
   const article = DOCS_PAGES.find((page) => page.slug === slug.join("/"));
   if (!article) notFound();
-  const path = docsPath(article.slug);
-  return {
+  return docsMetadata({
     title: `${article.title} · Docs`,
+    heading: article.title,
     description: article.description,
-    alternates: { canonical: path },
-    openGraph: {
-      type: "website",
-      siteName: SITE.name,
-      url: path,
-      title: article.title,
-      description: article.description,
-      images: ["/opengraph-image"],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: article.title,
-      description: article.description,
-      images: ["/opengraph-image"],
-    },
-  };
+    path: docsPath(article.slug),
+  });
 }
 
 export default async function DocsTopic({ params }: DocsTopicProps) {

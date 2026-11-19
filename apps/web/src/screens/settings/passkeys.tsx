@@ -15,9 +15,7 @@ import { shortDate } from "@/shared/lib/dates";
 
 const COPY = SETTINGS_COPY.account;
 
-// R-217: each passkey with where it was made, when it was added and last used; another can be added at any time and
-// one removed behind a dialog. Privy makes both changes in the browser, so the api is asked first whether this session
-// is fresh: a stale one confirms it's you in place. That binds Forwend's screens, not Privy's own API (Q-13).
+// Privy changes passkeys in the browser; the API's freshness check guards Forwend's screens only.
 export function Passkeys() {
   const { user } = usePrivy();
   const accounts = user?.linkedAccounts ?? [];
@@ -103,10 +101,9 @@ function PasskeyItem({
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState("");
   const name = passkey.name ?? COPY.methods.passkey;
-  // Two passkeys with no name read apart by where they were made.
   const label = COPY.removeLabel(passkey.madeOn ? COPY.namedOn(name, passkey.madeOn) : name);
   const reasonId = useId();
-  // Privy leaves two-step on with nothing to answer it when its passkey goes, so that one stays until two-step is off.
+  // Privy keeps two-step on when its passkey goes, locking the owner out, so that one stays.
   const blocked = !removable ? COPY.onlyWay : passkey.twoStep ? COPY.twoStepPasskey : null;
   const meta = [
     passkey.madeOn,
@@ -117,7 +114,6 @@ function PasskeyItem({
         : null,
   ].filter(Boolean);
 
-  // The row leaves the list once Privy has removed it, and its dialog with it.
   const remove = async () => {
     setError("");
     setRemoving(true);
@@ -177,7 +173,6 @@ function PasskeyItem({
             {error}
           </p>
         ) : null}
-        {/* Confirm it's you takes the place of the dialog's buttons, as in other protected dialogs. */}
         <div className="mt-5">
           {fresh.step ?? (
             <form method="dialog" className="flex flex-wrap justify-end gap-2">

@@ -1,14 +1,8 @@
 import { chainName } from "@/shared/lib/chains";
-import { foldText } from "@/shared/lib/search";
+import { matchesWords } from "@/shared/lib/search";
 import type { AssetGroup, AssetOption } from "@/shared/types/asset-selection";
 
 const key = (option: AssetOption) => `${option.chainId}:${option.token}`;
-
-/** Every word must match the symbol, the network or the contract, so "usdc base" and "0x036c" both find one. */
-function matches(option: AssetOption, words: readonly string[]): boolean {
-  const text = foldText(`${option.symbol} ${chainName(option.chainId)} ${option.token}`);
-  return words.every((word) => text.includes(word));
-}
 
 /** The options grouped by the allowlist's symbol, each group's networks by name; null `only` keeps every option. */
 export function assetGroups(
@@ -16,11 +10,11 @@ export function assetGroups(
   query: string,
   only: ReadonlySet<string> | null,
 ): AssetGroup[] {
-  const words = foldText(query).split(/\s+/).filter(Boolean);
   const groups = new Map<string, AssetOption[]>();
   for (const option of options) {
     if (only && !only.has(key(option))) continue;
-    if (!matches(option, words)) continue;
+    if (!matchesWords(`${option.symbol} ${chainName(option.chainId)} ${option.token}`, query))
+      continue;
     const group = groups.get(option.symbol);
     if (group) group.push(option);
     else groups.set(option.symbol, [option]);

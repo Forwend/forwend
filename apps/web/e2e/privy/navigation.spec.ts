@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { panelsOffMargin, sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import {
   activityItem,
   CONFIRMING_INVOICE,

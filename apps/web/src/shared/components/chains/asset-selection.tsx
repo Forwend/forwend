@@ -43,15 +43,12 @@ export interface AssetSelectionProps {
   label: string;
   options: readonly AssetOption[];
   selected: ReadonlySet<string>;
-  /** Several keys at once when a whole asset is turned on or off. */
   onChange: (keys: readonly string[], on: boolean) => void;
   disabled?: boolean;
-  /** Why this option can't be turned off right now (the last one on), shown under it. */
-  lockedReason?: (key: string) => string | null;
+  lockedReason?: (key: string) => string | null; // null when it can be turned off
 }
 
-/** Which assets and networks are accepted: grouped by asset, each network its own exact contract, so USDC on Base
- * and USDC on Arbitrum read as one asset without ever becoming interchangeable. */
+/** Accepted assets, grouped by symbol, yet each network stays its own exact contract. */
 export function AssetSelection({
   label,
   options,
@@ -111,7 +108,6 @@ export function AssetSelection({
           {groups.slice(0, groupsShown).map((group) => {
             const keys = group.options.map(assetKey);
             const on = keys.filter((key) => selected.has(key)).length;
-            // A search shows the networks it matched; otherwise a group opens on demand, or when it has only one.
             const expanded = searching || open.has(group.symbol) || group.options.length === 1;
             const locked = keys.map((key) => (selected.has(key) ? lockedReason?.(key) : null));
             return (
@@ -213,7 +209,6 @@ function NetworkRows({
                 onChange={(event) => onChange([key], event.target.checked)}
                 className="min-h-0"
               />
-              {/* The row's text opens the same box, as a label would. */}
               <label
                 htmlFor={key}
                 className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"
