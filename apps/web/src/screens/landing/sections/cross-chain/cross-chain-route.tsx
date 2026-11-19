@@ -30,7 +30,7 @@ import {
 import styles from "./cross-chain.module.css";
 
 const [, , , PAID_MS] = ROUTE_TIMES;
-// The last frame: paid, with the whole amount in. The page renders it first, so it also serves no-JS and reduced motion.
+// The paid last frame, rendered first so it also serves no-JS and reduced motion.
 const STILL_MS = PAID_MS + ROUTE_COUNT_MS;
 
 interface Line {
@@ -51,7 +51,7 @@ function phaseAt(ms: number) {
   return ROUTE_TIMES.filter((start) => ms >= start).length;
 }
 
-/** The share of the amount shown as arrived, in thousandths: it counts up fast, then settles. */
+/** The share of the amount shown as arrived, in thousandths. */
 function arrivedAt(ms: number) {
   const t = Math.min(1, Math.max(0, (ms - PAID_MS) / ROUTE_COUNT_MS));
   return BigInt(Math.round(1000 * (1 - (1 - t) ** 3)));
@@ -91,11 +91,7 @@ function RouteStatus({ phase }: { phase: number }) {
   return status ? <StatusPill status={status} /> : null;
 }
 
-/**
- * One sample payment on its way: a token leaves the customer, NEAR Intents converts it and USDC on Base arrives. It
- * loops over the sample tokens while on screen, pauses under the pointer or focus, and stays on its last frame when
- * the visitor asks for reduced motion.
- */
+/** Loops the sample tokens while on screen; pauses under pointer or focus; still under reduced motion. */
 export function CrossChainRoute() {
   const [run, setRun] = useState({ pick: 0, ms: STILL_MS });
   const [moving, setMoving] = useState(false);

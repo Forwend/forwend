@@ -15,7 +15,7 @@ const SAMPLE_STORE = {
 };
 
 export const hash = (c: string) => `0x${c.repeat(64)}`;
-// GET /v1/me lists every permission for the owner (R-138). Its profiles are in Developer mode, on the testnets (D-120).
+// GET /v1/me for the owner, who holds every permission, in Developer mode on the testnets.
 export const OWNER = {
   role: "owner",
   livemode: false,
@@ -179,7 +179,6 @@ const ACTIVITY = INVOICES.flatMap((inv) => [
 ]);
 export const sampleTransfer = (i: number) => {
   const out = i % 4 === 3;
-  // R-108
   const paid = !out && i % 5 === 0;
   return {
     chainId: 84532,
@@ -205,8 +204,7 @@ export const sampleTransfer = (i: number) => {
         }
       : null,
     recordsValue: null as { currency: string; amount: string; rateDate: string } | null,
-    // R-224: the first send paid its own fee, as on Arc; the rest show none.
-    feePaid: i === 3 ? "3908" : null,
+    feePaid: i === 3 ? "3908" : null, // the first send paid its own fee, as on Arc
   };
 };
 export const TRANSFERS = Array.from({ length: 30 }, (_, i) => sampleTransfer(i));
@@ -228,13 +226,11 @@ interface SampleLists {
   invoices: SampleInvoice[];
   activity: SampleItem[];
   transfers: SampleTransfer[];
-  // The bell's invoice events (R-81); none unless a test gives them.
-  events?: object[];
+  events?: object[]; // the bell's invoice events
 }
 const SAMPLE_LISTS: SampleLists = { invoices: INVOICES, activity: ACTIVITY, transfers: TRANSFERS };
 
-// The API's filters and search (docs/backend/api.md) on the fields these samples use, then its cursor pages.
-// The `state` filter (D-114): paid stays paid once in the wallet; a detected payment is confirming.
+// The api's `state` filter: paid stays paid once in the wallet; a detected payment is confirming.
 const invoiceFilter = (inv: Pick<SampleInvoice, "paymentStatus">) =>
   inv.paymentStatus === "paid"
     ? "paid"
@@ -273,7 +269,6 @@ function listPage<T>(
   };
 }
 
-// R-92
 const SAMPLE_BILLING = {
   name: "Sample shop GmbH",
   address: "Hauptstr. 1\n10115 Berlin",
@@ -283,24 +278,22 @@ const SAMPLE_BILLING = {
   updatedAt: "2026-09-02T00:00:00Z",
 };
 
-/** null as billing: a merchant that has not saved them yet. */
 export async function mockApi(
   page: Page,
   lists: SampleLists = SAMPLE_LISTS,
-  billing: object | null = SAMPLE_BILLING,
+  billing: object | null = SAMPLE_BILLING, // null: no billing details saved yet
 ) {
-  // The profile's email setting (R-80), changed by PUT for the rest of the page's life.
   const notifications = { email: true, address: "owner@example.com" };
   let details = billing;
-  // R-110: the records currency PUT saves; with one, each transaction has its value at a fixed 0.90 per USD.
+  // The records currency a PUT saves; with one, each transaction is valued at a fixed 0.90 per USD.
   let recordsCurrency: string | null = null;
   // Our API only: Privy's own API is also under /api/v1.
   await page.route("/api/v1/**", (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace(/^\/api/, "");
-    // Confirm it's you is the real api's: it emails the code the test reads (R-137).
+    // The real api handles fresh sign-in: it emails the code the test reads.
     if (path.startsWith("/v1/me/fresh-sign-in")) return route.fallback();
-    // USDC at exactly 1 USD, so the overview's figures read their token amounts (R-178).
+    // USDC at exactly 1 USD, so the overview's figures read their token amounts.
     if (path === "/v1/prices") {
       return route.fulfill({
         json: {
@@ -336,7 +329,7 @@ export async function mockApi(
         },
       });
     }
-    // The public read, by the pay link's token (D-86), leaves out the client; the profile's own read has it.
+    // The public read, by the pay link's token, leaves out the client; the profile's own read has it.
     const owned = lists.invoices.find(
       (inv) => path === `/v1/profiles/${MERCHANT_ID}/invoices/${inv.invoiceId}`,
     );
@@ -389,12 +382,10 @@ export async function mockApi(
         recordsCurrency = route.request().postDataJSON().currency;
       return route.fulfill({ json: { currency: recordsCurrency } });
     }
-    // R-108
     if (what?.startsWith("transactions/") && what.endsWith("/label"))
       return route.fulfill({ status: 204 });
     if (what === "transactions.csv")
       return route.fulfill({ contentType: "text/csv", body: "Date (UTC),Direction\r\n" });
-    // R-112
     if (what === "statement.pdf")
       return route.fulfill({ contentType: "application/pdf", body: "%PDF-1.4" });
     if (what?.startsWith("events")) return route.fulfill({ json: { items: lists.events ?? [] } });
@@ -436,7 +427,6 @@ export async function mockApi(
         },
       });
     }
-    // The enabled tokens (R-136), which the invoice pages read for each token's symbol and decimals.
     if (what === "tokens") {
       return route.fulfill({
         json: {

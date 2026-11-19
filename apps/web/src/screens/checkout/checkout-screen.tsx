@@ -13,6 +13,7 @@ import { PaymentList } from "@/features/payments/components/payment-list";
 import { PAYMENT_SOURCE } from "@/features/payments/constants/payments";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const RECENT = { source: PAYMENT_SOURCE.checkout } as const;
@@ -27,13 +28,9 @@ export function CheckoutScreen() {
   const list = stores.currentData;
   return (
     <div className="flex flex-col gap-6">
-      {/* The desktop breadcrumb and the phone's sale screen name the page; tablets show the heading. */}
-      <h1 className="text-2xl font-semibold tracking-tight text-ink max-sm:sr-only lg:sr-only">
-        {COPY.title}
-      </h1>
+      <PageTitle className="max-sm:sr-only">{COPY.title}</PageTitle>
       {sale || list?.length || (!list && !stores.isError) ? (
         <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-          {/* The page's first view shows at once; each sale after it fades in where the last one was. */}
           <div
             key={sale?.session.sessionId ?? round}
             className={sale || round ? `min-w-0 ${FADE_IN}` : "min-w-0"}

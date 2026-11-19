@@ -7,7 +7,7 @@ import { PersonalOverview } from "@/screens/dashboard/personal-overview";
 
 export function DashboardScreen() {
   const { profile } = useAppSession();
-  // A new console per profile: switching between two business profiles never shows the last one's figures.
+  // A new overview per profile, so a switch never shows the last one's figures.
   return profile.kind === PROFILE_KINDS.personal ? (
     <PersonalOverview />
   ) : (

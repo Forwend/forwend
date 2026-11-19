@@ -7,7 +7,7 @@ import { AccountInitial, AccountMenu } from "@/features/auth/components/account-
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import { ProfileSwitcher } from "@/features/profiles/components/profile-switcher";
-import type { Profile } from "@/features/profiles/types/profile";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { isCurrentPage, navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -20,24 +20,13 @@ const ROW =
   "flex min-h-9 items-center gap-3 rounded-md text-sm outline-none pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-focus";
 
 export interface AppSidebarProps {
-  profiles: Profile[];
-  active: Profile;
-  onSwitch: (profileId: string) => void;
   pathname: string;
   email: string;
-  onSignOut: () => void;
   collapsed: boolean;
 }
 
-export function AppSidebar({
-  profiles,
-  active,
-  onSwitch,
-  pathname,
-  email,
-  onSignOut,
-  collapsed,
-}: AppSidebarProps) {
+export function AppSidebar({ pathname, email, collapsed }: AppSidebarProps) {
+  const { profile: active, profiles, chooseProfile, signOut } = useAppSession();
   const named = (label: string, node: ReactElement) =>
     collapsed ? (
       <Tooltip content={label} side="right">
@@ -72,7 +61,7 @@ export function AppSidebar({
           <ProfileSwitcher
             profiles={profiles}
             active={active}
-            onSwitch={onSwitch}
+            onSwitch={chooseProfile}
             compact={collapsed}
           />
         </div>
@@ -131,7 +120,7 @@ export function AppSidebar({
         {collapsed ? (
           <AccountMenu
             email={email}
-            onSignOut={onSignOut}
+            onSignOut={signOut}
             settings={pageAllowed(active, APP_ROUTES.settings)}
             side="right"
             trigger={
@@ -143,7 +132,7 @@ export function AppSidebar({
         ) : (
           <AccountMenu
             email={email}
-            onSignOut={onSignOut}
+            onSignOut={signOut}
             settings={pageAllowed(active, APP_ROUTES.settings)}
           />
         )}

@@ -16,19 +16,4 @@ export const ART = {
     pineFar: "#4A7460",
     haze: "#F4F8F7",
   },
-  dusk: {
-    skyTop: "#1C1930",
-    skyMid: "#4B3452",
-    horizon: "#D4865C",
-    sun: "#F2C48C",
-    ridgeFar: "#3B2E46",
-    ridgeMid: "#262031",
-    ridgeNear: "#16141D",
-    ground: "#0D0C11",
-  },
-  halftone: {
-    ground: "#F1F4FA",
-    dot: "#1F44D6",
-    dotSoft: "#9DB0F2",
-  },
 } as const;

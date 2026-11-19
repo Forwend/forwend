@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { blockingViolations } from "./axe";
+import { blockingViolations } from "../axe";
 import { mockApi, OWNER } from "./sample-api";
 import { session } from "./session";
 

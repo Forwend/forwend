@@ -15,8 +15,7 @@ import { SETTINGS_ROW } from "@/shared/components/settings-group";
 const COPY = SETTINGS_COPY.account;
 type Method = Extract<MfaMethod, "passkey" | "totp">;
 
-// R-219: each second step Privy can ask for before it signs a send or shows a key, as a row of its own: a passkey and
-// an authenticator app. Money moves once both are on, so losing one never locks the owner out (Q-13).
+// Privy's second steps for sends and key export; with both on, one lost never locks the owner out.
 export function TwoStep() {
   const { user } = usePrivy();
   const { required } = useWalletMfa();
@@ -151,7 +150,6 @@ function MethodRow({
       {/* Mounted whatever the state: Privy turns the method on before the setup has recorded it with Forwend. */}
       <Dialog
         triggerLabel={`${COPY.setUp} ${name.toLowerCase()}`}
-        // Beside a method already on, this adds one, and its first step asks for the one on.
         title={on.length > 0 ? COPY.addMethod(name) : TWO_STEP_COPY.setUp}
         onClose={() => setSetup(0)}
         trigger={(open) =>

@@ -8,11 +8,11 @@ import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy"
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { notFound } from "@/shared/api/server-reach";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface ClientFormScreenProps {
-  /** The client to edit; a new client without one. */
-  clientId?: string;
+  clientId?: string; // none: a new client
 }
 
 export function ClientFormScreen({ clientId }: ClientFormScreenProps) {
@@ -25,10 +25,9 @@ export function ClientFormScreen({ clientId }: ClientFormScreenProps) {
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex min-w-0 flex-col gap-2">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
+        <PageTitle className="break-words">
           {clientId ? (client?.name ?? COPY.editTitle) : COPY.newTitle}
-        </h1>
+        </PageTitle>
         <p className="text-sm text-muted">{COPY.intro}</p>
       </div>
       {!clientId ? (

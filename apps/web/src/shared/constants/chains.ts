@@ -1,13 +1,12 @@
 import type { BrandIconName } from "@forwend/ui-web";
 
-/** A block explorer: its name for link labels and its base URL; transactions are at /tx/<hash>. */
+/** A block explorer; transactions are at <url>/tx/<hash>. */
 interface Explorer {
   name: string;
   url: string;
 }
 
-/** The chains the API may return (packages/contracts/chains.json): mainnets in live mode, testnets in test mode.
- * Explorers come from each network's docs; a local chain has none. */
+/** Chains the API may return (packages/contracts/chains.json): mainnets in live mode, testnets in test mode. */
 export const CHAINS: Readonly<
   Record<
     number,
@@ -15,8 +14,7 @@ export const CHAINS: Readonly<
       name: string;
       icon?: BrandIconName;
       explorer?: Explorer;
-      // A bridged token that looks like the real one by name, which the receive address does not count (R-78).
-      lookalikes?: Readonly<Record<string, string>>;
+      lookalikes?: Readonly<Record<string, string>>; // bridged tokens the address doesn't count
     }
   >
 > = {
@@ -50,7 +48,6 @@ export const CHAINS: Readonly<
     name: "Arbitrum Sepolia",
     icon: "arbitrum",
     explorer: { name: "Arbiscan", url: "https://sepolia.arbiscan.io" },
-    // docs.arbitrum.io: USDC.e is USDC bridged from Ethereum, a different contract from native USDC.
     lookalikes: { USDC: "USDC.e" },
   },
   5042002: {
@@ -72,7 +69,7 @@ export const TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
   OUSD: "ousd",
 };
 
-/** NEAR Intents 1Click's chain names as payers know them (D-123); blockchainName writes any other in capitals. */
+/** NEAR Intents 1Click's chain names as payers know them; blockchainName writes any other in capitals. */
 export const BLOCKCHAIN_NAMES: Record<string, string> = {
   eth: "Ethereum",
   base: "Base",
@@ -123,7 +120,7 @@ export const CROSS_CHAIN_TARGET = {
   symbol: "USDC",
 } as const;
 
-/** Explorers of chains 1Click names, by its name of the chain; a transaction's hash follows the url (R-243). */
+/** Explorers of chains 1Click names, by its name of the chain; a transaction's hash follows the url. */
 export const BLOCKCHAIN_EXPLORERS: Record<string, { name: string; url: string }> = {
   eth: { name: "Etherscan", url: "https://etherscan.io/tx/" },
   base: { name: "Basescan", url: "https://basescan.org/tx/" },
@@ -139,7 +136,7 @@ export const BLOCKCHAIN_EXPLORERS: Record<string, { name: string; url: string }>
   near: { name: "NearBlocks", url: "https://nearblocks.io/txns/" },
 };
 
-/** Logos for 1Click's popular chains (R-246): its list names none, so any other chain shows its first letter. */
+/** Logos for 1Click's popular chains: its list names none, so any other chain shows its first letter. */
 export const BLOCKCHAIN_ICONS: Readonly<Record<string, BrandIconName>> = {
   eth: "ethereum",
   sol: "solana",
@@ -154,7 +151,7 @@ export const BLOCKCHAIN_ICONS: Readonly<Record<string, BrandIconName>> = {
   near: "near",
 };
 
-/** Logos for 1Click's tokens by symbol: those chains' own tokens, USDC and USDT (R-246). */
+/** Logos for 1Click's tokens by symbol: those chains' own tokens, USDC and USDT. */
 export const CROSS_CHAIN_TOKEN_ICONS: Readonly<Record<string, BrandIconName>> = {
   USDC: "usdc",
   USDT: "usdt",

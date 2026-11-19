@@ -9,7 +9,7 @@ import { AcceptInvite, InviteSkeleton } from "@/features/team/components/accept-
 import { INVITE_COPY } from "@/features/team/constants/team-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-/** The page a team invite email opens (R-139): sign in, then accept. */
+/** The page a team invite email opens: sign in, then accept. */
 export function InviteScreen({ token }: { token: string }) {
   const { ready, authenticated } = usePrivy();
   return (

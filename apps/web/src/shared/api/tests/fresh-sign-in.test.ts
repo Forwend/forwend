@@ -19,7 +19,6 @@ const wrap = (base: ReturnType<typeof vi.fn>) =>
     (extra) => (extra as { freshSignIn?: () => Promise<boolean> }).freshSignIn,
   );
 
-// R-137: a change that needs a fresh sign-in is sent again only after the user signed in again.
 describe("withFreshSignIn", () => {
   it("asks for a sign-in on reauth_required, then sends the request once more", async () => {
     const base = vi.fn().mockResolvedValueOnce(reauth).mockResolvedValueOnce(ok);

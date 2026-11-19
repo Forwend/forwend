@@ -1,5 +1,4 @@
-/** The token logos the web ships in public/logos/tokens, by CoinGecko id (R-250, D-128). A token whose id is not
- * here shows its first letter: no request is made for a file that does not exist. */
+/** Token logos shipped in public/logos/tokens, by CoinGecko id; any other id shows its first letter. */
 export const TOKEN_LOGOS: ReadonlySet<string> = new Set([
   "aave",
   "adi-token",
@@ -97,8 +96,7 @@ export const TOKEN_LOGOS: ReadonlySet<string> = new Set([
   "zcash",
 ]);
 
-/** The network logos the web ships in public/logos/chains, by 1Click's chain code, for networks Forwend draws no
- * logo for itself. */
+/** Network logos shipped in public/logos/chains, by 1Click's chain code, for networks we draw no logo for. */
 export const CHAIN_LOGOS: ReadonlySet<string> = new Set([
   "abs",
   "adi",

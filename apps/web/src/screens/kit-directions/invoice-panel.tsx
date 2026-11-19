@@ -1,7 +1,5 @@
-import { formatTokenAmount } from "@forwend/ui-web";
+import { formatTokenAmount, shortAddress } from "@forwend/ui-web";
 import { SAMPLE_INVOICE, SAMPLE_STEPS } from "@/shared/examples/sample-invoice";
-
-const shortHash = `${SAMPLE_INVOICE.txHash.slice(0, 6)}…${SAMPLE_INVOICE.txHash.slice(-4)}`;
 
 export interface InvoicePanelProps {
   className?: string;
@@ -50,7 +48,7 @@ export function InvoicePanel({ className = "" }: InvoicePanelProps) {
         })}
       </ol>
       <p className="mt-4 font-mono text-xs text-[var(--muted)]">
-        Tx {shortHash} · settled to your wallet
+        Tx {shortAddress(SAMPLE_INVOICE.txHash)} · settled to your wallet
       </p>
     </div>
   );

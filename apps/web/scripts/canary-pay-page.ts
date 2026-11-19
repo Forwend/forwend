@@ -1,4 +1,4 @@
-// R-51: `node canary-pay-page.ts <web origin>` reads pay ids from stdin and prints one JSON line per id.
+// `node canary-pay-page.ts <web origin>` reads pay ids from stdin and prints one JSON line per id.
 // Reads only the DOM, never src/: the canary must not share the page's code. Keep uqr at ui-web's version.
 import { text } from "node:stream/consumers";
 import { chromium, type Page } from "@playwright/test";
@@ -28,7 +28,7 @@ function encodes(path: string, address: string) {
 }
 
 export async function readPayPage(page: Page, web: string, id: string): Promise<PayPage> {
-  // The canary is no payer: its loads must not count as views of the pay link (R-125).
+  // The canary is no payer: its loads must not count as views of the pay link.
   await page.route("**/v1/invoices/*/views", (route) => route.abort());
   await page.goto(`${web}/pay/${id}`);
   // Scoped to main: Next's route announcer is also role=alert.

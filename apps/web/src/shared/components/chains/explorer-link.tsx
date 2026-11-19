@@ -5,14 +5,9 @@ import { txLink } from "@/shared/lib/chains";
 export type ExplorerLinkProps = {
   txHash: string;
   named?: boolean;
-  /** Shown before the icon, such as the short hash. */
   children?: ReactNode;
   className?: string;
-} & (
-  | { chainId: number }
-  /** A link made elsewhere, as for a chain 1Click names (R-243). */
-  | { link: { name: string; href: string } | null }
-);
+} & ({ chainId: number } | { link: { name: string; href: string } | null });
 
 /** The transaction on its chain's explorer, in a new tab; nothing for a chain without one. */
 export function ExplorerLink({

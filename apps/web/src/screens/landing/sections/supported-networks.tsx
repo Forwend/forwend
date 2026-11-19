@@ -2,10 +2,10 @@ import { BrandIcon, type BrandIconName } from "@forwend/ui-web";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import styles from "./supported-networks.module.css";
 
-// USDT has artwork but no enabled payments, so it stays out (docs: reference/networks).
+// USDT has artwork but no enabled payments, so it stays out.
 const TOKENS = ["USDC", "OUSD"] as const;
 
-// Each network once, by its mainnet's name: a mainnet's chain id is lower than its testnet's, so CHAINS lists it first.
+// One entry per network, named by its mainnet: CHAINS lists a mainnet before its testnet.
 const NETWORKS = new Map<BrandIconName, string>();
 for (const chain of Object.values(CHAINS)) {
   if (chain.icon && !NETWORKS.has(chain.icon)) NETWORKS.set(chain.icon, chain.name);
@@ -17,7 +17,7 @@ const ITEMS: readonly { name: string; icon: BrandIconName }[] = [
     return icon ? [{ name: symbol, icon }] : [];
   }),
   ...Array.from(NETWORKS, ([icon, name]) => ({ name, icon })),
-  // Customers can also pay from other chains through it (D-123).
+  // Customers can also pay from other chains through it.
   { name: "NEAR Intents", icon: "near" },
 ];
 

@@ -6,7 +6,7 @@ import { PAYMENT_STATE_COPY as COPY } from "@/shared/constants/payment-state-cop
 import { STATE_STATUS } from "@/shared/lib/payment-state";
 import type { PaymentStateFilter as Filter } from "@/shared/types/payment-state";
 
-/** The one status filter of every payment list: each state with the label and icon of its status pill (D-114). */
+/** The one status filter of every payment list: each state with the label and icon of its status pill. */
 export function paymentStateGroup(
   value: Filter,
   onValueChange: (value: Filter) => void,

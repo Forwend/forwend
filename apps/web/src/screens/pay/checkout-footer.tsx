@@ -1,25 +1,22 @@
 import { LogoMark } from "@forwend/ui-web";
 import { ExternalLink } from "lucide-react";
 import { NeedHelp } from "@/features/pay/components/need-help";
+import { LEFT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const LINK = "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-focus";
-// A short rule between the footer's links.
 const RULE = <span aria-hidden className="h-3 w-px bg-current opacity-40" />;
 
 export interface CheckoutFooterProps {
-  className?: string;
-  /** In a merchant's page (R-168): the pay link's token, which opens the same checkout in a tab of its own. */
-  embeddedToken?: string;
+  embeddedToken?: string; // only inside a merchant's page
 }
 
-/** The public checkout pages' footer: who runs the payment, and help. A new tab keeps the checkout open. In an embed
- * it also opens the checkout in a tab, where the browser shows its address. */
-export function CheckoutFooter({ className = "", embeddedToken }: CheckoutFooterProps) {
+/** Links open new tabs so the checkout stays open; in an embed, one opens the checkout itself. */
+export function CheckoutFooter({ embeddedToken }: CheckoutFooterProps) {
   return (
     <footer
-      className={`mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted ${className}`}
+      className={`mt-auto flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted lg:col-start-1 lg:justify-start lg:pt-4 lg:pb-8 lg:text-muted ${LEFT_PAD}`}
     >
       <a
         href={APP_ROUTES.site}

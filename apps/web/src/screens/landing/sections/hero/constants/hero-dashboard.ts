@@ -1,6 +1,6 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 
-// Illustrative figures for the hero's drawn overview. The layout and labels follow the signed-in merchant overview.
+// Illustrative figures for the hero's drawn copy of the merchant overview.
 export const DASHBOARD = {
   profile: "North & Co.",
   balance: "18,734.20",
@@ -14,7 +14,7 @@ export const DASHBOARD = {
     ],
   },
   received: {
-    // Money in each day of the past month, in US cents; the card's figure is their sum.
+    // US cents a day; the card's figure is their sum.
     days: [
       0n,
       21000n,

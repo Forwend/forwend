@@ -1,5 +1,3 @@
-// R-11: fails unless Performance >= 90, Accessibility >= 95 and LCP < 2.5 s on "/" (mobile preset).
-// D-14: real devtools throttling, not simulated: locally the simulation counts every script toward LCP.
 import { spawn, spawnSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import * as chromeLauncher from "chrome-launcher";
@@ -35,7 +33,7 @@ try {
     const { lhr } = await lighthouse(URL_UNDER_TEST, {
       port: chrome.port,
       onlyCategories: ["performance", "accessibility"],
-      throttlingMethod: "devtools",
+      throttlingMethod: "devtools", // simulated counts every script toward LCP locally
       output: "json",
       logLevel: "error",
     });

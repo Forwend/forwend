@@ -5,26 +5,20 @@ import type { ReactNode, Ref } from "react";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
 
 export interface DetailHeaderProps {
-  /** Phones have no breadcrumb, so they get a way back to the list; a page that shows it while loading passes none. */
   back?: { href: string; label: string };
   title: ReactNode;
-  /** Small badges after the title: Testnet, Test mode, a link's state. */
   badges?: ReactNode;
-  /** One quiet line: how it was made, where, when. */
   meta?: ReactNode;
-  /** A tile before the title that says what kind of record it is. */
   icon?: ReactNode;
-  /** The one figure the record is about, beside the actions: an amount due, a total. */
   figure?: { label: string; value: ReactNode };
-  /** Buttons and the More actions menu, at the title row's end. */
   actions?: ReactNode;
-  /** The record's figure and states, such as the amount with its payment status. */
-  summary?: ReactNode;
-  /** For a page that moves focus to its title, once an action that went away is done. */
   titleRef?: Ref<HTMLHeadingElement>;
 }
 
-/** The top of every record page (payment, invoice, link, store, client, job): the same order everywhere. */
+export const RECORD_COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]";
+
+/** The top of every record page, in the same order everywhere. */
 export function DetailHeader({
   back,
   title,
@@ -33,7 +27,6 @@ export function DetailHeader({
   icon,
   figure,
   actions,
-  summary,
   titleRef,
 }: DetailHeaderProps) {
   return (
@@ -77,16 +70,11 @@ export function DetailHeader({
           </div>
         ) : null}
       </div>
-      {summary ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">{summary}</div>
-      ) : null}
     </header>
   );
 }
 
-/** The header while its record loads, with each part where the header puts it, so the page below stays put. The back
- * link already works. A record with a figure passes its label; the actions placeholder is as wide as the record's
- * actions, so on a phone the row wraps as theirs does. */
+/** The header while its record loads, each part in place so the page below stays put; the back link works. */
 export function DetailHeaderSkeleton({
   back,
   icon,
@@ -106,7 +94,6 @@ export function DetailHeaderSkeleton({
             figure
               ? {
                   label: figure,
-                  // Inline, so the figure's line keeps the text's baseline beside its label.
                   value: (
                     <span className="inline-block w-24 align-top">
                       <LineSkeleton className="w-full" />

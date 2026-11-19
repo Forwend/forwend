@@ -1,5 +1,5 @@
 import { ART } from "@/shared/constants/art-colors";
-import { pinePath, ridgePath, ridgeY, seeded } from "@/shared/lib/art-paths";
+import { ridgePath, ridgeY } from "@/shared/lib/art-paths";
 import type { RidgeSpec } from "@/shared/types/art";
 
 const W = 1600;
@@ -54,6 +54,30 @@ const MEADOW: RidgeSpec = {
 const RIVER =
   "M792 676 C770 700 724 712 742 742 C762 778 640 812 610 870 C590 910 548 960 520 1000 L1110 1000 C1040 940 980 900 930 846 C888 800 846 772 872 738 C890 712 846 694 812 676 Z";
 
+// Small seeded generator (mulberry32) so tree placement is stable between renders.
+function seeded(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pinePath(x: number, baseY: number, height: number): string {
+  const w = height * 0.36;
+  const tiers = [0, 0.3, 0.55].map((t, i) => {
+    const top = baseY - height + t * height;
+    const bottom = top + height * (0.48 - i * 0.04);
+    const half = w * (0.55 + i * 0.22);
+    return `M${x} ${top.toFixed(1)} L${(x + half).toFixed(1)} ${bottom.toFixed(1)} L${(x - half).toFixed(1)} ${bottom.toFixed(1)} Z`;
+  });
+  const trunk = `M${x - w * 0.06} ${baseY - height * 0.08} h${w * 0.12} v${height * 0.08} h${-w * 0.12} Z`;
+  return [...tiers, trunk].join(" ");
+}
+
 function pines(
   seed: number,
   from: number,
@@ -70,11 +94,7 @@ function pines(
   }).join(" ");
 }
 
-export interface DawnLandscapeProps {
-  className?: string;
-}
-
-export function DawnLandscape({ className }: DawnLandscapeProps) {
+export function DawnLandscape({ className }: { className: string }) {
   return (
     <svg
       className={className}

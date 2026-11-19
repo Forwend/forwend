@@ -17,19 +17,17 @@ export interface ReceivedCardProps {
   days: number;
   onRange: (range: HistoryRange) => void;
   rangeName: string;
-  /** The last answer's series, kept dimmed while the next range loads. */
-  received: HistorySeries | null;
+  received: HistorySeries | null; // the last range's, kept while the next loads
   receivedNow: HistorySeries | null;
   sentNow: HistorySeries | null;
-  /** How many transfers came in over the range, "100+" when the read did not reach its start. */
-  transfers: string | null;
+  transfers: string | null; // "100+" when the read stops short of the range
   loading: boolean;
   fetching: boolean;
   failed: boolean;
   onRetry: () => void;
 }
 
-/** Money in over time at market prices: the running total climbs to the range's figure. */
+/** Money in over the range at market prices, drawn as a running total. */
 export function ReceivedCard({
   range,
   days,
@@ -72,7 +70,6 @@ export function ReceivedCard({
         ) : failed || (!loading && !received) ? (
           <p className="text-3xl font-medium text-muted">—</p>
         ) : (
-          // The figure's own line box, so the loaded figure takes its place.
           <Skeleton className="h-[1.15em] w-40 text-3xl" />
         )}
         {sentNow ? (
@@ -95,7 +92,6 @@ export function ReceivedCard({
             <p className="m-auto text-sm text-muted">{BALANCES_COPY.historyUnavailable}</p>
           </EmptyChart>
         ) : (
-          // Nothing received draws as a flat line at zero, as a real zero should.
           <ReceivedChart
             series={received}
             label={BALANCES_COPY.receivedOver(rangeName)}

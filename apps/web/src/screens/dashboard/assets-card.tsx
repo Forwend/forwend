@@ -23,16 +23,13 @@ export interface AssetsCardProps {
 
 // The share bar's steps, darkest first, so the largest holding reads first in both themes.
 const SHARES = ["bg-ink", "bg-muted", "bg-subtle", "bg-line-strong"] as const;
-// A profile can hold hundreds of tokens: the card shows the largest, My assets lists them all.
 const SHOWN = 5;
 
-/** A part of the whole in whole percent, "<1%" for a sliver, so small holdings never read as none. */
 function share(part: bigint, whole: bigint): string {
   const percent = Number((part * 100n) / whole);
   return part > 0n && percent === 0 ? "<1%" : `${percent}%`;
 }
 
-/** What the wallet holds, token by token: the share bar shows the mix, each row its amount and market value. */
 export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProps) {
   const rows = (balances?.tokens ?? []).map((t) => {
     const usd = latestUsd(findPrice(prices ?? [], t.chainId, t.token));
@@ -43,7 +40,6 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
     .filter((r) => r.t.wallet !== null && BigInt(r.t.wallet) > 0n)
     .sort((a, b) => Number((b.cents ?? 0n) - (a.cents ?? 0n)));
   const total = held.reduce((sum, r) => sum + (r.cents ?? 0n), 0n);
-  // The bar's last step holds everything after the largest three.
   const parts = held.filter((r) => r.cents && r.cents > 0n).map((r) => r.cents ?? 0n);
   const bar = [
     ...parts.slice(0, SHARES.length - 1),
@@ -64,7 +60,6 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
       }
       className="flex flex-col"
     >
-      {/* One minimum for every state, so the card keeps its size from loading to loaded. */}
       <div className="flex min-h-40 flex-1 flex-col">
         {!balances && failed ? (
           <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />
@@ -117,7 +112,6 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
                   className="flex items-center justify-between gap-4 py-2.5"
                 >
                   <span className="flex min-w-0 items-center gap-3">
-                    {/* Its step in the bar above: the same shade, largest first. */}
                     <span
                       aria-hidden
                       className={`size-2 shrink-0 rounded-pill ${SHARES[Math.min(i, SHARES.length - 1)]}`}

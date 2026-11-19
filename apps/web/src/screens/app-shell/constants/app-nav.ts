@@ -1,18 +1,24 @@
 import {
   ArrowLeftRight,
   BanknoteArrowDown,
+  Bell,
   BriefcaseBusiness,
   ChartLine,
   Code,
+  Coins,
   FileText,
+  FlaskConical,
   HandCoins,
   History,
+  Landmark,
   LayoutGrid,
   Link2,
+  ShieldCheck,
   ShoppingBag,
   Store,
   Users,
   WalletCards,
+  WalletMinimal,
 } from "lucide-react";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { API_KEYS_COPY } from "@/features/api-keys/constants/api-keys-copy";
@@ -24,13 +30,20 @@ import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
 import { PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import {
+  BILLING_DETAILS_COPY,
+  DEVELOPER_MODE_COPY,
+  NOTIFICATIONS_COPY,
+  TOKENS_COPY,
+} from "@/features/profiles/constants/profiles-copy";
 import type { Permission, ProfileKind } from "@/features/profiles/types/profile";
 import { STORES_COPY } from "@/features/stores/constants/stores-copy";
+import { TEAM_COPY } from "@/features/team/constants/team-copy";
 import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transactions-copy";
-import type { NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
+import type { NavGroup, NavItem, SettingsPage } from "@/screens/app-shell/types/app-nav";
+import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-// Pages not built yet show as coming, not links: the owner chose to show what each profile will have (PLAN 8-10).
 export const NAV = {
   overview: {
     href: APP_ROUTES.home,
@@ -59,7 +72,6 @@ export const NAV = {
   payments: {
     href: APP_ROUTES.payments,
     label: PAYMENTS_COPY.title,
-    // Money coming in, apart from Transactions' both ways.
     icon: BanknoteArrowDown,
     permission: PERMISSIONS.invoicesRead,
   },
@@ -69,14 +81,12 @@ export const NAV = {
     icon: FileText,
     permission: PERMISSIONS.invoicesRead,
   },
-  // A personal profile's invoices are requests (D-52): the same pages under their own name.
   requests: {
-    href: APP_ROUTES.invoices,
+    href: APP_ROUTES.invoices, // a personal profile's invoices
     label: REQUESTS_COPY.invoices,
     icon: HandCoins,
     permission: PERMISSIONS.invoicesRead,
   },
-  // A link is an invoice template, so the invoice permissions reach it (R-140).
   links: {
     href: APP_ROUTES.links,
     label: LINKS_COPY.title,
@@ -101,14 +111,12 @@ export const NAV = {
     icon: Store,
     permission: PERMISSIONS.storesRead,
   },
-  // In person: a one-off checkout shown to the customer as a QR code.
   checkout: {
     href: APP_ROUTES.checkout,
     label: CHECKOUT_COPY.title,
     icon: ShoppingBag,
     permission: PERMISSIONS.invoicesWrite,
   },
-  // R-145: the profile's secret API keys, for the owner and Admins (D-95).
   developers: {
     href: APP_ROUTES.developers,
     label: API_KEYS_COPY.title,
@@ -120,7 +128,6 @@ export const NAV = {
 
 const MONEY: NavGroup = { label: "Money", items: [NAV.overview, NAV.transactions, NAV.balances] };
 const INSIGHTS: NavGroup = { label: "Insights", items: [NAV.analytics] };
-// The heading over what a profile is paid with; not "Payments", which is an item in it.
 const GET_PAID = "Get paid";
 
 export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
@@ -156,17 +163,62 @@ export const APP_NAV: Readonly<Record<ProfileKind, readonly NavGroup[]>> = {
   ],
 };
 
-/** The pages outside the sidebar, opened from the account menu and elsewhere, and what each needs (D-93). */
+/** The settings pages in menu order: the person's own, then the active profile's. */
+export const SETTINGS_PAGES: readonly SettingsPage[] = [
+  {
+    href: APP_ROUTES.account,
+    label: SETTINGS_COPY.account.title,
+    icon: ShieldCheck,
+    permission: PERMISSIONS.tokensRead,
+    profile: false,
+  },
+  {
+    href: APP_ROUTES.notifications,
+    label: NOTIFICATIONS_COPY.title,
+    icon: Bell,
+    permission: PERMISSIONS.notifications,
+    profile: false,
+  },
+  {
+    href: APP_ROUTES.billingDetails,
+    label: BILLING_DETAILS_COPY.title,
+    icon: Landmark,
+    permission: PERMISSIONS.billingRead,
+    profile: true,
+  },
+  {
+    href: APP_ROUTES.networks,
+    label: TOKENS_COPY.title,
+    icon: Coins,
+    permission: PERMISSIONS.tokensRead,
+    profile: true,
+  },
+  {
+    href: APP_ROUTES.developerMode,
+    label: DEVELOPER_MODE_COPY.title,
+    icon: FlaskConical,
+    permission: PERMISSIONS.tokensRead,
+    profile: true,
+  },
+  {
+    href: APP_ROUTES.team,
+    label: TEAM_COPY.title,
+    icon: Users,
+    permission: PERMISSIONS.leave, // every member may leave
+    profile: true,
+    kind: PROFILE_KINDS.merchant,
+  },
+  {
+    href: APP_ROUTES.wallet,
+    label: SETTINGS_COPY.wallet.title,
+    icon: WalletMinimal,
+    permission: PERMISSIONS.moneyMove, // owner only: the key moves the money
+    profile: true,
+  },
+];
+
+/** Pages outside the sidebar, opened from the account menu and elsewhere. */
 export const MENU_PAGES: readonly { href: string; permission: Permission }[] = [
   { href: APP_ROUTES.newStore, permission: PERMISSIONS.storesWrite },
-  { href: APP_ROUTES.billingDetails, permission: PERMISSIONS.billingRead },
-  { href: APP_ROUTES.notifications, permission: PERMISSIONS.notifications },
-  { href: APP_ROUTES.networks, permission: PERMISSIONS.tokensRead },
-  { href: APP_ROUTES.developerMode, permission: PERMISSIONS.tokensRead },
   { href: APP_ROUTES.settings, permission: PERMISSIONS.tokensRead },
-  { href: APP_ROUTES.account, permission: PERMISSIONS.tokensRead },
-  // The wallet's key moves its money, so only the owner sees the page (D-61, R-218).
-  { href: APP_ROUTES.wallet, permission: PERMISSIONS.moneyMove },
-  // Every member may leave; an Admin also manages the team there.
-  { href: APP_ROUTES.team, permission: PERMISSIONS.leave },
 ];

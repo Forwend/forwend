@@ -1,10 +1,4 @@
 // The api the browser tests' servers ask in place of the backend; playwright.config.ts starts it once.
-// - The embed check (R-168): only the two local test origins below may frame a checkout.
-// - The pay page's view and pick, answered as the api does.
-// - /shop: a merchant page that frames ?src and keeps what the frame posts to it.
-// - Checkout sessions for the example merchant (R-170), each paying through the pay page fixture's token.
-// - /__test/sessions: what the merchant sent, and a switch that makes a session paid.
-// - /__test/unmatched: every request no route answered, so a test that leaves an api call unmocked fails the run.
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 

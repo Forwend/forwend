@@ -2,7 +2,7 @@
 import { Button, buttonClasses, SearchField, SegmentedControl } from "@forwend/ui-web";
 import { ArrowLeftRight, Link2, Store } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { NewInvoiceLink } from "@/features/invoices/components/new-invoice-link";
 import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { ExportPayments } from "@/features/payments/components/export-payments";
@@ -23,9 +23,10 @@ import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { ListFilters } from "@/shared/components/list-filters";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { API_SETTLEMENT_STATUSES, PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
-import { useListFilters, withParam } from "@/shared/hooks/use-list-filters";
+import { setParam, useListFilters } from "@/shared/hooks/use-list-filters";
 import { narrowedBy } from "@/shared/lib/payment-state";
 import { paymentStateGroup } from "@/shared/lib/payment-state-filter";
 
@@ -35,7 +36,6 @@ const STATES = Object.values(PAYMENT_STATE_FILTERS);
 export function PaymentsScreen() {
   const { profile, openRequest } = useAppSession();
   const params = useSearchParams();
-  const pathname = usePathname();
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
   const list = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
@@ -44,7 +44,6 @@ export function PaymentsScreen() {
   const source = PAYMENT_SOURCES.find((value) => value === params.get("source"));
   const storeId = params.get("storeId") || undefined;
   const linkId = params.get("linkId") || undefined;
-  // Pending payments on the overview opens this for the money it shows as moving to the wallet.
   const moving = params.get("settlementStatus") === API_SETTLEMENT_STATUSES.pending;
   const filters: PaymentFilters = {
     q: list.apiQuery,
@@ -54,15 +53,7 @@ export function PaymentsScreen() {
     linkId,
     settlementStatus: moving ? API_SETTLEMENT_STATUSES.pending : undefined,
   };
-  const set = (name: string, value: string) => {
-    const { search, hash } = window.location;
-    window.history.replaceState(
-      null,
-      "",
-      `${pathname}${withParam(search, name, value === ALL ? "" : value)}${hash}`,
-    );
-  };
-  // Both filter lines say Show all payments, so either clears both.
+  const set = (name: string, value: string) => setParam(name, value === ALL ? "" : value);
   const showAll = () => {
     set("linkId", "");
     set("settlementStatus", "");
@@ -194,19 +185,15 @@ export function PaymentsScreen() {
   );
 
   return (
-    // A profile with no payments has nothing to export: the empty state hides the title row's Export too.
+    // No payments, nothing to export: the empty state hides the phone's Export too.
     <div className="flex flex-col gap-4 [&:has([data-page-empty])_[data-phone-export]]:hidden">
       <div className="flex flex-col gap-1">
-        {/* On a phone the title row carries Export, as an app's top bar carries its action. */}
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-            {COPY.title}
-          </h1>
+          <PageTitle>{COPY.title}</PageTitle>
           <div data-phone-export className="sm:hidden">
             {exportButton}
           </div>
         </div>
-        {/* Payments, Activity and Transactions overlap; one line says which this is. */}
         <p className="text-sm text-muted">{COPY.intro}</p>
       </div>
       {unknownSource || unknownSettlement || unknownStore ? (

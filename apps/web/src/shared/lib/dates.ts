@@ -46,8 +46,7 @@ export function dateTime(iso: string): string {
   return DATE_TIME.format(new Date(iso));
 }
 
-/** A time on a page that already shows the day it began: "3:35 PM" on that day, "Oct 28, 3:35 PM" on another, and
- * the full date in another year. */
+/** "3:35 PM" on the given day, "Oct 28, 3:35 PM" on another, the full date in another year. */
 export function timeNear(iso: string, day: string): string {
   const date = new Date(iso);
   const near = new Date(day);

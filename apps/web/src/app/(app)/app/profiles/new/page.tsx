@@ -1,5 +1,5 @@
-import { NewProfileScreen } from "@/screens/new-profile/new-profile-screen";
+import { NewProfileForm } from "@/features/profiles/components/new-profile-form";
 
 export default function NewProfilePage() {
-  return <NewProfileScreen />;
+  return <NewProfileForm />;
 }

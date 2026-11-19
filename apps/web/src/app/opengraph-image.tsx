@@ -10,7 +10,6 @@ export const size = { width: 1200, height: 630 };
 
 export const contentType = "image/png";
 
-// Built in code, so no raster asset has to be kept in sync.
 export default function OpengraphImage() {
   const C = ART.dawn;
   return new ImageResponse(

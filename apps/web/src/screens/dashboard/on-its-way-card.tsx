@@ -13,9 +13,7 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATES, API_SETTLEMENT_STATUSES } from "@/shared/constants/payment-state";
 import { STATE_STATUS } from "@/shared/lib/payment-state";
 
-// Surest first: paid and moving, then confirming, then partly paid, which may still be held for the payer.
-// Each part opens Payments at its status. Only Moving to wallet is exact: it sums settlement_status pending.
-// The other parts follow the ledger's bookings, the list each payment's latest state, so they can differ for a while.
+// Surest first. Only "settling" matches its Payments list; the others follow ledger bookings.
 const PARTS = [
   {
     field: "settling",
@@ -67,7 +65,6 @@ export function OnItsWayCard({ balances, prices, failed, onRetry }: OnItsWayCard
           <p className="flex items-baseline gap-1.5">
             <span className="text-2xl font-medium tracking-tight text-ink tabular-nums">
               {!balances ? (
-                // Inside the figure's own line, so the line and USD beside it keep their loaded height.
                 <Skeleton className="inline-block h-6 w-36 align-middle" />
               ) : total === null ? (
                 "—"
@@ -153,7 +150,6 @@ function Part({
       )}
     </>
   );
-  // Nothing to open: a zero part keeps its place, with the chevron's width, so the amounts stay in one column.
   if (loading || cents === 0n)
     return (
       <div className={`${ROW} text-muted`}>

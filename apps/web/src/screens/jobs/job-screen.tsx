@@ -8,29 +8,25 @@ import { JobActions } from "@/features/jobs/components/job-actions";
 import { JobDetail } from "@/features/jobs/components/job-detail";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
+import { notFound } from "@/shared/api/server-reach";
 import { DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-const NOT_FOUND = 404;
-
 export interface JobScreenProps {
   jobId: string;
 }
 
-// R-101. Read live, so an acceptance and each payment's status show without a reload.
 export function JobScreen({ jobId }: JobScreenProps) {
   const { profile } = useAppSession();
   const job = useGetJobQuery({ profileId: profile.profileId, jobId }, LIVE_QUERY);
   // Once deleted, the page waits to leave instead of saying the job is gone.
   const [deleted, setDeleted] = useState(false);
-  // A delete the client's acceptance beat: once the refetch shows it, the menu and its dialog are gone, so focus moves
-  // to the heading.
+  // The client's acceptance beat a delete: the menu and dialog go, so focus moves to the heading.
   const [tooLate, setTooLate] = useState(false);
   const heading = useRef<HTMLSpanElement>(null);
-  const status = (job.error as { status?: unknown } | undefined)?.status;
   const data = job.currentData;
   const accepted = Boolean(data?.acceptedAt);
   useEffect(() => {
@@ -59,7 +55,7 @@ export function JobScreen({ jobId }: JobScreenProps) {
       />
     );
   }
-  return status === NOT_FOUND && !deleted ? (
+  return notFound(job.error) && !deleted ? (
     <p className="text-muted">
       {COPY.gone} <RecordLink href={APP_ROUTES.jobs}>{COPY.backToList}</RecordLink>
     </p>

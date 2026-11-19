@@ -1,8 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { type ApiExtra, apiSlice } from "@/shared/api/api-slice";
 
-// One store per browser tab, made by StoreProvider; never a server-wide singleton. It holds only the request cache:
-// API answers are plain JSON with amounts as strings, so the state stays serializable and money stays exact.
+// One store per browser tab, never a server-wide singleton; it holds only the API request cache.
 export function makeStore(extra: ApiExtra) {
   return configureStore({
     reducer: { [apiSlice.reducerPath]: apiSlice.reducer },

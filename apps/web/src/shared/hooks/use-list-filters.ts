@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 /** The search's URL parameter, also the API's. */
 export const SEARCH_PARAM = "q";
 /** The API's longest search in characters. */
-export const SEARCH_MAX = 100;
+const SEARCH_MAX = 100;
 export const SEARCH_DELAY_MS = 300;
 
 /** The query string with name set to value, or removed when value is empty: "?a=1&q=x", or "" when none is left. */
@@ -20,14 +20,13 @@ export function apiSearch(search: string): string | undefined {
   return search.trim().slice(0, SEARCH_MAX) || undefined;
 }
 
-// Replaces the current history entry: Next keeps useSearchParams in step, and Back leaves the list as it was.
-function setParam(name: string, value: string) {
+/** Sets or removes one URL parameter in place: Next keeps useSearchParams in step, and Back skips it. */
+export function setParam(name: string, value: string) {
   const { pathname, search, hash } = window.location;
   window.history.replaceState(null, "", `${pathname}${withParam(search, name, value)}${hash}`);
 }
 
-/** A list's search, kept in ?q so reload and Back keep it; it reaches ?q SEARCH_DELAY_MS after the last change.
- * `apiQuery` is undefined for no search. */
+/** A list's search, kept in ?q for reload and Back; ?q updates SEARCH_DELAY_MS after the last change. */
 export function useListSearch() {
   const params = useSearchParams();
   const query = params.get(SEARCH_PARAM) ?? "";
@@ -64,8 +63,7 @@ export function useListSearch() {
   };
 }
 
-/** A list's filter and search, kept in the URL so reload and Back keep them. `apiFilter` and `apiQuery` are undefined
- * for all and no search. */
+/** A list's filter and search, kept in the URL; apiFilter and apiQuery are undefined for all and none. */
 export function useListFilters<F extends string, All extends F>(
   filterParam: string,
   filters: readonly F[],

@@ -24,10 +24,11 @@ import { BILLING_THEN, PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/co
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { dateTime } from "@/shared/lib/dates";
 
-// A personal profile makes a request here (D-52, R-71). ?from=<id> fills the form from that owned invoice (R-91,
-// R-77), read through the cache; nothing comes from the URL but the id.
+// ?from=<id> fills the form from that owned invoice; nothing but the id comes from the URL.
 export function NewInvoiceScreen() {
   const { profile } = useAppSession();
   const router = useRouter();
@@ -37,7 +38,6 @@ export function NewInvoiceScreen() {
     { profileId: profile.profileId, invoiceId: from ?? "" },
     { skip: !from },
   );
-  // Another profile's invoice, or one that failed to load, starts an empty form.
   // currentData: a 404 for this id must not leave an earlier invoice's values behind.
   const start =
     from && owned.currentData
@@ -49,9 +49,8 @@ export function NewInvoiceScreen() {
         )
       : undefined;
   const clientId = params.get(RESTART_PARAMS.client);
-  // R-129: ?revise=1 replaces that invoice once this one is created.
+  // ?revise=1 replaces that invoice once this one is created.
   const replaced = params.has(RESTART_PARAMS.revise) ? owned.currentData : undefined;
-  // R-136: only the tokens the profile has on, from the enabled tokens every role reads (D-93).
   const switches = useGetProfileTokensQuery(profile.profileId);
   const all = switches.currentData;
   const tokens = all
@@ -61,15 +60,13 @@ export function NewInvoiceScreen() {
       )
     : undefined;
   const request = profile.kind === PROFILE_KINDS.personal;
-  // R-92. If the billing details can't be read, or the role can't (D-93), the form shows and the API still checks.
+  // If the billing details can't be read, the form still shows and the API checks them.
   const readsBilling = !request && can(profile, PERMISSIONS.billingRead);
   const billing = useGetBillingDetailsQuery(profile.profileId, { skip: !readsBilling });
   const billingNeeded = readsBilling && billing.currentData === null;
   const loadingBilling = readsBilling && billing.currentData === undefined && !billing.isError;
-  // A request has no client. Without the search the form still works: the picker just doesn't show.
   const noClients = request || !can(profile, PERMISSIONS.clientsRead);
   const clientSearch = useClientSearch(profile.profileId, noClients);
-  // The client a link names is read alone (R-177); an unknown id, or a read that failed, starts an empty client.
   const started = useGetClientQuery(
     { profileId: profile.profileId, clientId: clientId ?? "" },
     { skip: noClients || !clientId },
@@ -84,10 +81,8 @@ export function NewInvoiceScreen() {
   const COPY = request ? NEW_REQUEST_COPY : NEW_INVOICE_COPY;
   return (
     <div className="flex flex-col gap-6">
-      {/* On a phone the form's own bar names the page once the form is there. */}
       <div className="flex flex-col gap-2 max-sm:[body:has([data-phone-flow])_&]:sr-only">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">{COPY.title}</h1>
+        <PageTitle>{COPY.title}</PageTitle>
         <p className="text-muted">{COPY.intro}</p>
       </div>
       {!tokens && switches.isError ? (
@@ -124,7 +119,6 @@ export function NewInvoiceScreen() {
           </Button>
         </div>
       ) : !tokens || loadingStart || loadingBilling || loadingStores ? (
-        // The form's card and, from the two-column width, the preview beside it.
         <div className="grid gap-6 xl:grid-cols-[minmax(0,35rem)_minmax(0,1fr)]">
           <Skeleton className="h-96 rounded-lg xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem]" />
           <Skeleton className="rounded-lg max-xl:hidden xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem]" />
@@ -181,9 +175,7 @@ export function NewInvoiceScreen() {
   );
 }
 
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-
-/** R-129: what a Revise cancels, and whether the client may already have its pay link. */
+/** What a Revise cancels, and whether the client may already have its pay link. */
 function ReviseNotice({ invoice }: { invoice: Invoice }) {
   const COPY = INVOICES_COPY.revise;
   const number = invoiceNumber(invoice.number);
@@ -198,10 +190,8 @@ function ReviseNotice({ invoice }: { invoice: Invoice }) {
         {COPY.title(number)}
       </h2>
       <p>{COPY.body(number)}</p>
-      {sent ? <p>{COPY.sent(number, TIME.format(new Date(sent)))}</p> : null}
-      {views?.lastAt ? (
-        <p>{COPY.opened(views.count, TIME.format(new Date(views.lastAt)))}</p>
-      ) : null}
+      {sent ? <p>{COPY.sent(number, dateTime(sent))}</p> : null}
+      {views?.lastAt ? <p>{COPY.opened(views.count, dateTime(views.lastAt))}</p> : null}
       {sent || views?.lastAt ? <p>{COPY.held}</p> : null}
     </section>
   );

@@ -13,7 +13,6 @@ import { TeamMembers } from "@/features/team/components/team-members";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import { SETTINGS_ROW, SETTINGS_TITLE } from "@/shared/components/settings-group";
 
-// R-139: an Admin manages the team here; every member sees their role and may leave.
 export function TeamScreen() {
   const { profile } = useAppSession();
   return (

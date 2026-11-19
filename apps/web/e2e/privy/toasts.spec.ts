@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { blockingViolations } from "./axe";
+import { blockingViolations } from "../axe";
 import {
   activityItem,
   CONFIRMING_INVOICE,

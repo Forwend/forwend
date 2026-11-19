@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function PayPage({ params, searchParams }: PageProps<"/pay/[token]">) {
   const { token } = await params;
   if (!PAY_TOKEN_PATTERN.test(token)) notFound();
-  // One option of a payer-chooses invoice (R-56); the canary opens each this way.
+  // One option of a payer-chooses invoice; the canary opens each option this way.
   const { option, preview } = await searchParams;
   return (
     <PayScreen

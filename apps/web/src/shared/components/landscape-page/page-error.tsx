@@ -8,7 +8,7 @@ const PAGE_ERROR = {
   retry: "Try again",
 } as const;
 
-/** A route's error boundary page, laid out as the 404: what the error leaves safe, and one way to render again. */
+/** A route's error page, laid out as the 404: what stays safe, and one way to render again. */
 export function PageError({
   homeLabel,
   body,

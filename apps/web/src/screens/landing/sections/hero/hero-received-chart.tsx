@@ -8,10 +8,7 @@ import { flatSeries } from "@/features/balances/lib/balance-history";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
 import { DASHBOARD } from "./constants/hero-dashboard";
 
-/**
- * The overview's own Received chart, drawn from the sample month. Its days end on the visitor's today, so it is built
- * after load: a prerendered page would carry the build's dates.
- */
+/** Built after load: its days end on the visitor's today, and a prerendered page would carry the build's. */
 export function HeroReceivedChart({ className }: { className?: string }) {
   const [series, setSeries] = useState<HistorySeries | null>(null);
 

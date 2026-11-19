@@ -9,7 +9,7 @@ import type { AppStore } from "@/store/store";
 const privy = vi.hoisted(() => ({ user: { id: "did:privy:a" } as { id: string } | null }));
 vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => ({ user: privy.user, getAccessToken: async () => "token" }),
-  // The fresh sign-in dialog the provider mounts (R-137); it stays closed here.
+  // The fresh sign-in dialog the provider mounts; it stays closed here.
   useLoginWithEmail: () => ({ sendCode: async () => {}, loginWithCode: async () => {} }),
 }));
 
@@ -38,7 +38,6 @@ describe("StoreProvider", () => {
     );
     expect(cachedProfiles()).toBeDefined();
 
-    // A's session ends without the Sign out button, then B signs in.
     privy.user = null;
     rerender(
       <StoreProvider>

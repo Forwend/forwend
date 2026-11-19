@@ -28,8 +28,7 @@ export interface ClientInvoicesProps {
   client: Client;
 }
 
-// Invoices keep their own copy of the client, so the list is the Invoices search for the client's email (or its name
-// without one): the first page only, with the rest a link away.
+// Invoices keep their own copy of the client, so this searches them by its email or name.
 export function ClientInvoices({ profileId, client }: ClientInvoicesProps) {
   const search = apiSearch(client.email ?? client.name) ?? "";
   const list = useGetInvoicesInfiniteQuery({ profileId, q: search });

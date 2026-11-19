@@ -7,9 +7,8 @@ import type { AppDispatch, RootState } from "@/store/store";
 
 const GATEWAY = [502, 503, 504];
 
-/** A read that never reached the api: no connection, no answer in time, or a gateway's answer instead of the api's
- * JSON (the web server's proxy answers a plain 500 when the api is down). */
-export function unreachable(error: unknown): boolean {
+/** A read that never reached the api: no connection, a timeout, or a gateway or proxy answer instead of api JSON. */
+function unreachable(error: unknown): boolean {
   const e = error as FetchBaseQueryError | undefined;
   if (!e) return false;
   if (e.status === "FETCH_ERROR" || e.status === "TIMEOUT_ERROR") return true;
@@ -31,8 +30,7 @@ export function useServerUnreachable(): boolean {
 
 type Refetch = (arg: unknown, options: { subscribe: false; forceRefetch: true }) => never;
 
-/** While the api is unreachable, reads it again on the refresh's beat, also those that don't poll, so every view
- * recovers once it answers. */
+/** While the api is unreachable, refetches every read on the refresh beat, polled or not, so views recover. */
 export function useRetryUnreachable(down: boolean) {
   const store = useStore<RootState>();
   const dispatch = useDispatch<AppDispatch>();

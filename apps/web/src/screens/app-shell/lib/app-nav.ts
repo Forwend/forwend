@@ -1,42 +1,27 @@
-import { API_KEYS_COPY } from "@/features/api-keys/constants/api-keys-copy";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { CLIENTS_COPY } from "@/features/clients/constants/clients-copy";
 import { NEW_INVOICE_COPY, NEW_REQUEST_COPY } from "@/features/invoices/constants/invoices-copy";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
-import {
-  BILLING_DETAILS_COPY,
-  DEVELOPER_MODE_COPY,
-  NOTIFICATIONS_COPY,
-  TOKENS_COPY,
-} from "@/features/profiles/constants/profiles-copy";
-import { can } from "@/features/profiles/lib/profile";
+import { can, profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile, ProfileKind } from "@/features/profiles/types/profile";
 import { STORES_COPY } from "@/features/stores/constants/stores-copy";
-import { TEAM_COPY } from "@/features/team/constants/team-copy";
-import { APP_NAV, MENU_PAGES, NAV } from "@/screens/app-shell/constants/app-nav";
-import type { Crumb, NavGroup, NavItem } from "@/screens/app-shell/types/app-nav";
+import { APP_NAV, MENU_PAGES, NAV, SETTINGS_PAGES } from "@/screens/app-shell/constants/app-nav";
+import type { Crumb, NavGroup, NavItem, SettingsPage } from "@/screens/app-shell/types/app-nav";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 /** Every settings page, for marking Settings as the current place. */
 export const SETTINGS_PATHS: readonly string[] = [
   APP_ROUTES.settings,
-  APP_ROUTES.account,
-  APP_ROUTES.notifications,
-  APP_ROUTES.billingDetails,
-  APP_ROUTES.networks,
-  APP_ROUTES.developerMode,
-  APP_ROUTES.team,
-  APP_ROUTES.wallet,
+  ...SETTINGS_PAGES.map((page) => page.href),
 ];
 
 export function isCurrentPage(pathname: string, href: string): boolean {
   return pathname === href || (href !== APP_ROUTES.home && pathname.startsWith(`${href}/`));
 }
 
-/** The profile's sidebar with only the pages its role can use (D-93); a group left empty goes. */
 export function navFor(profile: Profile): NavGroup[] {
   return APP_NAV[profile.kind]
     .map((group) => ({
@@ -46,12 +31,12 @@ export function navFor(profile: Profile): NavGroup[] {
     .filter((group) => group.items.length > 0);
 }
 
-/** Whether the profile's role can use the page at pathname, by the most specific page that holds it. Every profile
- *  kind's pages count, so another kind's page is checked too; a page no list names is open to every role. */
+/** Checks the most specific page holding pathname, of any profile kind; unlisted pages are open. */
 export function pageAllowed(profile: Profile, pathname: string): boolean {
   const pages: readonly Pick<NavItem, "href" | "permission">[] = [
     ...Object.values(NAV),
     ...MENU_PAGES,
+    ...SETTINGS_PAGES,
   ];
   const page = pages
     .filter((item) => item.href && isCurrentPage(pathname, item.href))
@@ -59,15 +44,18 @@ export function pageAllowed(profile: Profile, pathname: string): boolean {
   return !page?.permission || can(profile, page.permission);
 }
 
-/** The account menu's pages for the profile: the email setting is the owner's, and only a merchant has a team. */
-export function accountLinks(profile: Profile): { notifications: boolean; team: boolean } {
-  return {
-    notifications: pageAllowed(profile, APP_ROUTES.notifications),
-    team: profile.kind === PROFILE_KINDS.merchant && pageAllowed(profile, APP_ROUTES.team),
-  };
+export function settingsGroups(profile: Profile): { label: string; items: SettingsPage[] }[] {
+  const pages = SETTINGS_PAGES.filter(
+    (page) => pageAllowed(profile, page.href) && (!page.kind || page.kind === profile.kind),
+  );
+  const own = pages.filter((page) => page.profile);
+  return [
+    { label: SETTINGS_COPY.yourAccount, items: pages.filter((page) => !page.profile) },
+    ...(own.length ? [{ label: profileLabel(profile), items: own }] : []),
+  ];
 }
 
-/** Where a role that can't open a page lands instead: the first sidebar page it can use. */
+/** Where a role lands instead of a page it can't open. */
 export function firstPage(profile: Profile): string {
   return (
     navFor(profile)
@@ -76,60 +64,57 @@ export function firstPage(profile: Profile): string {
   );
 }
 
-/** The trail after the profile; on an invoice's page it stops at Invoices and returns the invoice's id to name. */
+/** Pages with no parent in the trail. */
+const TOP_PAGES: readonly Crumb[] = [
+  { label: "New profile", href: APP_ROUTES.newProfile },
+  { label: AUTH_COPY.settings, href: APP_ROUTES.settings },
+  // A personal profile reaches it only by its address, and its sidebar has no such page to name it.
+  { label: NAV.developers.label, href: NAV.developers.href },
+  ...SETTINGS_PAGES,
+];
+
+const RECORD_PAGES: readonly {
+  list: string;
+  create: string;
+  names: { create: string; edit?: string; record: string };
+}[] = [
+  {
+    list: APP_ROUTES.clients,
+    create: APP_ROUTES.newClient,
+    names: {
+      create: CLIENTS_COPY.newTitle,
+      edit: CLIENTS_COPY.editTitle,
+      record: CLIENTS_COPY.detailTitle,
+    },
+  },
+  {
+    list: APP_ROUTES.stores,
+    create: APP_ROUTES.newStore,
+    names: {
+      create: STORES_COPY.newTitle,
+      edit: STORES_COPY.editTitle,
+      record: STORES_COPY.detailTitle,
+    },
+  },
+  {
+    list: APP_ROUTES.links,
+    create: APP_ROUTES.newLink,
+    names: { create: LINKS_COPY.newTitle, edit: LINKS_COPY.editTitle, record: "Payment link" },
+  },
+  {
+    list: APP_ROUTES.jobs,
+    create: APP_ROUTES.newJob,
+    names: { create: JOBS_COPY.newTitle, record: JOBS_COPY.detailTitle },
+  },
+];
+
+/** The trail after the profile; on an invoice's page, also the invoice's id to name. */
 export function breadcrumb(
   pathname: string,
   kind: ProfileKind,
 ): { trail: Crumb[]; invoiceId: string | null } {
-  if (pathname === APP_ROUTES.newProfile) {
-    return { trail: [{ label: "New profile", href: APP_ROUTES.newProfile }], invoiceId: null };
-  }
-  if (pathname === APP_ROUTES.notifications) {
-    return {
-      trail: [{ label: NOTIFICATIONS_COPY.title, href: APP_ROUTES.notifications }],
-      invoiceId: null,
-    };
-  }
-  if (pathname === APP_ROUTES.settings) {
-    return { trail: [{ label: AUTH_COPY.settings, href: APP_ROUTES.settings }], invoiceId: null };
-  }
-  if (pathname === APP_ROUTES.account) {
-    return {
-      trail: [{ label: SETTINGS_COPY.account.title, href: APP_ROUTES.account }],
-      invoiceId: null,
-    };
-  }
-  if (pathname === APP_ROUTES.networks) {
-    return { trail: [{ label: TOKENS_COPY.title, href: APP_ROUTES.networks }], invoiceId: null };
-  }
-  if (pathname === APP_ROUTES.developerMode) {
-    return {
-      trail: [{ label: DEVELOPER_MODE_COPY.title, href: APP_ROUTES.developerMode }],
-      invoiceId: null,
-    };
-  }
-  if (pathname === APP_ROUTES.team) {
-    return { trail: [{ label: TEAM_COPY.title, href: APP_ROUTES.team }], invoiceId: null };
-  }
-  // A personal profile reaches it only by its address, and its sidebar has no such page to name it.
-  if (pathname === APP_ROUTES.developers) {
-    return {
-      trail: [{ label: API_KEYS_COPY.title, href: APP_ROUTES.developers }],
-      invoiceId: null,
-    };
-  }
-  if (pathname === APP_ROUTES.wallet) {
-    return {
-      trail: [{ label: SETTINGS_COPY.wallet.title, href: APP_ROUTES.wallet }],
-      invoiceId: null,
-    };
-  }
-  if (pathname === APP_ROUTES.billingDetails) {
-    return {
-      trail: [{ label: BILLING_DETAILS_COPY.title, href: APP_ROUTES.billingDetails }],
-      invoiceId: null,
-    };
-  }
+  const top = TOP_PAGES.find((page) => page.href === pathname);
+  if (top) return { trail: [{ label: top.label, href: top.href }], invoiceId: null };
   const page =
     APP_NAV[kind]
       .flatMap((group) => group.items)
@@ -147,68 +132,13 @@ export function breadcrumb(
       invoiceId: null,
     };
   }
-  if (page.href === APP_ROUTES.clients && pathname !== APP_ROUTES.clients) {
-    return {
-      trail: [
-        crumb,
-        {
-          label:
-            pathname === APP_ROUTES.newClient
-              ? CLIENTS_COPY.newTitle
-              : pathname.endsWith("/edit")
-                ? CLIENTS_COPY.editTitle
-                : CLIENTS_COPY.detailTitle,
-          href: pathname,
-        },
-      ],
-      invoiceId: null,
-    };
-  }
-  if (page.href === APP_ROUTES.stores && pathname !== APP_ROUTES.stores) {
-    return {
-      trail: [
-        crumb,
-        {
-          label:
-            pathname === APP_ROUTES.newStore
-              ? STORES_COPY.newTitle
-              : pathname.endsWith("/edit")
-                ? STORES_COPY.editTitle
-                : STORES_COPY.detailTitle,
-          href: pathname,
-        },
-      ],
-      invoiceId: null,
-    };
-  }
-  if (page.href === APP_ROUTES.links && pathname !== APP_ROUTES.links) {
-    return {
-      trail: [
-        crumb,
-        {
-          label:
-            pathname === APP_ROUTES.newLink
-              ? LINKS_COPY.newTitle
-              : pathname.endsWith("/edit")
-                ? LINKS_COPY.editTitle
-                : "Payment link",
-          href: pathname,
-        },
-      ],
-      invoiceId: null,
-    };
-  }
-  if (page.href === APP_ROUTES.jobs && pathname !== APP_ROUTES.jobs) {
-    return {
-      trail: [
-        crumb,
-        {
-          label: pathname === APP_ROUTES.newJob ? JOBS_COPY.newTitle : JOBS_COPY.detailTitle,
-          href: pathname,
-        },
-      ],
-      invoiceId: null,
-    };
+  const record = RECORD_PAGES.find((r) => r.list === page.href);
+  if (record && pathname !== record.list) {
+    const label =
+      pathname === record.create
+        ? record.names.create
+        : (pathname.endsWith("/edit") && record.names.edit) || record.names.record;
+    return { trail: [crumb, { label, href: pathname }], invoiceId: null };
   }
   if (pathname.startsWith(`${APP_ROUTES.payments}/`)) {
     return { trail: [crumb, { label: "Payment details", href: pathname }], invoiceId: null };
