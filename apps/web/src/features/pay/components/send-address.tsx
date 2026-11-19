@@ -1,18 +1,52 @@
-"use client";
-
-import { COPY_STATUS, formatTokenAmount, IconButton, Money, useCopy } from "@forwend/ui-web";
-import { Check, Copy } from "lucide-react";
+import {
+  COPY_STATUS,
+  formatTokenAmount,
+  IconButton,
+  Money,
+  QrCode,
+  ReceiveAddress,
+  useCopy,
+} from "@forwend/ui-web";
+import { Check, Copy, TriangleAlert } from "lucide-react";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import type { PayToken } from "@/features/pay/types/pay";
 import { exactDigits } from "@/shared/lib/money";
 
-export interface ExactAmountProps {
+export interface SendAddressProps {
+  address: string;
   amount: bigint;
   token: PayToken;
+  network: string;
+  lookalike?: string | null; // a bridged token that does not pay
+}
+
+export function SendAddress({ address, amount, token, network, lookalike }: SendAddressProps) {
+  return (
+    <>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
+        <QrCode value={address} label={COPY.qr} className="w-26 border border-line p-1 sm:w-32" />
+        <div className="flex min-w-0 flex-col gap-2">
+          <ExactAmount amount={amount} token={token} />
+          <p role="note" className="flex flex-col gap-0.5 text-xs font-medium text-warning">
+            <span className="flex items-start gap-1.5">
+              <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+              {COPY.sendOnly(token.symbol, network)}
+            </span>
+            {/* The space keeps the two sentences apart when read aloud; the flex column drops it on screen. */}
+            {lookalike ? " " : null}
+            {lookalike ? (
+              <span className="pl-5">{COPY.notLookalike(token.symbol, lookalike)}</span>
+            ) : null}
+          </p>
+        </div>
+      </div>
+      <ReceiveAddress address={address} label={COPY.sendTo(token.symbol, network)} />
+    </>
+  );
 }
 
 // Wallets and exchanges reject "1,250.50": the copy is the plain decimal, exact to the base unit.
-export function ExactAmount({ amount, token }: ExactAmountProps) {
+function ExactAmount({ amount, token }: { amount: bigint; token: PayToken }) {
   const fractionDigits = exactDigits(amount, token.decimals);
   const plain = formatTokenAmount({
     baseUnits: amount,

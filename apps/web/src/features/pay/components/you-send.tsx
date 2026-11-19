@@ -1,22 +1,18 @@
 import type { ReactNode } from "react";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 
-export interface AmountRow {
+interface AmountRow {
   term: string;
   value: ReactNode;
 }
 
 export interface YouSendProps {
-  /** The amount with its token, as the payer will be asked to send it. */
   amount: ReactNode;
-  /** What the page does not say elsewhere: each fee, how long it takes. Never the invoice's own amount. */
   rows: readonly AmountRow[];
   className?: string;
   children?: ReactNode;
 }
 
-/** What the payer sends in another token, before they ask for the address: the amount first, then what it adds to
- * the invoice. A direct payment has none: the page already says its amount. */
 export function YouSend({ amount, rows, className = "", children }: YouSendProps) {
   return (
     <div className={`flex flex-col gap-3 ${className}`}>
@@ -32,7 +28,6 @@ export function YouSend({ amount, rows, className = "", children }: YouSendProps
   );
 }
 
-/** The lines that say what an amount covers. */
 export function AmountRows({
   rows,
   className = "",

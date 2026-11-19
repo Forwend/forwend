@@ -4,7 +4,7 @@ import type { Invoice } from "@/features/invoices/types/invoices";
 import { FACTORY, KNOWN_FACTORIES } from "@/features/pay/constants/receive-address";
 import type { InvoiceTerms } from "@/features/pay/types/receive-address";
 
-// invoice.SettleWindow (7 days; 1 day for invoices made before, D-18) and the longest expiry the API accepts.
+// invoice.SettleWindow (7 days; 1 day for older invoices) and the longest expiry the API accepts.
 const SETTLE_WINDOWS_S = [604_800n, 86_400n];
 const MAX_EXPIRY_S = 365n * 86_400n;
 // expiresAt comes from the API's clock and createdAt from the database's.
@@ -15,9 +15,7 @@ const MAX_FEE_DIVISOR = 10n;
 const UINT64_MAX = 2n ** 64n - 1n;
 const UINT256_MAX = 2n ** 256n - 1n;
 
-// As apps/backend/internal/address: a CREATE2 clone (OpenZeppelin Clones.cloneDeterministicWithImmutableArgs)
-// with args = abi.encode(terms) and salt = keccak256(args). Throws on a term outside its type, an unknown factory, or
-// a fee in terms that have no place for one.
+// As apps/backend/internal/address: a CREATE2 clone with args = abi.encode(terms), salt = keccak256(args).
 export function receiveAddress(t: InvoiceTerms, factory: string = FACTORY): string {
   const spec = KNOWN_FACTORIES[factory];
   if (!spec) throw new Error("not a Forwend factory");
@@ -44,22 +42,19 @@ export function receiveAddress(t: InvoiceTerms, factory: string = FACTORY): stri
   return `0x${keccak(`ff${factory}${keccak(args)}${keccak(code)}`).slice(24)}`;
 }
 
-/** As the API derives it (D-86): keccak256(token); throws on a token that is not 32 bytes of hex. */
 export function invoiceIdOf(payToken: string): string {
   return `0x${keccak(fixedBytes(`0x${payToken}`, 32))}`;
 }
 
-/** As the API derives it (R-56): keccak256(abi.encode(invoice id, chain id, token)). */
 export function optionIdOf(invoiceId: string, chainId: bigint, token: string): string {
   return `0x${keccak(fixedBytes(invoiceId, 32) + uint(chainId, UINT256_MAX) + fixedBytes(token, 20))}`;
 }
 
-// Null means the page must not show the address: the answer isn't the link's invoice, breaks the API's
-// rules for terms (money sent there could only be refunded), or doesn't compute to it.
+// Null: show no address. Money sent to terms the API would never make could only be refunded.
 export function checkedReceiveAddress(inv: Invoice, payToken: string): string | null {
   try {
     if (inv.invoiceId.toLowerCase() !== invoiceIdOf(payToken)) return null;
-    // The shown option is the invoice's own terms or an option derived from the link's id, never another invoice's.
+    // Never another invoice's option: only this one's own terms or one derived from its id.
     const option = inv.optionId.toLowerCase();
     if (
       option !== inv.invoiceId.toLowerCase() &&
@@ -78,7 +73,6 @@ export function checkedReceiveAddress(inv: Invoice, payToken: string): string | 
       platformFee: BigInt(inv.platformFee),
     };
     const recipient = terms.recipient.toLowerCase().replace(/^0x/, "");
-    // The invoice's own factory, which must be one Forwend deployed: the API can't name another.
     const factory = inv.factory.toLowerCase().replace(/^0x/, "");
     const ours = Object.entries(KNOWN_FACTORIES).flatMap(([f, s]) => [f, s.implementation]);
     const invalid =

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { baseUnits, count } from "@/shared/schemas/api";
 
-// GET /v1/invoices/{payToken}/crosschain/tokens and price, POST .../quotes (R-231, R-232).
 export const crossTokenSchema = z.object({
   assetId: z.string(),
   blockchain: z.string(),
@@ -9,11 +8,8 @@ export const crossTokenSchema = z.object({
   decimals: count,
   contract: z.string().nullable(),
   priceUsd: z.string(),
-  // In the list only: about what the payer sends at the listed price.
   estimate: baseUnits.nullable(),
-  // In the list only: the Base USDC base units NEAR Intents last needed at least (D-126); an older api leaves it out.
   minimum: baseUnits.nullable().optional(),
-  // CoinGecko's id for the token, which names the logo file the web ships (R-250); an older api leaves it out.
   coingeckoId: z
     .string()
     .regex(/^[a-z0-9-]{1,64}$/)
@@ -27,7 +23,6 @@ export const crossTokensSchema = z.object({
   tokens: z.array(crossTokenSchema),
 });
 
-// A price has no id, address, window or signature; a quote has them all.
 export const crossQuoteSchema = z.object({
   quoteId: z.string().nullable(),
   token: crossTokenSchema,

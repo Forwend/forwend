@@ -13,15 +13,11 @@ export interface Choice {
   onPick: (optionId: string | undefined) => void;
 }
 
-export function onlyOptionOn(
-  options: readonly InvoiceOption[],
-  chainId: number,
-): string | undefined {
+function onlyOptionOn(options: readonly InvoiceOption[], chainId: number): string | undefined {
   const on = options.filter((o) => o.chainId === chainId);
   return on.length === 1 ? on[0]?.optionId : undefined;
 }
 
-// Selects, not cards: the list grows with every chain and token added (R-68).
 export function OptionPicker({ options, picked, onPick }: Choice) {
   const current = options.find((o) => o.optionId === picked);
   const [chainId, setChainId] = useState(current?.chainId);
@@ -64,7 +60,6 @@ export function OptionPicker({ options, picked, onPick }: Choice) {
   );
 }
 
-// A long list gets a search; a short one stays a plain select.
 function Pick({
   label,
   searchLabel,

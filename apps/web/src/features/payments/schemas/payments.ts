@@ -22,8 +22,7 @@ export const paymentSchema = z.object({
         decimals: count,
         received: baseUnits,
         pending: baseUnits,
-        /** Booked money still owed to the payer on this option. */
-        held: baseUnits.optional(),
+        held: baseUnits.optional(), // booked, owed to the payer
       }),
     )
     .optional(),
@@ -57,12 +56,9 @@ export const paymentSchema = z.object({
   createdAt: apiTime,
   closesAt: apiTime,
   hostedUrl: z.url().nullable(),
-  /** hostedUrl's last part; an API from before it leaves it out. */
-  payToken: z.string().nullable().optional(),
-  /** A payment through NEAR Intents (R-235); a list carries it only while its deposit pays the payment. */
+  payToken: z.string().nullable().optional(), // hostedUrl's last part
   crossChain: crossChainSchema.nullable().optional(),
   amounts: paymentAmountsSchema,
-  /** Derived by the API (D-114); older reads leave them out and the raw facts decide. */
   state: z.string().optional(),
   wallet: z.string().optional(),
   dueDate: z.string().nullable().optional(),
@@ -98,8 +94,7 @@ const coverageSchema = z.object({
 });
 export const paymentDetailSchema = paymentSchema.extend({
   snapshotAt: apiTime,
-  /** Line items in base units of the option whose id is the payment's. */
-  items: z.array(invoiceLineSchema).optional(),
+  items: z.array(invoiceLineSchema).optional(), // in the payment's own option's units
   customer: z.object({ name: z.string().nullable(), email: z.string().nullable() }),
   metadata: z.record(z.string(), z.string()),
   options: z.array(
@@ -133,7 +128,6 @@ export const paymentDetailSchema = paymentSchema.extend({
           secondsLeft: count.nullable().optional(),
         })
         .nullable(),
-      // Held money sent back to a payer, once booked (PLAN 11.10.3).
       returns: z.array(
         z.object({ txHash: hash32, to: evmAddress, amount: baseUnits, blockTime: apiTime }),
       ),

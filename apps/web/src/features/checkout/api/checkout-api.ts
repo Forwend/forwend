@@ -28,7 +28,6 @@ export const checkoutApi = apiSlice
           body: checkoutBodySchema,
         }),
         responseSchema: checkoutSessionSchema,
-        // A new checkout shows on the Payments list and the overview.
         invalidatesTags: [PAYMENTS_TAG],
       }),
       /** 409 once a payment is seen: the customer has paid or is paying. */

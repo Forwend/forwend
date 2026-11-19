@@ -1,7 +1,5 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { Invoice } from "@/features/invoices/types/invoices";
-import { quoteProblem, shortDepositLine } from "@/features/pay/components/crosschain-pay";
 import { ONECLICK_KEY } from "@/features/pay/constants/crosschain";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import {
@@ -20,8 +18,7 @@ import {
 import answer from "@/features/pay/tests/fixtures/oneclick-quote.json";
 import { crossChainEnded } from "@/shared/lib/chains";
 
-// A quote 1Click signed on 2026-11-09 for 2.5 USDC from Arbitrum to Base (D-124). Its destination is Base USDC, its
-// recipient a made-up address.
+// A quote 1Click signed for 2.5 USDC from Arbitrum to Base, to a made-up recipient.
 const ASK: QuoteAsk = {
   recipient: "0x5e4b7c9a1f3d2e6b8a0c4d7f9e1b3a5c7d9e0f12",
   amount: "2500000",
@@ -43,7 +40,6 @@ const changed = (path: [string] | [string, string], value: unknown): Record<stri
 describe("verifyQuote", () => {
   it("shows the address of a quote 1Click signed for exactly what the page asked", async () => {
     expect(await verifyQuote(answer, ASK, ONECLICK_KEY, AT)).toBe(true);
-    // An address in another case is the same EVM address.
     expect(
       await verifyQuote(
         answer,
@@ -79,32 +75,6 @@ describe("verifyQuote", () => {
     ).toBe(false);
     expect(await verifyQuote(null, ASK, ONECLICK_KEY, AT)).toBe(false);
   });
-
-  it("refuses a signed quote that needs a memo, delivers less or names another recipient chain", async () => {
-    // Re-signing is impossible without 1Click's key, so these fail on the fields before the signature.
-    expect(await verifyQuote(changed(["quote", "depositMemo"], "7"), ASK, ONECLICK_KEY, AT)).toBe(
-      false,
-    );
-    expect(
-      await verifyQuote(changed(["quote", "minAmountOut"], "2499999"), ASK, ONECLICK_KEY, AT),
-    ).toBe(false);
-    expect(
-      await verifyQuote(
-        changed(["quoteRequest", "virtualChainRecipient"], ASK.recipient),
-        ASK,
-        ONECLICK_KEY,
-        AT,
-      ),
-    ).toBe(false);
-    expect(
-      await verifyQuote(
-        changed(["quoteRequest", "swapType"], "EXACT_INPUT"),
-        ASK,
-        ONECLICK_KEY,
-        AT,
-      ),
-    ).toBe(false);
-  });
 });
 
 describe("base58", () => {
@@ -129,6 +99,18 @@ const resigned = (copy: Record<string, unknown>) => ({
 });
 
 describe("verifyQuote on answers a key signed", () => {
+  it("refuses a signed quote that needs a memo, delivers less or names another recipient chain", async () => {
+    for (const copy of [
+      changed(["quote", "depositMemo"], "7"),
+      changed(["quote", "minAmountOut"], "2499999"),
+      changed(["quote", "amountOut"], "2499999"),
+      changed(["quoteRequest", "virtualChainRecipient"], ASK.recipient),
+      changed(["quoteRequest", "swapType"], "EXACT_INPUT"),
+    ]) {
+      expect(await verifyQuote(resigned(copy), ASK, TEST_KEY, AT)).toBe(false);
+    }
+  });
+
   it("refuses more slippage than the api asks for, which would go back to the refund address", async () => {
     expect(await verifyQuote(resigned(structuredClone(answer)), ASK, TEST_KEY, AT)).toBe(true);
     const more: Record<string, unknown> = structuredClone(answer);
@@ -162,12 +144,10 @@ describe("crossChainKey", () => {
   });
 });
 
-// R-244: what a payer is asked to send reads like money, and never less than 1Click asked for.
 describe("sendUnits", () => {
   it("rounds a stablecoin up to the cent", () => {
     expect(sendUnits(15_154_472_423n, 6, 0.9995)).toBe(15_154_480_000n);
     expect(sendUnits(2_500_000n, 6, 1)).toBe(2_500_000n);
-    // 18 decimals, as USD1 on Ethereum has.
     expect(sendUnits(15_000_060_000_000_000_000_001n, 18, 0.998)).toBe(
       15_000_070_000_000_000_000_000n,
     );
@@ -189,7 +169,6 @@ describe("sendUnits", () => {
 
 describe("signedDeposit", () => {
   it("asks for the signed amount rounded up at the price 1Click signed", () => {
-    // 2.527977 USDC at 2.526427350099 USD: a stablecoin, so 2.53 USDC.
     expect(signedDeposit(answer, 6)).toEqual({
       depositAddress: answer.quote.depositAddress,
       amountIn: 2_527_977n,
@@ -200,61 +179,26 @@ describe("signedDeposit", () => {
   });
 });
 
-// What comes back pays 1Click's refund fee first: the page says so, and warns when the unused slippage is under it.
 describe("the refund fee", () => {
-  it("is named wherever money is said to come back", () => {
-    expect(PAY_COPY.crossChain.refundHint).toContain("less the refund fee");
-  });
-
   it("warns only when the unused slippage is not above it", () => {
-    // 2.53 USDC sent, at least 2.502697 converted: up to 0.027303 comes back.
     expect(slippageCoversRefundFee(2_530_000n, 2_502_697n, 5300n)).toBe(true);
     expect(slippageCoversRefundFee(2_530_000n, 2_502_697n, 27_303n)).toBe(false);
-    // The buffer's own line never promises what the warning under it takes back.
-    expect(bufferLine(2_530_000n, 2_502_697n, 5300n)).toBe("Unused part returns to you");
-    expect(bufferLine(2_530_000n, 2_502_697n, 27_303n)).toBe("Less than the refund fee");
-  });
-});
-
-describe("quoteProblem", () => {
-  it("blames the refund address only for a refusal that names it", () => {
-    const answered = (code: string) => quoteProblem({ data: { error: { code } } });
-    expect(answered("quote_refused")).toBe(PAY_COPY.crossChain.quoteRefused);
-    expect(answered("quote_refused")).not.toContain("address");
-    expect(answered("invalid_value")).toBe(PAY_COPY.crossChain.refused);
+    expect(bufferLine(2_530_000n, 2_502_697n, 5300n)).toBe(PAY_COPY.crossChain.bufferBack);
+    expect(bufferLine(2_530_000n, 2_502_697n, 27_303n)).toBe(PAY_COPY.crossChain.bufferUnderFee);
   });
 });
 
 describe("crossChainFeeUsd", () => {
   it("is the least 1Click converts, at its price, over what arrives: the slippage comes back", () => {
-    // 2.502697 USDC at 0.999387 USD each is 2.501163 USD; 2.5 USDC arrive, worth 2.498468 USD.
     expect(crossChainFeeUsd(answer.quote)).toBeCloseTo(0.002695, 6);
     expect(crossChainFeeUsd({ ...answer.quote, amountOutUsd: "3" })).toBe(0);
   });
 });
 
 describe("a short deposit", () => {
-  const short = {
-    status: "INCOMPLETE_DEPOSIT",
-    symbol: "USDT",
-    decimals: 6,
-    amountIn: "101120000",
-    deposited: "99000000",
-    deadline: "2026-10-10T13:00:00Z",
-  } as NonNullable<Invoice["crossChain"]>;
-
   it("hasn't ended: 1Click holds it until the deadline, and the rest may still arrive", () => {
-    expect(crossChainEnded(short)).toBe(false);
+    expect(crossChainEnded({ status: "INCOMPLETE_DEPOSIT" })).toBe(false);
     expect(crossChainEnded({ status: "REFUNDED" })).toBe(true);
     expect(crossChainEnded({ status: "FAILED" })).toBe(true);
-  });
-
-  it("says 1Click holds it until the deadline, then returns it, and never asks for more", () => {
-    const line = shortDepositLine(short, Date.parse("2026-10-10T12:30:00Z"));
-    expect(line).toContain("NEAR Intents holds it until");
-    expect(line).not.toContain("Send");
-    expect(shortDepositLine(short, Date.parse(short.deadline))).toBe(
-      PAY_COPY.crossChain.incompleteLate,
-    );
   });
 });

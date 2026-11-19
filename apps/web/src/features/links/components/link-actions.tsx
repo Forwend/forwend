@@ -20,11 +20,10 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export interface LinkActionsProps {
   profileId: string;
   link: Link;
-  /** The link is reloading: until the new read is in, Turn off or on would act on the old state. */
   refreshing: boolean;
 }
 
-// R-140: Turn off or on saves the link as it is, with only `active` changed.
+// Turn off or on saves the link as it is, with only `active` changed.
 export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
   const [save, { isLoading }] = useSaveLinkMutation();
   const toast = useToast();
@@ -44,6 +43,7 @@ export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
           endsAt: link.endsAt,
           maxPayments: link.maxPayments,
           active,
+          feesPaidBy: link.feesPaidBy,
         },
       }).unwrap();
       toast({

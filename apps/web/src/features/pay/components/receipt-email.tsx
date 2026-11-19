@@ -4,19 +4,18 @@ import { Button, TextField } from "@forwend/ui-web";
 import { Check, Mail } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSetPayerEmailMutation } from "@/features/invoices/api/invoices-api";
-import { ENTER } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
+import { ENTER } from "@/shared/constants/motion";
 
 const COPY = PAY_COPY.receipt;
 const ANSWERS = { 409: COPY.sent, 422: COPY.invalid, 429: COPY.tooMany } as const;
 
 export interface ReceiptEmailProps {
-  /** The pay link's token (D-86). */
   linkToken: string;
   paid: boolean;
 }
 
-// R-82, D-68: the address is for this invoice's receipt only and is never kept in the browser.
+// The address is for this invoice's receipt only and is never kept in the browser.
 export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
   const [setPayerEmail, { data, error, isLoading, reset }] = useSetPayerEmailMutation();
   const [step, setStep] = useState<"folded" | "form" | "done">("folded");
@@ -27,7 +26,6 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
   const problem = error ? (ANSWERS[status as keyof typeof ANSWERS] ?? COPY.failed) : undefined;
   useEffect(() => {
     if (step === "form") form.current?.querySelector("input")?.focus();
-    // The Send button is gone: keyboard and screen reader users land on what replaced it.
     if (step === "done") done.current?.focus();
   }, [step]);
   const submit = (event: FormEvent<HTMLFormElement>) => {

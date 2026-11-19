@@ -1,4 +1,3 @@
-import { formatTokenAmount } from "@forwend/ui-web";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
@@ -14,19 +13,13 @@ import { withOption } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import { CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { blockchainName, isCrossChainTarget } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
 
-/** What a payer pays into from another chain (D-123): the open Base USDC option of a live invoice. */
 export interface CrossChainTarget {
-  /** Its receive address, as this page computed it from the terms. */
   receive: string;
-  /** What is still due on it, in its base units. */
   due: bigint;
-  /** Its close, in ms. */
   closesAt: number;
 }
 
-/** Null for a test-mode invoice, one without a Base USDC option, or terms that don't compute to its address. */
 export function crossChainTarget(inv: Invoice, payToken: string): CrossChainTarget | null {
   const base = inv.options.find(isCrossChainTarget);
   if (!inv.livemode || !base) return null;
@@ -39,8 +32,7 @@ export function crossChainTarget(inv: Invoice, payToken: string): CrossChainTarg
   return due > 0n ? { receive, due, closesAt: Date.parse(base.closesAt ?? inv.closesAt) } : null;
 }
 
-// The fields 1Click signs, as its SDK's verifyQuoteSignature reads them (D-124). An optional one counts only when it
-// is truthy, as the SDK drops it otherwise; a real quote's fields are spread over the request's.
+// As 1Click's SDK verifyQuoteSignature reads them: an optional field counts only when truthy.
 const SIGNED_REQUEST = [
   "dry",
   "swapType",
@@ -81,7 +73,7 @@ const OPTIONAL_QUOTE = [
   "refundFee",
   "withdrawFee",
 ];
-// Signed when set, but Forwend never asks for them: a quote carrying one was asked by someone else.
+// Forwend never asks for these: a quote carrying one was asked by someone else.
 const NEVER_ASKED = ["virtualChainRecipient", "virtualChainRefundRecipient", "customRecipientMsg"];
 
 type Answer = { [key: string]: unknown };
@@ -89,7 +81,6 @@ type Answer = { [key: string]: unknown };
 const record = (value: unknown): Answer | null =>
   typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Answer) : null;
 
-/** The text 1Click signs for a quote answer: the base58 SHA-256 of its signed fields as sorted-key JSON. */
 export function quoteMessage(answer: Answer): string {
   const request = record(answer.quoteRequest) ?? {};
   const quote = record(answer.quote) ?? {};
@@ -113,7 +104,6 @@ export function quoteMessage(answer: Answer): string {
   return base58(sha256(new TextEncoder().encode(JSON.stringify(sorted))));
 }
 
-/** What the pay page asked 1Click for: exactly amount of Base USDC to the receive address the page computed. */
 export interface QuoteAsk {
   recipient: string;
   amount: string;
@@ -121,10 +111,7 @@ export interface QuoteAsk {
   refundTo: string;
 }
 
-/**
- * Whether signed is a quote 1Click signed with key that pays exactly ask, fresh at now (D-124): the page shows a deposit
- * address only then. A hacked api can't pass another address, recipient, amount or refund address, or an old quote.
- */
+/** The page shows a deposit address only for a fresh quote 1Click signed for exactly what it asked. */
 export async function verifyQuote(
   signed: unknown,
   ask: QuoteAsk,
@@ -180,9 +167,6 @@ export async function verifyQuote(
   }
 }
 
-/** The deposit address and amounts inside a signed answer: after verifyQuote, the only ones the page may show. send
- * is the amount the payer is asked for: amountIn rounded up at the price 1Click signed (R-244). refundFee is what
- * 1Click takes from a refund, in the token's base units. */
 export function signedDeposit(
   signed: unknown,
   decimals: number,
@@ -209,8 +193,7 @@ export function signedDeposit(
   };
 }
 
-/** Whether what may come back of send, the unused slippage and the rounding up, is more than 1Click's refund fee. At
- * or under it, 1Click's spec doesn't say the refund is sent at all. */
+/** At or under the refund fee, 1Click's spec doesn't say a refund is sent at all. */
 export function slippageCoversRefundFee(
   send: bigint,
   minAmountIn: bigint,
@@ -219,22 +202,13 @@ export function slippageCoversRefundFee(
   return send - minAmountIn > refundFee;
 }
 
-/** An amount of a token as the pay box writes it: every digit it has, at least two. */
-export const amountText = (units: bigint, token: { decimals: number; symbol: string }) =>
-  `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
-
-/** USD for one whole token, at the price 1Click valued amountIn at. */
 export function usdPerToken(amountInUsd: string, amountIn: bigint, decimals: number): number {
   return Number(amountInUsd) / (Number(amountIn) / 10 ** decimals);
 }
 
 const SEND_DIGITS = 5;
 
-/**
- * R-244: what a payer is asked to send, rounded up so it reads like money: a USD stablecoin (priced within 2% of 1 USD,
- * as the api orders them) to the cent, any other token to 5 significant digits. The few units it adds come back with
- * the unused slippage, as 1Click refunds any deposit over what the conversion takes.
- */
+/** Rounded up to the cent for a stablecoin, else to 5 digits; 1Click refunds the extra units. */
 export function sendUnits(units: bigint, decimals: number, usdPerWholeToken: number): bigint {
   const stable = usdPerWholeToken >= 0.98 && usdPerWholeToken <= 1.02;
   const dropped = stable
@@ -244,8 +218,6 @@ export function sendUnits(units: bigint, decimals: number, usdPerWholeToken: num
   return ((units + step - 1n) / step) * step;
 }
 
-/** R-244: NEAR Intents' fee and Base's network fee in USD, at 1Click's prices: what the least it converts is worth
- * over what arrives. The slippage on top comes back, so it is no fee. */
 export function crossChainFeeUsd(q: {
   amountIn: string;
   minAmountIn: string;
@@ -256,7 +228,6 @@ export function crossChainFeeUsd(q: {
   return Math.max(0, Number(q.minAmountIn) * perUnit - Number(q.amountOutUsd));
 }
 
-/** 1Click's key; a test build's fake key only on a page served from loopback, never on a real host. */
 export function crossChainKey(
   host = typeof location === "undefined" ? "" : location.hostname,
   testKey: string = ONECLICK_TEST_KEY,
@@ -265,7 +236,6 @@ export function crossChainKey(
   return testKey && loopback ? testKey : ONECLICK_KEY;
 }
 
-/** Chains in the picker's order: the popular ones first, then by name. */
 export function orderBlockchains(blockchains: readonly string[]): string[] {
   const rank = (b: string) => {
     const i = (POPULAR_BLOCKCHAINS as readonly string[]).indexOf(b);
@@ -293,7 +263,6 @@ export function base58(bytes: Uint8Array): string {
   return out;
 }
 
-/** Reads "ed25519:<base58>"; throws on any other character. */
 export function fromBase58(text: string): Uint8Array<ArrayBuffer> {
   const s = text.replace(/^ed25519:/, "");
   let n = 0n;
@@ -314,9 +283,37 @@ export function fromBase58(text: string): Uint8Array<ArrayBuffer> {
   return new Uint8Array(bytes);
 }
 
-/** What the price buffer's line says: the unused part returns, unless 1Click's refund fee is at least as large. */
 export function bufferLine(send: bigint, minAmountIn: bigint, refundFee: bigint): string {
   return slippageCoversRefundFee(send, minAmountIn, refundFee)
     ? PAY_COPY.crossChain.bufferBack
     : PAY_COPY.crossChain.bufferUnderFee;
+}
+
+const errorCode = (error: unknown) =>
+  (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
+
+export function quoteProblem(error: unknown): string {
+  switch (errorCode(error)) {
+    case "below_minimum":
+      return PAY_COPY.crossChain.belowMinimum;
+    case "no_liquidity":
+      return PAY_COPY.crossChain.cantConvert;
+    case "invalid_value":
+      return PAY_COPY.crossChain.refused;
+    case "quote_refused":
+      return PAY_COPY.crossChain.quoteRefused;
+    case "too_many_quotes":
+    case "rate_limited":
+      return PAY_COPY.crossChain.tooMany;
+    case "crosschain_unavailable":
+      return PAY_COPY.crossChain.closed;
+    default:
+      return PAY_COPY.crossChain.unavailable;
+  }
+}
+
+export function priceProblem(error: unknown): string {
+  return errorCode(error) === "invalid_value"
+    ? PAY_COPY.crossChain.cantConvert
+    : quoteProblem(error);
 }

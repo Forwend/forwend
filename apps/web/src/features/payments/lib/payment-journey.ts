@@ -1,6 +1,10 @@
-import { formatTokenAmount, PAYMENT_STATUS, TIMELINE_STATES } from "@forwend/ui-web";
+import { PAYMENT_STATUS, TIMELINE_STATES } from "@forwend/ui-web";
 import { optionFees } from "@/features/invoices/lib/invoices";
-import { JOURNEY_KINDS, SUM_CELLS } from "@/features/payments/constants/payments";
+import {
+  JOURNEY_KINDS,
+  SETTLEMENT_STATES,
+  SUM_CELLS,
+} from "@/features/payments/constants/payments";
 import { leadOption, optionFigures, paymentDisplayStatus } from "@/features/payments/lib/payments";
 import type {
   CrossChainPayment,
@@ -18,10 +22,8 @@ import {
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
 import { crossChainEnded, crossChainOptionRecorded } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
 
-/** A deposit 1Click saw and converts or converted: one it returned, or a short one it holds, didn't pay the payment
- * (R-239). */
+/** A deposit 1Click saw and converts or converted; one returned or held short paid nothing. */
 export function paidThroughIntents(
   c: PaymentDetail["crossChain"] | undefined,
 ): c is CrossChainPayment {
@@ -33,8 +35,7 @@ export function paidThroughIntents(
   );
 }
 
-/** The NEAR Intents payment that pays this one (R-239). Money booked first on another option pays it instead, and a
- * deposit 1Click returned pays nothing: both read as a direct payment. */
+/** The NEAR Intents payment that pays this one, unless money on another option paid it first. */
 export function crossChainOf(payment: PaymentDetail): CrossChainPayment | null {
   return paidThroughIntents(payment.crossChain) && crossChainOptionRecorded(payment)
     ? payment.crossChain
@@ -47,13 +48,11 @@ const OVER: readonly string[] = [
   PAYMENT_STATUS.expiredPartiallyPaid,
 ];
 
-/** The checkout takes no more money: closed, or its status says expired or canceled. The API's state can say expired
- * before its closed flag does, and the page must not wait for a payment its own badge calls expired. */
+/** The API's status can say expired before its closed flag does. */
 export function checkoutOver(payment: PaymentDetail): boolean {
   return payment.closed || OVER.includes(paymentDisplayStatus(payment));
 }
 
-/** The options with money, else the one the payment is recorded on. */
 function usedOptions(payment: PaymentDetail): PaymentOption[] {
   const funded = payment.options.filter(
     (option) =>
@@ -64,10 +63,8 @@ function usedOptions(payment: PaymentDetail): PaymentOption[] {
     : payment.options.filter((option) => option.optionId === payment.optionId);
 }
 
-/** R-248: the payment's money as one sum. What came in, each amount taken from it, and what the wallet gets. */
 export function paymentMoney(payment: PaymentDetail): PaymentMoney {
   const chosen = payment.options.find((option) => option.optionId === payment.optionId);
-  // A payment with money on other options lists those transfers below.
   const lead = leadOption(payment, payment.options, (option) => option.deposits.length > 0);
   const figures = lead
     ? optionFigures(
@@ -77,7 +74,6 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
     : null;
   const paidWith =
     lead ?? (chosen && (payment.optionLocked || payment.optionCount === 1) ? chosen : undefined);
-  // R-228: the fees settlement pays from this option's amount, and what reaches the owner.
   const fees = paidWith ? optionFees(paidWith) : null;
   const paid = payment.paymentStatus === API_PAYMENT_STATUSES.paid;
   const canceled = payment.paymentStatus === API_PAYMENT_STATUSES.canceled;
@@ -131,12 +127,11 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
     paid &&
     !settled &&
     end?.id === SUM_CELLS.wallet &&
-    paidWith?.settlement?.status !== "refused" &&
+    paidWith?.settlement?.status !== SETTLEMENT_STATES.refused &&
     !paidWith?.settlement?.wait;
   return { lead, paidWith, cells, adds, settled, moving };
 }
 
-/** R-248: every movement of the payment's money in order, from the facts the API gave: never a step ahead of them. */
 export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): JourneyStep[] {
   const used = usedOptions(payment);
   const deposits = used
@@ -144,8 +139,7 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
     .sort((x, y) => x.deposit.blockTime.localeCompare(y.deposit.blockTime));
   const paid = payment.paymentStatus === API_PAYMENT_STATUSES.paid;
   const ended = !paid && checkoutOver(payment);
-  // The customer's own transfer and its conversion (R-239). They stay when money on another option paid the payment
-  // first: the customer still sent it, and its USDC is held for them. A deposit 1Click returned moved nothing here.
+  // They stay when another option paid first: the customer still sent it, and its USDC is held.
   const sent = paidThroughIntents(payment.crossChain) ? payment.crossChain : null;
   // The USDC 1Click delivered on Base: never an earlier direct deposit.
   const baseTx =
@@ -162,7 +156,7 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
     option,
     converted: baseTx !== undefined && baseTx.toLowerCase() === deposit.txHash.toLowerCase(),
     paid: paid && deposit === paidBy,
-    // Confirmed only once booked: a deposit final on chain but not yet booked still reads as confirming (D-24).
+    // Confirmed only once booked: final on chain but unbooked still reads as confirming.
     state:
       deposit.late || (deposit.status !== API_DEPOSIT_STATUSES.detected && deposit.paid !== null)
         ? done
@@ -172,12 +166,10 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
     const converted = moved.findIndex(
       (step) => step.kind === JOURNEY_KINDS.deposit && step.converted,
     );
-    // Before the USDC it became; until then, after every deposit already here.
     moved.splice(
       converted < 0 ? moved.length : converted,
       0,
       { id: JOURNEY_KINDS.origin, kind: JOURNEY_KINDS.origin, cross: sent, state: done },
-      // The part of it 1Click sent back to the customer.
       ...(sent.refunded && BigInt(sent.refunded) > 0n
         ? [{ id: JOURNEY_KINDS.surplus, kind: JOURNEY_KINDS.surplus, cross: sent, state: done }]
         : []),
@@ -196,7 +188,6 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
     { id: JOURNEY_KINDS.created, kind: JOURNEY_KINDS.created, state: done },
     ...moved,
   ];
-  // 1Click delivered and the scan has not booked that deposit yet: the row carries its Base transaction.
   const unbooked =
     baseTx !== undefined &&
     !moved.some((step) => step.kind === JOURNEY_KINDS.deposit && step.converted);
@@ -228,7 +219,6 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
   if (ended) steps.push({ id: JOURNEY_KINDS.closed, kind: JOURNEY_KINDS.closed, state: done });
   else if (!transfers.length)
     steps.push({ id: JOURNEY_KINDS.wallet, kind: JOURNEY_KINDS.wallet, state: next });
-  // Held money sent back to a payer (PLAN 11.10.3).
   const returns = payment.options
     .flatMap((option) => option.returns.map((sent) => ({ option, sent })))
     .sort((a, b) => a.sent.blockTime.localeCompare(b.sent.blockTime));
@@ -247,9 +237,4 @@ export function paymentJourney(payment: PaymentDetail, money: PaymentMoney): Jou
   return steps.map((step, i) =>
     i === current ? { ...step, state: TIMELINE_STATES.current } : step,
   );
-}
-
-/** An amount as text, with every digit it has. */
-export function crossMoney(units: bigint, of: { decimals: number; symbol: string }): string {
-  return `${formatTokenAmount({ baseUnits: units, decimals: of.decimals, fractionDigits: exactDigits(units, of.decimals) })} ${of.symbol}`;
 }

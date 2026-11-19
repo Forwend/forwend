@@ -9,8 +9,7 @@ import {
   receiveAddress,
 } from "@/features/pay/lib/receive-address";
 
-// Written by Foundry from factory.predict (R-15); see packages/contracts/script/ReceiveAddressVectors.s.sol. The v1.1
-// file keeps the vectors of the factory before the fees (R-226), which its invoices still use.
+// Written by Foundry from factory.predict: packages/contracts/script/ReceiveAddressVectors.s.sol.
 type Vectors = {
   factory: string;
   implementation: string;
@@ -68,7 +67,7 @@ describe("receiveAddress", () => {
     expect(KNOWN_FACTORIES[FACTORY]?.fees).toBe(true);
   });
 
-  it("matches factory.predict for every R-15 vector, fees included", () => {
+  it("matches factory.predict for every vector, fees included", () => {
     expectVectors(vectors);
   });
 
@@ -99,7 +98,7 @@ describe("receiveAddress", () => {
 });
 
 describe("checkedReceiveAddress", () => {
-  // The link's token; the invoice id is keccak256 of it (D-86).
+  // The link's token; the invoice id is keccak256 of it.
   const payToken = "ab".repeat(32);
   const terms = {
     invoiceId: invoiceIdOf(payToken),
@@ -171,8 +170,6 @@ describe("checkedReceiveAddress", () => {
     ).toBe(invoice.receiveAddress);
   });
 
-  // An invoice keeps the factory it was made with: one on a replaced factory still shows its address, and a factory
-  // Forwend never deployed shows none, whatever the API says.
   it("checks the address against the invoice's own factory, which must be one Forwend deployed", () => {
     const v1 = "ece745390524e4d0b05d26f56af7f1d38fdb7546";
     const onV1 = {
@@ -214,7 +211,6 @@ describe("checkedReceiveAddress", () => {
     }
   });
 
-  // R-226, R-228: the option's fees are part of its terms, and the page checks them as settle() will.
   it("computes the address with the option's fees, and refuses fees over a tenth of the amount", () => {
     const withFees = (networkFee: bigint, platformFee: bigint): Invoice => ({
       ...invoice,
@@ -233,14 +229,11 @@ describe("checkedReceiveAddress", () => {
     });
     const ceiling = withFees(100_000_000n, 25_000_000n);
     expect(checkedReceiveAddress(ceiling, payToken)).toBe(ceiling.receiveAddress);
-    // The same address with other fees computes to another one.
     expect(checkedReceiveAddress({ ...ceiling, networkFee: "0" }, payToken)).toBeNull();
     expect(checkedReceiveAddress({ ...ceiling, platformFee: "25000001" }, payToken)).toBeNull();
-    // One base unit over a tenth: settle() would refuse it, so money sent there could only be refunded.
     expect(checkedReceiveAddress(withFees(100_000_000n, 25_000_001n), payToken)).toBeNull();
   });
 
-  // D-18: invoices made since settle 7 days after expiry, those before 1 day.
   it("gives the address for a 7-day settle window as for a 1-day one", () => {
     const week = { ...invoice, settleDeadline: "2026-10-24T10:00:00Z" };
     const address = receiveAddress({
@@ -319,7 +312,6 @@ describe("checkedReceiveAddress", () => {
       }),
     };
     expect(checkedReceiveAddress(option, linkToken)).toBe(option.receiveAddress);
-    // Another real invoice's terms under this link: their id does not derive from the link's.
     expect(checkedReceiveAddress({ ...invoice, invoiceId: link }, linkToken)).toBeNull();
   });
 

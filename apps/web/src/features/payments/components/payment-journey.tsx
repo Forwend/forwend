@@ -12,7 +12,11 @@ import { type ReactNode, useId } from "react";
 import { ConfirmingHint, ConfirmingStatus } from "@/features/invoices/components/invoice-progress";
 import { optionFees } from "@/features/invoices/lib/invoices";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
-import { JOURNEY_KINDS } from "@/features/payments/constants/payments";
+import {
+  JOURNEY_KINDS,
+  SETTLEMENT_HOLDS,
+  SETTLEMENT_STATES,
+} from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import type {
   JourneyStep,
@@ -50,7 +54,6 @@ export interface PaymentJourneyProps {
   steps: readonly JourneyStep[];
 }
 
-/** R-248: How the money moved. One row per movement: what it is, where and when, its amount and its transaction. */
 export function PaymentJourney({ payment, steps }: PaymentJourneyProps) {
   const id = useId();
   return (
@@ -72,7 +75,6 @@ export function PaymentJourney({ payment, steps }: PaymentJourneyProps) {
               )}
             >
               <span className="relative z-10 grid size-9 place-items-center">{row.node}</span>
-              {/* The amount sits beside the text while both fit; a long one moves under it and may break. */}
               <span className="flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-1">
                 <span className="flex min-w-28 flex-1 flex-col items-start gap-0.5">
                   <span
@@ -114,21 +116,17 @@ interface Row {
   node: ReactNode;
   title: ReactNode;
   sub?: ReactNode;
-  /** A state that still changes: confirming, preparing, delayed. */
   status?: ReactNode;
   amount?: ReactNode;
   tx?: ReactNode;
-  /** A note between two movements: smaller, in muted text. */
   quiet?: boolean;
 }
 
-// Each node covers the line behind it with a ring of the panel's color.
 const DOT = "block size-2.5 rounded-pill ring-4 ring-surface";
 const DISC = "grid place-items-center rounded-pill ring-4 ring-surface";
 const NOTE = `${DISC} size-6 border border-line-strong bg-surface text-muted [&_svg]:size-3`;
 
 function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
-  // The header shows the day the payment was made; a row on that day shows its time alone.
   const at = (iso: string) => timeNear(iso, payment.createdAt);
   const upcoming = step.state === TIMELINE_STATES.upcoming;
   switch (step.kind) {
@@ -147,7 +145,6 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         sub: at(payment.closesAt),
       };
     case JOURNEY_KINDS.awaiting: {
-      // 1Click delivered and the scan has not booked it yet: its Base transaction is already known.
       const delivered =
         step.cross?.status === CROSS_CHAIN_STATUSES.success
           ? step.cross.destinationTxs[0]?.hash
@@ -296,7 +293,7 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
       const txHash = settled
         ? settlement?.txHash
         : (settlement?.receiptTxHash ?? settlement?.txHash);
-      // Settlement pays the option's fees out of what is owed; the wallet gets the rest (R-228).
+      // Settlement pays the option's fees out of what is owed; the wallet gets the rest.
       const owed = BigInt(option.amounts.payable) - optionFees(option).total;
       const amount = settled ? BigInt(option.amounts.settled) : owed;
       return {
@@ -360,7 +357,6 @@ function OptionMark({ option }: { option: PaymentOption }) {
   );
 }
 
-/** The transaction on its explorer: the short hash where the row has room, the icon alone on a phone. */
 function TxLink({
   hash,
   ...where
@@ -372,7 +368,6 @@ function TxLink({
   );
 }
 
-// A booked deposit needs no state: its row says it happened.
 function DepositState({ deposit }: { deposit: PaymentDeposit }) {
   if (deposit.late)
     return (
@@ -406,12 +401,13 @@ function DepositState({ deposit }: { deposit: PaymentDeposit }) {
 }
 
 function TransferState({ settlement }: { settlement: PaymentOption["settlement"] }) {
-  if (settlement?.status === "refused")
+  if (settlement?.status === SETTLEMENT_STATES.refused)
     return <Badge tone={TONES.danger}>{COPY.transferReview}</Badge>;
-  if (settlement?.wait === "unresolved")
+  if (settlement?.wait === SETTLEMENT_HOLDS.unresolved)
     return <Badge tone={TONES.warning}>{COPY.transferUnresolved}</Badge>;
-  if (settlement?.wait === "cap") return <Badge tone={TONES.warning}>{COPY.transferCap}</Badge>;
-  if (settlement?.blocksLeft != null || settlement?.status === "sent")
+  if (settlement?.wait === SETTLEMENT_HOLDS.cap)
+    return <Badge tone={TONES.warning}>{COPY.transferCap}</Badge>;
+  if (settlement?.blocksLeft != null || settlement?.status === SETTLEMENT_STATES.sent)
     return (
       <>
         <StatusPill status={PAYMENT_STATUS.confirming} />

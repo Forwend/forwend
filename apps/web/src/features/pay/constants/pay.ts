@@ -1,7 +1,6 @@
 import type { PayToken } from "@/features/pay/types/pay";
 
-// By chain and contract (docs/spikes/s5-s6-testnets.md). Symbol and decimals come from this build, never the API;
-// the page refuses any other token, so add one here when the API enables it.
+// Symbol and decimals come from this build, never the API: add a token here when the API enables it.
 export const PAY_TOKENS: Readonly<Record<string, PayToken>> = {
   "8453:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": { symbol: "USDC", decimals: 6 },
   "42161:0xaf88d065e77c8cc2239327c5edb3a432268e5831": { symbol: "USDC", decimals: 6 },
@@ -13,7 +12,6 @@ export const PAY_TOKENS: Readonly<Record<string, PayToken>> = {
   "42431:0x20c0000000000000000000006a37da5c996874be": { symbol: "OUSD", decimals: 6 },
 };
 
-/** What the status panel says, in the order the checks run. */
 export const PAY_STATES = {
   settled: "settled",
   paid: "paid",
@@ -28,12 +26,14 @@ export const PAY_STATES = {
   waiting: "waiting",
 } as const;
 
-/** The checkout's summary side from large screens: its content ends 4rem left of the page's center and is at most
- * 26rem wide; the pay side mirrors it. Shared by the summary column and the footer under it. */
+/** The summary column from large screens, ending 4rem left of center; RIGHT_PAD mirrors it. */
 export const LEFT_PAD = "lg:pr-16 lg:pl-[max(2.5rem,calc(50vw-30rem))]";
 export const RIGHT_PAD = "lg:pr-[max(2.5rem,calc(50vw-32rem))]";
 
-export { ENTER } from "@/shared/constants/motion";
+export const CLOSING_SOON_MS = 30 * 60_000;
 
-/** The two ways to pay: a token the invoice takes itself, or another one through NEAR Intents (R-236). */
+/** Only a fade: a rise would move what sits under the part. */
+export const FADE = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
+
+/** A token the invoice takes, or any token through NEAR Intents. */
 export const PAY_WAYS = { direct: "direct", cross: "cross" } as const;

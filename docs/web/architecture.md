@@ -134,7 +134,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
 - Payment routes preserve profile identity in cache arguments and filter stores, sources, links and statuses through the API.
 - Billing events retain their existing names; numberless checkout events navigate to Payments instead of invoice-only reads.
 - Payment links' checkout (R-142) adds pay → links and links → invoices.
-  - pay: the public link read and Pay, the link states, the USD pattern and the amount label.
+  - pay: the public link read and Pay, the link states, the USD and offer version patterns and the amount label.
   - links: the pay token's pattern in Pay's answer.
 - Two more edges lead to stores: invoices → stores and pay → stores.
   - invoices: the store a merchant invoice records, its return-link origins and the brand's schema (R-134, R-135).

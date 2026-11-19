@@ -18,14 +18,12 @@ export const PAY_COPY = {
   amountPaid: "Amount paid",
   leftToPay: "Left to pay",
   on: (network: string) => `on ${network}`,
-  // R-228: the client pays the fees on top of the price.
   withFees: (price: string, fees: readonly string[]) => `${price} plus ${fees.join(" and ")}`,
   networkFee: (amount: string) => `${amount} network fee`,
   platformFee: (amount: string) => `${amount} platform fee`,
   reference: (reference: string) => `Reference ${reference}`,
   agreed: (value: string, date: string) => `Agreed value ${value} on ${date}`,
   due: (date: string) => `Due ${date}`,
-  // R-128: what the issuer changed before any payment.
   updates: {
     title: "Updates",
     reference: "Reference updated",
@@ -40,9 +38,7 @@ export const PAY_COPY = {
   closesIn: (left: string) => `Closes in ${left}`,
   loading: "Loading payment",
   payWith: "Pay with",
-  // The pay box as a whole, named for a screen reader when its step changes.
   payBox: "Payment",
-  // The two ways to pay, as tabs over the box.
   ways: { label: "How to pay", direct: "Stablecoin", cross: "Any token" },
   progress: "Payment progress",
   network: "Network",
@@ -54,17 +50,14 @@ export const PAY_COPY = {
   noMatch: "No match",
   showAddress: "Show address",
   sendOnly: (symbol: string, network: string) => `Send only ${symbol} on ${network}.`,
-  // R-78: a bridged token with the same name is another contract, and does not pay this invoice.
   notLookalike: (symbol: string, lookalike: string) => `Native ${symbol}, not ${lookalike}.`,
   contract: (symbol: string) => `${symbol} contract`,
   sendTo: (symbol: string, network: string) => `Send ${symbol} on ${network} to`,
   updatesItself: "This page updates on its own.",
   found: "Payment found",
   foundNote: (amount: string) => `Found ${amount}. Recording it now. Don't pay again.`,
-  // R-68: once money is seen the payer has nothing left to do; saying so first keeps them from paying twice.
   nothingMore: "Nothing more to do",
   nothingMoreNote: "Don't send again. You can close this page; it keeps updating if you stay.",
-  // What happens to the money, one step each, in the order it happens.
   steps: {
     received: "We received your payment",
     receivedMore: "We received another payment",
@@ -74,8 +67,6 @@ export const PAY_COPY = {
     paid: (payee?: string) => `${payee ?? "The recipient"} is paid`,
   },
   receivedOn: (network: string, time: string) => `on ${network} · ${time}`,
-  // R-73: the blocks passed of those the payment waits for, the time left, and when it is final. A part never
-  // breaks across two lines: its spaces are no-break spaces.
   confirmingLine: (done: number, total: number, seconds: number, final: string | null) => {
     const line = [
       total > 0
@@ -100,12 +91,9 @@ export const PAY_COPY = {
   mismatch: "This payment page does not match the payment. Do not pay; contact the recipient.",
   unknownToken:
     "This page does not support the token this payment asks for. Do not pay; contact the recipient.",
-  // One status line (R-68); confirming says its block count instead (confirmingLine).
   states: {
     [PAY_STATES.waiting]: () => "Waiting for payment…",
-    // The steps say it arrived; the line counts the blocks (confirmingLine).
     [PAY_STATES.confirming]: () => "Confirming",
-    // Final on chain, not yet booked: no time is promised, because none is known.
     [PAY_STATES.checking]: ({ delayed }) =>
       delayed ? "Confirmation is taking longer than usual." : "Awaiting confirmation.",
     [PAY_STATES.review]: () =>
@@ -129,19 +117,15 @@ export const PAY_COPY = {
   viewTx: "View transaction",
   receiptPdf: "Download receipt",
   backTo: (host: string) => `Back to ${host}`,
-  // Who asked for the money: the name on the invoice, never "the sender", who could be read as the payer.
   creator: "the recipient",
-  // Held money gets one short line; Need help, behind How to get it back, explains the rest.
   overpaid: (extra: string) => `Overpaid by ${extra}`,
   late: (late: string) => `${late} arrived after the checkout closed`,
-  // R-129.
   replaced: (number: string) => `This invoice was replaced by ${number}. Pay that one instead.`,
   openReplacement: (number: string) => `Open ${number}`,
   canceledHeld: (received: string) => `${received} held for you`,
   otherOption: (amount: string, network: string) =>
     `${amount} on ${network} went to another option`,
   howToGetBack: "How to get it back",
-  // R-82, D-68.
   receipt: {
     open: "Email me a receipt",
     label: "Email me the receipt (optional)",
@@ -174,7 +158,6 @@ export const PAY_COPY = {
   openInTab: "Open in a new tab",
   unverifiedName: "The name at the top is what the recipient gave. Forwend doesn't check it.",
   scam: "Forwend never asks you to pay a different address or a fee this page doesn't show.",
-  // PLAN 11.10: support returns held money by hand for now, and never promises it.
   heldHelp: [
     "That money is held for you. It isn't paid to the recipient.",
     "Email support to get it back. We check each case and send it to the address it came from.",
@@ -198,32 +181,21 @@ export const PAY_COPY = {
   paymentsBy: "Payments by",
   forwend: "Forwend",
   newTab: " (opens in a new tab)",
-  // D-123: paying from another chain and token through NEAR Intents, which delivers USDC on Base.
   crossChain: {
     pickerTitle: "Pay with any token",
     chains: "Networks",
-    searchChains: "Search networks",
-    // On a phone the picker is two steps: a network, then its tokens, with a way back.
     backToChains: "Networks",
     tokenCount: (n: number) => (n === 1 ? "1 token" : `${n} tokens`),
-    searchTokens: "Search tokens",
     tokensOn: (chain: string) => `Tokens on ${chain}`,
-    noMatch: "No match",
     noTokens: "No other token can pay this invoice right now.",
     loadingTokens: "Loading tokens",
-    choose: "Choose a token",
-    change: "Change",
     estimate: (amount: string) => `About ${amount}`,
-    // D-126: a token whose minimum is above what is due can't be picked.
     needsAtLeast: (amount: string) => `Needs at least ${amount}`,
     youSend: "You send",
-    // What You send is made of, one line each (R-244).
     conversionFee: "Conversion and network fee",
     feeApprox: (usd: string) => `≈ ${usd} USD`,
-    // R-244: the 1% You send adds for a moving price; the refund field says where the unused part goes.
     buffer: (percent: number) => `Price buffer of ${percent}%`,
     bufferBack: "Unused part returns to you",
-    // Never a promise the refund fee would break: the warning under the lines says why.
     bufferUnderFee: "Less than the refund fee",
     arrivesIn: "Arrives in",
     arrives: (minutes: number) => (minutes <= 1 ? "About a minute" : `About ${minutes} minutes`),
@@ -233,13 +205,7 @@ export const PAY_COPY = {
     refund: (chain: string) => `Refund address on ${chain}`,
     refundHint:
       "The unused buffer comes back here, less the refund fee. Use your own wallet, not an exchange.",
-    // 1Click's spec doesn't say whether a refund at or under its fee is sent at all.
     slippageUnderFee: "The unused buffer is less than the refund fee, so it may not come back.",
-    refundNeeded: "Enter your address on this chain.",
-    showAddress: "Show address",
-    sendOnly: (symbol: string, chain: string) => `Send only ${symbol} on ${chain}.`,
-    sendTo: (symbol: string, chain: string) => `Send ${symbol} on ${chain} to`,
-    // Beside the address, one line each: how long the price holds, and where extra money returns.
     priceHeldRow: "Price held",
     refundsTo: "Refunds go to",
     expired: "This price expired",
@@ -254,10 +220,8 @@ export const PAY_COPY = {
     belowMinimum: "This token needs a larger payment. Choose another token.",
     cantConvert: "NEAR Intents can't convert this token now. Choose another token.",
     unavailable: "NEAR Intents is not answering. Try again in a minute.",
-    // The payee turned it off, or the invoice can't take it now: trying again won't help (R-240).
     closed: "Paying with another token isn't available for this payment now. Pay directly instead.",
     refused: "NEAR Intents can't refund to this address. Check it is yours on this chain.",
-    // A refusal that names no refund address: NEAR Intents' own reason, so the address isn't blamed.
     quoteRefused: "NEAR Intents refused this quote. Try again later or choose another token.",
     tooMany: "Too many prices asked for this payment. Try again later.",
     steps: {
@@ -265,13 +229,10 @@ export const PAY_COPY = {
       converted: (symbol: string) => `Converted to ${symbol}`,
     },
     converting: "NEAR Intents is exchanging it.",
-    // R-243: what happened to the payer's money, once 1Click saw it.
     onChain: (symbol: string, chain: string) => `${symbol} on ${chain}`,
     arrived: (chain: string, time: string | null) =>
       time ? `arrived on ${chain} · ${time}` : `arrived on ${chain}`,
     returnedTo: (amount: string, address: string) => `${amount} returned to ${address}`,
-    // R-238: 1Click holds a short deposit until the deadline. Whether more sent there completes it is Q-19, so the
-    // payer is not asked to send more.
     incomplete: (time: string) =>
       `Less than needed arrived. NEAR Intents holds it until ${time}, then returns it to your refund address.`,
     incompleteLate: "Less than needed arrived. NEAR Intents returns it to your refund address.",
@@ -283,13 +244,11 @@ export const PAY_COPY = {
   },
 } as const;
 
-/** R-142: a payment link's page, before Pay creates checkout. */
 export const LINK_PAY_COPY = {
   title: "Payment link",
   loading: "Loading the payment link",
   amount: "Amount",
   amountField: "Amount (USD)",
-  // R-56: a payment is at least 1.00 USD.
   amountHint: (min: string | null, max: string | null) =>
     `Min ${min ?? "1.00"} USD${max ? `, max ${max} USD` : ""}`,
   pay: "Pay",

@@ -1,6 +1,8 @@
 import { LINK_LIMITS, LINK_STATES } from "@/features/links/constants/links";
 
-/** R-140. */
+const AMOUNT_ERROR = "Enter an amount like 12.50, at least 1.00.";
+const CAP_ERROR = `Enter a whole number from 1 to ${LINK_LIMITS.maxPayments.toLocaleString("en-US")}.`;
+
 export const LINKS_COPY = {
   title: "Payment links",
   testMode: "Test mode",
@@ -62,7 +64,6 @@ export const LINKS_COPY = {
   shareHint: "Each customer who opens it gets their own checkout.",
   storeRow: "Store",
   viewStore: "View store",
-  mode: "Mode",
   notReadyHint: "Check billing details, the profile wallet and accepted tokens before sharing.",
   purchases: "Purchases",
   allPurchases: "Open in Payments",
@@ -119,19 +120,18 @@ export const LINKS_COPY = {
   saved: (title: string) => `${title} saved`,
   errors: {
     required: "Enter a title.",
-    amount: "Enter an amount like 12.50, at least 1.00.",
+    amount: AMOUNT_ERROR,
     range: "The minimum must be at most the maximum.",
-    maxPayments: `Enter a whole number from 1 to ${LINK_LIMITS.maxPayments.toLocaleString("en-US")}.`,
+    maxPayments: CAP_ERROR,
     failed: "We could not save the link. Try again.",
     notReady:
       "Complete billing details, wallet setup and accepted tokens before turning on this link. You can save it while off.",
-    // What the API refused, by the field it names.
     invalid: {
       title: `Use 1 to ${LINK_LIMITS.title} characters of plain text on one line.`,
-      amountUsd: "Enter an amount like 12.50, at least 1.00.",
+      amountUsd: AMOUNT_ERROR,
       minUsd: "Enter an amount at most the maximum, like 12.50.",
-      maxUsd: "Enter an amount like 12.50, at least 1.00.",
-      maxPayments: `Enter a whole number from 1 to ${LINK_LIMITS.maxPayments.toLocaleString("en-US")}.`,
+      maxUsd: AMOUNT_ERROR,
+      maxPayments: CAP_ERROR,
     },
   },
 } as const;

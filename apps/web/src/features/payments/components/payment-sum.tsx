@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { SUM_CELLS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
-import { crossChainOf, crossMoney } from "@/features/payments/lib/payment-journey";
+import { crossChainOf } from "@/features/payments/lib/payment-journey";
+import { amountText } from "@/features/payments/lib/payments";
 import type { PaymentDetail, PaymentMoney, SumCell } from "@/features/payments/types/payments";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { blockchainName, chainName } from "@/shared/lib/chains";
@@ -15,8 +16,6 @@ export interface PaymentSumProps {
   money: PaymentMoney;
 }
 
-/** R-248: the payment's money as one sum. A row of figures on wide screens; on narrow ones the last figure is the
- * headline and the others are lines under it. */
 export function PaymentSum({ payment, money }: PaymentSumProps) {
   const { cells, adds, lead, paidWith, settled, moving } = money;
   const headline = cells.find((cell) => cell.id === SUM_CELLS.wallet) ?? cells[0];
@@ -24,14 +23,13 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
   const place = paidWith ? COPY.sum.on(paidWith.symbol, chainName(paidWith.chainId)) : null;
   const sent = cross
     ? ([
-        crossMoney(BigInt(cross.deposited ?? cross.amountIn), cross),
+        amountText(BigInt(cross.deposited ?? cross.amountIn), cross),
         blockchainName(cross.blockchain),
       ] as const)
     : null;
-  // The page has no other Requested figure once money came.
   const asked =
     lead && cells[0]?.id === SUM_CELLS.paid && cells[0].units !== BigInt(lead.amount)
-      ? COPY.sum.ofRequested(crossMoney(BigInt(lead.amount), lead))
+      ? COPY.sum.ofRequested(amountText(BigInt(lead.amount), lead))
       : null;
   const signedAt = paidWith?.settlement?.signedAt;
   const notes: Partial<Record<SumCell["id"], ReactNode>> = {
@@ -41,7 +39,6 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
         {asked ? <span className="block">{asked}</span> : null}
       </>
     ),
-    // Still converting: the customer's own transfer is all the page has.
     requested: sent ? COPY.sum.sent(...sent) : place ? COPY.sum.payingWith(place) : null,
     networkFee: COPY.sum.feeNote,
     platformFee: COPY.sum.feeNote,
@@ -92,7 +89,6 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
                   </span>
                 ) : null}
                 {end && moving ? (
-                  // On a narrow screen the headline says the money is moving; the row of figures names what it will be.
                   <>
                     <span className="lg:hidden">{COPY.sum.onItsWay}</span>
                     <span className="max-lg:hidden">{COPY.sum.cells.expected}</span>
@@ -150,7 +146,6 @@ export function PaymentSum({ payment, money }: PaymentSumProps) {
           );
         })}
         {paidWith ? null : (
-          // Before any money it says what the customer may pay with.
           <div className="flex min-w-0 items-center justify-between gap-x-4 gap-y-1.5 border-line py-3 max-lg:mx-4 max-lg:border-t lg:flex-1 lg:flex-col lg:items-start lg:justify-start lg:border-l lg:px-6 lg:py-5">
             <dt className="text-sm text-muted">{COPY.accepts}</dt>
             <dd className="min-w-0 text-sm text-ink">

@@ -1,16 +1,18 @@
+import { formatTokenAmount } from "@forwend/ui-web";
 import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
 import { depositAmount, tokenKey } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES, PAY_TOKENS } from "@/features/pay/constants/pay";
-import type { PayState } from "@/features/pay/types/pay";
+import { PAY_COPY } from "@/features/pay/constants/pay-copy";
+import type { PayState, PayStatus, PayToken } from "@/features/pay/types/pay";
 import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import {
   API_DEPOSIT_STATUSES,
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
+import { exactDigits } from "@/shared/lib/money";
 
-/** The picked option's terms while no option has money; else the API's: the chosen option, or the first (R-56). */
 export function withOption(inv: Invoice, optionId: string | undefined): Invoice {
   const o = inv.optionLocked
     ? undefined
@@ -34,8 +36,26 @@ export function withOption(inv: Invoice, optionId: string | undefined): Invoice 
     : inv;
 }
 
-export function payToken(inv: Invoice) {
+export function payToken(inv: Invoice): PayToken | null {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
+}
+
+export function amountText(units: bigint, token: PayToken): string {
+  return `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
+}
+
+export function payeeName(inv: Invoice): string | undefined {
+  return inv.issuer?.name ?? inv.senderName ?? undefined;
+}
+
+export function stateLine(inv: Invoice, pay: PayStatus, token: PayToken): string {
+  return PAY_COPY.states[pay.state]({
+    delayed: pay.delayed,
+    received: amountText(pay.received, token),
+    remaining: amountText(pay.remaining, token),
+    total: amountText(BigInt(inv.amount), token),
+    payee: payeeName(inv) ?? PAY_COPY.creator,
+  });
 }
 
 /** Public amounts use the token registry bundled with the page, never API-supplied decimal metadata. */
@@ -46,8 +66,26 @@ export function payerNoticeOptions(options: Invoice["options"]): Invoice["option
   });
 }
 
-/** Money sent on time over the amount and still held for the payer. Once booked it is capped at the ledger's held
- * money, so a return leaves nothing; late money has its own line and takes held money first, as in payState. */
+/** Held money on options the payer did not choose; none until one is chosen. */
+export function heldOnOtherOptions(
+  inv: Invoice,
+): { optionId: string; chainId: number; units: bigint; token: PayToken }[] {
+  if (!inv.optionLocked) return [];
+  return payerNoticeOptions(inv.options)
+    .filter(
+      (o) =>
+        o.optionId !== inv.optionId &&
+        (o.amounts ? BigInt(o.amounts.held) > 0n : o.deposits.length > 0),
+    )
+    .map((o) => ({
+      optionId: o.optionId,
+      chainId: o.chainId,
+      units: o.amounts ? BigInt(o.amounts.held) : depositAmount(o, false) + depositAmount(o, true),
+      token: { symbol: o.symbol, decimals: o.decimals },
+    }));
+}
+
+/** On-time money over the amount, capped at held money once booked; late money takes held money first. */
 export function overpaid(inv: Invoice): bigint {
   const extra = depositAmount(inv, false) - BigInt(inv.amount);
   if (extra <= 0n) return 0n;
@@ -60,21 +98,19 @@ export function overpaid(inv: Invoice): bigint {
   return extra;
 }
 
-/** Whether the whole amount came on time, so the page may tell the payer they are done (R-68). Money after the
- * close is held and pays nothing: it never counts, though payState's `received` adds it once the checkout closed. */
 export function seenInFull(inv: Invoice): boolean {
   return depositAmount(inv, false) >= BigInt(inv.amount);
 }
 
-// A last-moment transfer lands after the close and is held, not paid out; the browser clock may run behind.
+// A last-moment transfer lands after the close and is held; the browser clock may run behind.
 const CLOSE_EARLY_MS = 5 * 60_000;
 
 export function checkoutClosesAt(inv: Pick<Invoice, "closesAt">): number {
   return Date.parse(inv.closesAt) - CLOSE_EARLY_MS;
 }
 
-/** Paid and settled come only from the API (D-29); deposits after the close are held for the payer. */
-export function payState(inv: Invoice, now: number) {
+/** Paid and settled come only from the API, never from the deposits. */
+export function payState(inv: Invoice, now: number): PayStatus {
   const amount = BigInt(inv.amount);
   const sum = (late: boolean) => depositAmount(inv, late);
   const canceled = inv.paymentStatus === API_PAYMENT_STATUSES.canceled;
@@ -124,7 +160,7 @@ export function payState(inv: Invoice, now: number) {
             ? PAY_STATES.canceled
             : checking
               ? PAY_STATES.checking
-              : // A payment still confirming counts its blocks (R-73), even while it decides the option.
+              : // Still confirming counts its blocks, even while it decides the option.
                 confirming
                 ? PAY_STATES.confirming
                 : awaitingChoice
@@ -165,8 +201,6 @@ export function payState(inv: Invoice, now: number) {
   };
 }
 
-/** Whether the page still changes with the clock: not once the payment is final or the API says its checkout closed,
- * except while money is being checked, whose delay note counts from the deposit's block time. */
 export function clockRuns(inv: Invoice): boolean {
   const { state, closed } = payState(inv, 0);
   return (
@@ -180,7 +214,7 @@ const FINAL_STATUSES: readonly string[] = [
   API_PAYMENT_STATUSES.expired,
   API_PAYMENT_STATUSES.expiredPartiallyPaid,
 ];
-// 1Click's address takes deposits past the invoice's close, and a delivery can be on its way to Base after SUCCESS.
+// 1Click takes deposits past the close, and a delivery can still reach Base after SUCCESS.
 const CROSS_CHAIN_MOVING: readonly string[] = [
   CROSS_CHAIN_STATUSES.pending,
   CROSS_CHAIN_STATUSES.success,
@@ -189,8 +223,6 @@ const CROSS_CHAIN_MOVING: readonly string[] = [
   CROSS_CHAIN_STATUSES.processing,
 ];
 
-/** Whether the payer's page can stop asking: settled, or closed for good with no transfer still confirming. A focus
- * still reads it again. */
 export function payFinal(inv: Invoice): boolean {
   if (inv.settlementStatus === API_SETTLEMENT_STATUSES.settled) return true;
   return (
@@ -201,7 +233,6 @@ export function payFinal(inv: Invoice): boolean {
   );
 }
 
-/** Only payments that paid the creator (R-121); late money and money over the amount are held. */
 export function receiptDeposits(inv: Invoice) {
   return inv.deposits.filter((d) => d.paid !== null && BigInt(d.paid) > 0n);
 }
@@ -227,9 +258,7 @@ export function shortDuration(ms: number): string {
   return parts.join(" ") || "0 s";
 }
 
-/** The option a payer-chooses invoice takes (R-56, R-119): the first whose on-time deposits add up to a tenth of the
- * amount, at most 1.00 USD, one whole stablecoin (D-75, D-76), as the ledger's leastAmount. A smaller deposit chooses
- * nothing. */
+/** As the ledger's leastAmount: the first option whose on-time money reaches min(a tenth, 1.00 USD). */
 export function firstPaymentOption(inv: Invoice): Invoice["options"][number] | undefined {
   type Crossing = { option: Invoice["options"][number]; deposit: Invoice["deposits"][number] };
   const earlier = (a: Crossing, b: Crossing) =>

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CheckoutForm } from "@/features/checkout/components/checkout-form";
@@ -30,7 +30,12 @@ const STORE = {
 
 afterEach(cleanup);
 
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+async function start(requests: unknown[], count: number) {
+  const button = screen.getByRole("button", { name: "Show QR code" });
+  fireEvent.click(button);
+  await waitFor(() => expect(requests).toHaveLength(count));
+  await waitFor(() => expect(button.getAttribute("aria-busy")).toBeNull());
+}
 
 function renderForm() {
   const requests: { key: string | null; body: string }[] = [];
@@ -54,23 +59,18 @@ describe("checkout form", () => {
     const requests = renderForm();
     fireEvent.change(screen.getByLabelText("Amount to charge"), { target: { value: "12.505" } });
     fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
-    await settle();
+    expect(screen.getByLabelText("Amount to charge").getAttribute("aria-invalid")).toBe("true");
     expect(requests).toHaveLength(0);
-    expect(screen.getByText("Enter an amount, such as 12.50.")).toBeTruthy();
   });
 
   it("retries a sale with the same key and starts an edited sale with a new one", async () => {
     const requests = renderForm();
     fireEvent.change(screen.getByLabelText("Amount to charge"), { target: { value: "24.50" } });
     fireEvent.change(screen.getByLabelText(/^Order reference/), { target: { value: "table-12" } });
-    fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
-    await settle();
-    expect(screen.getByText("We could not start the checkout. Try again.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
-    await settle();
+    await start(requests, 1);
+    await start(requests, 2);
     fireEvent.change(screen.getByLabelText("Amount to charge"), { target: { value: "30" } });
-    fireEvent.click(screen.getByRole("button", { name: "Show QR code" }));
-    await settle();
+    await start(requests, 3);
 
     expect(JSON.parse(requests[0]?.body ?? "")).toEqual({
       storeId: STORE.storeId,

@@ -33,11 +33,9 @@ type Asset = Report["assets"][number];
 
 const ACCOUNTS = ["receiver", "payable", "held"] as const;
 const COLUMNS = ["opening", "changes", "closing"] as const;
-// A profile can hold hundreds of tokens across stores: groups come 20 at a time.
 const PAGE = 20;
 const ALL = "all";
 
-// No money in any account and none moved in the range: the usual state of a token that is on but unused.
 const isQuiet = (a: Asset) =>
   COLUMNS.every((c) => ACCOUNTS.every((k) => a[c][k] === "0")) &&
   a.settled === "0" &&
@@ -49,8 +47,6 @@ export interface PaymentReconciliationProps {
   filters: PaymentFilters;
 }
 
-// A balance summary: one line per token and store with its closing balances; a row opens its opening, changes and
-// the checks that the books match the chain. Search and the status filter narrow thousands of rows.
 export function PaymentReconciliation({ profileId, filters }: PaymentReconciliationProps) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -73,7 +69,6 @@ export function PaymentReconciliation({ profileId, filters }: PaymentReconciliat
   const listed = only === ALL ? active : active.filter((a) => health(a).label === only);
   const quiet = found.length - listed.length;
   const shown = listed.slice(0, count);
-  // Only what the table lists: a token with nothing in it has nothing to verify.
   const states = active.map(health);
   const tally = [COPY.verified, COPY.checking, COPY.review]
     .map((label) => ({ label, n: states.filter((s) => s.label === label).length }))
@@ -222,7 +217,6 @@ function AssetRow({ asset }: { asset: Asset }) {
           <span className="flex min-w-0 items-center gap-2">
             <TokenMark chainId={asset.chainId} symbol={asset.symbol} />
             {asset.livemode ? null : (
-              // Phones keep the row's button in view; the breakdown still names the network.
               <span className="max-sm:hidden">
                 <Badge tone={TONES.neutral}>{COPY.testMode}</Badge>
               </span>

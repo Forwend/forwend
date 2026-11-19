@@ -23,17 +23,11 @@ export interface PaymentListProps {
   filters?: PaymentFilters;
   attention?: boolean;
   showStore?: boolean;
-  /** Whether a search or filter narrows the list: an empty answer then offers to clear it. */
   filtered?: boolean;
   onClear?: () => void;
-  /** What the search and filters asked for, said when nothing matches: "Search “mara”, status Expired." */
   narrowed?: string;
-  /** What an empty, unfiltered list says, when it is not the whole Payments page (a link's purchases). */
   empty?: { title: string; text: string; action?: ReactNode };
-  /** The Payments page's next steps when it has no payments at all. */
   emptyAction?: ReactNode;
-  /** The views, search and filters above the list; a page with no payments leaves them out, so its next step is
-   * the only action. */
   head?: ReactNode;
 }
 
@@ -62,7 +56,6 @@ export function PaymentList({
     },
   );
   const list = attention ? issues : all;
-  // A new filter keeps the last rows in place, dimmed, until its own answer arrives: no flash of a skeleton.
   const data = list.currentData ?? (list.isFetching ? list.data : undefined);
   const stale = !list.currentData && Boolean(data);
   const loaded = data?.pages.length ?? 1;
@@ -120,7 +113,6 @@ export function PaymentList({
             />
           ) : (
             <EmptyState
-              // The whole Payments page fills its workspace; a record page's own section keeps its frame.
               page={!empty}
               icon={ArrowLeftRight}
               title={empty?.title ?? COPY.emptyTitle}

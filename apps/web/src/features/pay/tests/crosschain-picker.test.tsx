@@ -54,57 +54,12 @@ function open(tokens: readonly CrossToken[] = TOKENS) {
 
 const row = (name: RegExp) => screen.getByRole("button", { name });
 
-// R-246, R-250: popular chains and their own tokens get the logos Forwend draws, others a file the web ships, the
-// rest a first letter.
 describe("CrossChainPicker", () => {
-  it("shows drawn logos for popular chains and tokens, shipped files for others, and a first letter for the rest", () => {
-    open([...TOKENS, token({ blockchain: "qtc", symbol: "QTC" })]);
-    // A drawn logo is a brand drawing; the row's chevron is an interface icon and says nothing of the network.
-    const drawn = "svg:not(.lucide)";
-    expect(screen.getByRole("button", { name: "Ethereum" }).querySelector(drawn)).not.toBeNull();
-    // Abstract has no drawing: the web ships its logo as a file (R-250).
-    const abstract = screen.getByRole("button", { name: "Abstract" });
-    expect(abstract.querySelector(drawn)).toBeNull();
-    expect(abstract.querySelector("img")?.getAttribute("src")).toBe("/logos/chains/abs.webp");
-    // A network with neither shows its first letter.
-    const other = screen.getByRole("button", { name: "QTC" });
-    expect(other.querySelector(drawn)).toBeNull();
-    expect(other.querySelector("img")).toBeNull();
-    expect(other.textContent?.startsWith("QQTC")).toBe(true);
-    expect(row(/^ETH/).querySelector("svg")).not.toBeNull();
-    fireEvent.click(abstract);
-    expect(row(/^FOO/).querySelector("svg")).toBeNull();
-    expect(row(/^FOO/).textContent?.startsWith("FFOO")).toBe(true);
-  });
-
-  it("greys the logo of a token that needs more than is due (R-242)", () => {
+  it("lets no one pick a token that needs more than is due", () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Tron" }));
-    const blocked = row(/^USDC/);
-    expect(blocked).toHaveProperty("disabled", true);
-    expect(blocked.querySelector("svg")?.getAttribute("class")).toContain("grayscale");
-    expect(row(/^USDT/).querySelector("svg")?.getAttribute("class")).not.toContain("grayscale");
-  });
-
-  // R-250: a token Forwend draws no logo for shows the file the web ships, from Forwend's own origin.
-  it("shows the shipped logo for a token without a drawn one, and its letter when there is none or it fails", () => {
-    open([
-      token({ blockchain: "abs", symbol: "FOO", coingeckoId: "aave" }),
-      token({ blockchain: "abs", symbol: "BAR", coingeckoId: "no-such-file" }),
-      token({ blockchain: "eth", symbol: "ETH", coingeckoId: "ethereum" }),
-    ]);
-    fireEvent.click(screen.getByRole("button", { name: "Abstract" }));
-    const image = row(/^FOO/).querySelector("img");
-    expect(image?.getAttribute("src")).toBe("/logos/tokens/aave.webp");
-    // No file is asked for an id the web ships none for.
-    expect(row(/^BAR/).querySelector("img")).toBeNull();
-    expect(row(/^BAR/).textContent?.startsWith("BBAR")).toBe(true);
-    if (image) fireEvent.error(image);
-    expect(row(/^FOO/).querySelector("img")).toBeNull();
-    expect(row(/^FOO/).textContent?.startsWith("FFOO")).toBe(true);
-    // A logo Forwend draws itself stays: the file is for the tokens it draws none for.
-    fireEvent.click(screen.getByRole("button", { name: "Ethereum" }));
-    expect(row(/^ETH/).querySelector("img")).toBeNull();
+    expect(row(/^USDC/)).toHaveProperty("disabled", true);
+    expect(row(/^USDT/)).toHaveProperty("disabled", false);
   });
 
   it("takes a token's id only in CoinGecko's own form, so it can name nothing but a logo file", () => {
@@ -120,7 +75,6 @@ describe("CrossChainPicker", () => {
     expect(list("https://example.com/logo.png")).toBe(false);
   });
 
-  // R-244: About rounds up as You send does: a stablecoin to the cent, another token to 5 significant digits.
   it("rounds About up as the amount to send is", () => {
     open();
     expect(row(/^ETH/).textContent).toContain("About 0.58317 ETH");

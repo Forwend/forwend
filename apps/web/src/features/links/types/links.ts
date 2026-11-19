@@ -25,5 +25,4 @@ export type LinkState = (typeof LINK_STATES)[keyof typeof LINK_STATES];
 
 export type AmountKind = (typeof AMOUNT_KINDS)[keyof typeof AMOUNT_KINDS];
 
-/** The fields the form checks, and the API names when it refuses one. */
 export type LinkField = "title" | "amountUsd" | "minUsd" | "maxUsd" | "maxPayments";
