@@ -1,7 +1,7 @@
 import type { ComponentPropsWithRef } from "react";
 import { cx } from "../../lib/cx";
 
-export const ICON_BUTTON_SIZES = {
+const ICON_BUTTON_SIZES = {
   xs: "xs",
   sm: "sm",
   md: "md",

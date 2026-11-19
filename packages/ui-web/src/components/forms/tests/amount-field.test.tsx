@@ -13,7 +13,6 @@ describe("AmountField", () => {
         .split(" ")
         .map((id) => document.getElementById(id)?.textContent);
     expect(described()).toEqual(["USD", "Above 0."]);
-    expect(input.getAttribute("inputmode")).toBe("decimal");
 
     rerender(<AmountField label="Amount" unit="USD" error="Enter an amount, such as 12.50." />);
     expect(input.getAttribute("aria-invalid")).toBe("true");

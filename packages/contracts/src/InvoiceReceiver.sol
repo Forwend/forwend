@@ -16,7 +16,7 @@ import {
 } from "./InvoiceTypes.sol";
 
 /// Can only pay `amount` to `recipient` less the fees in the terms, which go to the settler and the refund authority,
-/// or return money through the refund authority. Rules: ../AGENTS.md.
+/// or return money through the refund authority. Rules: docs/contracts/rules.md.
 /// Deliberately has no receive/fallback, approve, signature validation, delegatecall or selfdestruct.
 contract InvoiceReceiver is ReentrancyGuard {
     using SafeERC20 for IERC20;

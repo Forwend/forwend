@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
-import { StepRing } from "../payments/payment-timeline";
+import { StepRing } from "./step-ring";
 
 export const TIMELINE_STATES = {
   done: "done",
@@ -39,8 +39,6 @@ export interface TimelineProps {
   className?: string;
 }
 
-/** A vertical record of what happened and what comes next: done is a check, current a ring, upcoming an empty
- * circle, joined by a line that is ink below finished steps. */
 export function Timeline({ entries, label, className }: TimelineProps) {
   return (
     <ol aria-label={label} className={cx("flex flex-col", className)}>

@@ -19,7 +19,6 @@ export interface StepperProps {
   free?: boolean;
 }
 
-/** The steps of a form: a check on finished ones (a button back to them), the current one ringed, the rest muted. */
 export function Stepper({ steps, current, label, onStepClick, free = false }: StepperProps) {
   return (
     <nav aria-label={label}>

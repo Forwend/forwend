@@ -5,21 +5,15 @@ import { useMemo } from "react";
 import { highlight } from "sugar-high";
 import { COPY_STATUS, useCopy } from "../../hooks/use-copy";
 
+const COPIED = "Copied";
+const FAILED = "Copy failed";
+
 export interface CodeBlockProps {
   code: string;
   language: string;
-  copyLabel?: string;
-  copiedLabel?: string;
-  failedLabel?: string;
 }
 
-export function CodeBlock({
-  code,
-  language,
-  copyLabel = "Copy code",
-  copiedLabel = "Copied",
-  failedLabel = "Copy failed",
-}: CodeBlockProps) {
+export function CodeBlock({ code, language }: CodeBlockProps) {
   const [status, copy] = useCopy(code);
   const copied = status === COPY_STATUS.copied;
   const failed = status === COPY_STATUS.failed;
@@ -42,18 +36,18 @@ export function CodeBlock({
             <Copy aria-hidden className="size-[var(--fw-icon-sm)]" />
           )}
           {copied ? (
-            copiedLabel
+            COPIED
           ) : failed ? (
-            failedLabel
+            FAILED
           ) : (
             <>
               <span aria-hidden>Copy</span>
-              <span className="sr-only">{copyLabel}</span>
+              <span className="sr-only">Copy code</span>
             </>
           )}
         </button>
         <span role="status" className="sr-only">
-          {copied ? copiedLabel : failed ? failedLabel : ""}
+          {copied ? COPIED : failed ? FAILED : ""}
         </span>
       </div>
       {/* biome-ignore lint/a11y/useSemanticElements: a fieldset groups form controls; this names a scroll area */}

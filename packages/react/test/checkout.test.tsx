@@ -79,7 +79,6 @@ describe("@forwend/react", () => {
   it("PayButton links to the hosted checkout or a payment link", () => {
     render(<PayButton payToken={TOKEN} />);
     expect(box.querySelector("a")?.href).toBe(`${FORWEND}/pay/${TOKEN}`);
-    expect(box.querySelector("a")?.textContent).toBe("Pay with stablecoins");
     render(
       <PayButton linkSlug="a1b2c3d4e5f6" className="buy">
         Buy

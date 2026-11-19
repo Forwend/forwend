@@ -13,7 +13,6 @@ const WINDOW_MS = 10 * 60_000;
 const perVisitor = limiter(5, WINDOW_MS);
 const perShop = limiter(20, WINDOW_MS);
 
-// Prices the cart here, from the catalog, then creates the Forwend checkout for exactly that amount.
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { lines?: unknown } | null;
   const cart = priceCart(body?.lines);

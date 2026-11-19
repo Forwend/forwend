@@ -645,7 +645,6 @@ export interface ListInvoices {
   state?: PaymentState;
   /** Search text, as the owner's invoice list takes it. */
   q?: string;
-  /** Start after this cursor instead of the first page. */
   cursor?: string;
 }
 

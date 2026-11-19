@@ -2,7 +2,8 @@
 
 import { DURATION_MS } from "@forwend/design-tokens";
 import * as RadixTooltip from "@radix-ui/react-tooltip";
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
+import { useDialogContainer } from "../../hooks/use-dialog-container";
 
 export interface TooltipProps {
   content: string;
@@ -30,12 +31,7 @@ export function Tooltip({ content, children, side = "top" }: TooltipProps) {
   const tapped = useRef(false);
   const openAtTap = useRef(false);
   const focused = useRef(false);
-  // Inside a modal <dialog> everything outside it is hidden behind it, so the hint opens in the dialog, as SelectField.
-  const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
-  const trigger = useCallback(
-    (el: HTMLButtonElement | null) => setDialog(el?.closest("dialog") ?? null),
-    [],
-  );
+  const [dialog, trigger] = useDialogContainer();
   return (
     <RadixTooltip.Root
       open={open}

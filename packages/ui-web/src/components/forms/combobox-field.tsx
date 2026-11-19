@@ -12,6 +12,7 @@ import {
 } from "react";
 import { cx } from "../../lib/cx";
 import { FIELD_CONTROL_CLASSES, OPTION_ROW_CLASSES } from "./field-classes";
+import { FieldMessage, fieldMessageId } from "./field-message";
 
 export interface ComboboxOption {
   value: string;
@@ -40,7 +41,6 @@ export interface ComboboxFieldProps {
   valueLabel?: string;
   /** The answer for what is typed is on its way: the list says so, and Enter waits for it. */
   loading?: boolean;
-  loadingText?: string;
 }
 
 const fold = (text: string) =>
@@ -104,12 +104,11 @@ export function ComboboxField({
   onSearchChange,
   valueLabel,
   loading = false,
-  loadingText = "Searching…",
 }: ComboboxFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const listId = `${fieldId}-list`;
-  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
+  const describedBy = fieldMessageId(fieldId, error, hint);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -190,7 +189,6 @@ export function ComboboxField({
       <label id={`${fieldId}-label`} htmlFor={fieldId} className="text-sm font-medium text-ink">
         {label}
       </label>
-      {/* The panel hangs from the field itself, above its hint or error. */}
       <div className="relative">
         <button
           ref={trigger}
@@ -266,7 +264,7 @@ export function ComboboxField({
                 shown.length && !loading ? "sr-only" : "px-3.5 py-6 text-center text-sm text-muted"
               }
             >
-              {loading ? loadingText : shown.length ? "" : noResults}
+              {loading ? "Searching…" : shown.length ? "" : noResults}
             </p>
             <div
               id={listId}
@@ -311,15 +309,7 @@ export function ComboboxField({
           </div>
         ) : null}
       </div>
-      {error ? (
-        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${fieldId}-hint`} className="text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldMessage fieldId={fieldId} error={error} hint={hint} />
     </div>
   );
 }

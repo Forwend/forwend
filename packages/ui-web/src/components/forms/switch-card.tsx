@@ -40,7 +40,6 @@ export function SwitchCard({
             {icon}
           </span>
         ) : null}
-        {/* The whole text flips the switch, as a label does. */}
         <label
           htmlFor={id}
           className={cx(

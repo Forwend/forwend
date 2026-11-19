@@ -127,6 +127,7 @@
   /* Glass blur, only where a panel sits on imagery */
   --fw-blur-glass: 14px;
 
+  /* DURATION_MS (constants/motion.ts) copies these for JavaScript timers. */
   --fw-duration-fast: 140ms;
   --fw-duration-base: 200ms;
   --fw-duration-slow: 400ms;

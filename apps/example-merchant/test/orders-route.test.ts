@@ -4,10 +4,10 @@ const create = vi.fn(async (_body: object) => ({
   sessionId: "0xa",
   payment: { payToken: "a".repeat(64) },
 }));
-vi.mock("@/lib/forwend", () => ({
+vi.mock("@/lib/forwend", async (original) => ({
+  ...(await original<typeof import("@/lib/forwend")>()),
   forwend: () => ({ checkoutSessions: { create } }),
   storeId: () => "store",
-  trustedIpHeader: () => process.env.TRUST_PROXY_HEADER || undefined,
 }));
 vi.mock("@/lib/orders", () => ({ orders: () => ({ create: () => {}, attach: () => {} }) }));
 

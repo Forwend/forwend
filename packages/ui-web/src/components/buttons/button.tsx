@@ -32,7 +32,6 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
   loading?: boolean;
 }
 
-// On touch screens the pseudo element stretches the hit area to 44px without changing the look.
 const BASE =
   "relative inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] before:absolute before:inset-x-0 active:scale-[0.98] aria-disabled:active:scale-100 motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
 
@@ -49,8 +48,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   danger: "border border-danger bg-surface text-danger hover:bg-danger-soft",
 };
 
-// The touch area is a 44px band centered on the button, not an inset: an inset counts from inside the border, so a
-// bordered button would fall 2px short.
+// On touch screens a pseudo element stretches the hit area to a 44px band centered on the button. Not an inset: an
+// inset counts from inside the border, so a bordered button would fall 2px short.
 const TOUCH =
   "pointer-coarse:before:top-1/2 pointer-coarse:before:h-11 pointer-coarse:before:-translate-y-1/2";
 

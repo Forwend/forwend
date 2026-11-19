@@ -15,7 +15,7 @@ import {
 } from "./InvoiceTypes.sol";
 
 /// Deploys invoice receivers at addresses that commit to their terms. Deployed through the CREATE2 deployer with the
-/// same bytecode and constructor args everywhere, so it has one address on every chain. Rules: ../AGENTS.md.
+/// same bytecode and constructor args everywhere, so it has one address on every chain. Rules: docs/contracts/rules.md.
 contract InvoiceReceiverFactory {
     using SafeERC20 for IERC20;
 
