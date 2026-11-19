@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
@@ -42,7 +43,7 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	defer cancel()
 	for _, p := range profiles {
 		// A team's profile is its owner's: its wallet is made for them alone (D-61).
-		if p.WalletAddress != "" || p.Role != Owner {
+		if p.WalletAddress != "" || p.Role != string(auth.Owner) {
 			continue
 		}
 		walletCtx := repairCtx

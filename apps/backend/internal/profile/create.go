@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -43,7 +42,7 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 
 // checkName holds a profile name to what New profile and the first run both accept; empty means no name.
 func checkName(name string) error {
-	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxNameLength || !PlainText(name, false) {
+	if !ValidText(name, MaxNameLength, false) {
 		return fmt.Errorf("%w: name must be at most %d characters of plain text", ErrInvalid, MaxNameLength)
 	}
 	if Impersonates(name) {

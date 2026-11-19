@@ -12,7 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
-// R-108.
 func TestTransferClassification(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -128,7 +127,6 @@ func TestTransferClassification(t *testing.T) {
 	}
 }
 
-// R-110.
 func TestRecordsValue(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -240,7 +238,8 @@ func TestRecordsValue(t *testing.T) {
 
 func collect(s *Service, profile string, from, to time.Time) ([]Transfer, error) {
 	var out []Transfer
-	err := s.EachTransfer(context.Background(), profile, from, to, func(t Transfer) error {
+	header := func(string) error { return nil }
+	err := s.ExportTransfers(context.Background(), profile, from, to, header, func(t Transfer) error {
 		out = append(out, t)
 		return nil
 	})

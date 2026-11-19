@@ -8,24 +8,21 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxName is the longest name a key takes.
 const MaxName = 100
 
 var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// A key works until it is revoked or its overlap after a roll ends.
-const (
-	keyColumns = `id::text, coalesce(store_id::text, ''), name, livemode, last4, scopes, created_at, last_used_at,
-		expires_at`
-	working = `revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`
-)
+const keyColumns = `id::text, coalesce(store_id::text, ''), name, livemode, last4, scopes, created_at, last_used_at,
+	expires_at`
+
+// WorkingSQL keeps an api_keys row that still works: not revoked, and not past its overlap after a roll.
+const WorkingSQL = `revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`
 
 func scanKey(row pgx.CollectableRow) (Key, error) {
 	var k Key
@@ -44,7 +41,7 @@ func scanKey(row pgx.CollectableRow) (Key, error) {
 func (s *Service) Create(ctx context.Context, profileID, user, name, storeID string, scopes []auth.Permission) (Key,
 	string, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxName || !profile.PlainText(name, false) {
+	if name == "" || !profile.ValidText(name, MaxName, false) {
 		return Key{}, "", fmt.Errorf("%w: name must be 1 to %d characters of plain text", ErrInvalid, MaxName)
 	}
 	invalid := len(scopes) == 0
@@ -104,7 +101,7 @@ const ofProfileMode = "livemode = (SELECT livemode FROM profiles WHERE id = $2)"
 
 // List is the profile's working keys of its mode (R-221), newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Key, error) {
-	rows, err := s.pool.Query(ctx, `SELECT `+keyColumns+` FROM api_keys WHERE profile_id = $1 AND `+working+`
+	rows, err := s.pool.Query(ctx, `SELECT `+keyColumns+` FROM api_keys WHERE profile_id = $1 AND `+WorkingSQL+`
 		AND livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY created_at DESC, id`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("list API keys: %w", err)
@@ -152,8 +149,8 @@ func (s *Service) Revoke(ctx context.Context, profileID, id string) error {
 	if !lowercaseUUID.MatchString(id) {
 		return ErrNotFound
 	}
-	tag, err := s.pool.Exec(ctx, `UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND profile_id = $2 AND `+working+
-		` AND `+ofProfileMode, id, profileID)
+	tag, err := s.pool.Exec(ctx, `UPDATE api_keys SET revoked_at = now()
+		WHERE id = $1 AND profile_id = $2 AND `+WorkingSQL+` AND `+ofProfileMode, id, profileID)
 	if err != nil {
 		return fmt.Errorf("revoke API key: %w", err)
 	}

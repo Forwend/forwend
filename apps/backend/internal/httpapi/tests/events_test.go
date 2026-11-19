@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// R-81.
 func TestListEvents(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)

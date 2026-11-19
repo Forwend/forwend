@@ -1,15 +1,11 @@
 package teamapi
 
 import (
-	"errors"
-	"math"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/team"
 )
 
@@ -68,12 +64,6 @@ func invite(members *team.Service) http.HandlerFunc {
 		}
 		v, err := members.Invite(r.Context(), r.PathValue("profileId"), mid.SignedInUser(r), body.Email,
 			team.Grant{Role: body.Role, Stores: body.Stores})
-		var soon *invoice.TooSoonError
-		if errors.As(err, &soon) {
-			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-			httpio.WriteError(w, r, httpio.ErrRateLimited)
-			return
-		}
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

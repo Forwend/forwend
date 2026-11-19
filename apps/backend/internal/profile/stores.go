@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/jackc/pgx/v5"
@@ -95,8 +94,7 @@ func origin(link string) (o string, ok bool) {
 // check validates d and puts its origins in their stored form, without repeats.
 func (d *StoreDetails) check() error {
 	d.Name = strings.TrimSpace(d.Name)
-	if d.Name == "" || !utf8.ValidString(d.Name) || utf8.RuneCountInString(d.Name) > MaxNameLength ||
-		!PlainText(d.Name, false) {
+	if d.Name == "" || !ValidText(d.Name, MaxNameLength, false) {
 		return fmt.Errorf("%w: name must be 1 to %d characters of plain text", ErrInvalid, MaxNameLength)
 	}
 	if Impersonates(d.Name) {

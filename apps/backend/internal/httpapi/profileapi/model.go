@@ -92,7 +92,6 @@ func toClientJSON(c profile.Client) clientJSON {
 	}
 }
 
-// R-134.
 type storeBody struct {
 	Name             string      `json:"name"`
 	DefaultExpiresIn int64       `json:"defaultExpiresIn"`

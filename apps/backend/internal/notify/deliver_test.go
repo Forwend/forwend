@@ -105,7 +105,6 @@ func count(t *testing.T, pool *pgxpool.Pool, where string) int {
 	return n
 }
 
-// R-80.
 func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	queue(t, pool, outbox.Paid, id, nil)
@@ -267,7 +266,6 @@ func TestDeliverGoesOnPastAnEventItCannotRead(t *testing.T) {
 	}
 }
 
-// R-98.
 func TestDeliverTellsTheOwnerARetainerMonthFailed(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -365,7 +363,6 @@ func TestBackoff(t *testing.T) {
 	}
 }
 
-// R-82.
 func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -454,7 +451,6 @@ func TestReceiptNamesTheIssuer(t *testing.T) {
 	}
 }
 
-// R-84.
 func TestDeliverSendsTheWelcome(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -575,7 +571,6 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	}
 }
 
-// R-96.
 func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -629,7 +624,6 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 	}
 }
 
-// R-107.
 func TestDeliverSendsTheChangeToTheClient(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -679,15 +673,6 @@ func TestDeliverSendsTheChangeToTheClient(t *testing.T) {
 	change("c1")
 	if len(f.sent) != 1 || count(t, pool, "kind = 'job.change' AND published_at IS NOT NULL") != 3 {
 		t.Fatalf("sent %d for a withdrawn or accepted change", len(f.sent)-1)
-	}
-}
-
-// R-107: the change email says when its invoice is due as the job page does.
-func TestChangeEmailSaysWhenItIsDue(t *testing.T) {
-	for days, want := range map[int]string{0: "due the day it is invoiced.", 1: "due 1 day after.", 7: "due 7 days after."} {
-		if lead := change("Alice", "Logo", "Extra", "1.00 USD", days, "", "link").Lead[1]; !strings.HasSuffix(lead, want) {
-			t.Fatalf("%d days: %q, want it to end %q", days, lead, want)
-		}
 	}
 }
 

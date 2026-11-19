@@ -64,6 +64,7 @@ func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left in
 	return max(MaxClientEmails-sent, 0), wait, nil
 }
 
+// Payload holds only strings, so json.Marshal of it can't fail.
 type Payload struct {
 	Option string        `json:"option"`
 	Amount string        `json:"amount,omitempty"`
@@ -79,10 +80,7 @@ type Payload struct {
 
 // QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).
 func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
-	payload, err := json.Marshal(Payload{Option: option})
-	if err != nil {
-		return fmt.Errorf("queue receipt for %s: %w", option, err)
-	}
+	payload, _ := json.Marshal(Payload{Option: option})
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
 		SELECT $1, m.id, $3 FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
 		WHERE o.id = $2 AND m.payer_email IS NOT NULL
@@ -94,10 +92,7 @@ func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
 
 // QueueSend adds a Send to client for the invoice's main row, under the request's Idempotency-Key (R-94).
 func QueueSend(ctx context.Context, tx pgx.Tx, invoice, key string, by history.Actor) error {
-	payload, err := json.Marshal(Payload{Option: invoice, By: by})
-	if err != nil {
-		return fmt.Errorf("queue send for %s: %w", invoice, err)
-	}
+	payload, _ := json.Marshal(Payload{Option: invoice, By: by})
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload, idempotency_key) VALUES ($1, $2, $3, $4)`,
 		Sent, invoice, payload, key); err != nil {
 		return fmt.Errorf("queue send for %s: %w", invoice, err)
@@ -111,10 +106,7 @@ func Queue(ctx context.Context, tx pgx.Tx, kind, option string, amount *big.Int)
 	if amount != nil {
 		p.Amount = amount.String()
 	}
-	payload, err := json.Marshal(p)
-	if err != nil {
-		return fmt.Errorf("queue %s for %s: %w", kind, option, err)
-	}
+	payload, _ := json.Marshal(p)
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
 		SELECT $1, coalesce(main_id, id), $3 FROM invoices WHERE id = $2`, kind, option, payload); err != nil {
 		return fmt.Errorf("queue %s for %s: %w", kind, option, err)
@@ -124,10 +116,7 @@ func Queue(ctx context.Context, tx pgx.Tx, kind, option string, amount *big.Int)
 
 // QueueChange adds the email of the job's scope change under key (R-107).
 func QueueChange(ctx context.Context, tx pgx.Tx, job, key string) error {
-	payload, err := json.Marshal(Payload{Change: key})
-	if err != nil {
-		return fmt.Errorf("queue change for job %s: %w", job, err)
-	}
+	payload, _ := json.Marshal(Payload{Change: key})
 	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, job_id, payload) VALUES ($1, $2, $3)", Change, job,
 		payload); err != nil {
 		return fmt.Errorf("queue change for job %s: %w", job, err)
@@ -137,10 +126,7 @@ func QueueChange(ctx context.Context, tx pgx.Tx, job, key string) error {
 
 // QueueInvite adds the email of the team invite, carrying its link token (R-139).
 func QueueInvite(ctx context.Context, tx pgx.Tx, invite, token string) error {
-	payload, err := json.Marshal(Payload{Token: token})
-	if err != nil {
-		return fmt.Errorf("queue invite %s: %w", invite, err)
-	}
+	payload, _ := json.Marshal(Payload{Token: token})
 	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, invite_id, payload) VALUES ($1, $2, $3)", Invite, invite,
 		payload); err != nil {
 		return fmt.Errorf("queue invite %s: %w", invite, err)

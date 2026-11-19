@@ -2,7 +2,6 @@ package team
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -35,24 +34,6 @@ func lockMerchant(ctx context.Context, tx pgx.Tx, profileID string) error {
 	}
 	if kind != profile.Merchant {
 		return ErrNotMerchant
-	}
-	return nil
-}
-
-func requireTeam(ctx context.Context, tx pgx.Tx, profileID, privyUserID string) error {
-	var role auth.Role
-	err := tx.QueryRow(ctx, `SELECT CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END
-		FROM profiles p JOIN users u ON u.privy_user_id = $2
-		LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
-		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, profileID, privyUserID).Scan(&role)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return auth.ErrForbidden
-	}
-	if err != nil {
-		return fmt.Errorf("read team actor: %w", err)
-	}
-	if !(auth.Access{Role: role}).Can(auth.Team) {
-		return auth.ErrForbidden
 	}
 	return nil
 }
@@ -99,7 +80,7 @@ func (g *Grant) check(ctx context.Context, tx pgx.Tx, profileID string) error {
 // one (R-139).
 func revokeInvitesBy(ctx context.Context, tx pgx.Tx, profileID, userID string) error {
 	if _, err := tx.Exec(ctx, `UPDATE profile_invites SET revoked_at = now()
-		WHERE profile_id = $1 AND invited_by = $2 AND `+openInvite, profileID, userID); err != nil {
+		WHERE profile_id = $1 AND invited_by = $2 AND `+OpenInviteSQL, profileID, userID); err != nil {
 		return fmt.Errorf("revoke member's invites: %w", err)
 	}
 	return nil

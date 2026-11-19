@@ -29,8 +29,8 @@ var ErrForbidden = errors.New("not allowed for this profile")
 var ErrReauthRequired = errors.New("fresh sign-in required")
 
 // FreshWindow is how old a token may be for a money action or another change D-63 names, and how long a confirmed
-// Forwend code keeps its session fresh. Privy keeps a sign-in's token
-// about 55 minutes before a refresh changes its iat, so this can stay that long at most.
+// Forwend code keeps its session fresh. Privy keeps a sign-in's token about 55 minutes before a refresh changes its
+// iat, so this can stay that long at most.
 const FreshWindow = 15 * time.Minute
 
 // Token is a verified access token: the user's Privy DID, when Privy issued it, and its Privy session (sid). A

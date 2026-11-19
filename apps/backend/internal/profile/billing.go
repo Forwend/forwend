@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -68,8 +67,7 @@ func (d BillingDetails) check() error {
 		{"name", d.Name, MaxBillingName, false}, {"address", d.Address, MaxBillingAddress, true},
 		{"taxId", d.TaxID, MaxBillingTaxID, false}, {"email", d.Email, MaxBillingEmail, false},
 	} {
-		// Postgres text can't hold a NUL byte.
-		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !PlainText(f.value, f.lines) {
+		if !ValidText(f.value, f.max, f.lines) {
 			return fmt.Errorf("%w: %s must be at most %d characters of plain text", ErrInvalid, f.name, f.max)
 		}
 	}

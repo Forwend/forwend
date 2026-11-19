@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"regexp"
 	"strings"
+
+	"github.com/forwend/forwend/apps/backend/internal/email"
 )
 
 // WebURL is the web app's origin (links and the hosted logo); an empty PostalAddress or Support leaves it out of the
@@ -68,4 +70,52 @@ func render(site Site, v view) (string, error) {
 	}{v, site.WebURL, site.WebURL + logo, site.Support, site.PostalAddress}
 	err := layout.Execute(&b, data)
 	return b.String(), err
+}
+
+// message is the email for a view: the designed HTML part and a plain text part with the same words and links.
+func message(site Site, v view) (email.Message, error) {
+	html, err := render(site, v)
+	if err != nil {
+		return email.Message{}, err
+	}
+	text := v.Title + "\n"
+	if v.TestMode != "" {
+		text = v.TestMode + "\n\n" + text
+	}
+	if v.Amount != "" {
+		text += v.Amount + "\n"
+	}
+	text += "\n" + strings.Join(v.Lead, "\n\n")
+	if len(v.Details) > 0 {
+		text += "\n"
+		for _, d := range v.Details {
+			value := d.Value
+			if d.Href != "" {
+				value = d.Href
+			}
+			text += "\n" + d.Label + ": " + value
+		}
+	}
+	if v.Note != "" {
+		text += "\n\n" + v.Note
+	}
+	text += "\n\n" + v.Button.Label + ": " + v.Button.URL
+	if v.Link.URL != "" {
+		text += "\n" + v.Link.Label + ": " + v.Link.URL
+	}
+	text += "\n\n" + v.Reason
+	if v.Settings != "" {
+		text += " Email settings: " + v.Settings
+	}
+	if v.Stop != "" {
+		text += " Stop reminders: " + v.Stop
+	}
+	if site.Support != "" {
+		text += "\nQuestions? " + site.Support
+	}
+	text += "\nForwend: " + site.WebURL + "\n"
+	if site.PostalAddress != "" {
+		text += site.PostalAddress + "\n"
+	}
+	return email.Message{Subject: v.Subject, Text: text, HTML: html, ReplyTo: v.ReplyTo, Unsubscribe: v.Unsubscribe}, nil
 }

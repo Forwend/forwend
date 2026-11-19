@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/forwend/forwend/apps/backend/internal/activity"
 	"github.com/forwend/forwend/apps/backend/internal/apikey"
@@ -31,6 +33,11 @@ var ErrRateLimited = errors.New("rate limited")
 
 // WriteError uses the error shape of docs/backend/api.md. Only 400 and 422 show err's text, which says what to fix.
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
+	var soon *invoice.TooSoonError
+	if errors.As(err, &soon) {
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+		err = ErrRateLimited
+	}
 	status, code, message := http.StatusInternalServerError, "internal", "internal error"
 	switch {
 	case errors.Is(err, ErrInvalidQuery):

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
 // The Standard Webhooks spec's own example, then a rotation's two secrets.
@@ -33,7 +35,7 @@ func TestClientRefusesPrivateAddressesAfterDNS(t *testing.T) {
 	for _, url := range []string{srv.URL, "https://localhost" + port, "https://[::1]" + port} {
 		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, url, nil)
 		_, err := Client().Do(req)
-		if !errors.Is(err, errNotPublic) || reason(err) != "address not public" {
+		if !errors.Is(err, outbound.ErrNotPublic) || reason(err) != "address not public" {
 			t.Errorf("%s: %v, want the address refused", url, err)
 		}
 	}

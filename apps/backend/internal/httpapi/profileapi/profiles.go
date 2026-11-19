@@ -120,7 +120,6 @@ func getBillingDetails(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// R-80.
 func getNotifications(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		n, err := profiles.Notifications(r.Context(), r.PathValue("profileId"))

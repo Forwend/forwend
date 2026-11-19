@@ -33,7 +33,6 @@ func (e invoiceEnv) memberStores(t *testing.T, profile, user string) []string {
 	return ids
 }
 
-// R-139, D-93, D-63.
 func TestTeamInvitesAndRoles(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()

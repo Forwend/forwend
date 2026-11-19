@@ -18,6 +18,27 @@ const MaxDeliveries = 50
 
 var ErrNoDelivery = errors.New("webhook delivery not found")
 
+// A resend or a test joins a profile's queue only while it has fewer than ManualPendingLimit pending deliveries;
+// invoice events always join.
+const ManualPendingLimit = 32
+
+var ErrQueueFull = errors.New("webhook pending queue is full")
+
+// manualQueueRoom locks the profile's delivery row, so concurrent resends count one after another.
+func manualQueueRoom(ctx context.Context, tx pgx.Tx, profileID string) (int, error) {
+	if _, err := tx.Exec(ctx, `INSERT INTO webhook_delivery_profiles(profile_id) VALUES($1) ON CONFLICT DO NOTHING`, profileID); err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(ctx, `SELECT 1 FROM webhook_delivery_profiles WHERE profile_id=$1 FOR UPDATE`, profileID); err != nil {
+		return 0, err
+	}
+	var pending int
+	err := tx.QueryRow(ctx, `SELECT count(*) FROM (SELECT 1 FROM webhook_deliveries d
+ JOIN webhook_endpoints e ON e.id=d.endpoint_id WHERE e.profile_id=$1 AND d.status='pending' LIMIT $2) q`,
+		profileID, ManualPendingLimit).Scan(&pending)
+	return ManualPendingLimit - pending, err
+}
+
 var eventID = regexp.MustCompile(`^evt_[0-9a-f]{32}$`)
 
 // Delivery is one event sent to one endpoint, with its attempts, oldest first.

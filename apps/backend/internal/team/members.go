@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/forwend/forwend/apps/backend/internal/apikey"
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/jackc/pgx/v5"
 )
@@ -36,7 +37,7 @@ func (s *Service) List(ctx context.Context, profileID string) (Team, error) {
 		return Team{}, fmt.Errorf("read team: %w", err)
 	}
 	rows, err = s.pool.Query(ctx, `SELECT id::text, email, role, stores::text[], created_at, expires_at
-		FROM profile_invites WHERE profile_id = $1 AND `+openInvite+` ORDER BY created_at DESC, id`, profileID)
+		FROM profile_invites WHERE profile_id = $1 AND `+OpenInviteSQL+` ORDER BY created_at DESC, id`, profileID)
 	if err != nil {
 		return Team{}, fmt.Errorf("read invites: %w", err)
 	}
@@ -61,7 +62,7 @@ type RollEndpoint struct{ ID, URL string }
 func toRoll(ctx context.Context, tx pgx.Tx, profileID, userID string, wasAdmin bool) (ToRoll, error) {
 	var out ToRoll
 	rows, err := tx.Query(ctx, `SELECT id::text, name, last4 FROM api_keys WHERE profile_id = $1 AND created_by = $2
-		AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now()) ORDER BY created_at`, profileID, userID)
+		AND `+apikey.WorkingSQL+` ORDER BY created_at`, profileID, userID)
 	if err != nil {
 		return ToRoll{}, fmt.Errorf("read the member's keys: %w", err)
 	}
@@ -94,7 +95,7 @@ func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID 
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
 			return err
 		}
-		if err := requireTeam(ctx, tx, profileID, privyUserID); err != nil {
+		if err := auth.StillCan(ctx, tx, profileID, privyUserID, auth.Team); err != nil {
 			return err
 		}
 		if owner, err := isOwner(ctx, tx, profileID, userID); err != nil {

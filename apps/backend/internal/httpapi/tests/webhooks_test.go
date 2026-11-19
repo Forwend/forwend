@@ -18,7 +18,6 @@ var webhookKey = bytes.Repeat([]byte{7}, 32)
 
 var whsec = regexp.MustCompile(`^whsec_[A-Za-z0-9+/]{43}=$`)
 
-// R-146, D-42, D-63.
 func TestWebhookEndpoints(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

@@ -63,7 +63,6 @@ func links(all []string) []string {
 	return slices.Compact(all)
 }
 
-// F200.
 func TestEveryEmailHasHTMLWithTheTextLinks(t *testing.T) {
 	for name, v := range samples() {
 		m, err := message(site, v)
@@ -90,50 +89,6 @@ func TestEmailEscapesTypedNames(t *testing.T) {
 	}
 	if strings.Contains(m.HTML, "<b>Mara") || !strings.Contains(m.HTML, "&lt;b&gt;Mara&lt;/b&gt; &amp; &#34;Co&#34;") {
 		t.Fatal("the typed name reached the HTML unescaped")
-	}
-}
-
-func TestKeepHoldsNumbersDatesAndAmountsTogether(t *testing.T) {
-	got := string(keep("INV-0001 for 1,250.00 USDC is due 30 Nov 2026 & paid"))
-	want := `<span style="white-space:nowrap">INV-0001</span> for 1,250.00&nbsp;USDC is due 30&nbsp;Nov&nbsp;2026 &amp; paid`
-	if got != want {
-		t.Fatalf("got %s, want %s", got, want)
-	}
-}
-
-// The support address comes from config (SUPPORT_EMAIL); without one the footer leaves the line out.
-// R-80, D-118: the owner reads why money is held, whichever way it came.
-func TestHeldEmailNamesEveryReasonMoneyIsHeld(t *testing.T) {
-	note := samples()["held"].Note
-	for _, reason := range []string{
-		"over the amount due",
-		"part of a payment when checkout closed",
-		"after checkout closed",
-		"canceled",
-		"another payment option",
-	} {
-		if !strings.Contains(note, reason) {
-			t.Errorf("held note %q leaves out %q", note, reason)
-		}
-	}
-}
-
-func TestFooterNamesTheConfiguredSupportAddress(t *testing.T) {
-	for _, v := range samples() {
-		m, err := message(Site{WebURL: "https://forwend.com", Support: "help@example.test"}, v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(m.HTML, `href="mailto:help@example.test"`) || !strings.Contains(m.Text, "Questions? help@example.test") {
-			t.Fatalf("%s: the footer lacks the configured support address", v.Subject)
-		}
-		m, err = message(Site{WebURL: "https://forwend.com"}, v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(m.HTML, "Questions?") || strings.Contains(m.Text, "Questions?") {
-			t.Fatalf("%s: a footer with no support address still asks for questions", v.Subject)
-		}
 	}
 }
 

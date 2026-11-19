@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -19,6 +20,12 @@ func PlainText(s string, lines bool) bool {
 		}
 	}
 	return true
+}
+
+// ValidText reports whether s is valid UTF-8, at most max characters, and PlainText. Postgres text holds neither
+// invalid UTF-8 nor a NUL byte, which PlainText refuses.
+func ValidText(s string, max int, lines bool) bool {
+	return utf8.ValidString(s) && utf8.RuneCountInString(s) <= max && PlainText(s, lines)
 }
 
 var fillers = map[rune]bool{'\u115f': true, '\u1160': true, '\u2800': true, '\u3164': true, '\uffa0': true}
