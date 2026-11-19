@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
@@ -26,7 +27,8 @@ func tokenHash(token string) []byte {
 	return sum[:]
 }
 
-const openInvite = "accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()"
+// OpenInviteSQL keeps a profile_invites row whose link still works: not accepted, revoked or expired.
+const OpenInviteSQL = "accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()"
 
 // Invite queues an email inviting the address to the team with g (D-63: the caller asked for a fresh sign-in). An open
 // invite to the same address is revoked. Invites count toward the client email cap (R-116).
@@ -47,7 +49,7 @@ func (s *Service) Invite(ctx context.Context, profileID, privyUserID, email stri
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
 			return err
 		}
-		if err := requireTeam(ctx, tx, profileID, privyUserID); err != nil {
+		if err := auth.StillCan(ctx, tx, profileID, privyUserID, auth.Team); err != nil {
 			return err
 		}
 		if err := g.check(ctx, tx, profileID); err != nil {
@@ -92,7 +94,7 @@ func (s *Service) Revoke(ctx context.Context, profileID, inviteID string) error 
 		return ErrInviteNotFound
 	}
 	tag, err := s.pool.Exec(ctx, `UPDATE profile_invites SET revoked_at = now() WHERE id = $1 AND profile_id = $2 AND `+
-		openInvite, inviteID, profileID)
+		OpenInviteSQL, inviteID, profileID)
 	if err != nil {
 		return fmt.Errorf("revoke invite: %w", err)
 	}
@@ -109,7 +111,7 @@ func (s *Service) Invitation(ctx context.Context, token string) (Invitation, err
 	}
 	var v Invitation
 	err := s.pool.QueryRow(ctx, `SELECT coalesce(p.name, ''), i.email, i.role, i.expires_at
-		FROM profile_invites i JOIN profiles p ON p.id = i.profile_id WHERE i.token_hash = $1 AND `+openInvite,
+		FROM profile_invites i JOIN profiles p ON p.id = i.profile_id WHERE i.token_hash = $1 AND `+OpenInviteSQL,
 		tokenHash(token)).Scan(&v.ProfileName, &v.Email, &v.Role, &v.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Invitation{}, ErrInviteNotFound
@@ -146,7 +148,7 @@ func (s *Service) Accept(ctx context.Context, token, privyUserID string) (string
 		var id, invited, role, userID string
 		var stores []string
 		err = tx.QueryRow(ctx, `SELECT id::text, email, role, stores::text[] FROM profile_invites
-			WHERE token_hash = $1 AND `+openInvite+` FOR UPDATE`, tokenHash(token)).Scan(&id, &invited, &role, &stores)
+			WHERE token_hash = $1 AND `+OpenInviteSQL+` FOR UPDATE`, tokenHash(token)).Scan(&id, &invited, &role, &stores)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrInviteNotFound
 		} else if err != nil {

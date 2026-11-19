@@ -13,7 +13,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// R-134.
 func listStores(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := profiles.Stores(r.Context(), r.PathValue("profileId"))

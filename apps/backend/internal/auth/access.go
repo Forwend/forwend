@@ -101,6 +101,15 @@ func (a Access) InStores(storeID string) bool {
 	return a.Stores == nil || slices.Contains(a.Stores, storeID)
 }
 
+// roleSQL is the user's Role on the profile; onProfileSQL finds profile $1 for Privy user $2 only when they own it or
+// are a member.
+const (
+	roleSQL      = "CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END"
+	onProfileSQL = `FROM profiles p JOIN users u ON u.privy_user_id = $2
+		LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
+		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`
+)
+
 // CheckAccess is the user's access to the profile: owner or member. Anyone else, and a malformed or unknown profile
 // ID, is ErrForbidden, so callers can't probe which profiles exist.
 func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string) (Access, error) {
@@ -110,15 +119,12 @@ func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string
 	}
 	var a Access
 	var live bool
-	err := s.pool.QueryRow(ctx, `
-		SELECT p.livemode, CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END,
+	err := s.pool.QueryRow(ctx, `SELECT p.livemode, `+roleSQL+`,
 		       CASE WHEN m.role IN ('developer', 'finance') THEN coalesce((
 		           SELECT array_agg(ms.store_id::text ORDER BY s.created_at, s.id)
 		           FROM member_stores ms JOIN stores s ON s.id = ms.store_id
 		           WHERE ms.profile_id = p.id AND ms.user_id = u.id), '{}') END
-		FROM profiles p JOIN users u ON u.privy_user_id = $2
-		LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
-		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, id, privyUserID).Scan(&live, &a.Role, &a.Stores)
+		`+onProfileSQL, id, privyUserID).Scan(&live, &a.Role, &a.Stores)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Access{}, ErrForbidden
 	}
@@ -137,10 +143,7 @@ func StillCan(ctx context.Context, tx pgx.Tx, profileID, privyUserID string, p P
 		return fmt.Errorf("lock profile: %w", err)
 	}
 	var role Role
-	err := tx.QueryRow(ctx, `SELECT CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END
-		FROM profiles p JOIN users u ON u.privy_user_id = $2
-		LEFT JOIN profile_members m ON m.profile_id = p.id AND m.user_id = u.id
-		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`, profileID, privyUserID).Scan(&role)
+	err := tx.QueryRow(ctx, "SELECT "+roleSQL+" "+onProfileSQL, profileID, privyUserID).Scan(&role)
 	if errors.Is(err, pgx.ErrNoRows) || err == nil && !(Access{Role: role}).Can(p) {
 		return ErrForbidden
 	}

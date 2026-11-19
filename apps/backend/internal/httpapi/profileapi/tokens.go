@@ -14,7 +14,6 @@ type tokensJSON struct {
 	CrossChain bool `json:"crossChain"`
 }
 
-// R-136.
 func getTokens(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := profiles.Tokens(r.Context(), r.PathValue("profileId"))

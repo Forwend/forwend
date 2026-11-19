@@ -3,11 +3,11 @@ package mid
 import (
 	"math"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
 // Tabs poll about six routes every 15 s and a page load sends about ten, well under this; a looping script is not.
@@ -25,7 +25,6 @@ const overflow = "\x00overflow"
 // Buckets live in each api process, so each replica counts on its own (docs/backend/architecture.md#scaling).
 type Buckets struct {
 	rate, burst float64
-	maxKeys     int
 
 	mu    sync.Mutex
 	m     map[string]*bucket
@@ -38,7 +37,7 @@ type bucket struct {
 }
 
 func NewBuckets(rate, burst float64) *Buckets {
-	return &Buckets{rate: rate, burst: burst, maxKeys: MaxKeys, m: map[string]*bucket{}}
+	return &Buckets{rate: rate, burst: burst, m: map[string]*bucket{}}
 }
 
 func (b *Buckets) Wait(key string) time.Duration {
@@ -50,7 +49,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 		key = overflow
 	}
 	k := b.m[key]
-	if k == nil && len(b.m) >= b.maxKeys {
+	if k == nil && len(b.m) >= MaxKeys {
 		key, k = overflow, b.m[overflow]
 	}
 	if k == nil {
@@ -87,8 +86,7 @@ func (b *Buckets) sweep(now time.Time) {
 func Limit(b *Buckets, key func(*http.Request) string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if wait := b.Wait(key(r)); wait > 0 {
-			w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
-			httpio.WriteError(w, r, httpio.ErrRateLimited)
+			httpio.WriteError(w, r, &invoice.TooSoonError{Wait: wait})
 			return
 		}
 		next.ServeHTTP(w, r)

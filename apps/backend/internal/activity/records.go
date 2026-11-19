@@ -52,7 +52,8 @@ type TransferPayment struct {
 	Fees *big.Int
 }
 
-// R-108.
+// Labelable: money in that Forwend can't classify, or a payment with a policy exception or not reconciled, takes the
+// user's label (R-108).
 func (t Transfer) Labelable() bool {
 	return t.Direction == "in" && !t.own && (t.Payment == nil && t.Invoice == nil ||
 		t.Payment != nil && (t.Payment.PolicyException != "" || t.Payment.Unreconciled))
@@ -74,7 +75,7 @@ func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
 	return v.Mul(v, t.fx.cur).FloatString(invoice.AgreedCurrencies[t.RecordsCurrency]), t.fx.day, true
 }
 
-// R-108.
+// Classification is one of the Class constants, or the user's label (R-108).
 func (t Transfer) Classification() string {
 	switch {
 	case t.Payment != nil && (t.Payment.PolicyException != "" || t.Payment.Unreconciled):
@@ -103,13 +104,9 @@ const MaxExportRows = 10000
 
 var ErrTooMany = errors.New("too many transactions in the period")
 
-// EachTransfer calls fn with each transfer in [from, to), newest first, for the export and statement (R-108,
-// R-112); past MaxExportRows it returns ErrTooMany. The caller has checked the user's access to the profile.
-func (s *Service) EachTransfer(ctx context.Context, profileID string, from, to time.Time, fn func(Transfer) error) error {
-	return s.ExportTransfers(ctx, profileID, from, to, func(string) error { return nil }, fn)
-}
-
-// ExportTransfers reads the currency header and every transfer from one financial snapshot.
+// ExportTransfers calls header with the records currency, then fn with each transfer in [from, to), newest first,
+// all from one snapshot, for the export and statement (R-108, R-112); past MaxExportRows it returns ErrTooMany. The
+// caller has checked the user's access to the profile.
 func (s *Service) ExportTransfers(ctx context.Context, profileID string, from, to time.Time, header func(string) error, fn func(Transfer) error) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {

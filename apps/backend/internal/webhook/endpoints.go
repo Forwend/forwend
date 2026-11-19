@@ -7,14 +7,13 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/auth"
+	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxDescription is the longest description an endpoint takes.
 const MaxDescription = 200
 
 var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -29,7 +28,6 @@ func scanEndpoint(row pgx.CollectableRow) (Endpoint, error) {
 	return e, err
 }
 
-// MaxEndpoints is a profile's most webhook endpoints.
 const MaxEndpoints = 16
 
 // Save creates the endpoint with the id the caller picks, with its first secret, or replaces every field of the
@@ -47,20 +45,21 @@ func (s *Service) Save(ctx context.Context, profileID, user, id string, d Detail
 		return Endpoint{}, false, err
 	}
 	d.Description = strings.TrimSpace(d.Description)
-	if !utf8.ValidString(d.Description) || utf8.RuneCountInString(d.Description) > MaxDescription ||
-		!profile.PlainText(d.Description, false) {
+	if !profile.ValidText(d.Description, MaxDescription, false) {
 		return Endpoint{}, false, fmt.Errorf("%w: description must be at most %d characters of plain text", ErrInvalid,
 			MaxDescription)
 	}
 	invalid := len(d.Events) == 0
 	for _, t := range d.Events {
-		invalid = invalid || !slices.Contains(EventTypes, t)
+		invalid = invalid || !slices.Contains(history.WebhookEvents, t)
 	}
 	if invalid {
-		return Endpoint{}, false, fmt.Errorf("%w: events must be one or more of %v", ErrInvalid, EventTypes)
+		return Endpoint{}, false, fmt.Errorf("%w: events must be one or more of %v", ErrInvalid, history.WebhookEvents)
 	}
-	// Each once, in EventTypes' order.
-	d.Events = slices.DeleteFunc(slices.Clone(EventTypes), func(t string) bool { return !slices.Contains(d.Events, t) })
+	// Each once, in the list's order.
+	d.Events = slices.DeleteFunc(slices.Clone(history.WebhookEvents), func(t string) bool {
+		return !slices.Contains(d.Events, t)
+	})
 	d.StoreID = strings.ToLower(d.StoreID)
 
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
@@ -180,10 +179,6 @@ func (s *Service) Secrets(ctx context.Context, profileID, id string) ([]Secret, 
 		return nil, err
 	}
 	return s.secrets(ctx, s.pool, profileID, id)
-}
-
-type queryer interface {
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
 func (s *Service) secrets(ctx context.Context, q queryer, profileID, id string) ([]Secret, error) {

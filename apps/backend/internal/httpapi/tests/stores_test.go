@@ -41,7 +41,6 @@ func (e invoiceEnv) merchant(t *testing.T) string {
 	return id
 }
 
-// R-134.
 func TestStores(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -292,7 +291,6 @@ func storeIDs(t *testing.T, e invoiceEnv, profile string) []string {
 	return ids
 }
 
-// R-135.
 func TestStoreBranding(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"

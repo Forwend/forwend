@@ -2,27 +2,16 @@
 package webhook
 
 import (
+	"context"
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// The events an endpoint can take (PLAN 11.5); invoice.confirmed is not one (owner decision 6).
-const (
-	InvoiceDetected      = "invoice.detected"
-	InvoicePartiallyPaid = "invoice.partially_paid"
-	InvoicePaid          = "invoice.paid"
-	InvoiceSettled       = "invoice.settled"
-	InvoiceExpired       = "invoice.expired"
-	InvoiceCanceled      = "invoice.canceled"
-	InvoiceHeld          = "invoice.held"
-	InvoiceOpen          = "invoice.open"     // a reorg took away the payment it was detected with: it waits again
-	InvoiceReopened      = "invoice.reopened" // the owner reopened it after it expired partly paid (R-130)
-)
-
-var EventTypes = []string{InvoiceDetected, InvoicePartiallyPaid, InvoicePaid, InvoiceSettled, InvoiceExpired,
-	InvoiceCanceled, InvoiceHeld, InvoiceOpen, InvoiceReopened}
+// InvoicePaid is one of history.WebhookEvents, the events an endpoint can take.
+const InvoicePaid = "invoice.paid"
 
 // Overlap is how long a rotated secret keeps signing beside its new one.
 const Overlap = 24 * time.Hour
@@ -64,6 +53,11 @@ type Secret struct {
 	Text      string
 	CreatedAt time.Time
 	ExpiresAt *time.Time
+}
+
+// queryer is a pool or a transaction.
+type queryer interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
 type Service struct {

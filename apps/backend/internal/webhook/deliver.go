@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
-// Retries are the waits before each attempt after the first: Svix's schedule, its last step repeated to about 3 days
-// (D-98).
+// Retries are the waits before each attempt after the first, the last step repeated to about 3 days (D-98).
 var Retries = []time.Duration{5 * time.Second, 5 * time.Minute, 30 * time.Minute, 2 * time.Hour, 5 * time.Hour,
 	10 * time.Hour, 10 * time.Hour, 10 * time.Hour, 10 * time.Hour, 10 * time.Hour, 10 * time.Hour}
 
@@ -147,8 +147,8 @@ func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d
 func reason(err error) string {
 	var u *url.Error
 	switch {
-	case errors.Is(err, errNotPublic):
-		return errNotPublic.Error()
+	case errors.Is(err, outbound.ErrNotPublic):
+		return outbound.ErrNotPublic.Error()
 	case errors.As(err, &u) && u.Timeout():
 		return "timeout"
 	case errors.As(err, &u):
@@ -208,7 +208,7 @@ func (s *Service) record(ctx context.Context, d delivery, code int, failure stri
 		if off == "" || tag.RowsAffected() == 0 {
 			return nil
 		}
-		payload, _ := json.Marshal(outbox.Payload{Reason: off}) // only strings: it can't fail
+		payload, _ := json.Marshal(outbox.Payload{Reason: off})
 		_, err = tx.Exec(ctx, `WITH w AS (UPDATE webhook_endpoints SET enabled = false, updated_at = now()
 			    WHERE id = $1 AND enabled RETURNING id)
 			INSERT INTO outbox_events (kind, endpoint_id, payload) SELECT $2, id, $3 FROM w`,

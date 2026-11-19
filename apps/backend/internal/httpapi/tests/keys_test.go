@@ -24,7 +24,6 @@ func (e invoiceEnv) withKey(t *testing.T, method, path, key, body string) reply 
 	return e.do(t, req)
 }
 
-// R-144, D-87, D-61, D-63.
 func TestAPIKeys(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

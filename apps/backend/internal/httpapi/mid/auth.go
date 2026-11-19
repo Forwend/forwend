@@ -151,13 +151,10 @@ func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, mfaEnough bo
 		}
 		// A session that confirmed Forwend's code (R-137), else a token from the last full sign-in: a Privy sign-in
 		// made while signed in keeps the session and moves no sign-in time, so it alone proves nothing.
-		fresh, stored := false, reauth.Stored{}
-		if codes != nil {
-			var err error
-			if fresh, stored, err = codes.Fresh(r.Context(), token); err != nil {
-				httpio.WriteError(w, r, err)
-				return
-			}
+		fresh, stored, err := codes.Fresh(r.Context(), token)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
 		}
 		if !fresh {
 			signIns, twoStep, err := users.SignInTimes(r.Context(), token.User, stored.LoginEmail)

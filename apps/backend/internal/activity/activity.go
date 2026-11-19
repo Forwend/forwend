@@ -96,6 +96,10 @@ const heldSQL = `CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transa
 // seconds, and money paid within the second a payment was made still comes after it.
 const depositAtSQL = `greatest(to_timestamp(t.block_time), i.created_at)`
 
+// settleTxSQL is the hash of the confirmed settle transaction of invoice row "invoices"; empty before it settles.
+const settleTxSQL = `coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
+  AND s.status = 'confirmed'), '')`
+
 // merchantSQL is the part of booked transfer t the owner gets: none once a partly paid expiry moved it to the payer.
 const merchantSQL = `CASE WHEN t.booked THEN CASE WHEN i.payment_status = 'expired_partially_paid' THEN 0
   ELSE (` + invoice.DepositPaidSQL + `)::numeric END END`
@@ -164,16 +168,14 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 				" AND (tk.symbol ILIKE " + like + " OR " + value + " = " + amount + "::numeric * 10::numeric ^ tk.decimals))"
 		}
 		// A settled invoice matches its settle transaction.
-		invoices += ` AND (coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
-			AND s.status = 'confirmed'), '') ILIKE ` + like + " OR " +
+		invoices += " AND (" + settleTxSQL + " ILIKE " + like + " OR " +
 			token("invoices.chain_id", "invoices.token_contract", "invoices.amount") + ")"
 		deposits += " AND (t.tx_hash ILIKE " + like + " OR " + token("t.chain_id", "t.token_contract", "t.amount") + ")"
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT a.kind, a.at, a.key, a.invoice_id, a.chain_id, a.token, tk.symbol, tk.decimals, a.amount::text, a.status,
 		    CASE a.kind WHEN 'invoice' THEN invoices.settlement_status ELSE '' END,
-		    CASE a.kind WHEN 'invoice' THEN coalesce((SELECT s.tx_hash FROM settlement_intents s
-		        WHERE s.invoice_id = invoices.option_id AND s.status = 'confirmed'), '') ELSE t.tx_hash END,
+		    CASE a.kind WHEN 'invoice' THEN `+settleTxSQL+` ELSE t.tx_hash END,
 		    CASE a.kind WHEN 'invoice' THEN (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id)
 		        ELSE 1 END,
 		    `+invoice.ClosedSQL+`, CASE a.kind WHEN 'deposit' THEN `+heldSQL+` ELSE false END,

@@ -62,8 +62,7 @@ func (d ClientDetails) Problem(prefix string) string {
 		{"address", d.Address, MaxClientAddress, true}, {"taxId", d.TaxID, MaxClientTaxID, false},
 		{"reference", d.Reference, MaxClientReference, false},
 	} {
-		// Postgres text can't hold a NUL byte.
-		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !PlainText(f.value, f.lines) {
+		if !ValidText(f.value, f.max, f.lines) {
 			return fmt.Sprintf("%s%s must be at most %d characters of plain text", prefix, f.name, f.max)
 		}
 	}

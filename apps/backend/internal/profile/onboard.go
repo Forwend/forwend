@@ -81,7 +81,7 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 			if !kinds[kind] {
 				continue
 			}
-			// An empty name is no name; a merchant's first store takes the profile's name (migration 00058).
+			// An empty name is no name; a merchant's first store takes the profile's name.
 			if _, err := tx.Exec(ctx, "INSERT INTO profiles (user_id, kind, name) VALUES ($1, $2, NULLIF($3, ''))",
 				userID, kind, names[kind]); err != nil {
 				return fmt.Errorf("insert %s profile: %w", kind, err)

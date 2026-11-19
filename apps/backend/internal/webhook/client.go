@@ -4,35 +4,22 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
-	"github.com/forwend/forwend/apps/backend/internal/outbound"
-	"net"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
 // AttemptTimeout bounds one attempt, from the dial to the answer's headers.
 const AttemptTimeout = 15 * time.Second
 
-var errNotPublic = errors.New("address not public")
-
 // Client sends webhooks. It checks the address it connects to, after DNS, so a name that resolves to a private
 // address, or starts to (DNS rebinding), is refused. It uses no proxy and follows no redirect: a 3xx fails.
 func Client() *http.Client {
-	dialer := &net.Dialer{Timeout: 10 * time.Second, Control: func(_, address string, _ syscall.RawConn) error {
-		host, _, err := net.SplitHostPort(address)
-		if err != nil {
-			return err
-		}
-		if addr, err := netip.ParseAddr(host); err != nil || !outbound.PublicAddr(addr) {
-			return errNotPublic
-		}
-		return nil
-	}}
+	dialer := outbound.Dialer(false)
+	dialer.Timeout = 10 * time.Second
 	return &http.Client{
 		Timeout: AttemptTimeout,
 		Transport: &http.Transport{DialContext: dialer.DialContext, ForceAttemptHTTP2: true,

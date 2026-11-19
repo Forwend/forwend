@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// R-138, D-93.
 func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()

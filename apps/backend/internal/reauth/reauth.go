@@ -57,7 +57,6 @@ type Service struct {
 	sender  email.Sender // nil: no email key
 	mail    Mailer
 	perHour int
-	now     func() time.Time
 }
 
 // NewService: perHour 0 keeps MaxPerHour.
@@ -65,7 +64,7 @@ func NewService(pool *pgxpool.Pool, sender email.Sender, mail Mailer, perHour in
 	if perHour == 0 {
 		perHour = MaxPerHour
 	}
-	return &Service{pool: pool, sender: sender, mail: mail, perHour: perHour, now: time.Now}
+	return &Service{pool: pool, sender: sender, mail: mail, perHour: perHour}
 }
 
 // Send emails a new code for the token's session to the login email stored at sign-up, never the one Privy has now: a
@@ -74,10 +73,10 @@ func (s *Service) Send(ctx context.Context, t auth.Token) (wait time.Duration, e
 	if t.Session == "" {
 		return 0, ErrNoSession
 	}
-	if s == nil || s.sender == nil {
+	if s.sender == nil {
 		return 0, ErrNoEmail
 	}
-	now := s.now()
+	now := time.Now()
 	// The user's row lock makes the limits and the new code one step, so requests at once send one email.
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -149,9 +148,6 @@ func (s *Service) Verify(ctx context.Context, t auth.Token, code string) error {
 	if t.Session == "" {
 		return ErrNoSession
 	}
-	if s == nil {
-		return ErrNoEmail
-	}
 	if !codePattern.MatchString(code) { // not a code at all: no try is used up
 		return ErrWrongCode
 	}
@@ -175,7 +171,7 @@ func (s *Service) Verify(ctx context.Context, t auth.Token, code string) error {
 	} else if err != nil {
 		return fmt.Errorf("read code: %w", err)
 	}
-	if confirmed != nil || attempts >= MaxAttempts || !s.now().Before(expires) {
+	if confirmed != nil || attempts >= MaxAttempts || !time.Now().Before(expires) {
 		return ErrWrongCode
 	}
 	if subtle.ConstantTimeCompare(stored, hash(id, code)) != 1 {
@@ -187,7 +183,7 @@ func (s *Service) Verify(ctx context.Context, t auth.Token, code string) error {
 		}
 		return ErrWrongCode
 	}
-	if _, err := tx.Exec(ctx, "UPDATE fresh_sign_ins SET confirmed_at = $2 WHERE id = $1", id, s.now()); err != nil {
+	if _, err := tx.Exec(ctx, "UPDATE fresh_sign_ins SET confirmed_at = $2 WHERE id = $1", id, time.Now()); err != nil {
 		return fmt.Errorf("confirm code: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -208,7 +204,7 @@ func (s *Service) Fresh(ctx context.Context, t auth.Token) (fresh bool, user Sto
 	err = s.pool.QueryRow(ctx, `
 		SELECT coalesce(u.login_email, ''), u.two_step_methods, $2 <> '' AND EXISTS (
 		    SELECT 1 FROM fresh_sign_ins f WHERE f.user_id = u.id AND f.session = $2 AND f.confirmed_at > $3)
-		FROM users u WHERE u.privy_user_id = $1`, t.User, t.Session, s.now().Add(-auth.FreshWindow)).
+		FROM users u WHERE u.privy_user_id = $1`, t.User, t.Session, time.Now().Add(-auth.FreshWindow)).
 		Scan(&user.LoginEmail, &user.TwoStep, &fresh)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, Stored{}, nil
@@ -218,11 +214,10 @@ func (s *Service) Fresh(ctx context.Context, t auth.Token) (fresh bool, user Sto
 	return fresh, user, nil
 }
 
-// TwoStepRereads and TwoStepWait: how often and how long apart RecordTwoStep reads Privy again.
-var (
-	TwoStepRereads = 3
-	TwoStepWait    = 700 * time.Millisecond
-)
+// twoStepRereads and TwoStepWait: how often and how long apart RecordTwoStep reads Privy again.
+const twoStepRereads = 3
+
+var TwoStepWait = 700 * time.Millisecond
 
 // RecordTwoStep keeps the MFA methods read answers ("type:verified_at") once they hold every type in want, the ones
 // the user just set up; the caller has checked the fresh sign-in, so a stolen session can't record its own. Privy's
@@ -230,7 +225,7 @@ var (
 func (s *Service) RecordTwoStep(ctx context.Context, privyUserID string, want []string,
 	read func(context.Context) ([]string, error)) error {
 	methods, err := read(ctx)
-	for try := 0; err == nil && !holds(methods, want) && try < TwoStepRereads; try++ {
+	for try := 0; err == nil && !holds(methods, want) && try < twoStepRereads; try++ {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
 )
 
-// ErrNoEvent: no webhook event has this id.
 var ErrNoEvent = errors.New("webhook event not found")
 
 // Event is a change to an invoice that endpoints may take (R-147). history.Add writes it in the transaction that
@@ -45,13 +45,12 @@ func scanEvent(row pgx.Row, extra ...any) (Event, error) {
 		&held.Amount, &held.Reason, &held.OptionID}, extra...)...); err != nil {
 		return Event{}, err
 	}
-	if e.Type == InvoiceHeld {
+	if e.Type == history.Held {
 		e.Held = &held
 	}
 	return e, nil
 }
 
-// Event reads one event.
 func (s *Service) Event(ctx context.Context, id string) (Event, error) {
 	e, err := scanEvent(s.pool.QueryRow(ctx, `SELECT `+eventColumns+`
 		FROM webhook_events e LEFT JOIN history_events h ON h.id = e.history_id WHERE e.id = $1`, id))
@@ -84,8 +83,8 @@ func (s *Service) Events(ctx context.Context, profileID string, stores []string,
 	if limit < 1 || limit > MaxEventsPage {
 		return EventsPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxEventsPage)
 	}
-	if kind != "" && !slices.Contains(EventTypes, kind) {
-		return EventsPage{}, fmt.Errorf("%w: type must be one of %v", ErrInvalid, EventTypes)
+	if kind != "" && !slices.Contains(history.WebhookEvents, kind) {
+		return EventsPage{}, fmt.Errorf("%w: type must be one of %v", ErrInvalid, history.WebhookEvents)
 	}
 	// The cursor is the last event's history row, so a page never repeats one. An id is taken at insert, not at
 	// commit: an event that commits while a client pages, with a lower id than one it saw, is not on a later page.
@@ -109,13 +108,13 @@ func (s *Service) Events(ctx context.Context, profileID string, stores []string,
 	var page EventsPage
 	var last []int64
 	for rows.Next() {
-		var history int64
-		e, err := scanEvent(rows, &history)
+		var historyID int64
+		e, err := scanEvent(rows, &historyID)
 		if err != nil {
 			rows.Close()
 			return EventsPage{}, fmt.Errorf("list webhook events: %w", err)
 		}
-		page.Events, last = append(page.Events, e), append(last, history)
+		page.Events, last = append(page.Events, e), append(last, historyID)
 	}
 	if err := rows.Err(); err != nil {
 		return EventsPage{}, fmt.Errorf("list webhook events: %w", err)

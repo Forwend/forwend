@@ -97,7 +97,6 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	}
 }
 
-// R-137.
 func TestSignOutEverywhere(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"

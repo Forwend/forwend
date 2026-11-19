@@ -6,9 +6,6 @@ import (
 	"time"
 )
 
-// Owner is a Profile's Role for the user who made it; a member's role is auth's (R-138).
-const Owner = "owner"
-
 // Profile kinds (D-20). Personal is made at signup; the others by request.
 const (
 	Personal   = "personal"

@@ -7,7 +7,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// R-86.
 func listClients(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := httpio.IntQuery(r, "limit", profile.DefaultClientLimit)

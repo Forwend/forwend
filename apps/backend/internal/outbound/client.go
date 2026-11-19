@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+// ErrNotPublic is a connection Dialer refused: the address is not public.
+var ErrNotPublic = errors.New("address not public")
+
 // Client checks each resolved address immediately before connecting, including after DNS changes.
 func Client(allowLoopback bool) *http.Client {
 	return &http.Client{Transport: &http.Transport{DialContext: Dialer(allowLoopback).DialContext,
@@ -26,7 +29,7 @@ func Dialer(allowLoopback bool) *net.Dialer {
 		}
 		addr, err := netip.ParseAddr(host)
 		if err != nil || !(PublicAddr(addr) || allowLoopback && addr.IsLoopback()) {
-			return errors.New("destination is not public")
+			return ErrNotPublic
 		}
 		return nil
 	}}

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -106,17 +107,21 @@ func Add(ctx context.Context, tx pgx.Tx, option, kind string, by Actor, data Dat
 	return nil
 }
 
-// webhookType is the webhook event a change of kind sends (R-147), or "" for none. A payment status is the ledger's
-// name for it; a Revise cancels the invoice it replaces.
+// WebhookEvents are the changes a webhook endpoint can take (R-147), in the order the API lists them. A payment status
+// is the ledger's name for it; invoice.confirmed is not one (owner decision 6). "invoice.open": a reorg took away the
+// payment the invoice was detected with, so it waits again.
+var WebhookEvents = []string{"invoice.detected", "invoice.partially_paid", "invoice.paid", Settled, "invoice.expired",
+	Canceled, Held, "invoice.open", Reopened}
+
+// webhookType is the webhook event a change of kind sends, or "" for none. A Revise cancels the invoice it replaces.
 func webhookType(kind string) string {
-	switch kind {
-	case "invoice.detected", "invoice.partially_paid", "invoice.paid", "invoice.expired", "invoice.open", Canceled, Held,
-		Settled, Reopened:
-		return kind
-	case "invoice.expired_partially_paid":
+	switch {
+	case kind == "invoice.expired_partially_paid":
 		return "invoice.expired"
-	case Replaced:
+	case kind == Replaced:
 		return Canceled
+	case slices.Contains(WebhookEvents, kind):
+		return kind
 	}
 	return ""
 }

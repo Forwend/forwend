@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// R-80.
 func TestNotificationsUseTheLoginEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	const dave = "did:privy:dave"
