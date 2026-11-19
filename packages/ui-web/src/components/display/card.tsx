@@ -2,20 +2,16 @@ import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
 
 export interface CardProps {
-  /** Names the card for screen readers; the heading's id. */
   id?: string;
   title?: ReactNode;
-  /** One quiet line under the title: a range, a count, what the figures mean. */
   description?: ReactNode;
-  /** A link or control at the header's end, such as View all. */
   action?: ReactNode;
-  /** Below sm the action takes its own line, so a description that changes length never moves it. */
   actionBelow?: boolean;
   children: ReactNode;
   className?: string;
 }
 
-/** A summary card: the title sits inside the padding without a rule, as on the overview. Tables use `fw-panel`. */
+/** A summary card with its title inside the padding; tables use `fw-panel`. */
 export function Card({
   id,
   title,

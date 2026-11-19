@@ -3,7 +3,6 @@ import { cx } from "../../lib/cx";
 
 export interface DetailRowProps {
   term: string;
-  /** A long value (a note, an address) goes under its term instead of beside it. */
   stacked?: boolean;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;

@@ -2,8 +2,7 @@ import { TONES } from "../../../lib/tone";
 
 export const PAYMENT_STATUS = {
   open: "open",
-  // A send the owner signed that no block holds yet (R-215).
-  sending: "sending",
+  sending: "sending", // signed, not yet in a block
   detected: "detected",
   confirming: "confirming",
   confirmed: "confirmed",
@@ -19,8 +18,7 @@ export const PAYMENT_STATUS = {
   refunded: "refunded",
 } as const;
 
-// The payment states users see (D-114). Labels are final UI copy. Detected and confirming are still pending: neutral,
-// never the info or success colors, so nobody reads them as done. Settled money is "In wallet" everywhere.
+// Detected and confirming stay neutral, never info or success, so nobody reads them as done.
 export const PAYMENT_STATUSES = {
   open: { label: "Waiting for payment", tone: TONES.neutral },
   sending: { label: "Sending", tone: TONES.neutral },
@@ -31,7 +29,6 @@ export const PAYMENT_STATUSES = {
   partiallyPaid: { label: "Partially paid", tone: TONES.warning },
   overpaid: { label: "Overpaid", tone: TONES.warning },
   overdue: { label: "Overdue", tone: TONES.warning },
-  // A checkout that closed, in the words the invoice's history uses.
   expired: { label: "Closed unpaid", tone: TONES.neutral },
   expiredPartiallyPaid: { label: "Closed, partially paid", tone: TONES.warning },
   canceled: { label: "Canceled", tone: TONES.neutral },
@@ -42,7 +39,7 @@ export const PAYMENT_STATUSES = {
 
 export type PaymentStatus = keyof typeof PAYMENT_STATUSES;
 
-/** Where the merchant's share of a paid payment is (D-114): kept apart from the payment status. */
+/** Where the merchant's share of a paid payment is; kept apart from the payment status. */
 export const WALLET_STATE = {
   none: "none",
   pending: "pending",

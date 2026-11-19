@@ -20,7 +20,6 @@ export interface SelectMenuOption<T extends string> {
 }
 
 export interface SelectMenuProps<T extends string> {
-  /** What is chosen, such as "Status": it heads the menu and starts the button's accessible name. */
   label: string;
   options: readonly SelectMenuOption<T>[];
   value: T;

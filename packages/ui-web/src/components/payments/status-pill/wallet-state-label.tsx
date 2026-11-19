@@ -22,7 +22,6 @@ const TEXT: Record<Exclude<WalletState, typeof WALLET_STATE.none>, string> = {
 
 /** Quiet text beside the payment status, so a row never shows two pills. */
 export function WalletStateLabel({ state }: WalletStateLabelProps) {
-  // Nothing to move yet: a quiet dash in a row, still named for screen readers.
   if (state === WALLET_STATE.none) {
     return (
       <span data-wallet={state} className="text-sm text-subtle">

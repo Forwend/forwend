@@ -3,7 +3,6 @@ import { cx } from "../../lib/cx";
 
 export interface QrCodeProps {
   value: string;
-  /** Accessible description of what the code holds. */
   label: string;
   className?: string;
 }

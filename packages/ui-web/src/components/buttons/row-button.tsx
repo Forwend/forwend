@@ -2,7 +2,6 @@ import type { ComponentPropsWithRef } from "react";
 import { cx } from "../../lib/cx";
 
 export interface RowButtonProps extends ComponentPropsWithRef<"button"> {
-  /** lg: a choice in a sheet, sized for a thumb; md: a compact row such as an account trigger. */
   size?: "md" | "lg";
 }
 

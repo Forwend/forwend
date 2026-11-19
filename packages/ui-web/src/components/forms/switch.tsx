@@ -10,7 +10,7 @@ export interface SwitchProps {
   className?: string;
 }
 
-/** A setting that takes effect when flipped. On, the thumb is the lightest thing on it in both themes. */
+/** A setting that takes effect when flipped. */
 export function Switch({ label, checked, onCheckedChange, disabled, className }: SwitchProps) {
   return (
     <button

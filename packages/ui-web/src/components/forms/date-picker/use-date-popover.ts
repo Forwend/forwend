@@ -12,7 +12,7 @@ const GAP = 6;
 const UNPLACED: CSSProperties = { position: "fixed", top: 0, left: 0, opacity: 0 };
 const EDGE = 8;
 
-/** A date field's popover: Escape, a press outside or a pick closes it, and closing gives focus back to the trigger. */
+/** A date field's popover; closing it gives focus back to the trigger. */
 export function useDatePopover() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -45,11 +45,7 @@ export function useDatePopover() {
   return { open, toggle, close, onKeyDown, root, trigger, popover, position };
 }
 
-/**
- * Places the popover under its trigger by the viewport, so a scrolling dialog or panel never clips it: fixed, it
- * leaves their overflow (a dialog has no transform). Near the right edge it moves left; with no room below, it opens
- * above. It follows scrolling and resizing while open.
- */
+/** Fixed under the trigger, so a scrolling dialog never clips it; above when there is no room below. */
 function usePopoverPosition(
   trigger: RefObject<HTMLElement | null>,
   popover: RefObject<HTMLElement | null>,

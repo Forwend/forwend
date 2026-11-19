@@ -3,7 +3,6 @@
 import { Checkout, PayButton, PaymentElement } from "@forwend/react";
 import { useCallback, useEffect, useState } from "react";
 
-// The three ways to pay (D-88): the pay panel in this page, the whole checkout in this page, or Forwend's own page.
 const FLOWS = {
   element: "Pay on this page",
   full: "Full checkout",
@@ -14,7 +13,6 @@ type Flow = keyof typeof FLOWS;
 export interface OrderCheckoutProps {
   orderId: string;
   payToken: string;
-  /** Forwend's web app. */
   forwendUrl: string;
 }
 
@@ -22,7 +20,7 @@ export function OrderCheckout({ orderId, payToken, forwendUrl }: OrderCheckoutPr
   const [flow, setFlow] = useState<Flow>("element");
   const [paid, setPaid] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  // Paid only when this shop's server says so, after a verified webhook. The frame's events just ask it sooner.
+  // Paid only when this shop's server says so; the frame's events just ask sooner.
   const check = useCallback(async () => {
     const answer = await fetch(`/api/orders/${orderId}`, { cache: "no-store" }).catch(() => null);
     if (answer?.ok) setPaid((await answer.json()).paid === true);

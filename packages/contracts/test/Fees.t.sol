@@ -6,8 +6,6 @@ import {Base} from "./Base.t.sol";
 import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms, InvoiceStatus, MAX_FEE_DIVISOR, feesWithinCeiling} from "../src/InvoiceTypes.sol";
 
-/// R-226: settlement pays the recipient the amount less the fees in the terms, the network fee to the settler and the
-/// platform fee to the refund authority; fees above a tenth of the amount are refused, and refunds take none.
 contract FeesTest is Base {
     uint256 internal constant NETWORK_FEE = 10_000;
     uint256 internal constant PLATFORM_FEE = 2_500_000;
@@ -73,7 +71,6 @@ contract FeesTest is Base {
         assertEq(token.balanceOf(recipient), AMOUNT - ceiling);
     }
 
-    /// Unsafe fees are refused when money moves, as other unsafe terms are, and the money goes back by refund whole.
     function test_feesAboveTheCeilingAreRefusedAndRefundable() public {
         uint256 ceiling = AMOUNT / MAX_FEE_DIVISOR;
         InvoiceTerms[4] memory bad = [
@@ -101,7 +98,6 @@ contract FeesTest is Base {
         assertEq(token.balanceOf(recipient), 0);
     }
 
-    /// Whoever settles paid the gas: after the deadline the refund authority settles and takes both fees.
     function test_aLateSettleByTheAuthorityTakesTheNetworkFee() public {
         InvoiceTerms memory t = feeTerms(NETWORK_FEE, PLATFORM_FEE);
         pay(t, AMOUNT);
@@ -114,7 +110,6 @@ contract FeesTest is Base {
         assertEq(token.balanceOf(recipient), AMOUNT - NETWORK_FEE - PLATFORM_FEE);
     }
 
-    /// The recipient's own balance check counts only its transfer, so a recipient that also settles still settles.
     function test_aRecipientThatIsTheExecutorGetsBoth() public {
         InvoiceTerms memory t = feeTerms(NETWORK_FEE, 0);
         t.recipient = executor;
@@ -133,7 +128,6 @@ contract FeesTest is Base {
         vm.prank(authority);
         r.refund(payer, 70e6);
         assertEq(token.balanceOf(payer), 70e6);
-        // Never settled: after the deadline the whole amount goes back, with no fee taken.
         vm.warp(DEADLINE + 1);
         vm.prank(authority);
         r.refund(payer, AMOUNT);
@@ -164,8 +158,6 @@ contract FeesTest is Base {
         assertEq(token.balanceOf(address(r)), 0);
     }
 
-    /// The ceiling over the whole uint256 range: it never reverts, agrees with a plain sum (which can't overflow once
-    /// each fee is under the ceiling), and leaves the recipient at least nine tenths.
     function testFuzz_ceilingOverTheWholeRange(uint256 amount, uint256 networkFee, uint256 platformFee) public pure {
         InvoiceTerms memory t;
         t.amount = amount;

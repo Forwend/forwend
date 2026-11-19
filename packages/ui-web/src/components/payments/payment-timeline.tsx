@@ -18,12 +18,8 @@ export interface TimelineStep {
   label: string;
   state: StepState;
   detail?: string;
-  /** The current step's share done, 0 to 1, drawn as its ring's fill; null or left out, the ring turns (no share is
-   * known, so nothing pretends to approach the end). */
-  progress?: number | null;
-  /** Shows the label as a tinted badge, for a step that ended in a state worth noticing (partly paid). */
+  progress?: number | null; // 0 to 1; null turns the ring
   tone?: Tone;
-  /** A short note behind a clock icon after the label, such as the time a step has left; also its accessible name. */
   hint?: string;
 }
 
@@ -32,7 +28,7 @@ export interface PaymentTimelineProps {
   label: string;
 }
 
-/** Done, now and next differ by shape as well as color: a filled disc with a check, a ring, and an empty circle. */
+/** Done, now and next differ by shape as well as color: a checked disc, a ring, an empty circle. */
 function Marker({ step }: { step: TimelineStep }) {
   if (step.state === STEP_STATES.complete) {
     return (
@@ -48,9 +44,7 @@ function Marker({ step }: { step: TimelineStep }) {
 }
 
 export function PaymentTimeline({ steps, label }: PaymentTimelineProps) {
-  // Side by side, the path runs edge to edge with the steps evenly apart: the first at the start, the last at the end,
-  // each between centered on two half columns. Five steps can't share a phone's width, so narrower than 28rem they
-  // stack into one vertical path; up to four always sit side by side.
+  // Five steps can't share a phone's width: below 28rem they stack; four or fewer stay side by side.
   const stack = steps.length > 4;
   const lastIndex = steps.length - 1;
   const line = (state: StepState) => (state === STEP_STATES.complete ? "bg-ink" : "bg-line-strong");

@@ -18,8 +18,6 @@ if (typeof proto.showModal !== "function") {
 
 afterEach(cleanup);
 
-// React hands a <dialog>'s close event to every enclosing onClose, so a dialog opened from inside another, such as the
-// two-step setup from the send Summary, would close the one under it too.
 describe("a dialog opened inside another", () => {
   it("closes alone, leaving the sheet under it open", () => {
     const onOpenChange = vi.fn();

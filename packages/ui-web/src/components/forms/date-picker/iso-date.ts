@@ -1,5 +1,4 @@
-// Dates as ISO "YYYY-MM-DD" strings, computed in UTC: the value a picker gives never depends on the viewer's time zone
-// or locale. Weeks start on Monday (ISO 8601).
+// ISO "YYYY-MM-DD" dates computed in UTC, so a picked date never depends on the viewer's time zone.
 
 const DAY_MS = 86_400_000;
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;

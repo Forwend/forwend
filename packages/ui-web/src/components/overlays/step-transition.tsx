@@ -4,19 +4,13 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "re
 import { cx } from "../../lib/cx";
 
 export interface StepTransitionProps {
-  /** Changing it starts the new step's entrance. */
   step: string;
-  /** The step's name, read out when the step takes the focus. */
   label: string;
   children: ReactNode;
   className?: string;
 }
 
-/** The steps of a sheet or dialog: the new step fades in from a slight blur in place, and the box's height follows
- * it, so the frame grows and shrinks around each step instead of jumping. Nothing slides: the content changes, not the
- * place. The first step shows at once, as the sheet itself fades in. Reduced motion shows each step at once. When the
- * control that led to the step is gone, the step takes the focus and is read out by its name; a field that took the
- * focus, or a Back button that is still there, keeps it. */
+/** A sheet's steps: each fades in place, the height follows, and focus moves in if its trigger is gone. */
 export function StepTransition({ step, label, children, className }: StepTransitionProps) {
   const inner = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number | null>(null);

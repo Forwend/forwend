@@ -9,8 +9,7 @@ export interface ReceiveAddressProps {
   label?: string;
 }
 
-// The whole address shows on one line, its ends standing out (R-78): a shortened one is what look-alikes copy.
-// 42 characters at 0.6em are 25.2 times the size; 21px stay free for Chromium on Linux rounding each one up.
+// Never shortened: look-alikes copy the ends. 25.2 = 42 chars at 0.6em; 21px spare for Chromium's rounding.
 const START = 6;
 const END = 4;
 export function ReceiveAddress({ address, label = "Receive address" }: ReceiveAddressProps) {

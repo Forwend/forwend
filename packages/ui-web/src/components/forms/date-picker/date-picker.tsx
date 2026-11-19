@@ -12,14 +12,11 @@ import { useDatePopover } from "./use-date-popover";
 
 export interface DatePickerProps extends Pick<CalendarProps, "min" | "max" | "isDisabled"> {
   label: string;
-  /** The chosen ISO date (YYYY-MM-DD), or null for none. */
   value: string | null;
   onChange: (iso: string | null) => void;
-  /** Sent with the form as an ISO date, empty when none is chosen. */
   name?: string;
   hint?: string;
   error?: string;
-  /** Shows a button that clears the date; for optional fields. */
   clearLabel?: string;
   className?: string;
 }

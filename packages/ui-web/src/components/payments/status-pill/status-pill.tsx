@@ -16,7 +16,6 @@ import { PAYMENT_STATUS, PAYMENT_STATUSES, type PaymentStatus } from "./payment-
 
 export interface StatusPillProps {
   status: PaymentStatus;
-  /** In long lists Confirmed is the usual end state: a quiet dot, so a status still to wait for stands out. */
   quiet?: boolean;
 }
 

@@ -6,7 +6,6 @@ import { shortAddress } from "./short-address";
 
 export interface TruncatedAddressProps {
   address: string;
-  /** false: the app's text font, for an address among other text such as a review. */
   mono?: boolean;
   className?: string;
 }

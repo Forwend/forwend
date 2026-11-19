@@ -16,14 +16,12 @@ export type CaptureStatus = (typeof CAPTURE_STATUS)[keyof typeof CAPTURE_STATUS]
 
 export interface EmailCaptureProps {
   status: CaptureStatus;
-  /** The error text (shown under the pill) or the confirmation (shown inside the pill). */
   message?: string;
   onSubmit: (email: string) => void;
   submitLabel: string;
 }
 
-// One box, one fixed height, for every state: the control never jumps and never shows a
-// greyed-out button. 13.5 = 1px border + 6px padding + 40px button + 6px padding + 1px border.
+// One fixed height in every state; 13.5 = 1px border + 6px padding + 40px button + 6px + 1px.
 const PILL = "flex h-13.5 w-full items-center gap-2 rounded-lg border bg-surface p-1.5";
 
 export function EmailCapture({ status, message, onSubmit, submitLabel }: EmailCaptureProps) {
@@ -96,7 +94,6 @@ export function EmailCapture({ status, message, onSubmit, submitLabel }: EmailCa
           </div>
         </form>
       )}
-      {/* Fixed-height row under the pill for the error, so content below never moves. */}
       <div className="mt-1.5 flex min-h-6">
         {isError && message ? (
           <p id={`${id}-error`} className="text-sm text-danger">

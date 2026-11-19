@@ -48,7 +48,6 @@ contract FactoryTest is Base {
         assertEq(factory.receiverOf(a.invoiceId), first);
     }
 
-    /// Any address a payer could have been shown must stay deployable, or its money would be stuck forever.
     function test_invalidTermsStayDeployableAndRefundable() public {
         InvoiceTerms[5] memory bad;
         for (uint256 i; i < bad.length; i++) {
@@ -129,7 +128,6 @@ contract FactoryTest is Base {
         impl.recover(address(0), attacker, 0);
     }
 
-    /// The implementation has one address on every chain and is never an invoice's receiver: money sent to it returns.
     function test_implementationReturnsMoneySentToIt() public {
         InvoiceReceiver impl = InvoiceReceiver(factory.implementation());
         token.mint(address(impl), 7e6);
@@ -432,7 +430,6 @@ contract RefundTest is Base {
         assertEq(r.status().refundable, 0);
     }
 
-    /// A broken invoice token reads as an empty balance, as in factory.status, instead of reverting.
     function test_refundableReadsBrokenTokenAsZero() public {
         InvoiceReceiver r = deployed(termsFor(address(new BrokenToken())));
         vm.warp(DEADLINE + 1);
@@ -440,7 +437,6 @@ contract RefundTest is Base {
         assertEq(r.status().refundable, 0);
     }
 
-    /// Off its chain the invoice token may not exist: refundable() still answers instead of reverting.
     function test_refundableOffIntendedChainNeedsNoToken() public {
         InvoiceTerms memory t = termsFor(makeAddr("token on another chain"));
         t.intendedChainId = block.chainid + 1;
@@ -497,7 +493,6 @@ contract FactoryRecoverTest is Base {
         assertEq(token.balanceOf(payer), 7e6);
     }
 
-    /// The factory moves only its own balance: a receiver's money, deployed or not, stays where it is.
     function test_factoryRecoverNeverTakesReceiverMoney() public {
         InvoiceTerms memory t = terms();
         address waiting = pay(t, AMOUNT);
@@ -517,7 +512,6 @@ contract FactoryRecoverTest is Base {
         assertEq(token.balanceOf(attacker), 0);
     }
 
-    /// Our own contracts and code-less addresses are not tokens: each call reverts and every balance stays.
     function test_factoryRecoverRejectsOurContractsAsTokens() public {
         InvoiceTerms memory t = terms();
         address waiting = pay(t, AMOUNT);
@@ -603,7 +597,7 @@ contract RecoverTest is Base {
     }
 }
 
-/// On Arc the native coin and USDC are one balance. A token whose balance follows the native balance stands in for it.
+/// On Arc native coin and USDC are one balance: this token's balance follows the native one.
 contract NativeBackedToken {
     function balanceOf(address a) external view returns (uint256) {
         return a.balance;

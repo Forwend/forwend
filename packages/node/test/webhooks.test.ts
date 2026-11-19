@@ -29,7 +29,6 @@ describe("verifyWebhook", () => {
     ).toEqual({
       test: 2432232314,
     });
-    // During a rotation: two signatures, and the receiver may hold either secret.
     const both = `${sign(OTHER)} ${SIGNATURE}`;
     for (const secrets of [[SECRET], [OTHER], [OTHER, SECRET]]) {
       expect(verifyWebhook({ payload: PAYLOAD, headers: headers(both), secrets, now: AT })).toEqual(
@@ -38,7 +37,6 @@ describe("verifyWebhook", () => {
         },
       );
     }
-    // The receiver's matching secret need not be its first one.
     expect(
       verifyWebhook({ payload: PAYLOAD, headers: headers(), secrets: [OTHER, SECRET], now: AT }),
     ).toEqual({
@@ -53,7 +51,6 @@ describe("verifyWebhook", () => {
         now: AT,
       }),
     ).toEqual({ test: 2432232314 });
-    // A platform that keeps the sender's header case.
     expect(
       verifyWebhook({
         payload: PAYLOAD,
@@ -102,7 +99,6 @@ describe("verifyWebhook", () => {
       now: new Date((TIMESTAMP - 301) * 1000),
     });
     refuses({ payload: PAYLOAD, headers: { "webhook-id": ID }, secrets: SECRET, now: AT });
-    // A timestamp that is not a plain number, a cut-off signature, and a broken clock or tolerance.
     refuses({
       payload: PAYLOAD,
       // Signed, so only the timestamp's shape refuses it.
@@ -129,7 +125,6 @@ describe("verifyWebhook", () => {
       now: AT,
       toleranceSeconds: Number.NaN,
     });
-    // At exactly 5 minutes it still passes.
     expect(() =>
       verifyWebhook({
         payload: PAYLOAD,

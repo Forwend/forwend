@@ -1,6 +1,4 @@
-// R-169: @forwend/js and @forwend/react as npm would ship them. Each tarball holds only its build, readme, license and
-// changelog; the browser code stays within its gzip budget; and a new project installs both tarballs, imports them in
-// Node, renders them on the server and type-checks a use of every export.
+// Packs @forwend/js and @forwend/react as npm would ship them, then installs, renders and type-checks them.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,7 +6,7 @@ import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const root = new URL("..", import.meta.url).pathname;
-// Gzip bytes of each package's own code, summed over its files (D-88: about 3 KB and 2 KB).
+// Gzip bytes of each package's own code, summed over its files.
 const PACKAGES = [
   { name: "@forwend/js", dir: "packages/js", budget: 3072 },
   { name: "@forwend/react", dir: "packages/react", budget: 2048 },
@@ -86,8 +84,7 @@ try {
     join(app, "pnpm-workspace.yaml"),
     `overrides:\n  "@forwend/js": "file:${tarballs["@forwend/js"]}"\n`,
   );
-  // From the store where it can: CI's frozen install fills the store but not the registry metadata a project without
-  // a lockfile resolves from, so --offline fails there. @forwend/js still comes only from its tarball, not npm.
+  // Not --offline: CI's frozen install fills the store but not the registry metadata this project needs.
   run("pnpm", ["install", "--prefer-offline", "--silent"], app);
 
   writeFileSync(

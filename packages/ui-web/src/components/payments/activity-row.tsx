@@ -7,21 +7,17 @@ import { StatusPill } from "./status-pill/status-pill";
 export const ACTIVITY_DIRECTIONS = {
   incoming: "incoming",
   outgoing: "outgoing",
-  /** A request such as an invoice: no money moved yet, so no sign. */
-  request: "request",
+  request: "request", // no money moved yet: no sign
 } as const;
 
 export type ActivityDirection = (typeof ACTIVITY_DIRECTIONS)[keyof typeof ACTIVITY_DIRECTIONS];
 
 export interface ActivityRowProps {
-  /** Text, or a link that the row opens. */
   title: ReactNode;
   detail: ReactNode;
   direction: ActivityDirection;
-  /** The size of the amount; the direction sets its sign. */
   amount: MoneyProps;
   status: PaymentStatus;
-  /** A small control beside the status, such as a link to the transaction. */
   action?: ReactNode;
 }
 
@@ -63,7 +59,6 @@ export function ActivityRow({
         </span>
         <span className="flex items-center gap-1">
           {action}
-          {/* Confirmed is the usual end state: phones name only a status still to wait for. */}
           {status === PAYMENT_STATUS.confirmed ? (
             <span className="max-sm:sr-only inline-flex items-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent px-2.5 py-1 text-xs text-muted">
               <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-success" />

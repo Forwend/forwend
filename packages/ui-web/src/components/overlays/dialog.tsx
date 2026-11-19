@@ -6,8 +6,7 @@ import { cx } from "../../lib/cx";
 import { BUTTON_VARIANTS, Button, type ButtonVariant } from "../buttons/button";
 import { IconButton } from "../buttons/icon-button";
 
-/** Opacity only: a scale or translate would make the dialog the containing block of a date picker's fixed popover.
- * It closes at once, as a menu does: an exit transition needs a discrete display transition, which only Chromium has. */
+// Opacity only: a transform would make the dialog the containing block of fixed popovers.
 const DIALOG_ENTER =
   "transition-opacity duration-[var(--fw-duration-base)] ease-out starting:open:opacity-0 backdrop:transition-opacity backdrop:duration-[var(--fw-duration-base)] backdrop:ease-out starting:open:backdrop:opacity-0";
 
@@ -16,12 +15,9 @@ export interface DialogProps {
   title: string;
   children: ReactNode;
   closeLabel?: string;
-  /** How the trigger looks: a quiet link in a footer, a button elsewhere. */
   triggerVariant?: ButtonVariant;
   triggerClassName?: string;
-  /** Opens the dialog from something else than its own button, such as a menu item. */
   trigger?: (open: () => void) => ReactNode;
-  /** Runs however the dialog closes: its close button, Escape, the backdrop or a form inside it. */
   onClose?: () => void;
 }
 

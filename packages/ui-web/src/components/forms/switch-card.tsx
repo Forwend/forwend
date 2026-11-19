@@ -7,17 +7,15 @@ import { SwitchTrack } from "./switch";
 export interface SwitchCardProps {
   title: string;
   description?: string;
-  /** A small icon on a tile before the title. */
   icon?: ReactNode;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
-  /** What the switch opens: inside the card under the title, sliding open while on and inert while off. */
   children?: ReactNode;
   className?: string;
 }
 
-/** A setting as a card: what it does on the left, the switch at the row's end and, while on, the field it opens. */
+/** A setting as a card; while on, it shows the field passed as children. */
 export function SwitchCard({
   title,
   description,
@@ -71,7 +69,7 @@ export function SwitchCard({
         </button>
       </div>
       {children ? (
-        // Grid rows animate the height to the content's own; the field stays mounted so closing slides too.
+        // Grid rows animate to the content's height; the field stays mounted so closing slides too.
         <div
           inert={!checked}
           className={cx(

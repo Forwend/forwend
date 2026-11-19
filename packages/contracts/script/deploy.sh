@@ -26,7 +26,7 @@ echo "chain=$chain factory=$factory implementation=$implementation probe=$probe 
 token=$2
 amount=$3
 extra=$((amount / 10))
-# v2 terms end with the fees (R-226): the flow takes 1% to the settler (the deployer here) and 0.5% to the authority.
+# v2 terms end with the fees: the flow takes 1% to the settler (the deployer here) and 0.5% to the authority.
 network_fee=$((amount / 100))
 platform_fee=$((amount / 200))
 T='(bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256)'

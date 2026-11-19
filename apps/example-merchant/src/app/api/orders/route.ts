@@ -4,10 +4,7 @@ import { forwend, storeId, trustedIpHeader } from "@/lib/forwend";
 import { limiter } from "@/lib/limit";
 import { orders } from "@/lib/orders";
 
-// Each checkout's options take from the profile's checkout quota: 1000 receive addresses open at once, 500 made a day.
-// Orders nobody pays must not use it up. A checkout closes after 15 minutes, the API's least, and one that closed
-// unpaid leaves the day's count. At 20 a shop per fixed 10-minute window, 15 minutes can span three windows, so at
-// most 60 are open at once: with up to 8 token options each, under 500 addresses either way.
+// Unpaid checkouts use the profile's address quota (500 a day): short expiry and these limits stay under it.
 const EXPIRES_IN_SECONDS = 15 * 60;
 const WINDOW_MS = 10 * 60_000;
 const perVisitor = limiter(5, WINDOW_MS);

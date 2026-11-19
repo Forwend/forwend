@@ -1,5 +1,4 @@
-// Usage: node script/rpc.mjs <chain>. Prints the first Infura or public RPC URL whose eth_chainId matches, so a key
-// without access to the network is skipped.
+// Usage: node script/rpc.mjs <chain>. Prints the first Infura or public RPC whose eth_chainId matches.
 import { existsSync, readFileSync } from "node:fs";
 
 const envFile = new URL("../.env", import.meta.url);

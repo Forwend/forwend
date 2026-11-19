@@ -7,15 +7,12 @@ import { Button, type ButtonProps } from "./button";
 export const HOLD_MS = 1200;
 
 export interface HoldButtonProps extends Omit<ButtonProps, "onClick"> {
-  /** Runs once the press has lasted HOLD_MS; letting go sooner does nothing. */
   onHold: () => void;
 }
 
 const HOLD_KEYS = [" ", "Enter"];
 
-/** Press and hold to confirm, for an action that moves money: a tap or a stray Enter can't start it. The fill crosses
- * the button while it is held and runs back when let go. Space and Enter hold it from the keyboard. A screen reader's
- * activate sends a click with no press before it (detail 0): that is deliberate, so it acts at once. */
+/** Press and hold to confirm a money move; a screen reader's click (detail 0) acts at once. */
 export function HoldButton({
   onHold,
   disabled,

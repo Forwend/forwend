@@ -24,7 +24,6 @@ export type CheckoutTheme = (typeof CHECKOUT_THEMES)[keyof typeof CHECKOUT_THEME
 /** Forwend's web app, where checkouts live. */
 export const FORWEND_URL = "https://forwend.com";
 
-// Until the checkout says how tall it is: about its first step, so the page barely moves when it does.
 const INITIAL_HEIGHT: Record<CheckoutLayout, number> = { full: 720, element: 480 };
 const READY_MS = 15_000;
 const PAY_TOKEN = /^[0-9a-f]{64}$/;
@@ -63,7 +62,6 @@ export function payUrl(payToken: string, baseUrl: string = FORWEND_URL): string 
   return new URL(`/pay/${checkedToken(payToken)}`, checkedBase(baseUrl)).href;
 }
 
-/** A payment link's address. */
 export function linkUrl(slug: string, baseUrl: string = FORWEND_URL): string {
   if (!LINK_SLUG.test(slug)) {
     throw new TypeError("slug must be the payment link's 12-character slug");
@@ -71,8 +69,7 @@ export function linkUrl(slug: string, baseUrl: string = FORWEND_URL): string {
   return new URL(`/l/${slug}`, checkedBase(baseUrl)).href;
 }
 
-/** Frames the checkout in container. Only an origin the store allows can show it; the frame then fits its content.
- * Its events are hints for the page: a paid order is fulfilled from the webhook, never from them. */
+/** Frames the checkout in container; its events are hints, so fulfil orders from the webhook. */
 export function mountCheckout(container: HTMLElement, options: CheckoutOptions): MountedCheckout {
   const layout = options.layout ?? CHECKOUT_LAYOUTS.full;
   const base = checkedBase(options.baseUrl ?? FORWEND_URL);
@@ -128,7 +125,7 @@ function checkedToken(payToken: string): string {
   return payToken;
 }
 
-// Over plain http anyone on the way could swap the checkout, and its address with it: only a local web app may use it.
+// Over plain http anyone on the path could swap the checkout: only a local web app may use it.
 function checkedBase(baseUrl: string): URL {
   const base = new URL(baseUrl);
   if (base.protocol !== "https:" && !(base.protocol === "http:" && LOOPBACK.has(base.hostname))) {

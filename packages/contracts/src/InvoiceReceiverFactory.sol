@@ -14,8 +14,7 @@ import {
     tryBalanceOf
 } from "./InvoiceTypes.sol";
 
-/// Deploys invoice receivers at addresses that commit to their terms. Deployed through the CREATE2 deployer with the
-/// same bytecode and constructor args everywhere, so it has one address on every chain. Rules: docs/contracts/rules.md.
+/// Deploys receivers at addresses that commit to their terms; one factory address on every chain.
 contract InvoiceReceiverFactory {
     using SafeERC20 for IERC20;
 
@@ -25,7 +24,7 @@ contract InvoiceReceiverFactory {
     address public executor;
     bool public paused;
     mapping(address receiver => uint64) public deployedAt;
-    /// Lookup aid for explorers and support; never an authority for money decisions. First deploy wins.
+    /// A lookup aid for explorers and support, never for money decisions; the first deploy wins.
     mapping(bytes32 invoiceId => address) public receiverOf;
 
     event ExecutorChanged(address indexed executor);
@@ -66,8 +65,7 @@ contract InvoiceReceiverFactory {
         emit PausedChanged(paused_);
     }
 
-    /// Returns tokens or the native coin (`token == address(0)`) sent to the factory by mistake. The factory holds no
-    /// invoice money and moves only its own balance, so receivers are untouched. Not blocked by `paused`.
+    /// Returns tokens or native coin (token 0) sent here by mistake, never invoice money; ignores paused.
     function recover(address token, address to, uint256 amount) external onlyRefundAuthority {
         if (to == address(0) || to == address(this)) revert InvalidDestination();
         if (token == address(0)) {
@@ -83,14 +81,12 @@ contract InvoiceReceiverFactory {
         return deployedAt[receiver] != 0;
     }
 
-    /// Never rejects terms: any address a payer could have been shown must stay deployable, so its money can always be
-    /// settled, refunded or recovered. Unsafe terms are refused when money moves (InvoiceReceiver.settle).
+    /// Never rejects terms: any address a payer was shown must stay deployable; settle() refuses unsafe ones.
     function predict(InvoiceTerms calldata t) public view returns (address receiver) {
         (receiver,,) = _address(t);
     }
 
-    /// Only our keys deploy: on Arc a deployed receiver rejects native transfers, so a stranger deploying early could
-    /// block a payer's top-up. Returns an already deployed receiver.
+    /// Only our keys deploy: on Arc an early deploy by a stranger would make a payer's native top-up fail.
     function deploy(InvoiceTerms calldata t) external returns (address receiver) {
         if (msg.sender != executor && msg.sender != refundAuthority) revert Unauthorized();
         bytes memory args;
@@ -108,7 +104,7 @@ contract InvoiceReceiverFactory {
         return _status(t);
     }
 
-    /// Status by invoice id for deployed receivers; an empty struct before the receiver is deployed (use status(terms)).
+    /// Status of a deployed receiver by invoice id; empty before deployment (use status(terms)).
     function statusOf(bytes32 invoiceId) external view returns (InvoiceStatus memory s) {
         address receiver = receiverOf[invoiceId];
         if (receiver != address(0)) s = _status(InvoiceReceiver(receiver).terms());
