@@ -24,14 +24,9 @@ const CONFLICT = 409;
 
 export interface CheckoutActionsProps {
   profileId: string;
-  /** The checkout session's id, which is its payment's id. */
   paymentId: string;
-  /** Still open with nothing paid, so Cancel checkout shows. */
   cancelable: boolean;
-  /** The live sale: its menu links the payment, and Cancel is a button of its own at the bar's start. The payment's
-   * own page keeps both in its menu. */
   sale?: boolean;
-  /** Once Cancel is done or comes too late, this menu may go: focus moves here. */
   onDone: () => void;
 }
 
@@ -58,7 +53,6 @@ export function CheckoutActions({
       toast({ tone: TONES.success, title: COPY.canceled });
       onDone();
     } catch (failure) {
-      // Too late: money arrived meanwhile. Otherwise the dialog says so and stays.
       if ((failure as { status?: unknown }).status !== CONFLICT) return;
       dialog?.close();
       toast({ tone: TONES.warning, title: COPY.cancelFailed });
@@ -81,7 +75,6 @@ export function CheckoutActions({
           if (!open) return;
           chosen.current = null;
           event.preventDefault();
-          // A closed dialog gives focus back to what had it when it opened.
           trigger.current?.focus();
           open();
         }}

@@ -64,7 +64,6 @@ describe("checkout sale", () => {
       expect(screen.getByText("Payment seen")).toBeTruthy();
       cleanup();
     }
-    // Waiting, or part paid with nothing on its way: the rest can still be paid.
     for (const open of [{}, { paymentStatus: "partially_paid" }]) {
       renderSale(open);
       expect(screen.getByRole("img", { name: "Scan to pay" })).toBeTruthy();

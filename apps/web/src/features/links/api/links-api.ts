@@ -52,17 +52,14 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
       responseSchema: linkSchema,
       invalidatesTags: [LINKS_TAG],
     }),
-    /** The payer's read (R-142): public, like the checkout. */
     getPublicLink: build.query<PublicLink, string>({
       query: (slug) => `/v1/links/${encodeURIComponent(slug)}`,
       responseSchema: publicLinkSchema,
     }),
-    /** One page load (R-142); the page makes nothing (D-54). */
     countLinkVisit: build.mutation<void, string>({
       extraOptions: { answerFirst: true },
       query: (slug) => ({ url: `/v1/links/${encodeURIComponent(slug)}/visits`, method: "POST" }),
     }),
-    /** Creates a quoted purchase or replays the original request after an uncertain response. */
     payLink: build.mutation<LinkPay, LinkPayArg>({
       extraOptions: { answerFirst: true },
       query: ({ slug, amountUsd, expectedAmountUsd, expectedVersion, idempotencyKey }) => ({

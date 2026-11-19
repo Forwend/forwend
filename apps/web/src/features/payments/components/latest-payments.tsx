@@ -28,7 +28,7 @@ import { shortDate } from "@/shared/lib/dates";
 
 const SHOWN = 6;
 
-/** The overview's newest customer payments; the same first page the Payments list reads, so no second request. */
+/** Reads the Payments list's first page, so no second request. */
 export function LatestPayments({ profileId }: { profileId: string }) {
   const list = useGetPaymentsInfiniteQuery({ profileId, filters: {} }, LIVE_QUERY);
   const rows = list.currentData?.pages[0]?.items.slice(0, SHOWN);
@@ -79,7 +79,6 @@ export function LatestPayments({ profileId }: { profileId: string }) {
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-sm font-medium text-ink">{paymentLabel(p)}</span>
                     {p.livemode ? null : <Badge tone="neutral">{COPY.testnet}</Badge>}
-                    {/* R-239: paid from another chain, as the payments list tags it. */}
                     {p.crossChain ? (
                       <Badge tone="neutral">{PAYMENT_DETAIL_COPY.crossChain.tag}</Badge>
                     ) : null}

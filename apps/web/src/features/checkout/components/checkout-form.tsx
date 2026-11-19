@@ -45,11 +45,9 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"] as const;
 const KEYPAD = "grid grid-cols-3 gap-2";
-// The keys and the main button are a terminal's: taller than a form's.
 const KEY = "h-14! rounded-lg!";
 const AMOUNT_LABEL = "text-sm text-muted";
 
-// A tapped key leaves the focus in the amount, so a keyboard can go on typing.
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 export interface CheckoutFormProps {
@@ -58,7 +56,7 @@ export interface CheckoutFormProps {
   onStarted: (session: CheckoutSession, amountUsd: string) => void;
 }
 
-/** The sale's amount and reference; the key is made once, so a retried tap opens the same checkout. */
+/** The key is made once, so a retried tap opens the same checkout. */
 export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps) {
   const [create] = useCreateCheckoutMutation();
   const key = useRef(crypto.randomUUID());
@@ -72,7 +70,6 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
   const [busy, setBusy] = useState(false);
   const note = reference.trim() || title.trim();
 
-  // A key makes a different sale, as typing does.
   const press = (next: string) => {
     setAmount(next);
     key.current = crypto.randomUUID();
@@ -116,7 +113,6 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
     }
   };
 
-  // The amount steps down as it grows, so twelve digits and the unit still fit a phone.
   const size =
     amount.length > 11
       ? "[&_input]:text-3xl"
@@ -155,7 +151,6 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
             {formError ? <Notice tone={NOTICE_TONES.danger}>{formError}</Notice> : null}
             <fieldset aria-label={COPY.keypad} className={`${KEYPAD} min-w-0`}>
               {KEYS.map((k) => (
-                // Out of the tab order: a keyboard types into the amount; touch and screen readers reach every key.
                 <Button
                   key={k}
                   variant="ghost"
@@ -201,13 +196,10 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
           onChange={(event) => setAmount(event.target.value)}
           // The keypad types the amount: a phone's own keyboard would cover Show QR code.
           inputMode="none"
-          // The page does one thing: a sale starts with its amount, and New sale lands back here.
           autoFocus
           error={error}
-          // The figure at the size the customer reads at a step away, with a quieter unit.
           className={cx("w-full [&_input+span]:text-xl [&_input+span]:font-normal", size)}
         />
-        {/* One button for both, so closing the sheet gives the focus back to it. */}
         <Button
           variant={note ? "secondary" : "ghost"}
           size="sm"
@@ -259,7 +251,6 @@ export function CheckoutForm({ profileId, stores, onStarted }: CheckoutFormProps
   );
 }
 
-/** A phone's bar on the amount: the way back first, Recent last; between them what the form puts there. */
 function PhoneBar({ children }: { children?: ReactNode }) {
   return (
     <>
@@ -271,7 +262,6 @@ function PhoneBar({ children }: { children?: ReactNode }) {
         <ArrowLeft aria-hidden className="size-[var(--fw-icon-md)]" />
       </Link>
       {children}
-      {/* Recent checkouts sits under the sale on a phone, beside it from large screens. */}
       <Link
         href="#checkout-recent"
         className={cx(buttonClasses({ variant: "ghost" }), "ml-auto sm:hidden")}
@@ -283,7 +273,6 @@ function PhoneBar({ children }: { children?: ReactNode }) {
   );
 }
 
-/** The form until the stores load: the amount, the keys and the button, in the sale's own frame. */
 export function CheckoutFormSkeleton() {
   return (
     <SaleCard

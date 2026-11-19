@@ -1,9 +1,6 @@
-// From packages/contracts/deployments.json, the same on testnets and mainnets. Built in and never read from the API:
-// a new factory needs a new build.
-// New invoices use the newest factory; an invoice keeps the one it was made with (apps/backend/internal/address.Known).
+// From packages/contracts/deployments.json, built in. Older invoices keep their own factory.
 export const FACTORY = "e917ce63865f8cf91a0038136e496b25ece2a54e"; // v2
 export const IMPLEMENTATION = "81cda02e469083fd14a75583257d9b721ca76132";
-// fees: the factory's terms end with the network and platform fees (v2 on, R-226).
 export const KNOWN_FACTORIES: Readonly<Record<string, { implementation: string; fees: boolean }>> =
   {
     [FACTORY]: { implementation: IMPLEMENTATION, fees: true },

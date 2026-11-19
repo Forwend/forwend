@@ -15,9 +15,6 @@ import { SITE } from "@/shared/config/site";
 
 const EMBED_PATH = /^\/embed\//;
 
-// The rules a careful payer may want, in a dialog from the footer: the pay box never grows for them (R-68). A held
-// payment's "How to get it back" opens it too, through `trigger`. Embedded in a merchant's page (R-168), the browser's
-// address bar shows the merchant's site, not this one.
 export function NeedHelp({ trigger }: { trigger?: (open: () => void) => ReactNode }) {
   // Read after mount: the page is drawn on the server first.
   const [page, setPage] = useState({ host: "", payLink: "", embedded: false });
@@ -74,7 +71,6 @@ export function NeedHelp({ trigger }: { trigger?: (open: () => void) => ReactNod
   );
 }
 
-// For a payer whose browser opens no mail app.
 function SupportAddress({ email }: { email: string }) {
   const [status, copy] = useCopy(email);
   const label =

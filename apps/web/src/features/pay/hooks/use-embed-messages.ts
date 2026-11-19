@@ -2,18 +2,16 @@ import { type RefObject, useEffect, useRef } from "react";
 import { invoicesApi } from "@/features/invoices/api/invoices-api";
 import { EMBED_EVENTS, EMBED_MESSAGE } from "@/features/pay/constants/embed";
 
-/** R-168: tells the page that frames the checkout its height and payment status, posted to that page's origin only.
- * ready comes once the invoice is drawn; then resize and status say only what changed. */
+/** Posts ready, then only changed height and status, to the framing origin alone. */
 export function useEmbedMessages(
   root: RefObject<HTMLElement | null>,
   linkToken: string,
   origin: string,
 ): void {
-  // The checkout inside reads and polls the invoice; a poll here too would keep it going once the payment is final.
+  // A poll here too would keep polling once the payment is final.
   const { data } = invoicesApi.endpoints.getInvoice.useQueryState(linkToken);
   const invoiceId = data?.invoiceId;
   const paymentStatus = data?.paymentStatus;
-  // What the page last heard. It outlives the effect, which runs again on each status.
   const heard = useRef<{ height: number; paymentStatus: string } | null>(null);
   useEffect(() => {
     const element = root.current;
@@ -27,7 +25,6 @@ export function useEmbedMessages(
       heard.current.paymentStatus = paymentStatus;
       post(EMBED_EVENTS.status, { paymentStatus });
     }
-    // Once per frame at most, after layout: a step's motion would otherwise send a height per change.
     let frame = 0;
     const measure = () => {
       frame = 0;

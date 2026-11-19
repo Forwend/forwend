@@ -1,10 +1,14 @@
-import { USD_PATTERN } from "@/features/links/constants/links";
+import { OFFER_VERSION_PATTERN, USD_PATTERN } from "@/features/links/constants/links";
+import type { PublicLink } from "@/features/links/types/links";
+import { LINK_PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
 import { usdCents } from "@/shared/lib/money";
 
 const purchaseKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:([0-9]{1,14})$/;
+const INT64_MAX = 9223372036854775807n;
+const LEAST_CENTS = 100n; // 1.00 USD
 
-/** The URL retains uncertain requests across reloads even when browser storage is unavailable. */
+/** The URL keeps an uncertain Pay across reloads, so a retry reuses its idempotency key. */
 export function readPurchase(search: string): LinkPurchase | null {
   const params = new URLSearchParams(search);
   const key = params.get("purchase") ?? "";
@@ -15,7 +19,7 @@ export function readPurchase(search: string): LinkPurchase | null {
   const offerVersion = params.get("offer");
   if (
     offerVersion !== null &&
-    (!/^[1-9][0-9]{0,18}$/.test(offerVersion) || BigInt(offerVersion) > 9223372036854775807n)
+    (!OFFER_VERSION_PATTERN.test(offerVersion) || BigInt(offerVersion) > INT64_MAX)
   )
     return null;
   if (amountUsd !== null && (!USD_PATTERN.test(amountUsd) || usdCents(amountUsd) !== BigInt(cents)))
@@ -34,4 +38,21 @@ export function purchaseSearch(current: string, purchase: LinkPurchase | null): 
     if (purchase.offerVersion !== null) params.set("offer", purchase.offerVersion);
   }
   return params.toString();
+}
+
+export function checkLinkAmount(
+  link: Pick<PublicLink, "amountUsd" | "minUsd" | "maxUsd">,
+  typed: string | null,
+): { cents: bigint; error: string } {
+  const amount = link.amountUsd ?? typed ?? "";
+  const cents = USD_PATTERN.test(amount) ? usdCents(amount) : 0n;
+  if (cents === 0n) return { cents, error: COPY.errors.amount };
+  const outside =
+    cents < LEAST_CENTS ||
+    (link.minUsd !== null && cents < usdCents(link.minUsd)) ||
+    (link.maxUsd !== null && cents > usdCents(link.maxUsd));
+  return {
+    cents,
+    error: outside ? COPY.errors.limits(COPY.amountHint(link.minUsd, link.maxUsd)) : "",
+  };
 }

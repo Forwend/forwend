@@ -38,15 +38,12 @@ function StateBadge({ link }: { link: PaymentLink }) {
 
 export interface LinksTableProps {
   profileId: string;
-  /** Roles that can't make links see no New link. */
   canWrite: boolean;
 }
 
-// R-140: the owner sees each link's visits and paid count, not every unpaid invoice it made.
 export function LinksTable({ profileId, canWrite }: LinksTableProps) {
   const list = useListLinksInfiniteQuery(profileId);
   const links = list.currentData?.pages.flatMap((page) => page.links) ?? [];
-  // An empty list offers New link in its own block, so the toolbar would only repeat it.
   const noLinks = Boolean(list.currentData) && links.length === 0;
   return (
     <section
@@ -54,7 +51,6 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
       aria-busy={!list.currentData && !list.isError}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
         <h1 id="links-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {COPY.title}

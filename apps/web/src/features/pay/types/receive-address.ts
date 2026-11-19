@@ -7,7 +7,6 @@ export interface InvoiceTerms {
   expiresAt: bigint;
   settleDeadline: bigint;
   intendedChainId: bigint;
-  /** Only in a v2 factory's terms; absent is 0. */
-  networkFee?: bigint;
+  networkFee?: bigint; // absent in v1 terms
   platformFee?: bigint;
 }

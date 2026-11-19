@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Invoice } from "@/features/invoices/types/invoices";
 import type {
   crossQuoteSchema,
   crossTokenSchema,
@@ -8,3 +9,5 @@ import type {
 export type CrossToken = z.infer<typeof crossTokenSchema>;
 export type CrossTokens = z.infer<typeof crossTokensSchema>;
 export type CrossQuote = z.infer<typeof crossQuoteSchema>;
+
+export type CrossChain = NonNullable<Invoice["crossChain"]>;

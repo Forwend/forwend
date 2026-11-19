@@ -32,15 +32,11 @@ export const CHECKOUT_COPY = {
   partial: "Part is paid. Waiting for the rest.",
   seen: "Payment seen",
   wait: "Do not hand over the order yet. Wait for Paid.",
-  /** The token and network the money arrives in. */
   via: (symbol: string, network: string) => `${symbol} on ${network}`,
   paid: "Paid",
   handOver: "You can hand over the order.",
   closed: "Checkout closed",
-  /** What the live region reads out at each step. */
   status: {
-    waiting: "Waiting for the customer to pay.",
-    partial: "Part is paid. Waiting for the rest.",
     seen: "Payment seen. Do not hand over the order yet.",
     paid: "Paid. You can hand over the order.",
     closed: "Checkout closed.",
