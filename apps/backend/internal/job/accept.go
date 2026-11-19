@@ -65,7 +65,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 		}
 		// A concurrent accept the same UTC day makes the same request with the same key, so it gets this invoice back.
 		// One across midnight has another due date: its key is taken, and the job reads as accepted.
-		_, _, err = s.invoices.Create(ctx, j.profileID, fmt.Sprintf("job:%s:%d", j.ID, deposit.Position), r)
+		_, _, err = s.invoices.Create(ctx, j.profileID, paymentKey(j.ID, deposit.Position), r)
 		if errors.Is(err, invoice.ErrConflict) {
 			if again, readErr := s.ByToken(ctx, j.Token); readErr == nil && !again.AcceptedAt.IsZero() {
 				return again, nil
@@ -89,6 +89,9 @@ func checkTyped(name, email string) error {
 	}
 	return nil
 }
+
+// paymentKey is the idempotency key of the invoice of a job's payment.
+func paymentKey(jobID string, position int) string { return fmt.Sprintf("job:%s:%d", jobID, position) }
 
 // paymentRequest is a payer-chooses invoice (D-75), open DueGraceDays past its due date (D-80), and up to a day
 // longer, so the same request made again the same UTC day has the same idempotency hash.

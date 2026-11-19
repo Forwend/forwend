@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -42,7 +41,7 @@ func (s *Service) PickOption(ctx context.Context, payToken, optionID string) err
 		var chosen, seen bool
 		// Dust chooses nothing (R-119), so it doesn't stop the pick being kept either.
 		// A deposit 1Click converts is on its way to the Base option, as money seen is (R-233).
-		if err := tx.QueryRow(ctx, `SELECT chosen_id IS NOT NULL, `+ledger.ChoosingSeenSQL+` OR `+ConvertingSQL+`
+		if err := tx.QueryRow(ctx, `SELECT chosen_id IS NOT NULL, `+moneySeenSQL+`
 			FROM invoices WHERE id = $1`, id).Scan(&chosen, &seen); err != nil {
 			return fmt.Errorf("read invoice %s money: %w", id, err)
 		}

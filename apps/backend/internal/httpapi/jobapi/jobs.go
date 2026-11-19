@@ -101,9 +101,9 @@ func markDone(jobs *job.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		position, err := strconv.Atoi(r.PathValue("position"))
+		position, err := paymentPosition(r)
 		if err != nil {
-			httpio.WriteError(w, r, job.ErrNotFound)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		j, err := jobs.MarkDone(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), position, body.DeliveryLink)
@@ -147,9 +147,9 @@ func proposeChange(jobs *job.Service) http.HandlerFunc {
 
 func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		position, err := strconv.Atoi(r.PathValue("position"))
+		position, err := paymentPosition(r)
 		if err != nil {
-			httpio.WriteError(w, r, job.ErrNotFound)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		if err := jobs.WithdrawChange(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), position); err != nil {
@@ -176,9 +176,9 @@ func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 				job.ErrInvalid))
 			return
 		}
-		position, err := strconv.Atoi(r.PathValue("position"))
+		position, err := paymentPosition(r)
 		if err != nil {
-			httpio.WriteError(w, r, job.ErrNotFound)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
@@ -223,4 +223,13 @@ func writeAccepted(w http.ResponseWriter, r *http.Request, j job.Job, err error)
 		return
 	}
 	httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
+}
+
+// paymentPosition is the payment's place in the schedule; a value that is no number names no payment.
+func paymentPosition(r *http.Request) (int, error) {
+	n, err := strconv.Atoi(r.PathValue("position"))
+	if err != nil {
+		return 0, job.ErrNotFound
+	}
+	return n, nil
 }

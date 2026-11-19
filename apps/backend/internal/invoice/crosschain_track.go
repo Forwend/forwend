@@ -14,6 +14,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/intents"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -48,6 +49,9 @@ const ConvertingSQL = `EXISTS (SELECT 1 FROM crosschain_quotes c WHERE c.invoice
 	AND c.status IN ('KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS')
 	AND greatest(c.deadline, c.deposit_seen_at) > now() - interval '1 hour'
 	AND NOT (c.status = 'SUCCESS' AND ` + DeliveredSQL + `))`
+
+// moneySeenSQL is true once main invoice $1 has money seen: a deposit that chooses an option, or one 1Click converts.
+const moneySeenSQL = ledger.ChoosingSeenSQL + " OR " + ConvertingSQL
 
 // DeliveredSQL is true once quote c's delivery came in on its Base option: a deposit in a transaction 1Click names, or,
 // should it name it in another form, one of at least the amount delivered made after the quote.

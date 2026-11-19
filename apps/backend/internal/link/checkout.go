@@ -40,6 +40,9 @@ var offerVersion = regexp.MustCompile(`^[1-9][0-9]{0,18}$`)
 // MaxPayKey leaves room in the invoice's 255-byte key for the link's prefix.
 const MaxPayKey = 200
 
+// payKey is the invoice idempotency key of a payer's key: a payer's key must never replay the owner's invoices.
+func payKey(linkID, key string) string { return "link:" + linkID + ":" + key }
+
 // Public is a link as its payer sees it at /l/<slug>. Payee is the billing name, "" before the owner saves billing
 // details; a merchant store's link also has its branding.
 type Public struct {
@@ -73,10 +76,8 @@ func (s *Service) Public(ctx context.Context, slug string) (Public, error) {
 	err := s.pool.QueryRow(ctx, `SELECT `+linkColumns+`, l.profile_id::text, coalesce(b.name, ''),
 		    coalesce(st.brand_color, ''), st.logo_at
 		FROM payment_links l LEFT JOIN profile_billing_details b ON b.profile_id = l.profile_id
-		LEFT JOIN stores st ON st.id = l.store_id WHERE l.slug = $1`, slug).Scan(&l.ID, &l.StoreID, &l.Slug, &l.Title,
-		&l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt, &l.MaxPayments, &l.Active, &l.Visits, &l.Paid,
-		&l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision, &l.FeesPaidBy, &p.ProfileID, &p.Payee,
-		&p.BrandColor, &p.LogoAt)
+		LEFT JOIN stores st ON st.id = l.store_id WHERE l.slug = $1`, slug).Scan(
+		append(l.fields(), &p.ProfileID, &p.Payee, &p.BrandColor, &p.LogoAt)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Public{}, ErrNotFound
 	}
@@ -163,8 +164,7 @@ func (s *Service) Pay(ctx context.Context, slug, key string, request PayRequest)
 	if expected != 0 && expected != amount || version != nil && *version != p.Revision {
 		return invoice.Invoice{}, false, ErrChanged
 	}
-	// Keys are the profile's: a payer's key must never replay the owner's invoices.
-	inv, created, err := s.invoices.Create(ctx, p.ProfileID, "link:"+p.ID+":"+key, invoice.Request{
+	inv, created, err := s.invoices.Create(ctx, p.ProfileID, payKey(p.ID, key), invoice.Request{
 		AmountUSD: invoice.USD(amount), Details: invoice.Details{Title: p.Title}, StoreID: p.StoreID,
 		FeesPaidBy: p.FeesPaidBy,
 		Caller: invoice.Caller{Purpose: invoice.PurposeCheckout, LinkID: p.ID, By: history.Payer, Livemode: &p.Livemode,
@@ -212,7 +212,7 @@ func (s *Service) replay(ctx context.Context, p Public, input, expected int64, v
 	err := s.pool.QueryRow(ctx, `SELECT i.id, r.amount_cents, r.expected_amount_cents, r.expected_revision, r.invoice_id IS NOT NULL
 		FROM invoices i LEFT JOIN link_checkout_requests r ON r.invoice_id = i.id
 		WHERE i.profile_id = $1 AND i.link_id = $2 AND i.main_id IS NULL AND i.idempotency_key = $3`,
-		p.ProfileID, p.ID, "link:"+p.ID+":"+key).Scan(&id, &original, &originalExpected, &originalVersion, &recorded)
+		p.ProfileID, p.ID, payKey(p.ID, key)).Scan(&id, &original, &originalExpected, &originalVersion, &recorded)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return invoice.Invoice{}, false, nil
 	}

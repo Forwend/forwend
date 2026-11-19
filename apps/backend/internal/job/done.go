@@ -84,7 +84,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	}
 	// A concurrent call the same UTC day makes the same request with the same key, so it gets this invoice back; one
 	// with other values (a payment paid in between changes the final note) finds the invoice made.
-	_, _, err = s.invoices.Create(ctx, profileID, fmt.Sprintf("job:%s:%d", j.ID, position), r)
+	_, _, err = s.invoices.Create(ctx, profileID, paymentKey(j.ID, position), r)
 	if errors.Is(err, errScheduleChanged) {
 		return s.MarkDone(ctx, profileID, id, position, link)
 	}
