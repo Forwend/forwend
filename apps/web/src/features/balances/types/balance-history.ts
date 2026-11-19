@@ -1,12 +1,9 @@
 import type { z } from "zod";
 import type { HISTORY_FIELDS, HISTORY_RANGES } from "@/features/balances/constants/balance-history";
 import type {
-  balanceHistoryPointSchema,
   balanceHistorySchema,
   tokenHistorySchema,
 } from "@/features/balances/schemas/balances";
-
-export type BalanceHistoryPoint = z.infer<typeof balanceHistoryPointSchema>;
 
 export type TokenHistory = z.infer<typeof tokenHistorySchema>;
 

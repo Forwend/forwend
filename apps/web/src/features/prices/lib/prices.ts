@@ -1,4 +1,3 @@
-import { formatTokenAmount } from "@forwend/ui-web";
 import type { TokenAmount, TokenPrice } from "@/features/prices/types/prices";
 
 /** The token's price on its chain, matched by contract in any letter case. */
@@ -44,8 +43,4 @@ export function totalUsdCents(
   const exponent = Math.max(0, ...values.map((v) => v.exponent));
   const sum = values.reduce((s, v) => s + v.numerator * 10n ** BigInt(exponent - v.exponent), 0n);
   return (sum * 100n) / 10n ** BigInt(exponent);
-}
-
-export function formatUsdCents(cents: bigint): string {
-  return formatTokenAmount({ baseUnits: cents, decimals: 2 });
 }

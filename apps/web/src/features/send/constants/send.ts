@@ -35,8 +35,8 @@ export const FEE_DECIMALS = 4;
 /** 0x and 40 hex digits: a whole EVM address, which the address step checks as soon as it is typed. */
 export const ADDRESS_LENGTH = 42;
 
-/** How the wallet pays its network fee from the token itself (D-121): as the chain's gas coin, signing with the gas caps
- * (R-216), or to Privy's paymaster through a request the server sends (R-225). Forwend paid for sends before D-121. */
+/** Who pays a send's network fee: Forwend, or the wallet from the token itself (D-121), as the chain's gas coin signing
+ * with the gas caps (R-216), or to Privy's paymaster through a request the server sends (R-225). */
 export const FEE_PAYERS = { forwend: "forwend", wallet: "wallet", paymaster: "paymaster" } as const;
 
 /** How often an open sheet asks for the send's progress: about one block. */

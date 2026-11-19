@@ -72,7 +72,6 @@ const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30))
 afterEach(cleanup);
 
 describe("mark done", () => {
-  // R-103.
   it("marks the step done with its link, then sends the invoice it made", async () => {
     const calls: { method: string; url: string; key: string | null; body: string }[] = [];
     vi.stubGlobal(

@@ -202,7 +202,6 @@ interface ChartReadoutProps {
   /** The chosen point's height in the plot; the readout floats above it. */
   top?: number;
   width: number;
-  dateLabel?: (index: number) => string;
   note?: (index: number) => string;
 }
 
@@ -214,10 +213,8 @@ function ChartReadout({
   left,
   top = 0,
   width,
-  dateLabel: dateLabelProp,
   note,
 }: ChartReadoutProps) {
-  const dateLabel = dateLabelProp ?? ((i: number) => dayLabel(series, i));
   return (
     <>
       {active === null ? null : (
@@ -233,15 +230,15 @@ function ChartReadout({
             {amountLabel(series, active)}
           </span>
           {note ? <span className="text-xs text-ink">{note(active)}</span> : null}
-          <span className="text-xs text-muted">{dateLabel(active)}</span>
+          <span className="text-xs text-muted">{dayLabel(series, active)}</span>
         </div>
       )}
       <p aria-live="polite" className="sr-only">
         {active === null || !announce
           ? ""
-          : `${dateLabel(active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
+          : `${dayLabel(series, active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
       </p>
-      <ChartTable series={series} label={label} dateLabel={dateLabelProp} note={note} />
+      <ChartTable series={series} label={label} note={note} />
     </>
   );
 }
@@ -250,9 +247,8 @@ function ChartReadout({
 const ChartTable = memo(function ChartTable({
   series,
   label,
-  dateLabel = (i) => dayLabel(series, i),
   note,
-}: Pick<ChartReadoutProps, "series" | "label" | "dateLabel" | "note">) {
+}: Pick<ChartReadoutProps, "series" | "label" | "note">) {
   return (
     // A wrapper, because sr-only on a table doesn't clip it: a table grows to its rows.
     <div className="sr-only">
@@ -261,7 +257,7 @@ const ChartTable = memo(function ChartTable({
         <tbody>
           {series.values.map((_, i) => (
             <tr key={series.dates[i]?.toISOString() ?? i}>
-              <th scope="row">{dateLabel(i)}</th>
+              <th scope="row">{dayLabel(series, i)}</th>
               <td>
                 {amountLabel(series, i)}
                 {note ? `, ${note(i)}` : null}

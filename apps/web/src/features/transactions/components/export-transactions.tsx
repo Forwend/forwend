@@ -16,9 +16,9 @@ import {
 import { RecordsCurrency } from "@/features/transactions/components/records-currency";
 import { TOO_MANY_TRANSACTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
+import { notFound } from "@/shared/api/server-reach";
 import { APP_ROUTES } from "@/shared/config/routes";
 
-const NOT_FOUND = 404;
 // R-118: more transactions in the days than one file holds.
 const tooMany = (failure: unknown) =>
   (failure as { data?: { error?: { code?: unknown } } }).data?.error?.code ===
@@ -29,7 +29,6 @@ export interface ExportTransactionsProps {
   disabled: boolean;
 }
 
-// R-108, R-109, R-113. Browser date fields: the kit's calendar opens inside its field and the dialog cuts it off.
 export function ExportTransactions({ profileId, disabled }: ExportTransactionsProps) {
   const [exportCsv, { isFetching }] = useLazyExportTransactionsQuery();
   const [statement, statementState] = useDownloadStatementMutation();
@@ -75,9 +74,8 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
     try {
       save(await statement({ profileId, from, to }).unwrap(), COPY.statementFile(from, to));
     } catch (failure) {
-      const { status } = failure as { status?: unknown };
       setError(
-        status === NOT_FOUND
+        notFound(failure)
           ? COPY.statementNeedsBilling
           : tooMany(failure)
             ? COPY.tooManyTransactions

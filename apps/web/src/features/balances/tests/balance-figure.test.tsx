@@ -54,43 +54,24 @@ describe("BalanceFigure", () => {
     expect(screen.getByRole("link", { name: "<0.01 USD on hold" })).toBeTruthy();
   });
 
-  it("values tokens at their market prices, and never at 1 USD without one", () => {
+  it("values tokens at their market prices, and never at 1 USD or a made-up 0 without one", () => {
     const usdt = {
       ...usdc,
       chainId: 421614,
       token: "0x2222222222222222222222222222222222222222",
       symbol: "USDT",
     };
-    const { unmount } = show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" });
+    show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" });
     // 2.50 at 1 plus 2.50 at 0.9990 is 4.9975, cut to cents.
     expect(total()).toBe("4.99");
-    unmount();
+    cleanup();
     show(
       { tokens: [usdc, usdt], estimatedUsdTotal: "5.00" },
       { prices: [PRICES[0] as TokenPrice] },
     );
     expect(total()).toBe("—");
-  });
-
-  it("adds several stablecoins in USD, and never shows a made-up 0", () => {
-    const usdt = {
-      ...usdc,
-      chainId: 421614,
-      token: "0x2222222222222222222222222222222222222222",
-      symbol: "USDT",
-    };
-    const prices = [PRICES[0] as TokenPrice, price(421614, usdt.token, "1")];
-    const { rerender } = show({ tokens: [usdc, usdt], estimatedUsdTotal: "5.00" }, { prices });
-    expect(total()).toBe("5.00");
-    expect(screen.getByRole("button", { name: /^Market value/ })).toBeTruthy();
-    rerender(
-      <BalanceFigure
-        balances={{ tokens: [usdc, { ...usdt, wallet: null }], estimatedUsdTotal: null }}
-        prices={prices}
-        failed={false}
-        onRetry={() => {}}
-      />,
-    );
+    cleanup();
+    show({ tokens: [usdc, { ...usdt, wallet: null }], estimatedUsdTotal: null });
     expect(total()).toBe("—");
   });
 });

@@ -4,8 +4,9 @@ import { buttonClasses, Card, EmptyState, Money, Skeleton } from "@forwend/ui-we
 import { ChevronRight, Wallet } from "lucide-react";
 import Link from "next/link";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
+import { formatUsd } from "@/features/balances/lib/balances";
 import type { Balances } from "@/features/balances/types/balances";
-import { findPrice, formatUsdCents, latestUsd, usdCents } from "@/features/prices/lib/prices";
+import { findPrice, latestUsd, usdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { TokenMark } from "@/shared/components/chains/token-mark";
@@ -136,7 +137,7 @@ export function AssetsCard({ balances, failed, onRetry, prices }: AssetsCardProp
                     )}
                     {cents !== null ? (
                       <span className="text-xs text-muted tabular-nums">
-                        {formatUsdCents(cents)} {MONEY_COPY.usd}
+                        {formatUsd(cents)} {MONEY_COPY.usd}
                         {total > 0n ? ` · ${share(cents, total)}` : null}
                       </span>
                     ) : null}

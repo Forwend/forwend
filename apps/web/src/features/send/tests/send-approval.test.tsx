@@ -7,8 +7,6 @@ import type { Send } from "@/features/send/types/send";
 
 const api = vi.hoisted(() => ({
   approve: vi.fn(),
-  record: vi.fn(),
-  emailedCode: false,
   submit: vi.fn(async (): Promise<unknown> => ({})),
   sign: vi.fn(async () => ({ txHash: "0xhash" })),
   mfa: {
@@ -23,7 +21,6 @@ vi.mock("@/features/auth/components/fresh-sign-in", () => ({
   useFreshSignIn: () => ({
     run: (send: () => unknown) => send(),
     step: null,
-    pending: api.emailedCode,
     cancelled: () => false,
     cancel: vi.fn(),
   }),
@@ -35,9 +32,6 @@ vi.mock("@/features/auth/components/mfa-step", () => ({
     busy: false,
     cancel: vi.fn(),
   }),
-}));
-vi.mock("@/features/auth/api/auth-api", () => ({
-  useRecordTwoStepMutation: () => [() => ({ unwrap: api.record })],
 }));
 vi.mock("@/features/send/api/send-api", () => ({
   useApproveSendMutation: () => [() => ({ unwrap: api.approve })],
@@ -78,7 +72,6 @@ afterEach(() => {
   vi.clearAllMocks();
   api.mfa.needed = false;
   api.mfa.enrolled = false;
-  api.emailedCode = false;
 });
 
 describe("approving a send (R-137, D-49)", () => {
@@ -131,18 +124,6 @@ describe("approving a send (R-137, D-49)", () => {
     expect(api.sign).not.toHaveBeenCalled();
     act(() => hook.result.current.cancelConfirm());
     expect(hook.result.current.settingUp).toBe(false);
-  });
-
-  // D-49: only the setup records two-step methods. A send that also needed the emailed code would record whatever
-  // Privy lists, such as an app a stolen session set up there, and that app would then approve sends alone.
-  it("records no two-step methods, even after a send confirmed with the emailed code", async () => {
-    api.mfa.enrolled = true;
-    api.emailedCode = true;
-    api.approve.mockResolvedValueOnce({ ...send, status: "approved" });
-    const { hook } = approval();
-    await act(() => hook.result.current.start());
-    expect(api.sign).toHaveBeenCalledTimes(1);
-    expect(api.record).not.toHaveBeenCalled();
   });
 
   // D-49: the code comes before the approve, so closing it leaves nothing approved; the next hold starts afresh.

@@ -21,7 +21,6 @@ export type Transaction = z.infer<typeof transactionSchema>;
 
 export type TransactionsPage = z.infer<typeof transactionsPageSchema>;
 
-/** R-110. */
 export type TransactionRecordsValue = NonNullable<Transaction["recordsValue"]>;
 
 export type RecordsCurrencySetting = z.infer<typeof recordsCurrencySchema>;

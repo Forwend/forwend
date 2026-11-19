@@ -1,4 +1,6 @@
-import { JOB_LIMITS } from "@/features/jobs/constants/jobs";
+import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
+import { JOB_FIELDS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
+import type { JobField } from "@/features/jobs/types/jobs";
 
 const dueAfter = (days: number) =>
   days === 0
@@ -7,7 +9,6 @@ const dueAfter = (days: number) =>
       ? "due 1 day after"
       : `due ${days} days after`;
 
-/** R-101. */
 export const JOBS_COPY = {
   title: "Jobs",
   add: "New job",
@@ -88,15 +89,16 @@ export const JOBS_COPY = {
       failed: "We could not create the job. Try again.",
       invalid: "We could not create the job with these values. Check them and try again.",
       invalidField: {
-        title: `Use at most ${JOB_LIMITS.title} characters on one line, with no hidden characters.`,
-        scope: `Use at most ${JOB_LIMITS.scope} characters, with no hidden characters.`,
-        "client.name": "Use at most 200 characters, with no hidden characters.",
-        "client.email": "Enter an email like name@example.com.",
-        "client.address": "Use at most 500 characters, with no hidden characters.",
-        "client.country": "Choose a country.",
-        "client.taxId": "Use at most 50 characters, with no hidden characters.",
-        payments: "We could not save these payments. Check each title, amount and days to pay.",
-      },
+        [JOB_FIELDS.title]: `Use at most ${JOB_LIMITS.title} characters on one line, with no hidden characters.`,
+        [JOB_FIELDS.scope]: `Use at most ${JOB_LIMITS.scope} characters, with no hidden characters.`,
+        [JOB_FIELDS.clientName]: `Use at most ${CLIENT_LIMITS.name} characters, with no hidden characters.`,
+        [JOB_FIELDS.clientEmail]: "Enter an email like name@example.com.",
+        [JOB_FIELDS.clientAddress]: `Use at most ${CLIENT_LIMITS.address} characters, with no hidden characters.`,
+        [JOB_FIELDS.clientCountry]: "Choose a country.",
+        [JOB_FIELDS.clientTaxId]: `Use at most ${CLIENT_LIMITS.taxId} characters, with no hidden characters.`,
+        [JOB_FIELDS.payments]:
+          "We could not save these payments. Check each title, amount and days to pay.",
+      } satisfies Record<JobField, string>,
     },
   },
   detail: {
@@ -174,7 +176,6 @@ export const JOBS_COPY = {
   },
 } as const;
 
-/** R-102. */
 export const QUOTE_COPY = {
   title: "Quote",
   issuer: "From",
@@ -226,7 +227,6 @@ export const QUOTE_COPY = {
   },
 } as const;
 
-/** R-104. */
 export const RECORD_COPY = {
   title: "Record",
   created: "Quote made",

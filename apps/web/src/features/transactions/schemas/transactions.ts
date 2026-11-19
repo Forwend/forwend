@@ -31,7 +31,6 @@ export const transactionSchema = z.object({
   blockNumber: count,
   at: apiTime,
   status: openEnum<(typeof TRANSACTION_STATUSES)[keyof typeof TRANSACTION_STATUSES]>(),
-  // R-108.
   usdValue: usdAmount,
   classification: openEnum<TransactionClass>(),
   labelable: z.boolean(),

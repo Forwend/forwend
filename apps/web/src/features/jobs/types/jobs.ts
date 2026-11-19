@@ -30,7 +30,7 @@ export type JobPaymentStatus = Extract<
 >;
 
 export type JobField = (typeof JOB_FIELDS)[keyof typeof JOB_FIELDS];
-export type RecordEventKind = (typeof RECORD_EVENTS)[keyof typeof RECORD_EVENTS];
+type RecordEventKind = (typeof RECORD_EVENTS)[keyof typeof RECORD_EVENTS];
 
 /** R-104; payment is set for the events of one payment. */
 export interface RecordEvent {

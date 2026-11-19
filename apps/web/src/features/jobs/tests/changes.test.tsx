@@ -146,7 +146,6 @@ const waiting = payment(3, "Extra page", { proposedAt: "2026-10-19T09:00:00.1234
 afterEach(cleanup);
 
 describe("scope changes", () => {
-  // R-105, R-106.
   it("proposes a change in cents-exact decimals and retries with the same key", async () => {
     const calls: Call[] = [];
     capture(calls);
@@ -174,7 +173,6 @@ describe("scope changes", () => {
     expect(calls[1]?.key).toBe(calls[0]?.key);
   });
 
-  // R-105.
   it("accepts a change with the proposedAt it read, untouched", async () => {
     const calls: Call[] = [];
     capture(calls);
@@ -217,7 +215,6 @@ describe("scope changes", () => {
     });
   });
 
-  // R-106.
   it("never offers Mark done for a waiting change, and withdraws it", async () => {
     const calls: { method: string; url: string }[] = [];
     vi.stubGlobal(
@@ -246,18 +243,29 @@ describe("scope changes", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Payments" }));
   });
 
-  // R-107.
-  it("says where the change's link went, and why a finished job takes no change", async () => {
-    const emailed = { ...waiting, clientEmailed: true };
+  it("names the client's email in the toast only when the API emailed them the change", async () => {
     answer(201, {
       ...accepted,
-      payments: [deposit, payment(2, "Final delivery", invoiced(2)), emailed],
+      payments: [
+        deposit,
+        payment(2, "Final delivery", invoiced(2)),
+        { ...waiting, clientEmailed: true },
+      ],
     });
     await propose();
     expect(
       screen.getByText(
         "Extra page proposed. The link to accept it is on its way to jane@bob.example.",
       ),
+    ).toBeTruthy();
+    cleanup();
+    answer(201, {
+      ...accepted,
+      payments: [deposit, payment(2, "Final delivery", invoiced(2)), waiting],
+    });
+    await propose();
+    expect(
+      screen.getByText("Extra page proposed. Send the client the quote's link to accept it."),
     ).toBeTruthy();
   });
 
@@ -294,7 +302,6 @@ describe("scope changes", () => {
     expect(dialogOpen()).toBe(false);
   });
 
-  // R-105.
   it("holds the final while a change waits, and offers a change only until the job is finished", () => {
     answer(500, {});
     renderJob({
@@ -329,7 +336,6 @@ describe("scope changes", () => {
     expect(screen.getByRole("button", { name: "Propose a change" })).toBeTruthy();
   });
 
-  // R-106.
   it("tells the page when the change it read is gone", async () => {
     answer(404, { error: { code: "job_not_found", message: "job not found" } });
     const onAccepted = vi.fn();

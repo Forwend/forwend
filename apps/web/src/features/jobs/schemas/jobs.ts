@@ -21,7 +21,6 @@ export const jobPaymentSchema = z.object({
   status: openEnum<JobPaymentStatus>().nullable(),
   doneAt: apiTime.nullable(),
   deliveryLink: z.string().nullable(),
-  // R-104.
   invoicedAt: apiTime.nullable(),
   paidAt: apiTime.nullable(),
   // A scope change (R-105): proposedAt keeps its microseconds, and the accept sends it back as this exact string.

@@ -1,21 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { sendingRow, transactionFee } from "@/features/transactions/lib/transactions";
+import { transactionFee } from "@/features/transactions/lib/transactions";
+import type { Transaction } from "@/features/transactions/types/transactions";
 
-const sent = {
-  ...sendingRow({
-    sendId: "s",
-    chainId: 5042,
-    token: "0x3600000000000000000000000000000000000000",
-    symbol: "USDC",
-    decimals: 6,
-    amount: "5000000",
-    to: "0x00000000000000000000000000000000000000bb",
-    toProfileId: null,
-    txHash: `0x${"a".repeat(64)}`,
-    createdAt: "2026-11-08T10:00:00Z",
-  } as Parameters<typeof sendingRow>[0]),
+const sent: Transaction = {
+  chainId: 5042,
+  token: "0x3600000000000000000000000000000000000000",
+  symbol: "USDC",
+  decimals: 6,
+  direction: "out",
+  amount: "5000000",
+  counterparty: "0x00000000000000000000000000000000000000bb",
+  txHash: `0x${"a".repeat(64)}`,
+  logIndex: 0,
+  blockNumber: 10,
+  at: "2026-11-08T10:00:00Z",
   status: "confirmed",
-} as const;
+  usdValue: "5.000000",
+  classification: "sent",
+  labelable: false,
+  invoice: null,
+  recordsValue: null,
+  feePaid: null,
+};
 
 // R-224, R-228: the Fee column and the opened row's sum read this; it is never part of the amount.
 describe("transactionFee", () => {
@@ -26,20 +32,16 @@ describe("transactionFee", () => {
   });
 
   it("is what a settlement paid out of the payment before the rest arrived", () => {
-    const settled = {
-      ...sent,
-      direction: "in",
-      feePaid: null,
-      payment: {
-        paymentId: `0x${"b".repeat(64)}`,
-        purpose: "invoice",
-        documentKind: "invoice",
-        policyException: null,
-        unreconciled: false,
-        fees: "50000",
-      },
+    const payment = {
+      paymentId: `0x${"b".repeat(64)}`,
+      purpose: "invoice",
+      documentKind: "invoice",
+      policyException: null,
+      unreconciled: false,
+      fees: "50000",
     } as const;
+    const settled: Transaction = { ...sent, direction: "in", feePaid: null, payment };
     expect(transactionFee(settled)).toBe(50000n);
-    expect(transactionFee({ ...settled, payment: { ...settled.payment, fees: null } })).toBeNull();
+    expect(transactionFee({ ...settled, payment: { ...payment, fees: null } })).toBeNull();
   });
 });

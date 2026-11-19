@@ -1,26 +1,19 @@
 "use client";
 
-import {
-  Button,
-  Checkbox,
-  ComboboxField,
-  IconButton,
-  TextAreaField,
-  TextField,
-} from "@forwend/ui-web";
-import { Plus, X } from "lucide-react";
+import { ComboboxField, TextAreaField, TextField } from "@forwend/ui-web";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useId, useMemo, useRef, useState } from "react";
+import { type FormEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import type { ClientSearch } from "@/features/clients/hooks/use-client-search";
 import { clientBody, clientCountryOptions, clientOptions } from "@/features/clients/lib/clients";
 import type { ClientBody } from "@/features/clients/types/clients";
 import { useCreateJobMutation } from "@/features/jobs/api/jobs-api";
+import { JobFormPreview } from "@/features/jobs/components/job-form-preview";
+import { PaymentScheduleFields } from "@/features/jobs/components/payment-schedule-fields";
 import { JOB_FIELDS, JOB_LIMITS, PAYMENT_FIELDS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { dueDays, invalidJobField, paymentCents } from "@/features/jobs/lib/jobs";
+import { dueDays, namedField, paymentCents } from "@/features/jobs/lib/jobs";
 import type {
   CreateJobBody,
   JobField,
@@ -28,10 +21,9 @@ import type {
   PaymentField,
 } from "@/features/jobs/types/jobs";
 import { FieldGroup } from "@/shared/components/field-group";
-import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
+import { StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { usdFromCents } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.form;
@@ -81,12 +73,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
   >({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
-  const depositId = useId();
-  const list = useRef<HTMLUListElement>(null);
-  // Add and remove take away the focused button: focus moves to the new row, or the one in its place.
-  const focusRow = (row: number) =>
-    list.current?.querySelectorAll("li")[row]?.querySelector("input")?.focus();
-  const set = (id: string, field: keyof Omit<PaymentDraft, "id">, value: string) => {
+  const edit = (id: string, field: PaymentField, value: string) => {
     setPayments((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
     setPaymentErrors((shown) => ({ ...shown, [id]: { ...shown[id], [field]: undefined } }));
   };
@@ -164,7 +151,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
       const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
       const field =
         failure.status === INVALID_VALUE
-          ? invalidJobField(failure.data?.error?.message ?? "")
+          ? namedField(failure.data?.error?.message ?? "", Object.values(JOB_FIELDS))
           : null;
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalidField[field] }));
@@ -175,8 +162,6 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
     }
   };
 
-  const grid =
-    "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_8rem_6rem_2.5rem]";
   return (
     <StepForm
       label={COPY.stepsLabel}
@@ -198,55 +183,7 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
       onSubmit={submit}
       onInput={readTyped}
       error={formError}
-      preview={
-        <FormPreview title={COPY.preview.title} note={COPY.preview.note}>
-          <div className="flex flex-col gap-4 rounded-md bg-surface p-5 text-sm shadow-sm ring-1 ring-line">
-            <div className="flex flex-col gap-1">
-              <p className="text-xs font-medium text-muted">
-                {COPY.preview.for(typed.client || COPY.preview.noClient)}
-              </p>
-              <p
-                className={`text-lg font-semibold break-words ${typed.title ? "text-ink" : "text-subtle"}`}
-              >
-                {typed.title || COPY.preview.noTitle}
-              </p>
-              {typed.scope ? (
-                <p className="line-clamp-4 break-words whitespace-pre-line text-muted">
-                  {typed.scope}
-                </p>
-              ) : null}
-            </div>
-            <ol className="divide-y divide-line border-t border-line">
-              {payments.map((p, i) => {
-                const cents = paymentCents(p.amount);
-                return (
-                  <li key={p.id} className="flex items-start justify-between gap-4 py-2.5">
-                    <span className="min-w-0">
-                      <span className="block break-words text-ink">
-                        {p.title.trim() || COPY.paymentTitle(i + 1)}
-                      </span>
-                      <span className="block text-xs text-muted">
-                        {i === 0 && deposit
-                          ? COPY.preview.onAccept
-                          : COPY.preview.due(p.dueDays || "—")}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-ink tabular-nums">
-                      {cents === null ? "—" : `${formatUsd(cents)} ${MONEY_COPY.usd}`}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-            <p className="flex items-baseline justify-between gap-4 border-t border-line pt-3">
-              <span className="text-muted">{COPY.total}</span>
-              <span className="font-semibold text-ink tabular-nums">
-                {formatUsd(total)} {MONEY_COPY.usd}
-              </span>
-            </p>
-          </div>
-        </FormPreview>
-      }
+      preview={<JobFormPreview typed={typed} payments={payments} deposit={deposit} total={total} />}
     >
       <div data-step={STEPS.work} className={flow.shows(STEPS.work)}>
         <FieldGroup title={COPY.workGroup}>
@@ -354,104 +291,17 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
       </div>
 
       <div data-step={STEPS.payments} className={flow.shows(STEPS.payments)}>
-        <FieldGroup title={COPY.paymentsGroup}>
-          <div className="flex flex-col gap-3">
-            <div aria-hidden className={`${grid} max-sm:hidden text-sm font-medium text-ink`}>
-              <span>{COPY.paymentColumn}</span>
-              <span>{COPY.amount}</span>
-              <span>{COPY.dueDays}</span>
-            </div>
-            <ul ref={list} className="flex flex-col gap-4 sm:gap-3">
-              {payments.map((p, i) => {
-                const shown = paymentErrors[p.id] ?? {};
-                return (
-                  <li key={p.id} className={grid}>
-                    <TextField
-                      label={COPY.paymentTitle(i + 1)}
-                      value={p.title}
-                      onChange={(event) => set(p.id, "title", event.target.value)}
-                      maxLength={JOB_LIMITS.paymentTitle}
-                      autoComplete="off"
-                      error={shown.title}
-                      className="col-span-full sm:col-span-1 sm:[&>label]:sr-only"
-                    />
-                    <TextField
-                      label={COPY.amount}
-                      aria-label={COPY.amountOf(i + 1)}
-                      value={p.amount}
-                      onChange={(event) => set(p.id, "amount", event.target.value)}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      autoComplete="off"
-                      error={shown.amount}
-                      className="sm:[&>label]:sr-only"
-                    />
-                    <TextField
-                      label={COPY.dueDays}
-                      aria-label={COPY.dueDaysOf(i + 1)}
-                      value={p.dueDays}
-                      onChange={(event) => set(p.id, "dueDays", event.target.value)}
-                      inputMode="numeric"
-                      autoComplete="off"
-                      error={shown.dueDays}
-                      className="sm:[&>label]:sr-only"
-                    />
-                    <IconButton
-                      label={COPY.remove(i + 1)}
-                      disabled={payments.length === 1}
-                      onClick={() => {
-                        flushSync(() =>
-                          setPayments((rows) => rows.filter((row) => row.id !== p.id)),
-                        );
-                        focusRow(Math.min(i, payments.length - 2));
-                      }}
-                      className="self-start max-sm:col-start-3 max-sm:row-start-2 max-sm:mt-7 sm:mt-0.5"
-                    >
-                      <X aria-hidden className="size-[var(--fw-icon-sm)]" />
-                    </IconButton>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="text-sm text-muted">{COPY.dueDaysHint}</p>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={payments.length >= JOB_LIMITS.payments}
-                onClick={() => {
-                  flushSync(() => setPayments((rows) => [...rows, draft("", "14")]));
-                  focusRow(payments.length);
-                }}
-              >
-                <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
-                {COPY.add}
-              </Button>
-              <p className="flex items-baseline gap-3 text-ink">
-                <span className="text-sm text-muted">{COPY.total}</span>
-                <span className="text-lg font-semibold tabular-nums">
-                  {formatUsd(total)} {MONEY_COPY.usd}
-                </span>
-              </p>
-            </div>
-            {errors[JOB_FIELDS.payments] ? (
-              <p role="alert" className="text-sm text-danger">
-                {errors[JOB_FIELDS.payments]}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex flex-col">
-            <Checkbox
-              label={COPY.deposit}
-              checked={deposit}
-              onChange={(event) => setDeposit(event.target.checked)}
-              aria-describedby={depositId}
-            />
-            <p id={depositId} className="text-sm text-muted">
-              {COPY.depositHint}
-            </p>
-          </div>
-        </FieldGroup>
+        <PaymentScheduleFields
+          payments={payments}
+          errors={paymentErrors}
+          error={errors[JOB_FIELDS.payments]}
+          total={total}
+          deposit={deposit}
+          onDeposit={setDeposit}
+          onEdit={edit}
+          onAdd={() => setPayments((rows) => [...rows, draft("", "14")])}
+          onRemove={(id) => setPayments((rows) => rows.filter((row) => row.id !== id))}
+        />
       </div>
     </StepForm>
   );

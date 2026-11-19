@@ -20,7 +20,6 @@ export interface RecordsValueProps {
   value: TransactionRecordsValue;
 }
 
-// R-111.
 export function RecordsValue({ value }: RecordsValueProps) {
   const rate = COPY.rateOf(formatDueDate(value.rateDate));
   const text = formatRecordsValue(value);

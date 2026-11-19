@@ -3,10 +3,9 @@
 import { Button, type ButtonSize, buttonClasses, EmptyState, SearchField } from "@forwend/ui-web";
 import { BriefcaseBusiness, Plus } from "lucide-react";
 import Link from "next/link";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { useListJobsInfiniteQuery } from "@/features/jobs/api/jobs-api";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents } from "@/features/jobs/lib/jobs";
+import { usdText } from "@/features/jobs/lib/jobs";
 import type { JobSummary } from "@/features/jobs/types/jobs";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
@@ -14,12 +13,10 @@ import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { useListSearch } from "@/shared/hooks/use-list-filters";
 import { shortDate } from "@/shared/lib/dates";
 
 const jobHref = (job: JobSummary) => `${APP_ROUTES.jobs}/${job.jobId}`;
-const total = (job: JobSummary) => `${formatUsd(apiCents(job.totalUsd))} ${MONEY_COPY.usd}`;
 const state = (job: JobSummary) =>
   job.acceptedAt ? COPY.accepted(job.paid, job.payments) : COPY.waiting;
 
@@ -36,7 +33,6 @@ export interface JobsTableProps {
   profileId: string;
 }
 
-// R-101, R-177: the API pages and searches the jobs.
 export function JobsTable({ profileId }: JobsTableProps) {
   const search = useListSearch();
   const list = useListJobsInfiniteQuery({ profileId, q: search.apiQuery });
@@ -118,7 +114,12 @@ export function JobsTable({ profileId }: JobsTableProps) {
                 header: COPY.columns.client,
                 cell: (job) => <span className="text-muted">{job.clientName}</span>,
               },
-              { key: "total", header: COPY.columns.total, align: "end", cell: total },
+              {
+                key: "total",
+                header: COPY.columns.total,
+                align: "end",
+                cell: (job) => usdText(job.totalUsd),
+              },
               {
                 key: "state",
                 header: COPY.columns.state,
@@ -136,7 +137,7 @@ export function JobsTable({ profileId }: JobsTableProps) {
             phone={(job) => ({
               title: job.title,
               detail: `${job.clientName} · ${state(job)}`,
-              value: total(job),
+              value: usdText(job.totalUsd),
             })}
             footer={
               list.hasNextPage ? (
