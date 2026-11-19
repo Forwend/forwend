@@ -28,21 +28,18 @@ const hasAnything = (r: ToRoll) => r.keys.length + r.webhooks.length > 0;
 export interface MemberActionsProps {
   profileId: string;
   member: Member;
-  /** How the member is named: their email, or a placeholder when they have none. */
   who: string;
   stores: readonly Store[];
-  /** A removal or role change left the member with less: what they could still use, for the owner to roll. */
   onToRoll: (toRoll: ToRoll) => void;
 }
 
-// D-93: a role change needs a fresh sign-in, which the API asks for (D-63); removing someone does not.
 export function MemberActions({ profileId, member, who, stores, onToRoll }: MemberActionsProps) {
   const [setMember, saving] = useSetMemberMutation();
   const fresh = useFreshSignIn();
   const [remove, removing] = useRemoveMemberMutation();
   const toast = useToast();
   const form = useRef<HTMLFormElement>(null);
-  // Which dialog opens once the menu has closed and handed focus back (as on Delete client).
+  // The dialog opens once the menu has closed and handed focus back.
   const chosen = useRef<"change" | "remove" | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [role, setRole] = useState<MemberRole>(memberRole(member.role));
@@ -75,7 +72,7 @@ export function MemberActions({ profileId, member, who, stores, onToRoll }: Memb
       toast({ tone: TONES.success, title: COPY.removed(who) });
       if (hasAnything(toRoll)) onToRoll(toRoll);
     } catch {
-      // The dialog shows the error.
+      // Shown by the dialog.
     }
   };
 
@@ -107,10 +104,9 @@ export function MemberActions({ profileId, member, who, stores, onToRoll }: Memb
                   if (!open) return;
                   chosen.current = null;
                   event.preventDefault();
-                  // The trigger holds focus as the dialog opens, so the dialog hands it back there when it closes.
+                  // The dialog hands focus back to what held it as it opened.
                   trigger.current?.focus();
                   if (open === "remove") return openRemove();
-                  // From the member as the list has it now, which a saved change has updated.
                   resetChange();
                   openChange();
                 }}

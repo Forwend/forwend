@@ -34,11 +34,8 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export interface StoreFormProps {
   profileId: string;
   store?: Store;
-  /** When the checkout closes, in seconds: New invoice's choices, which the screen passes in. */
   closeChoices: readonly SelectOption[];
-  /** A new store's close: New invoice's default. */
   defaultClose: number;
-  /** The profile's tokens (R-136): the store narrows the ones on. */
   tokens: readonly TokenSwitch[];
 }
 
@@ -51,7 +48,7 @@ const FIELD_STEPS: Record<StoreField, string> = {
   tokensOff: STEPS.assets,
 };
 
-// R-134: a new store's id is made once, so a retried save after an error makes one store.
+// A new store's id is made once, so a retried save makes one store.
 export function StoreForm({
   profileId,
   store,
@@ -71,7 +68,6 @@ export function StoreForm({
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(store?.name ?? "");
-  // A new store's logo waits for the store to exist; a saved store's uploads at once.
   const [logo, setLogo] = useState<File | null>(null);
   const logoSrc = useObjectUrl(logo);
   const [saveLogo] = useSaveStoreLogoMutation();
@@ -82,7 +78,6 @@ export function StoreForm({
   ]);
   const accepted = shownTokens.filter((t) => !tokensOff.has(assetKey(t)));
 
-  // Every problem the form has now, whichever step holds it.
   const problems = (form: HTMLFormElement) => {
     const shown: Partial<Record<StoreField, string>> = {};
     const typedName = String(new FormData(form).get("name") ?? "").trim();
@@ -106,7 +101,7 @@ export function StoreForm({
       defaultExpiresIn: Number(closes),
       allowedOrigins: originLines(String(data.get("allowedOrigins") ?? "")),
       brandColor: color.trim(),
-      // Ones the profile has off stay as the store had them: the store can't turn them on.
+      // Ones the profile has off stay as the store had them.
       tokensOff: [
         ...(store?.tokensOff ?? []).filter(
           (t) => !shownTokens.some((s) => assetKey(s) === assetKey(t)),
@@ -127,7 +122,7 @@ export function StoreForm({
       await save({ profileId, storeId: storeId.current, body }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved(body.name) });
       if (!store && logo) {
-        // The store is saved either way; a refused logo can be added again from its Edit page.
+        // The store is saved either way; the logo can be added again on Edit.
         await saveLogo({ profileId, storeId: storeId.current, logo })
           .unwrap()
           .catch(() => toast({ tone: TONES.danger, title: COPY.errors.logoFailed }));
@@ -239,7 +234,7 @@ export function StoreForm({
             hint={COPY.colorHint}
             error={errors.brandColor}
             action={
-              // The kit has no color picker; the browser's own one fills the field (docs/web/structure.md).
+              // The kit has no color picker (docs/web/structure.md).
               <input
                 type="color"
                 aria-label={COPY.pickColor}

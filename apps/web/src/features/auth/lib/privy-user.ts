@@ -1,7 +1,7 @@
 import type { User } from "@privy-io/react-auth";
 import { PRIVY_PASSKEY } from "@/features/auth/constants/sign-in";
 
-/** The login email, or a Google-only account's Google address: where Forwend's own codes go. */
+/** The login email, or a Google-only account's Google address. */
 export function loginEmail(user: User | null): string | undefined {
   return user?.email?.address ?? user?.google?.email;
 }

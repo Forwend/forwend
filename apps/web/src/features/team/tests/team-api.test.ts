@@ -16,7 +16,7 @@ const shop = (role: Profile["role"], permissions: string[]): Profile => ({
   livemode: false,
 });
 
-// The app calls the API same-origin ("/api/…"); Node's Request needs an absolute URL.
+// Node's Request needs an absolute URL; the app calls "/api/…".
 const NodeRequest = globalThis.Request;
 vi.stubGlobal(
   "Request",
@@ -32,7 +32,6 @@ const answer = (body: unknown) =>
 
 afterEach(() => vi.restoreAllMocks());
 
-// D-93: an Admin who changes or removes themselves sees only what is left, without a reload.
 describe("team API", () => {
   it("reads the user's profiles again after a role change", async () => {
     const before = shop("admin", ["invoices.read", "team", "team.leave"]);

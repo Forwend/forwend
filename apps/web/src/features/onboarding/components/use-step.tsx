@@ -22,7 +22,6 @@ export interface UseStepProps {
   onToggle: (choice: OnboardingChoice) => void;
 }
 
-/** What the user will do: any number of uses, each saying which profile it sets up. */
 export function UseStep({ picked, onToggle }: UseStepProps) {
   return (
     <fieldset>
@@ -40,7 +39,6 @@ export function UseStep({ picked, onToggle }: UseStepProps) {
               onChange={() => onToggle(choice)}
               icon={ICONS[choice]}
               title={text.title}
-              // Phones show the four uses at once: the title and the profile it makes say enough.
               hint={<span className="max-sm:hidden">{text.hint}</span>}
               tag={<Badge>{text.result}</Badge>}
             />

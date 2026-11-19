@@ -7,33 +7,24 @@ import { FIRST_RUN_COPY as COPY } from "@/features/onboarding/constants/onboardi
 import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 
 export interface OnboardingFrameProps {
-  /** 0-based. */
-  step: number;
+  step: number; // 0-based
   steps: number;
   title: string;
   intro: ReactNode;
   onSignOut: () => void;
   onSubmit: () => void;
-  /** The footer's left end: Back, or Skip on the first step. */
   secondary?: ReactNode;
-  /** The footer's main action. */
   primary: ReactNode;
-  /** Beside the main action: leaves the step without its answers. */
   skip?: ReactNode;
-  /** Above the question, such as the step's icon. */
   lead?: ReactNode;
-  /** Centers the mark, question and content, for a step with no fields. */
   centered?: boolean;
   error: string;
-  /** Beside the form from large screens, such as the invoice the details make. */
   aside?: ReactNode;
   children: ReactNode;
 }
 
 const COLUMN = "mx-auto w-[min(calc(100%-var(--fw-page-gutter)*2),var(--fw-page-width))]";
 
-/** One first-run step (R-50): the logo where landing and sign-in put it, the step count and progress, the question,
- * then Back on the left and the main action on the right; phones stack the two at the foot, the main action first. */
 export function OnboardingFrame({
   step,
   steps,
@@ -51,7 +42,7 @@ export function OnboardingFrame({
   children,
 }: OnboardingFrameProps) {
   const heading = useRef<HTMLHeadingElement>(null);
-  // A new step is a new question: screen readers and the keyboard start from its heading.
+  // Screen readers and the keyboard start each step from its heading.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the step changes
   useEffect(() => {
     heading.current?.focus();
@@ -97,10 +88,8 @@ export function OnboardingFrame({
           onSubmit={submit}
           className="flex min-h-full min-w-0 flex-col gap-6 sm:gap-7"
         >
-          {/* Each step rises in once; the footer stays put. */}
           <div
             key={step}
-            // A centered step on a phone sits in the middle of the space above the footer.
             className={`flex flex-col gap-6 animate-[fw-pop-in_var(--fw-duration-slow)_var(--fw-ease-out)] sm:gap-7 ${centered ? "max-sm:flex-1 max-sm:justify-center" : ""}`}
           >
             {lead ? <div className={centered ? "self-center" : undefined}>{lead}</div> : null}
@@ -125,7 +114,6 @@ export function OnboardingFrame({
           <p role="alert" className="text-sm text-danger empty:hidden">
             {error}
           </p>
-          {/* Phones: the main action across the foot, Back and Skip in one row under it. */}
           <div className="sticky bottom-0 -mx-[var(--fw-page-gutter)] mt-auto grid grid-cols-2 items-center gap-x-3 gap-y-3 border-t border-line bg-bg px-[var(--fw-page-gutter)] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:mt-0 sm:flex sm:justify-between sm:px-0 sm:pt-4 sm:pb-0">
             <div
               className={`order-2 sm:order-none ${skip ? "max-sm:[&>*]:w-full" : "col-span-2 justify-self-center"}`}

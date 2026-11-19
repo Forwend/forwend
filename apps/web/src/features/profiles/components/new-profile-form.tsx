@@ -34,7 +34,7 @@ const KIND_ICONS = {
   [PROFILE_KINDS.merchant]: MerchantIcon,
 } as const;
 
-// One idempotency key per filled-in form: a retry makes one profile and finishes its wallet.
+// One idempotency key per filled-in form: a retry makes one profile.
 export function NewProfileForm() {
   const { profiles, chooseProfile } = useAppSession();
   const [createProfile] = useCreateProfileMutation();
@@ -45,7 +45,7 @@ export function NewProfileForm() {
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState("");
   const [formError, setFormError] = useState("");
-  // The cap counts the profiles the user owns; ones they joined on a team are someone else's.
+  // The cap counts owned profiles, not ones joined on a team.
   const owned = profiles.filter((profile) => profile.role === ROLES.owner).length;
   const full = owned >= PROFILES_MAX;
 
@@ -128,7 +128,6 @@ export function NewProfileForm() {
         <p role="alert" className="text-sm text-danger empty:hidden">
           {formError || (full ? COPY.errors.cap : "")}
         </p>
-        {/* Phones: Create across the width, Cancel and the count under it. */}
         <div className="grid grid-cols-2 items-center gap-3 border-t border-line pt-4 sm:flex sm:justify-between">
           <Link
             href={APP_ROUTES.home}
@@ -184,7 +183,6 @@ export function NewProfileForm() {
   );
 }
 
-/** The profile this form makes, as the profile list will show it. */
 function NewRow({ kind, name }: { kind: ProfileKind; name: string }) {
   return (
     <div className="flex items-center gap-3 rounded-md border border-dashed border-brand-edge bg-surface-2 px-3 py-2.5">

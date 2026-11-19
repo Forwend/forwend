@@ -33,11 +33,9 @@ export interface BillingDetailsFormProps {
   profileId: string;
   saved: BillingDetails | null;
   next: string;
-  /** A merchant always bills as a business; a freelancer may bill under their own name. */
   business: boolean;
 }
 
-// R-43: one PUT replaces every field; the API checks them again.
 export function BillingDetailsForm({ profileId, saved, next, business }: BillingDetailsFormProps) {
   const [save] = useSaveBillingDetailsMutation();
   const toast = useToast();

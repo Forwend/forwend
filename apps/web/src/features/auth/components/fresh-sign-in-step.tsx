@@ -16,12 +16,9 @@ export interface FreshSignInStepProps {
   onDone: (ok: boolean) => void;
 }
 
-// A code sent to the login email, as the two-step views look: the mail mark, where the code went, the boxes, one
-// status line under them, then Confirm full width and a quiet Cancel.
 export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
   const { user } = usePrivy();
-  // Forwend's own code (R-137): a Privy sign-in made while signed in keeps the session and its sign-in time, so the
-  // api can't tell it happened (D-49).
+  // Forwend's own code: a Privy sign-in made while signed in can't prove a confirm.
   const [sendCode] = useSendFreshCodeMutation();
   const [verifyCode] = useVerifyFreshCodeMutation();
   const email = loginEmail(user);
@@ -29,10 +26,9 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  // The hour's codes are used up (too_many_codes): the step counts down to the api's Retry-After, then offers a code.
   const [tooMany, setTooMany] = useState(false);
   const [error, setError] = useState("");
-  // Sending and checking don't wait on each other: a code from an earlier email still works while a new one goes.
+  // Sending and checking are apart: an earlier email's code still works while a new one goes.
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
   const [resendAt, setResendAt] = useState(0);
@@ -52,7 +48,7 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
       const failure = e as FetchBaseQueryError & { retryAfterSeconds?: number };
       const code = (failure.data as { error?: { code?: string } } | undefined)?.error?.code;
       const waitUntil = Date.now() + (failure.retryAfterSeconds ?? 0) * 1000;
-      // This session's code sent a moment ago is still the one to enter.
+      // The code sent a moment ago is still the one to enter.
       if (code === FRESH_CODE_ERRORS.sentRecently) {
         setSent(true);
         setResendAt(waitUntil);
@@ -65,7 +61,6 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
       setSending(false);
     }
   }, [email, sendCode]);
-  // A new code makes the old one useless: the boxes empty and take the focus for the new one.
   const resend = () => {
     setCode("");
     setError("");
@@ -78,7 +73,7 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
     started.current = true;
     void send();
   }, [send]);
-  // Focus after the step shows, so it lands in a dialog too: showModal moves focus after React's autoFocus ran.
+  // After the step shows: showModal moves focus after React's autoFocus ran.
   useEffect(() => {
     const frame = requestAnimationFrame(() =>
       (
@@ -88,7 +83,7 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
     );
     return () => cancelAnimationFrame(frame);
   }, []);
-  // The step unmounts with the focus in it: hand it to the form's own action, which comes back in its place.
+  // The step unmounts with the focus in it: hand it to the form's own action.
   const cancel = () => {
     const form = box.current?.closest("form");
     const dialog = box.current?.closest("dialog");
@@ -120,12 +115,11 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
     else setError(COPY.codeFailed);
   };
 
-  // The api found no login email: nothing can be sent, so only Cancel is left.
   const to = noEmail ? undefined : email;
   const wait = Math.ceil((resendAt - now) / 1000);
 
   return (
-    // Not a form: it sits inside the form it confirms, so Enter confirms here instead of sending that form again.
+    // Not a form: inside the form it confirms, Enter must not send that form again.
     <fieldset
       ref={box}
       aria-label={COPY.title}
@@ -139,8 +133,7 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
       <StepLead icon={Mail} title={COPY.checkEmail} body={to ? COPY.enterCode(to) : COPY.noEmail} />
       {to ? (
         <div className="flex w-full flex-col items-center gap-2">
-          {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. The headline says
-              what to enter, so the label is for screen readers. */}
+          {/* Stays enabled while checked: disabling it would drop keyboard focus. */}
           <CodeInput
             className="w-full items-center [&_label]:sr-only"
             label={COPY.codeLabel}
@@ -152,7 +145,7 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
             }}
             error={error || undefined}
           />
-          {/* The one status line. It stays while a code goes out, so the focus stays on its link. */}
+          {/* Always rendered, so the focus stays on its link while a code goes out. */}
           <p
             aria-live="polite"
             className={`min-h-5 text-sm ${sendFailed || (tooMany && wait > 0) ? "text-danger" : "text-muted"}`}
@@ -197,11 +190,9 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
   );
 }
 
-/** The time, read again each second until until has passed: the resend countdown ticks without a timer of its own. */
 function useNow(until: number) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    // Read again at once, so a wait already over never shows a second left.
     setNow(Date.now());
     if (until <= Date.now()) return;
     const timer = setInterval(() => {

@@ -72,7 +72,6 @@ export const TEAM_COPY = {
   },
 } as const;
 
-/** R-139: the page an invite link opens. */
 export const INVITE_COPY = {
   pageTitle: "Team invite",
   signInBody: "You have a team invite. Sign in with the email address it was sent to.",

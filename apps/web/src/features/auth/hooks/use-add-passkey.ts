@@ -9,9 +9,7 @@ import { SITE } from "@/shared/config/site";
 
 type Run = <T>(send: () => Promise<T>) => Promise<T>;
 
-/** Every way to add a passkey goes through here (R-217): the api says first whether this session is fresh, and a stale
- * one confirms it's you. A form passes its useFreshSignIn().run to confirm in place; without one, the confirm comes in
- * a dialog of its own. Privy then links the passkey in the browser, and the answer is its credential ID. */
+/** A stale session confirms it's you before Privy links the passkey; answers its ID. */
 export function useAddPasskey() {
   const { linkWithPasskey } = useLinkWithPasskey();
   const { user } = usePrivy();

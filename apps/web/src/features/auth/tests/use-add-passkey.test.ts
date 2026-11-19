@@ -17,7 +17,7 @@ vi.mock("@/features/auth/api/auth-api", () => ({
 
 afterEach(() => vi.clearAllMocks());
 
-describe("adding a passkey (R-217)", () => {
+describe("adding a passkey", () => {
   it("links nothing when the check is refused", async () => {
     calls.check.mockRejectedValueOnce({
       status: 401,

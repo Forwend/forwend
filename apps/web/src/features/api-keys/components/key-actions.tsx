@@ -24,18 +24,16 @@ import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 export interface KeyActionsProps {
   profileId: string;
   apiKey: ApiKey;
-  /** Gets the new key's text after a roll. The list shows it: with no overlap this row is gone by then. */
   onRolled: (secret: string) => void;
 }
 
-// R-144: rolling needs a fresh sign-in, which the API asks for (D-63); revoking does not.
 export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
   const [roll, rolling] = useRollKeyMutation();
   const fresh = useFreshSignIn();
   const [revoke, revoking] = useRevokeKeyMutation();
   const toast = useToast();
   const form = useRef<HTMLFormElement>(null);
-  // Which dialog opens once the menu has closed and handed focus back (as on Remove member).
+  // The dialog opens once the menu has closed and handed focus back.
   const chosen = useRef<"roll" | "revoke" | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const [overlap, setOverlap] = useState(String(DEFAULT_OVERLAP_HOURS));
@@ -49,11 +47,11 @@ export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
       const pending = roll({ profileId, keyId: apiKey.keyId, overlapHours: Number(overlap) });
       const made = await fresh.run(() => pending.unwrap());
       onRolled(made.secret);
-      // The answer held the secret: drop it from the store too. The hook's reset would be this render's, a no-op.
+      // Drop the secret from the store; the hook's reset would be a no-op here.
       pending.reset();
       form.current?.closest("dialog")?.close();
     } catch {
-      // The dialog shows the error.
+      // Shown by the dialog.
     }
   };
   const confirmRevoke = async () => {
@@ -61,7 +59,7 @@ export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
       await revoke({ profileId, keyId: apiKey.keyId }).unwrap();
       toast({ tone: TONES.success, title: COPY.revoked(apiKey.name) });
     } catch {
-      // The dialog shows the error.
+      // Shown by the dialog.
     }
   };
   const close = () => form.current?.closest("dialog")?.close();
@@ -98,13 +96,12 @@ export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
                   if (!open) return;
                   chosen.current = null;
                   event.preventDefault();
-                  // The trigger holds focus as the dialog opens, so the dialog hands it back there when it closes.
+                  // The dialog hands focus back to what held it as it opened.
                   trigger.current?.focus();
                   if (open === "revoke") return openRevoke();
                   openRoll();
                 }}
               >
-                {/* A rolled key has its new one already; that one rolls next. */}
                 {apiKey.expiresAt ? null : (
                   <MenuItem
                     onSelect={() => {

@@ -11,7 +11,6 @@ export const AUTH_COPY = {
     "You already have a passkey for this account here: your device or password manager has it.",
 } as const;
 
-/** R-137: confirming it's you, in place, before a change that needs a sign-in from the last 15 minutes (D-63). */
 export const FRESH_SIGN_IN_COPY = {
   title: "Confirm it's you",
   checkEmail: "Check your email",
@@ -33,8 +32,6 @@ export const FRESH_SIGN_IN_COPY = {
   close: "Close",
 } as const;
 
-/** D-49: two-step verification with a passkey and an authenticator app, which Privy checks before it signs or
- * exports. */
 export const TWO_STEP_COPY = {
   methods: { passkey: "Passkey", totp: "Authenticator app" },
   setUp: "Set up two-step verification",

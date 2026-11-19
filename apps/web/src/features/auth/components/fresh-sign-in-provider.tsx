@@ -14,13 +14,10 @@ import { createClaim } from "@/features/auth/lib/claim";
 import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 
 export interface FreshSignInProviderProps {
-  /** Hands over the function the API calls on reauth_required (R-137). */
   register: (ask: AskFreshSignIn) => void;
   children: ReactNode;
 }
 
-// R-137: a request that needs a fresh sign-in asks the form that sent it, in place, so no dialog opens on top of
-// another and the user still sees what they confirm. A request no form claimed asks in a dialog of its own.
 export function FreshSignInProvider({ register, children }: FreshSignInProviderProps) {
   const [claim] = useState(() => createClaim<FreshSignInScope>());
   const [fallback, setFallback] = useState<{ answer: FreshSignInAnswer; asked: number } | null>(

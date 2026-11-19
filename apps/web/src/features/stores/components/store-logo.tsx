@@ -16,14 +16,11 @@ import type { Store } from "@/features/stores/types/stores";
 
 export interface StoreLogoProps {
   profileId: string;
-  /** A saved store: a chosen file uploads at once, apart from the form's Save. */
   store?: Store;
-  /** A new store's chosen file, which the form uploads once the store is saved. */
   pending: File | null;
   onPending: (file: File | null) => void;
 }
 
-// The API checks the image; this only spares a request the API would refuse.
 export function StoreLogo({ profileId, store, pending, onPending }: StoreLogoProps) {
   const [saveLogo, saving] = useSaveStoreLogoMutation();
   const [deleteLogo, deleting] = useDeleteStoreLogoMutation();
@@ -74,7 +71,7 @@ export function StoreLogo({ profileId, store, pending, onPending }: StoreLogoPro
       <p className="text-sm font-medium text-ink">{COPY.logo}</p>
       <div className="flex flex-wrap items-center gap-3">
         {src ? (
-          // Light in both themes, as on the pay page: most logos are drawn for a light page.
+          // Light in both themes: most logos are drawn for a light page.
           <span
             data-theme="light"
             className="grid h-14 max-w-48 place-items-center rounded-md bg-surface px-2"
@@ -91,7 +88,7 @@ export function StoreLogo({ profileId, store, pending, onPending }: StoreLogoPro
         ) : (
           <p className="text-sm text-muted">{COPY.noLogo}</p>
         )}
-        {/* The kit has no file field; the button opens the browser's own picker (docs/web/structure.md). */}
+        {/* The kit has no file field (docs/web/structure.md). */}
         <input
           ref={input}
           type="file"

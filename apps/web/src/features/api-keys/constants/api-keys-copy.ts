@@ -2,7 +2,6 @@ import { KEY_NAME_MAX, type OVERLAP_HOURS } from "@/features/api-keys/constants/
 import type { KeyScope } from "@/features/api-keys/types/api-keys";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 
-// After a roll two keys share a name, so the end of the text tells them apart.
 const keyText = (last4: string, livemode: boolean) =>
   `${livemode ? "fw_live_" : "fw_test_"}…${last4}`;
 

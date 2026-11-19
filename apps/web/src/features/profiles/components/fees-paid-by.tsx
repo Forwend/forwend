@@ -9,7 +9,6 @@ import { can } from "@/features/profiles/lib/profile";
 import type { FeesPaidBy, Profile } from "@/features/profiles/types/profile";
 import { SettingsGroup } from "@/shared/components/settings-group";
 
-/** D-122, R-227: who pays the profile's new invoices' fees unless an invoice or link says otherwise. */
 export function FeesPaidBySetting({ profile }: { profile: Profile }) {
   const [save, { isLoading, isError }] = useSaveProfileFeesMutation();
   const toast = useToast();
@@ -20,7 +19,7 @@ export function FeesPaidBySetting({ profile }: { profile: Profile }) {
       await save({ profileId: profile.profileId, feesPaidBy }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved });
     } catch {
-      // Said below; the choice stays as saved.
+      // Shown below.
     }
   };
   return (

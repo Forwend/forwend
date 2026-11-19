@@ -23,7 +23,6 @@ export interface MfaStepProps {
   onCancel: () => void;
 }
 
-// The one ask: the passkey first, one tap, when the user has one for MFA; else, or as well, the app's code.
 export function MfaStep({ methods, onBusy, onVerified, onCancel }: MfaStepProps) {
   const { init, submit } = useMfa();
   const passkey = methods.includes("passkey");
@@ -34,7 +33,7 @@ export function MfaStep({ methods, onBusy, onVerified, onCancel }: MfaStepProps)
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
-  // Too many wrong answers or too slow: Privy takes no more for this ask, so only Cancel is left.
+  // Privy takes no more answers for this ask.
   const [over, setOver] = useState(false);
   const box = useRef<HTMLFieldSetElement>(null);
   useEffect(() => onBusy(checking), [checking, onBusy]);
@@ -79,7 +78,7 @@ export function MfaStep({ methods, onBusy, onVerified, onCancel }: MfaStepProps)
     setCode("");
   };
   return (
-    // Not a form: it sits inside the form it confirms, so Enter confirms here instead of sending that form again.
+    // Not a form: inside the form it confirms, Enter must not send that form again.
     <fieldset
       ref={box}
       className="flex min-w-0 flex-col items-center gap-5 text-center"
@@ -103,9 +102,8 @@ export function MfaStep({ methods, onBusy, onVerified, onCancel }: MfaStepProps)
         }
       />
       {view === "totp" ? (
-        // Stays enabled while the code is checked: disabling it would drop keyboard focus.
+        // Stays enabled while checked: disabling it would drop keyboard focus.
         <CodeInput
-          // The headline says what to enter: the label stays for screen readers only.
           className="w-full items-center [&_label]:sr-only"
           label={COPY.codeLabel}
           length={CODE_LENGTH}
@@ -158,7 +156,7 @@ export function MfaStep({ methods, onBusy, onVerified, onCancel }: MfaStepProps)
             {view === "passkey" ? COPY.useAppInstead : COPY.usePasskeyInstead}
           </Button>
         ) : null}
-        {/* Off while Privy checks an answer, which goes on whatever it does. */}
+        {/* Privy goes on with an answer it checks, so Cancel waits. */}
         <Button
           type="button"
           className="w-full"

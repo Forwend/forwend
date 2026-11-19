@@ -24,33 +24,27 @@ import { dateTime, shortDate } from "@/shared/lib/dates";
 
 export interface ApiKeysProps {
   profileId: string;
-  /** A merchant's keys are each for one of its stores; a freelancer has none. */
   merchant: boolean;
 }
 
-// The panel's width decides, not the screen's: below it a row keeps only the name cell, which then lists the rest.
 const WIDE = "hidden @3xl:table-cell";
 const NARROW = "block text-xs text-muted @3xl:hidden";
 const ROW = cx(TABLE_ROW_CLASSES, "max-sm:[&>td:first-child]:pl-4 max-sm:[&>td:last-child]:pr-3");
 
-// R-145: the profile's working keys, newest first, each with its last use and, once rolled, when it stops.
 export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
   const keys = useListKeysQuery(profileId);
   const stores = useListStoresQuery(profileId, { skip: !merchant });
   const names = new Map((stores.currentData ?? []).map((s) => [s.storeId, s.name]));
-  // A made or rolled key's text, the one time the API answers it. It lives here, not in a row: a roll with no
-  // overlap takes the old key's row away. Closing the dialog drops it for good.
+  // Here, not in a row: a roll with no overlap removes the old key's row.
   const [secret, setSecret] = useState<string | null>(null);
   const openSecret = useRef<() => void>(null);
   const secretBody = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!secret) return;
     openSecret.current?.();
-    // Copy takes the focus: it is what the person came for.
     secretBody.current?.querySelector<HTMLButtonElement>("button")?.focus();
   }, [secret]);
 
-  // A merchant's rows wait for the store names, so a failed stores load needs the same way out.
   const storesFailed = merchant && stores.isError && !stores.currentData;
   if ((keys.isError && !keys.currentData) || storesFailed) {
     return (
@@ -66,7 +60,6 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
   }
   const list = keys.currentData;
   const loading = !list || (merchant && !stores.currentData);
-  // The list is the profile's mode (R-221), so one badge on the panel says test mode for every row.
   const allTest = !!list?.length && list.every((k) => !k.livemode);
   const storeName = (key: ApiKey) => (key.storeId ? (names.get(key.storeId) ?? key.storeId) : null);
   const scopes = (key: ApiKey) => key.scopes.map((scope) => COPY.scopeLabels[scope]).join(", ");
@@ -133,7 +126,6 @@ export function ApiKeys({ profileId, merchant }: ApiKeysProps) {
                   <span className={NARROW}>
                     {key.lastUsedAt ? COPY.lastUsed(shortDate(key.lastUsedAt)) : COPY.neverUsed}
                   </span>
-                  {/* A roll's overlap can be an hour, so the time matters. */}
                   {key.expiresAt ? (
                     <span className="block text-xs text-warning">
                       {COPY.stops(dateTime(key.expiresAt))}

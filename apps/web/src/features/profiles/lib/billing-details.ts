@@ -2,7 +2,7 @@ import { BILLING_DETAILS_COPY } from "@/features/profiles/constants/profiles-cop
 import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
 
-// The assigned ISO 3166-1 alpha-2 codes the API accepts (internal/profile/billing.go).
+// The codes the API accepts (internal/profile/billing.go).
 const COUNTRY_CODES = (
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT " +
   "BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ " +
@@ -15,7 +15,7 @@ const COUNTRY_CODES = (
 
 const FIELDS: (keyof BillingDetailsBody)[] = ["name", "address", "country", "taxId", "email"];
 
-/** The field a refused save names: the API's message reads "invalid profile request: email must be …". */
+/** The API's message reads "invalid profile request: email must be …". */
 export function invalidBillingField(message: string): keyof BillingDetailsBody | null {
   const name = message.split(": ")[1]?.split(" ")[0];
   return FIELDS.find((field) => field === name) ?? null;
@@ -28,8 +28,6 @@ export function countryOptions(): { value: string; label: string }[] {
   );
 }
 
-/** The fields a body leaves empty or malformed, with the message each shows; the API checks the rest (R-50, the
- * billing details page and the first run share it). */
 export function billingErrors(
   body: BillingDetailsBody,
 ): Partial<Record<keyof BillingDetailsBody, string>> {

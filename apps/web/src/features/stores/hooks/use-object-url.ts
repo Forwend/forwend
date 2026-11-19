@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-/** A local file's address for an image preview, released when the file changes or the preview goes. */
 export function useObjectUrl(file: File | null): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {

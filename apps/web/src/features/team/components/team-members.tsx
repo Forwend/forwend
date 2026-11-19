@@ -26,12 +26,10 @@ export interface TeamMembersProps {
   profileId: string;
 }
 
-// The panel's width decides, not the screen's: below it a row keeps the person, the role and the actions.
 const WIDE = "hidden @2xl:table-cell";
 const NARROW = "block truncate text-xs text-muted @2xl:hidden";
 const ROW = cx(TABLE_ROW_CLASSES, "max-sm:[&>td:first-child]:pl-4 max-sm:[&>td:last-child]:pr-3");
 
-// R-139: an Admin's view of the team. The owner's row has no actions: the owner is an Admin for good (D-93).
 export function TeamMembers({ profileId }: TeamMembersProps) {
   const team = useGetTeamQuery(profileId);
   const stores = useListStoresQuery(profileId);
@@ -55,7 +53,6 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
     }
   };
 
-  // The rows wait for the store names, so a failed stores load needs the same way out.
   const storesFailed = stores.isError && !stores.currentData;
   if ((team.isError && !team.currentData) || storesFailed) {
     return (

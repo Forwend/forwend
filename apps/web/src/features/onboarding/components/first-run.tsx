@@ -34,7 +34,6 @@ import type { NewProfileKind, Profile } from "@/features/profiles/types/profile"
 import { assetKey } from "@/shared/components/chains/asset-selection";
 import { selectionSummary } from "@/shared/lib/asset-selection";
 
-// On phones Skip shares a row with Back, so it takes Back's outline to read as its pair.
 const PHONE_OUTLINE =
   "max-sm:border max-sm:border-line max-sm:bg-surface dark:max-sm:border-line-strong";
 
@@ -44,17 +43,13 @@ const DETAILS_STEPS = {
 } as const;
 
 export interface FirstRunProps {
-  /** The user's profiles before the first run. */
   profiles: readonly Profile[];
-  /** The sign-in email, the contact email's first value. */
   email: string;
   passkeyLinked: boolean;
   onSignOut: () => void;
-  /** Leaves the first run: opens the profile, then the address. */
   onFinish: (profile: Profile, href: string) => void;
 }
 
-// R-50: asked once, while /v1/me has no onboardedAt. The answers are kept here until the tokens step saves them.
 export function FirstRun({
   profiles: live,
   email,
@@ -62,17 +57,16 @@ export function FirstRun({
   onSignOut,
   onFinish,
 }: FirstRunProps) {
-  // Fixed from the start: the onboarding call adds the new profiles to the live list, which would hide which are new.
+  // Fixed: the onboarding call adds the new profiles to the live list.
   const [profiles] = useState(live);
   const addPasskey = useAddPasskey();
   const personal = profiles.find((p) => p.kind === PROFILE_KINDS.personal) ?? profiles[0];
   const saving = useFirstRunSave(profiles, personal);
   const tokens = useGetProfileTokensQuery(personal?.profileId ?? "", { skip: !personal });
-  // The new profiles start in the personal one's mode (D-120): test mode where no mainnet is on.
   const testnet = !personal?.livemode;
 
   const [picked, setPicked] = useState<OnboardingChoice[]>([]);
-  // Fixed from the start: adding a passkey on its step must not shift the steps after it.
+  // Fixed: adding a passkey on its step must not shift the steps after it.
   const [hadPasskey] = useState(passkeyLinked);
   const steps = useMemo(() => onboardingSteps(picked, hadPasskey), [picked, hadPasskey]);
   const [at, setAt] = useState(0);
@@ -81,7 +75,6 @@ export function FirstRun({
     [PROFILE_KINDS.freelancer]: { name: "", email, country: "", address: "" },
     [PROFILE_KINDS.merchant]: { name: "", email, country: "", address: "" },
   });
-  // The business fields the user typed in; the rest follow the freelancer step's values.
   const [merchantTouched, setMerchantTouched] = useState<ReadonlySet<keyof ProfileDetails>>(
     new Set(),
   );
@@ -185,7 +178,6 @@ export function FirstRun({
         now.delete(kind);
         return now;
       });
-      // A second profile starts from the first one's contact details, field by field until the user changes one.
       if (kind === PROFILE_KINDS.freelancer) {
         setDetails((all) => {
           const merchant = { ...all[PROFILE_KINDS.merchant] };
@@ -199,7 +191,7 @@ export function FirstRun({
       return;
     }
     if (step === ONBOARDING_STEPS.tokens) {
-      // Saving before the list loads would keep defaults the user never saw; the step shows the load or its error.
+      // Saving before the list loads would keep defaults the user never saw.
       if (tokens.data) await finish(true);
       return;
     }
@@ -222,7 +214,7 @@ export function FirstRun({
     const profile = saving.after.find((p) => p.kind === kind) ?? landing;
     if (profile) onFinish(profile, href);
   };
-  // Once the uses have made their profiles they can't change, so Back stops at the step after them.
+  // Once the profiles exist the uses can't change, so Back stops after them.
   const backButton =
     at > 0 && !(saving.made && steps[at - 1] === ONBOARDING_STEPS.use) ? (
       <Button size="lg" variant="secondary" onClick={back} disabled={busy !== null}>

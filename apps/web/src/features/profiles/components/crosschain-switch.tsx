@@ -12,7 +12,6 @@ export interface CrossChainSwitchProps {
   profileId: string;
 }
 
-/** R-240: on by default; off, no new quote is made, and an open one still finishes. */
 export function CrossChainSwitch({ profileId }: CrossChainSwitchProps) {
   const on = useGetCrossChainSwitchQuery(profileId);
   const [save, { isLoading, isError, isSuccess }] = useSaveCrossChainSwitchMutation();

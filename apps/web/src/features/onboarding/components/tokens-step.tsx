@@ -10,18 +10,14 @@ import { LoadError } from "@/shared/components/load-error";
 const COPY = FIRST_RUN_COPY.tokens;
 
 export interface TokensStepProps {
-  /** Every enabled token; undefined while it loads. */
   options: readonly TokenSwitch[] | undefined;
   failed: boolean;
   onRetry: () => void;
   selected: ReadonlySet<string>;
   onChange: (keys: readonly string[], on: boolean) => void;
-  /** Developer mode (D-120): the tokens are test money. */
   testnet: boolean;
 }
 
-/** What payers can use (R-50), said once as test money in Developer mode: each token beside its network, the profile's
- *  defaults on. */
 export function TokensStep({
   options,
   failed,

@@ -16,18 +16,17 @@ export function originLines(text: string): string[] {
     .filter(Boolean);
 }
 
-/** The field a refused save names: the API's message reads "invalid profile request: name must be …". */
+/** The API's message reads "invalid profile request: name must be …". */
 export function invalidStoreField(message: string): StoreField | null {
   const name = message.split(": ")[1]?.split(" ")[0];
   return FIELDS.find((field) => field === name) ?? null;
 }
 
-/** The origins a return link may start with: https only, never a store's test-mode loopback origin (R-168). */
+/** https only, never a store's test-mode loopback origin. */
 export function returnLinkOrigins(origins: readonly string[]): string[] {
   return origins.filter((origin) => origin.startsWith("https://"));
 }
 
-/** Whether link's origin is one of a store's allowed origins, as the API checks a return link (R-134). */
 export function allowsReturnLink(origins: readonly string[], link: string): boolean {
   try {
     return returnLinkOrigins(origins).includes(new URL(link).origin);
@@ -36,7 +35,7 @@ export function allowsReturnLink(origins: readonly string[], link: string): bool
   }
 }
 
-/** R-135: the logo's public address; its save time keeps a cached older logo from showing. */
+/** Its save time keeps a cached older logo from showing. */
 export function storeLogoUrl(storeId: string, logoAt: string): string {
   return `${API_BASE}/v1/stores/${encodeURIComponent(storeId)}/logo.png?v=${Date.parse(logoAt)}`;
 }

@@ -22,16 +22,12 @@ import { useLazyListStoresQuery, useSaveStoreMutation } from "@/features/stores/
 interface FirstRunAnswers {
   picked: readonly OnboardingChoice[];
   details: Readonly<Record<NewProfileKind, ProfileDetails>>;
-  /** Details steps left with Skip: the profile is still made, unnamed, and its billing details wait. */
   skipped: ReadonlySet<NewProfileKind>;
   website: string;
-  /** The tokens the profiles turn off; null keeps each profile's own. */
   tokensOff: TokenRef[] | null;
 }
 
-/** Makes the named profiles in one call, then saves each one's billing details, tokens and website through their own
- * APIs. Every save is a PUT and a failed one keeps the profiles made, so a retry finishes the rest and makes none twice.
- * profiles is the list before the first run. */
+/** Makes the profiles once, so a retry after a failed save makes none twice. */
 export function useFirstRunSave(profiles: readonly Profile[], personal: Profile | undefined) {
   const [complete] = useCompleteOnboardingMutation();
   const [saveBilling] = useSaveBillingDetailsMutation();
@@ -91,7 +87,6 @@ export function useFirstRunSave(profiles: readonly Profile[], personal: Profile 
     }
   };
 
-  /** Skip setup: no profiles are made. Answers the profile to open. */
   const skip = async () => {
     const me = await complete({ choices: [], names: {} }).unwrap();
     return landingProfile(profiles, me.profiles);

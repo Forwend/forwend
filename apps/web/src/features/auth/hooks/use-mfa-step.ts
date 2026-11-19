@@ -19,9 +19,7 @@ export interface MfaScope {
 
 export const MfaContext = createContext<Claim<MfaScope> | null>(null);
 
-/** For a form whose action may need Privy's MFA: run starts the action, and step is what to show in place of the
- * form's buttons while Privy waits for it. busy is true while Privy checks an answer: closing then would cancel
- * nothing, since Privy goes on. onVerified runs once Privy takes the answer. */
+/** run starts an action that may need Privy's MFA; step replaces the form's buttons. */
 export function useMfaStep({ onVerified }: { onVerified?: () => void } = {}) {
   const controller = useContext(MfaContext);
   const { cancel } = useMfa();
@@ -34,15 +32,14 @@ export function useMfaStep({ onVerified }: { onVerified?: () => void } = {}) {
       setMethods(m);
     },
   });
-  // An action Privy never settles, such as its export window closed early, keeps no claim once it is answered.
+  // Privy may never settle an action (an export window closed early), so end on the answer.
   const end = useCallback(() => {
     controller?.release(scope.current);
     asked.current = false;
     setMethods(null);
     setBusy(false);
   }, [controller]);
-  // The form went away with Privy still asking, such as the send sheet closed during a setup: the action that asked
-  // ends, and the next ask shows where it is made, not in a form no longer there.
+  // Unmounting mid-ask cancels Privy's action, so the next ask shows where it is made.
   const cancelAsk = useRef(cancel);
   cancelAsk.current = cancel;
   useEffect(

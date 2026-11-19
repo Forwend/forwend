@@ -24,13 +24,10 @@ function AddStoreLink({ className = "", size = "md" }: { className?: string; siz
 
 export interface StoresTableProps {
   profileId: string;
-  /** When each store's checkout closes, by its seconds: New invoice's labels, which the screen passes in. */
   closeLabel: (seconds: number) => string;
-  /** Whether the user's role makes stores (D-93); a Finance member only reads them. */
   canAdd: boolean;
 }
 
-// A merchant profile always has its first store, so the list is never empty.
 export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps) {
   const list = useListStoresQuery(profileId);
   const stores = list.currentData ?? [];
@@ -47,7 +44,6 @@ export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps)
       aria-busy={!list.currentData && !list.isError}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
         <h1 id="stores-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
           {COPY.title}

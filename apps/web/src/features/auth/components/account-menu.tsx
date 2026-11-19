@@ -21,13 +21,11 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export interface AccountMenuProps {
   email: string;
   onSignOut: () => void;
-  /** The role may open Settings. Phones reach it from More instead. */
   settings?: boolean;
   trigger?: ReactNode;
   side?: "top" | "bottom" | "right";
 }
 
-/** The person's own menu: theme, Settings and sign out. Signing out of every device lives in Settings (R-137). */
 export function AccountMenu({
   email,
   onSignOut,
