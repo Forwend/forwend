@@ -17,9 +17,7 @@ import { FieldMessage, fieldMessageId } from "./field-message";
 export interface ComboboxOption {
   value: string;
   label: string;
-  /** A quieter second line, also searched, such as a client's email. */
   detail?: string;
-  /** A small mark before the label, such as a token or network logo; the field shows the chosen one's too. */
   icon?: ReactNode;
 }
 
@@ -35,11 +33,8 @@ export interface ComboboxFieldProps {
   error?: string;
   id?: string;
   className?: string;
-  /** For a list searched elsewhere, such as an API: gets what is typed, and options are then shown as given. */
   onSearchChange?: (text: string) => void;
-  /** The chosen option's label when options (one search's answer) leave it out. */
   valueLabel?: string;
-  /** The answer for what is typed is on its way: the list says so, and Enter waits for it. */
   loading?: boolean;
 }
 
@@ -70,8 +65,7 @@ const LIST_MIN = 126;
 // The search row and the list's padding, plus the gap to the field and a margin to whatever clips the panel.
 const PANEL_EXTRA = 64;
 
-/** Where the panel has room inside what clips it (a scrolling form or dialog body, or the window), and how tall its
- *  list can be there: below the field unless above has more room. */
+/** Whether the panel opens upward, and its list's height, within whatever clips it. */
 function placement(field: HTMLElement): { up: boolean; list: number } {
   const box = field.getBoundingClientRect();
   let top = 0;
@@ -120,7 +114,6 @@ export function ComboboxField({
     options.find((option) => option.value === value) ??
     (value && valueLabel ? { value, label: valueLabel } : undefined);
   const words = fold(query.trim());
-  // Hovering a row changes only the active row: the list is ranked again only for new options or a new search.
   const shown = useMemo(
     () => (words && !onSearchChange ? matching(options, words) : options),
     [options, words, onSearchChange],
@@ -281,7 +274,7 @@ export function ComboboxField({
                   id={`${listId}-${i}`}
                   role="option"
                   tabIndex={-1}
-                  // As in the command menu, the row the keys are on is the selected one; the field's value has the check.
+                  // The row the keys are on is the selected one; the field's value gets the check.
                   aria-selected={i === current}
                   data-chosen={option.value === value ? "" : undefined}
                   onClick={() => pick(option)}

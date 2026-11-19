@@ -15,7 +15,7 @@ export interface TooltipProviderProps {
   children: ReactNode;
 }
 
-// Mounted once around the app, so after one tooltip opens the next one opens at once while the pointer moves along.
+// Mounted once around the app, so the next tooltip opens at once while the pointer moves along.
 export function TooltipProvider({ children }: TooltipProviderProps) {
   return (
     <RadixTooltip.Provider delayDuration={DURATION_MS.base} skipDelayDuration={DURATION_MS.slow}>
@@ -26,8 +26,8 @@ export function TooltipProvider({ children }: TooltipProviderProps) {
 
 export function Tooltip({ content, children, side = "top" }: TooltipProps) {
   const [open, setOpen] = useState(false);
-  // A tap fires pointer leave, then focus (which opens it), then click; so during a tap Radix's closes are ignored,
-  // and the click sets the opposite of the state the tap began with.
+  // A tap fires pointer leave, focus (which opens it), then click: during a tap Radix's closes are
+  // ignored, and the click flips the state the tap began with.
   const tapped = useRef(false);
   const openAtTap = useRef(false);
   const focused = useRef(false);

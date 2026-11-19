@@ -7,8 +7,7 @@ import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 import {MockToken} from "./mocks/MockToken.sol";
 
-/// Halmos symbolic tests (`halmos --match-contract Symbolic`): every `check_` holds for all inputs, not just samples.
-/// forge does not run `check_` functions.
+/// Halmos checks (`halmos --match-contract Symbolic`); forge does not run check_ functions.
 contract SymbolicTest is Test {
     uint256 internal constant AMOUNT = 500e6;
     uint64 internal constant DEADLINE = 2_000_000;
@@ -39,7 +38,6 @@ contract SymbolicTest is Test {
         receiver = InvoiceReceiver(factory.deploy(t));
     }
 
-    /// settle() succeeds only for the right caller at the right time, and pays exactly AMOUNT to the recipient.
     function check_settle(address caller, uint256 deposit, uint256 time) public {
         vm.assume(deposit <= type(uint128).max);
         vm.assume(caller != address(receiver) && caller != recipient);
@@ -57,8 +55,6 @@ contract SymbolicTest is Test {
         }
     }
 
-    /// With any fees, settle() succeeds only when they fit a tenth of AMOUNT, and then splits AMOUNT exactly: the
-    /// recipient the rest, the executor the network fee, the authority the platform fee.
     function check_settleWithFees(uint256 networkFee, uint256 platformFee, uint256 deposit) public {
         vm.assume(deposit <= type(uint128).max);
         InvoiceTerms memory t = InvoiceTerms({
@@ -90,7 +86,6 @@ contract SymbolicTest is Test {
         }
     }
 
-    /// refund() succeeds only for the authority and never takes the owed AMOUNT before the deadline.
     function check_refund(address caller, address to, uint256 deposit, uint256 amount, uint256 time) public {
         vm.assume(deposit <= type(uint128).max);
         vm.assume(to != address(receiver) && to != recipient);
@@ -114,7 +109,6 @@ contract SymbolicTest is Test {
         assert(token.balanceOf(address(receiver)) == deposit);
     }
 
-    /// Only the authority takes money out of the implementation, which is never an invoice's receiver.
     function check_implementationRecoverOnlyByAuthority(
         address caller,
         address to,
@@ -134,7 +128,6 @@ contract SymbolicTest is Test {
         assert(token.balanceOf(address(receiver)) == deposit);
     }
 
-    /// The factory's recover() moves only the factory's own balance, and only for the authority.
     function check_factoryRecoverNeverTakesReceiverMoney(
         address caller,
         address to,

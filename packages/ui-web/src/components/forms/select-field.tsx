@@ -14,13 +14,11 @@ export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
-  /** A small mark before the label, such as a token or network logo; the field shows the chosen one's too. */
   icon?: ReactNode;
 }
 
 export interface SelectFieldProps {
   label: string;
-  /** Keeps the label for screen readers only, for a select whose purpose is clear where it sits. */
   hideLabel?: boolean;
   options: readonly SelectOption[];
   hint?: string;
@@ -54,8 +52,7 @@ export function SelectField({
   const fieldId = id ?? autoId;
   const describedBy = fieldMessageId(fieldId, error, hint);
   const [dialog, trigger] = useDialogContainer();
-  // The page keeps its scrollbar while the list is open (base.css), so it could still scroll by keys. The list has
-  // handled each key by the time it reaches window; what is left would only scroll the page behind it.
+  // The page keeps its scrollbar while the list is open: keys the list left would scroll the page.
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;

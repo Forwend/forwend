@@ -4,7 +4,6 @@ import { cx } from "../../lib/cx";
 const GAPS = { sm: "gap-2", md: "gap-5", lg: "gap-6" } as const;
 
 export interface FormProps extends ComponentPropsWithRef<"form"> {
-  /** Space between groups: sm for one field with its button, lg between fieldsets. */
   gap?: keyof typeof GAPS;
 }
 

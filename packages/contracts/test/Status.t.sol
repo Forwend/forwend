@@ -100,7 +100,6 @@ contract StatusTest is Base {
         assertEq(keccak256(abi.encode(r.status())), keccak256(abi.encode(factory.status(t))));
     }
 
-    /// settleable is true exactly when settle() by the settler succeeds, and refundable is exactly what refund allows.
     function testFuzz_statusMatchesBehaviour(uint256 deposit, uint256 time) public {
         deposit = bound(deposit, 0, AMOUNT * 3);
         time = bound(time, block.timestamp, DEADLINE + 10 days);

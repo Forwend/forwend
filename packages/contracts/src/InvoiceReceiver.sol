@@ -15,8 +15,7 @@ import {
     tryBalanceOf
 } from "./InvoiceTypes.sol";
 
-/// Can only pay `amount` to `recipient` less the fees in the terms, which go to the settler and the refund authority,
-/// or return money through the refund authority. Rules: docs/contracts/rules.md.
+/// Can only pay `amount` less fees to `recipient`, or return money through the refund authority.
 /// Deliberately has no receive/fallback, approve, signature validation, delegatecall or selfdestruct.
 contract InvoiceReceiver is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -70,7 +69,7 @@ contract InvoiceReceiver is ReentrancyGuard {
         return effectiveDeadline(terms().settleDeadline, factory.deployedAt(address(this)));
     }
 
-    /// What refund() allows now: 0 off the intended chain, where refund() reverts and money leaves through recover().
+    /// What refund() allows now; 0 off the intended chain, where money leaves through recover().
     function refundable() public view onlyClone returns (uint256) {
         InvoiceTerms memory t = terms();
         if (block.chainid != t.intendedChainId) return 0;
@@ -118,9 +117,8 @@ contract InvoiceReceiver is ReentrancyGuard {
         emit Refunded(t.invoiceId, to, amount);
     }
 
-    /// Returns other tokens, the native coin (`token == address(0)`) and anything off the intended chain. On it, the
-    /// invoice-token balance must not drop (on Arc native and USDC are one balance); an unreadable token holds nothing.
-    /// The implementation itself is never an invoice's receiver, so anything sent to it goes back whole.
+    /// Returns other tokens, native coin and anything off the intended chain; the invoice-token balance never drops
+    /// (on Arc native coin and USDC are one balance).
     function recover(address token, address to, uint256 amount) external nonReentrant {
         if (msg.sender != factory.refundAuthority()) revert Unauthorized();
         if (to == address(0) || to == address(this)) revert InvalidDestination();

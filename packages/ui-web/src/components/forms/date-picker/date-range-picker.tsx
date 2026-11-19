@@ -11,8 +11,7 @@ import { RangeCalendar } from "./range-calendar";
 import { useDatePopover } from "./use-date-popover";
 
 export interface DateRange {
-  /** ISO days (YYYY-MM-DD); null leaves that end open. */
-  from: string | null;
+  from: string | null; // ISO day; null leaves that end open
   to: string | null;
 }
 
@@ -20,7 +19,6 @@ export interface DateRangePickerProps {
   label: string;
   value: DateRange;
   onChange: (range: DateRange) => void;
-  /** One quiet line in the popover's foot, such as which time zone the days are in. */
   note?: string;
   error?: string;
   clearLabel?: string;
@@ -56,7 +54,7 @@ function shown({ from, to }: DateRange): string | null {
   return null;
 }
 
-/** One field for a period: presets for the usual ones, two months for any other; the second press ends it. */
+/** One field for a period: a preset, or two months where the second press ends the range. */
 export function DateRangePicker({
   label,
   value,

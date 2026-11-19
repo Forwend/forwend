@@ -136,7 +136,6 @@ contract InvariantsTest is Test {
         );
     }
 
-    /// The executor and the authority get the fees once, at settlement, and nothing else.
     function invariant_feesOnlyAtSettlement() public view {
         uint256 fees = token.balanceOf(handler.executor()) + token.balanceOf(handler.authority());
         address receiver = handler.receiver();

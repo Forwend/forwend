@@ -8,17 +8,12 @@ import { dayForKey, FULL_DATE, MONTH, WEEK, WEEKDAY } from "./calendar-grid";
 import { addDays, addMonths, clamp, monthGrid, monthStart, today, toTime } from "./iso-date";
 
 export interface CalendarProps {
-  /** The grid's accessible name, such as the field's label. */
   label: string;
-  /** The chosen ISO date (YYYY-MM-DD), or null. */
   value: string | null;
   onChange: (iso: string) => void;
-  /** Earliest and latest ISO dates that can be chosen. */
   min?: string;
   max?: string;
-  /** More days that cannot be chosen, such as weekends. */
   isDisabled?: (iso: string) => boolean;
-  /** Move focus into the grid when it mounts (a picker that just opened). */
   autoFocus?: boolean;
 }
 

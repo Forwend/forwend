@@ -5,8 +5,7 @@ export interface FullAddressProps {
   className?: string;
 }
 
-/** The whole address, for one someone checks before money moves. It reads in groups of four with the first and last
- * groups in ink: a look-alike made to match only the start and end then shows different middle characters. */
+/** The whole address in groups of four, ends in ink, so a look-alike's different middle shows. */
 export function FullAddress({ address, className }: FullAddressProps) {
   const prefix = address.startsWith("0x") ? "0x" : "";
   const groups = address.slice(prefix.length).match(/.{1,4}/g) ?? [];

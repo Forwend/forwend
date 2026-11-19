@@ -5,8 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 
-/// Deploys the factory the way production does (through the CREATE2 deployer) on two chain ids and checks that the
-/// factory and the receiver for the same terms get the same addresses on both (C-03).
+/// Deploys through the CREATE2 deployer on two chain ids, as production does.
 contract CrossChainTest is Test {
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     bytes32 internal constant SALT = keccak256("forwend.invoice-receiver-factory.v1");

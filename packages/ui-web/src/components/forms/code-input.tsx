@@ -18,8 +18,7 @@ export interface CodeInputProps {
   className?: string;
 }
 
-// One real input sits over the boxes, so paste, one-time-code autofill and screen readers work as in any text field.
-// Non-digits are dropped, so a pasted "Code: 123456" works; maxLength would cut the paste first.
+// One real input over the boxes keeps paste and autofill working; no maxLength, which would cut a paste.
 export function CodeInput({
   label,
   value,
@@ -43,7 +42,6 @@ export function CodeInput({
       <label htmlFor={fieldId} className="text-sm font-medium text-ink">
         {label}
       </label>
-      {/* At most the sign-in page's width, so the boxes keep one shape in a wide dialog too. */}
       <div className="relative flex w-full max-w-sm gap-2">
         {Array.from({ length }, (_, i) => {
           const digit = value[i];

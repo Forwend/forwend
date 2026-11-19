@@ -1,4 +1,4 @@
-/** A checkout's payment status, as the API names it. The API may add more, so a page should ignore one it doesn't know. */
+/** A checkout's payment status as the API names it; ignore one you don't know. */
 export const PAYMENT_STATUSES = {
   open: "open",
   detected: "detected",
@@ -11,7 +11,7 @@ export const PAYMENT_STATUSES = {
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[keyof typeof PAYMENT_STATUSES];
 
-/** What the embedded checkout posts to its page (D-117). */
+/** What the embedded checkout posts to its page. */
 export const CHECKOUT_EVENTS = {
   ready: "ready",
   resize: "resize",
@@ -25,7 +25,7 @@ export interface CheckoutReadyEvent {
   paymentStatus: PaymentStatus | (string & {});
 }
 
-/** The payment's status changed. A hint for the page only: fulfil the order from the webhook. */
+/** The payment's status changed: a hint only, fulfil the order from the webhook. */
 export interface CheckoutStatusEvent {
   invoiceId: string;
   paymentStatus: PaymentStatus | (string & {});
@@ -36,7 +36,6 @@ export type CheckoutMessage =
   | { type: typeof CHECKOUT_EVENTS.resize; invoiceId: string; height: number }
   | ({ type: typeof CHECKOUT_EVENTS.status } & CheckoutStatusEvent);
 
-/** What the checkout in frame posted, or null for anything else: another window, another origin or another shape. */
 export function checkoutMessage(
   event: MessageEvent,
   frame: HTMLIFrameElement,

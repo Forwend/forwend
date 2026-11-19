@@ -6,16 +6,13 @@ import { FieldMessage, fieldMessageId } from "./field-message";
 
 export interface AmountFieldProps extends ComponentPropsWithoutRef<"input"> {
   label: string;
-  /** The currency or token, inside the field at its end. */
   unit: string;
   hint?: string;
   error?: string;
-  /** A send's amount: the figure large and centered with its unit beside it, no box; the label is for screen readers.
-   * Long amounts step the size down so they stay on one line. */
   bare?: boolean;
 }
 
-/** An amount someone checks at a glance, such as a sale's total: large figures, with the unit inside the field. */
+/** An amount checked at a glance: large figures, with the unit inside the field. */
 export function AmountField({
   label,
   unit,
@@ -47,8 +44,7 @@ export function AmountField({
             autoComplete="off"
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
-            // As wide as its figures (tabular, so a ch each, the point narrower), in every browser. The figures sit at
-            // the field's end, so the room the point leaves falls outside them, not between them and the unit.
+            // As wide as its tabular figures (1ch each) in every browser; size alone varies by browser.
             style={{ width: `${Math.max(length, 1) + 0.5}ch` }}
             className={cx(
               "max-w-full bg-transparent text-right font-medium tracking-tight tabular-nums outline-none transition-[font-size] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle motion-reduce:transition-none",

@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ReceiveAddressVectors} from "../script/ReceiveAddressVectors.s.sol";
 
 contract ReceiveAddressVectorsTest is Test {
-    /// The Go address code is tested against this file, so any change to the init code must regenerate it.
+    /// Go's address code is tested against this file: regenerate it after any init-code change.
     function test_vectorsFileMatchesPredict() public {
         assertEq(
             vm.readFile("vectors/receive-address.json"),

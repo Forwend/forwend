@@ -13,15 +13,10 @@ export interface TextFieldProps extends ComponentPropsWithoutRef<"input"> {
   label: string;
   hint?: string;
   error?: string;
-  /** A button that acts on the value, on the input's row: the hint and error stay under both. */
   action?: ReactNode;
-  /** A small control inside the field, at its end, such as Paste or Clear; it stays out of the field's name. */
   end?: ReactNode;
-  /** The label is for screen readers only, where a heading right above already names the field. */
   labelHidden?: boolean;
-  /** Classes for the input alone, such as font-mono for an address, so the label and hint keep the body font. */
   inputClassName?: string;
-  /** A setting's short value: the label and its line on the left, a narrow input at the row's end. */
   inline?: boolean;
 }
 
@@ -81,7 +76,6 @@ export function TextField({
           <div className="flex shrink-0 items-center">{end}</div>
         </div>
       ) : action ? (
-        // The action (a pill button) takes the field's height, so the two read as one row.
         <div className="flex items-center gap-2 [&>*]:h-10 pointer-coarse:[&>*]:h-11">
           <input
             id={fieldId}

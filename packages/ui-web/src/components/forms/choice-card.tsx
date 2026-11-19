@@ -12,7 +12,6 @@ export interface ChoiceCardProps {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: string;
   hint?: ReactNode;
-  /** A short label in the icon's row, such as what the choice sets up. */
   tag?: ReactNode;
 }
 

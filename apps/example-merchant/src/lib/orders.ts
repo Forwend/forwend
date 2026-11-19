@@ -31,7 +31,7 @@ const toOrder = (row: Row | undefined): Order | undefined =>
     fulfilledAt: row.fulfilled_at,
   };
 
-/** The shop's orders. fulfil is the one place an order turns paid, and it does so once. */
+/** The shop's orders; fulfil is the one place an order turns paid, once. */
 export function openOrders(path: string) {
   const db = new DatabaseSync(path);
   db.exec(`CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, lines TEXT NOT NULL, total_cents INTEGER NOT NULL,

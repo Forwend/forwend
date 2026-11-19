@@ -38,12 +38,12 @@ interface Page<T> {
 
 type Query = Record<string, string | number | undefined>;
 
-// API ids are hex or UUIDs. Anything else, like "..", would change the path it goes into.
+// Anything else, like "..", would change the request's path.
 const ID = /^[0-9A-Za-z_-]+$/;
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
-// A gateway error may come after the API acted, so these are tried again only for a read or a keyed request.
+// A gateway error may come after the API acted: retried only for a read or a keyed request.
 const RETRY_STATUSES = new Set([502, 503, 504]);
-// A longer wait, like a day until the next send, is the caller's to decide: it gets the error at once.
+// A longer wait, like a day until the next send, is the caller's to decide.
 const MAX_WAIT_SECONDS = 60;
 
 function id(value: string): string {
@@ -70,7 +70,7 @@ export class Forwend {
     list(params?: ListPayments): AsyncGenerator<Payment>;
   };
   readonly invoices: {
-    /** Creates an invoice. The same idempotencyKey and body return the same invoice; one is made when none is given. */
+    /** The same idempotencyKey and body return the same invoice; one is generated when omitted. */
     create(body: CreateInvoice, options?: { idempotencyKey?: string }): Promise<InvoiceDetails>;
     get(invoiceId: string): Promise<InvoiceDetails>;
     /** Every invoice, newest first, page after page through nextCursor. */
@@ -79,7 +79,7 @@ export class Forwend {
     cancel(invoiceId: string): Promise<InvoiceDetails>;
     /** Reopens an invoice that closed partly paid. */
     reopen(invoiceId: string): Promise<InvoiceDetails>;
-    /** Emails the invoice to its client, once a day at most. The same idempotencyKey sends nothing more. */
+    /** Emails the invoice to its client, at most daily; the same idempotencyKey sends nothing more. */
     send(invoiceId: string, options?: { idempotencyKey?: string }): Promise<InvoiceDetails>;
   };
   readonly stores: {
@@ -219,7 +219,6 @@ export class Forwend {
   }
 }
 
-/** Retry-After in seconds, as the API sends it with 429 rate_limited; null without one. */
 function retryAfter(response: Response): number | null {
   const value = response.headers.get("Retry-After");
   return value !== null && /^\d+$/.test(value) ? Number(value) : null;

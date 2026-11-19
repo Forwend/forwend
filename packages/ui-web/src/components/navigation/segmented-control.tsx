@@ -8,13 +8,11 @@ export interface SegmentedControlProps<T extends string> {
   options: readonly { value: T; label: string }[];
   value: T;
   onValueChange: (value: T) => void;
-  /** md (40px) in toolbars and forms; sm (32px) beside a chart or in a panel's header. Both are 44px on touch. */
   size?: "sm" | "md";
   className?: string;
 }
 
-// The track clips anything outside it, so on touch screens the track itself grows to 44px and each segment's hit
-// area reaches into the padding and gaps: every point of the track picks a segment.
+// The track clips its overflow, so on touch it grows to 44px and each segment's hit area fills the gaps.
 export function SegmentedControl<T extends string>({
   label,
   options,

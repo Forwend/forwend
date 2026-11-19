@@ -1,4 +1,4 @@
-// test/react-18 runs this file again on React 18 (R-169).
+// test/react-18 runs this file again on React 18.
 import { act, type ReactNode, StrictMode, version } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";

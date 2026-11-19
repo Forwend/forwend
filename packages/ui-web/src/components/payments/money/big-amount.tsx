@@ -1,13 +1,12 @@
 import { cx } from "../../../lib/cx";
 
 export interface BigAmountProps {
-  /** Formatted digits, such as "18,420.50". */
-  value: string;
+  value: string; // formatted, such as "18,420.50"
   unit?: string;
   className?: string;
 }
 
-/** A headline figure: the whole part leads, the cents and unit step back so the eye lands on the size first. */
+/** A headline figure: the cents and unit step back so the size reads first. */
 export function BigAmount({ value, unit, className }: BigAmountProps) {
   const [whole, cents] = value.split(".");
   return (

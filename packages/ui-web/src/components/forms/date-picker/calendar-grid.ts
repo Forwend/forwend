@@ -10,7 +10,7 @@ export const FULL_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "full",
 // 2024-01-01 is a Monday: the header reads Monday to Sunday in the viewer's language.
 export const WEEK = Array.from({ length: 7 }, (_, i) => addDays("2024-01-01", i));
 
-/** The day a grid key moves to from the focused one (ARIA date grid keys), or undefined for any other key. */
+/** The day a grid key moves focus to, or undefined for any other key. */
 export function dayForKey(
   focused: string,
   { key, shiftKey }: { key: string; shiftKey: boolean },

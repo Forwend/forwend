@@ -7,8 +7,7 @@ import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceReceiver} from "../src/InvoiceReceiver.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 
-/// Pays, settles and refunds with the real USDC contract on a Base Sepolia fork.
-/// Needs BASE_SEPOLIA_RPC (`node script/rpc.mjs base-sepolia`); reported as skipped without it.
+/// Real USDC on a Base Sepolia fork; needs BASE_SEPOLIA_RPC (node script/rpc.mjs), else skipped.
 contract BaseSepoliaForkTest is Test {
     IERC20 internal constant USDC = IERC20(0x036CbD53842c5426634e7929541eC2318f3dCF7e);
 

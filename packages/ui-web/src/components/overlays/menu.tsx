@@ -13,8 +13,7 @@ export type MenuRadioItemProps = RadixMenu.DropdownMenuRadioItemProps;
 
 export type MenuCheckboxItemProps = RadixMenu.DropdownMenuCheckboxItemProps;
 
-// Menus close at once: a fade-out would hand focus back to the trigger late, and so close a menu opened again in
-// the meantime.
+// No exit fade: it would return focus late and close a menu opened again meanwhile.
 
 /** Not modal: the page stays readable behind an open menu; Escape and a click outside still close it. */
 export function Menu(props: RadixMenu.DropdownMenuProps) {
@@ -35,8 +34,7 @@ export function MenuContent({
   onKeyDown,
   ...props
 }: MenuContentProps) {
-  // Closed by a pointer, focus stays where the pointer left it: returning it to the trigger would draw the
-  // keyboard focus ring on a control the person only clicked. A keyboard close still returns focus.
+  // After a pointer close focus stays put: returning it would draw a focus ring on a mere click.
   const byPointer = useRef(false);
   return (
     <RadixMenu.Portal>

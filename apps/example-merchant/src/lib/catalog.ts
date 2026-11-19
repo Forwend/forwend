@@ -1,4 +1,4 @@
-/** The shop's own prices, in cents. The browser sends item ids and quantities, never a price (R-170). */
+/** The shop's own prices, in cents: the browser never sends a price. */
 export const CATALOG = {
   beans: { name: "Espresso beans, 1 kg", cents: 2400 },
   mug: { name: "Stoneware mug", cents: 1250 },
@@ -16,7 +16,7 @@ export interface PricedLine {
   cents: number;
 }
 
-/** Prices a cart from the catalog; null when it names an unknown item, an item twice, or a quantity out of 1 to 10. */
+/** null for an unknown item, a repeated item, or a quantity outside 1 to 10. */
 export function priceCart(lines: unknown): { lines: PricedLine[]; totalCents: number } | null {
   if (!Array.isArray(lines) || lines.length === 0) return null;
   const priced: PricedLine[] = [];

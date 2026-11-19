@@ -11,12 +11,11 @@ interface RangeCalendarProps {
   label: string;
   from: string | null;
   to: string | null;
-  /** The day pressed: the parent decides whether it starts or ends the range. */
   onPick: (iso: string) => void;
   autoFocus?: boolean;
 }
 
-/** Two months side by side (one on phones), one tab stop, arrow keys across both, the range shaded between its ends. */
+/** Two months side by side (one on phones) with one tab stop; the range is shaded. */
 export function RangeCalendar({ label, from, to, onPick, autoFocus = false }: RangeCalendarProps) {
   // The right month ends at the range's end (or today), so the latest days are in view.
   const [first, setFirst] = useState(() => addMonths(monthStart(to ?? from ?? today()), -1));
@@ -30,7 +29,7 @@ export function RangeCalendar({ label, from, to, onPick, autoFocus = false }: Ra
 
   const go = (day: string) => {
     setFocused(day);
-    // Keep the focused day on screen: past the right month the pair moves on, before the left one it moves back.
+    // Keep the focused day on screen: the pair of months moves to it.
     if (monthStart(day) > addMonths(first, 1)) setFirst(addMonths(monthStart(day), -1));
     else if (monthStart(day) < first) setFirst(monthStart(day));
     setMoves((n) => n + 1);

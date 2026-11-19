@@ -1,9 +1,7 @@
 export interface TokenAmountInput {
-  /** Integer amount in the token's base units. */
   baseUnits: bigint;
   decimals: number;
-  /** Fraction digits to show; extra digits are cut, never rounded up. */
-  fractionDigits?: number;
+  fractionDigits?: number; // extra digits are cut, never rounded up
 }
 
 const GROUPING = new Intl.NumberFormat("en-US", { useGrouping: true });

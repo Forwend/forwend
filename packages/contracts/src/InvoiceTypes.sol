@@ -1,31 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-/// Invoice terms, stored as the receiver clone's immutable args. The receiver address commits to them.
-/// No authority or executor here: the API writes the terms and must not choose who can move money. The fees are only
-/// amounts: the contract fixes who gets them, and refuses fees above a tenth of `amount` (feesWithinCeiling).
+/// Invoice terms, the clone's immutable args: the receiver address commits to them.
+/// No authority or executor here: the API writes the terms and must not choose who can move money.
 struct InvoiceTerms {
     bytes32 invoiceId; // 256 random bits from the backend
     address recipient; // the creator's profile wallet
     address token; // allowlisted ERC-20 on `intendedChainId`
     uint256 amount; // base units
     uint64 expiresAt;
-    uint64 settleDeadline; // the executor may settle until here (capped, see MAX_HOLD), then only the refund authority
+    uint64 settleDeadline; // executor's last settle time, capped by MAX_HOLD
     uint256 intendedChainId;
-    uint256 networkFee; // paid at settlement to the settler, who paid the gas
-    uint256 platformFee; // paid at settlement to the refund authority
+    uint256 networkFee; // to the settler, who paid the gas
+    uint256 platformFee; // to the refund authority
 }
 
 struct InvoiceStatus {
-    address receiver; // predicted address; equals the deployed one
+    address receiver; // predicted; equals the deployed one
     bool deployed;
     bool onIntendedChain;
-    uint256 balance; // invoice-token balance at the receiver; 0 if the token cannot be read on this chain
+    uint256 balance; // 0 if the token can't be read on this chain
     bool settled;
     uint256 refundable; // what refund() allows now
-    bool settleable; // settle() would pass every check except the caller (a token transfer can still fail)
+    bool settleable; // settle() passes every check but the caller
     address settler; // who may call settle() now
-    uint64 deadline; // effective settle deadline: min(settleDeadline, deployedAt + MAX_HOLD)
+    uint64 deadline; // min(settleDeadline, deployedAt + MAX_HOLD)
 }
 
 interface IInvoiceReceiverFactory {
@@ -37,8 +36,7 @@ interface IInvoiceReceiverFactory {
     function status(InvoiceTerms calldata t) external view returns (InvoiceStatus memory);
 }
 
-// Longest time money can stay owed to the recipient after the receiver is deployed. A wrong or huge settleDeadline in
-// the terms (a backend bug or a compromised API) can therefore never lock a payment for longer than this.
+// A wrong settleDeadline (a bug or a compromised API) can never lock a payment longer than this.
 uint64 constant MAX_HOLD = 30 days;
 
 function effectiveDeadline(uint64 settleDeadline, uint64 deployedAt) pure returns (uint64) {
@@ -64,8 +62,7 @@ function feesWithinCeiling(InvoiceTerms memory t) pure returns (bool) {
     return t.networkFee <= ceiling && t.platformFee <= ceiling - t.networkFee;
 }
 
-/// Terms that settle() accepts. Terms are not checked at deploy (an address that holds money must stay deployable), so
-/// unsafe ones are refused when money moves and go to refund instead. Shared by settle() and status().
+/// Terms settle() accepts; unsafe terms still deploy, and their money goes back by refund.
 function safeToSettle(InvoiceTerms memory t, address receiver, address factory, address implementation)
     pure
     returns (bool)
@@ -74,8 +71,7 @@ function safeToSettle(InvoiceTerms memory t, address receiver, address factory, 
         && t.recipient != implementation && t.recipient != t.token && feesWithinCeiling(t);
 }
 
-/// Balance read that never reverts: false for a token without code, with a failing balanceOf or a short reply. Copies
-/// at most 32 bytes of the reply, so a token returning huge data cannot burn the caller's gas.
+/// A balance read that never reverts; it copies at most 32 bytes, so huge replies burn no gas.
 function tryBalanceOf(address token, address account) view returns (bool ok, uint256 amount) {
     bytes memory callData = abi.encodeWithSignature("balanceOf(address)", account);
     uint256 size;

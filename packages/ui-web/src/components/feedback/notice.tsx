@@ -10,11 +10,8 @@ export type NoticeAlign = (typeof NOTICE_ALIGNS)[keyof typeof NOTICE_ALIGNS];
 export interface NoticeProps {
   children: ReactNode;
   tone?: NoticeTone;
-  /** One short way out at the strip's end, such as Try again. */
   action?: ReactNode;
-  /** center: a line that needs no way out, such as a connection that is being retried. */
   align?: NoticeAlign;
-  /** alert for something that just went wrong while the view was open, such as a failed refresh. */
   role?: "status" | "alert";
   className?: string;
 }
@@ -24,7 +21,7 @@ const TONE_CLASSES: Record<NoticeTone, string> = {
   danger: "bg-danger-soft text-danger",
 };
 
-/** One short line about the whole view, across its full width: a refresh that failed, or a problem it shows nowhere else. */
+/** One short line about the whole view, such as a failed refresh. */
 export function Notice({
   children,
   tone = NOTICE_TONES.warning,

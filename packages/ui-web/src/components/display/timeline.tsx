@@ -20,16 +20,11 @@ export interface TimelineEntry {
   id: string;
   title: string;
   state: TimelineState;
-  /** When it happened, already formatted; an upcoming step may have none yet. */
   time?: string;
-  /** At the end of the title's line, such as the step's transaction. */
   aside?: ReactNode;
   description?: ReactNode;
-  /** A current step that is running now, not waiting on anyone: its ring turns, or fills with `progress`. */
   working?: boolean;
-  /** A working step's share done, 0 to 1; null or left out while none is known. */
-  progress?: number | null;
-  /** Small label and value pairs under the entry, such as the network or a transaction. */
+  progress?: number | null; // 0 to 1; null while unknown
   chips?: readonly TimelineChip[];
 }
 
@@ -115,7 +110,6 @@ function Marker({
 }: Pick<TimelineEntry, "state" | "working" | "progress">) {
   if (state === TIMELINE_STATES.done) {
     return (
-      // A step that finishes while the page is open fades in where its ring was.
       <span className="relative z-1 mt-0.5 grid size-5 place-items-center rounded-pill bg-ink text-bg transition-[opacity,scale] duration-[var(--fw-duration-base)] ease-[var(--fw-ease-out)] starting:scale-75 starting:opacity-0">
         <Check aria-hidden strokeWidth={3} className="size-3" />
         <span className="sr-only">Done: </span>
