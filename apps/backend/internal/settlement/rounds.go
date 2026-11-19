@@ -30,12 +30,6 @@ func NewRounds(pool *pgxpool.Pool, key *ecdsa.PrivateKey, specs map[uint64]chain
 		signers: map[uint64]*Signer{}, key: key, held: held, users: &userTurns{}}
 }
 
-// A failing or rate-limited RPC is rested and its calls move to the chain's next one (chain.NewRPCs).
-func (r *Rounds) Round(ctx context.Context) {
-	r.Tick(ctx)
-	r.jobs.Wait()
-}
-
 func (r *Rounds) Tick(ctx context.Context) {
 	ids, err := chain.Enabled(ctx, r.pool)
 	if err != nil {

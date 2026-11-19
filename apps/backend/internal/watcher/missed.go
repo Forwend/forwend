@@ -18,21 +18,9 @@ var (
 // scan missed (money-safety.md). The scan's checks hold: only the invoice's own token, in a finalized block of the
 // same hash. It returns how many it recorded; one already confirmed stays as it is.
 func (c *Chain) RecordDeposits(ctx context.Context, txHash common.Hash, invoiceIDs []string) (int64, error) {
-	rows, err := c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices
-		WHERE chain_id = $1 AND id = ANY($2)`, c.chainID, invoiceIDs)
+	invoices, err := receiversOf(c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices
+		WHERE chain_id = $1 AND id = ANY($2)`, c.chainID, invoiceIDs))
 	if err != nil {
-		return 0, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
-	}
-	defer rows.Close()
-	invoices := map[common.Address]receiver{}
-	for rows.Next() {
-		var addr, id, token string
-		if err := rows.Scan(&addr, &id, &token); err != nil {
-			return 0, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
-		}
-		invoices[common.HexToAddress(addr)] = receiver{id, token}
-	}
-	if err := rows.Err(); err != nil {
 		return 0, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
 	}
 	// Only the logs: go-ethereum can't decode every chain's receipts (S-4).

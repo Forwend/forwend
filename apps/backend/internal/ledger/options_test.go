@@ -30,7 +30,6 @@ func (e chainEnv) option(t *testing.T, main string, n int) (id, receive string) 
 	return id, receive
 }
 
-// D-76.
 func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 	ctx := context.Background()
 	e := newChainEnv(t)
@@ -243,7 +242,7 @@ func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 	}
 }
 
-// F413: a payment final on its own chain is chosen, booked and queued to settle at once; a lagging chain of another
+// A payment final on its own chain is chosen, booked and queued to settle at once; a lagging chain of another
 // option doesn't hold it back. Money found there later is held for the payer.
 func TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains(t *testing.T) {
 	o := newOptionSim(t)
@@ -409,7 +408,8 @@ func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
 			return err
 		}
 		held := big.NewInt(500000)
-		return book(ctx, tx, o.option, "deposit", &id, held, new(big.Int), held)
+		_, err := book(ctx, tx, o.option, "deposit", &id, held, new(big.Int), held)
+		return err
 	}); err != nil {
 		t.Fatal(err)
 	}

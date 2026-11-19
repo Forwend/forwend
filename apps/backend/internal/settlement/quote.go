@@ -105,7 +105,7 @@ func (q *Quotes) read(ctx context.Context, chainID uint64) (*big.Rat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("quote chain %d network fee: %w", chainID, err)
 	}
-	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
+	code, err := client.CodeAt(ctx, chain.TempoFeeManager, nil)
 	if err != nil {
 		return nil, fmt.Errorf("quote chain %d network fee: read the fee manager's code: %w", chainID, err)
 	}

@@ -115,8 +115,9 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 		from != common.HexToAddress(*in.sender) {
 		return nil, fmt.Errorf("saved transaction %s is not signed by its sender", *in.txHash)
 	}
-	if _, reason := receiverTerms(in); reason != "" {
-		return nil, fmt.Errorf("saved transaction %s: %s", *in.txHash, reason)
+	if _, _, err := termsOf(in.invoiceID, in.factory, in.recipient, in.token, in.receive, in.amount, in.fees, in.expires,
+		in.deadline, in.chainID); err != nil {
+		return nil, fmt.Errorf("saved transaction %s: %w", *in.txHash, err)
 	}
 	if sender == s.sender && int64(mined) < *in.nonce {
 		if err := s.fillGap(ctx, client, in.chainID, mined); err != nil {
@@ -168,10 +169,7 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 	if err != nil || pending > nonce {
 		return err
 	}
-	var saved bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
-		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
-		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved); err != nil || saved {
+	if saved, err := s.savedAt(ctx, chainID, nonce); err != nil || saved {
 		return err
 	}
 	tip, feeCap, err := Fees(ctx, client, chainID)
@@ -201,7 +199,7 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
 	}
-	var block uint64 // the receipt's block time
+	var minedAt uint64
 	if r != nil {
 		header, err := client.HeaderByHash(ctx, r.BlockHash)
 		if err != nil {
@@ -210,18 +208,18 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 		if header.Number.Cmp(r.BlockNumber) != 0 {
 			return fmt.Errorf("settlement receipt block number disagrees with header")
 		}
-		block = header.Time
+		minedAt = header.Time
 		// This observation is display-only; finality and the booked settlement decide settled.
 		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = $2,
  receipt_block = $3, receipt_time = $4 WHERE id = $1
  AND (receipt_tx_hash, receipt_block, receipt_time) IS DISTINCT FROM ($2, $3, $4)`, in.id, r.TxHash.Hex(),
-			r.BlockNumber.Uint64(), block); err != nil {
+			r.BlockNumber.Uint64(), minedAt); err != nil {
 			return err
 		}
 	}
 	if r != nil && r.BlockNumber.Cmp(head.Number) > 0 {
 		// The finalized block keeps pace with the clock: it reaches r's block about as far ahead as it trails it now.
-		wait := min(time.Duration(block-min(head.Time, block))*time.Second, s.finalWait)
+		wait := min(time.Duration(minedAt-min(head.Time, minedAt))*time.Second, s.finalWait)
 		_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET next_attempt_at = now() + $2 * interval '1 second'
 			WHERE id = $1 AND status = 'sent'`, in.id, wait.Seconds())
 		return err
@@ -242,7 +240,7 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	if canonical.Hash != r.BlockHash {
 		return nil
 	}
-	return s.confirm(ctx, in, watcher.ReceiptOutflows(in.invoiceID, common.HexToAddress(in.receive), r, block, head.Number.Uint64()))
+	return s.confirm(ctx, in, watcher.ReceiptOutflows(in.invoiceID, common.HexToAddress(in.receive), r, minedAt, head.Number.Uint64()))
 }
 
 // confirm records our settle's events from its receipt, then books the invoice: the booked settlement confirms the

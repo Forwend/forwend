@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 )
@@ -110,7 +109,7 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 	}
 	hi := min(latest, from+rescanChunks*c.span-1)
 	invoices := map[common.Address]receiver{addr: inv}
-	found, err := c.logsIn(ctx, from, hi, invoices)
+	found, _, _, _, err := c.scanLogs(ctx, from, hi, from, hi, invoices, nil, wallets{})
 	if err != nil {
 		return 0, false, err
 	}
@@ -135,23 +134,6 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 		return 0, false, fmt.Errorf("record invoice %s rescan: %w", inv.invoiceID, err)
 	}
 	return hi + 1, hi >= latest, nil
-}
-
-func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
-	var out []types.Log
-	for lo <= hi {
-		top := min(lo+c.span-1, hi)
-		found, err := c.logs(ctx, lo, top, invoices)
-		if c.narrow(err) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, found...)
-		lo = top + 1
-	}
-	return out, nil
 }
 
 // blockAt is the first block at or after Unix time t: about log2(latest) header reads, done once per rescan.

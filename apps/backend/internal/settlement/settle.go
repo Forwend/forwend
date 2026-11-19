@@ -1,7 +1,6 @@
 package settlement
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
@@ -101,28 +99,21 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	case !st.Settleable:
 		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
-	var funded bool
-	if err := s.pool.QueryRow(ctx, `SELECT
-  coalesce((SELECT -sum(e.amount) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
-            WHERE t.invoice_id = $1 AND e.account = 'recipient_payable'), 0) >= $2
-  AND NOT EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = $1 AND o.kind = 'refund'
-                  AND o.ledger_transaction_id IS NULL)
-  AND NOT (`+ledger.SettleWaitsSQL("$1")+`)`, in.invoiceID, in.amount.String()).Scan(&funded); err != nil {
+	amounts, err := ledger.ReadAmounts(ctx, s.pool, in.invoiceID)
+	if err != nil {
 		return err
 	}
-	if !funded {
+	var waits bool
+	if err := s.pool.QueryRow(ctx, `SELECT `+ledger.SettleWaitsSQL("$1"), in.invoiceID).Scan(&waits); err != nil {
+		return err
+	}
+	if waits || amounts.Payable.Cmp(in.amount) < 0 {
 		return s.postpone(ctx, in, waitUnresolved, "merchant payable was returned or a movement is not booked")
 	}
 	// Less than the ledger booked means money left the receiver unbooked: settling could take what is held for payers.
 	// The balance is read where the scan finalized, never past it: what the ledger booked covers exactly that, so a
 	// deposit or refund the scan hasn't reached can't read as missed.
-	var bookedText string
-	if err := s.pool.QueryRow(ctx, `SELECT coalesce(sum(e.amount), 0)::text FROM ledger_entries e
-		JOIN ledger_transactions t ON t.id = e.transaction_id WHERE t.invoice_id = $1 AND e.account = 'receiver'`,
-		in.invoiceID).Scan(&bookedText); err != nil {
-		return err
-	}
-	booked, _ := new(big.Int).SetString(bookedText, 10)
+	booked := amounts.Receiver
 	head, err := client.HeaderByNumber(ctx, finalized)
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
@@ -242,23 +233,10 @@ func check(in intent) (address.Terms, string) {
 	case in.wallet == nil || !strings.EqualFold(*in.wallet, in.recipient):
 		return address.Terms{}, "recipient is not the profile wallet"
 	}
-	return receiverTerms(in)
-}
-
-// receiverTerms are the invoice's terms when they compute its stored receive address with a Forwend factory.
-func receiverTerms(in intent) (address.Terms, string) {
-	factory, known := address.KnownFactory(in.factory)
-	if !known {
-		return address.Terms{}, "invoice factory is not a Forwend factory"
-	}
-	terms := address.Terms{
-		InvoiceID: [32]byte(common.FromHex(in.invoiceID)), Recipient: common.HexToAddress(in.recipient),
-		Token: common.HexToAddress(in.token), Amount: in.amount, ExpiresAt: in.expires,
-		SettleDeadline: in.deadline, IntendedChainID: in.chainID, NetworkFee: in.fees[0], PlatformFee: in.fees[1],
-	}
-	receive, err := address.ReceiveAt(factory, terms)
-	if err != nil || !bytes.Equal(receive[:], common.HexToAddress(in.receive).Bytes()) {
-		return address.Terms{}, "terms do not compute the stored receive address"
+	_, terms, err := termsOf(in.invoiceID, in.factory, in.recipient, in.token, in.receive, in.amount, in.fees, in.expires,
+		in.deadline, in.chainID)
+	if err != nil {
+		return address.Terms{}, err.Error()
 	}
 	return terms, ""
 }
@@ -289,7 +267,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		// At the deploy's block a node that answers has seen the receiver's code; on Arbitrum the estimate also counts
 		// the L1 data gas, which the floor does not.
 		gas, err = client.EstimateGasAtBlock(ctx, msg, block)
-		if rpcErr := rpc.Error(nil); errors.As(err, &rpcErr) && rpcErr.ErrorCode() == 3 { // a revert fails at latest too
+		if err != nil && reverted(err) { // a revert fails at latest too
 			return nil, fmt.Errorf("estimate gas at block %s: %w", block, err)
 		}
 		if err != nil {
@@ -377,10 +355,7 @@ func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainI
 	if err != nil || pending <= mined {
 		return tx, err
 	}
-	var saved bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
-		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
-		int64(chainID), strings.ToLower(s.sender.Hex()), int64(mined)).Scan(&saved); err != nil || saved {
+	if saved, err := s.savedAt(ctx, chainID, mined); err != nil || saved {
 		return tx, err
 	}
 	two, ceiling := big.NewInt(2), maxFeePerGas[chainID]
@@ -397,41 +372,20 @@ func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainI
 		Gas: gas, To: tx.To(), Data: tx.Data()}), types.LatestSignerForChainID(tx.ChainId()), s.key)
 }
 
+// savedAt: a saved settle of this executor holds the nonce on the chain.
+func (s *Signer) savedAt(ctx context.Context, chainID, nonce uint64) (bool, error) {
+	var saved bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
+		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved)
+	return saved, err
+}
+
 func bigMax(a, b *big.Int) *big.Int {
 	if a.Cmp(b) >= 0 {
 		return a
 	}
 	return b
-}
-
-// Fees are a transaction's tip and fee cap on the chain: twice the base fee plus the tip, never above the chain's
-// ceiling in maxFeePerGas (R-189).
-func Fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
-	tip, err = client.SuggestGasTipCap(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read gas tip: %w", err)
-	}
-	head, err := client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read base fee: %w", err)
-	}
-	if head.BaseFee == nil {
-		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
-	}
-	ceiling, ok := maxFeePerGas[chainID]
-	if !ok {
-		return nil, nil, fmt.Errorf("chain %d has no fee ceiling (settlement.maxFeePerGas)", chainID)
-	}
-	feeCap = minBig(new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), ceiling)
-	return minBig(tip, feeCap), feeCap, nil
-}
-
-// minBig returns a copy, so a ceiling in maxFeePerGas is never handed out to be changed.
-func minBig(a, b *big.Int) *big.Int {
-	if a.Cmp(b) <= 0 {
-		return new(big.Int).Set(a)
-	}
-	return new(big.Int).Set(b)
 }
 
 // awaitCode: a node that hasn't seen the deploy estimates settle far too low.

@@ -24,7 +24,7 @@ var (
 )
 
 func arcLog(from common.Address, emitter common.Address, tx byte, index uint, value *big.Int) types.Log {
-	return types.Log{Address: emitter, Topics: []common.Hash{transferTopic, common.BytesToHash(from.Bytes()),
+	return types.Log{Address: emitter, Topics: []common.Hash{TransferTopic, common.BytesToHash(from.Bytes()),
 		common.BytesToHash(arcReceiver.Bytes())}, Data: common.LeftPadBytes(value.Bytes(), 32), BlockNumber: 7,
 		TxHash: common.Hash{tx}, BlockHash: common.Hash{0xbb}, Index: index}
 }
@@ -41,43 +41,43 @@ func credited(logs []types.Log) []string {
 }
 
 func TestArcUSDCIsCreditedOncePerMovement(t *testing.T) {
-	toOther := arcLog(arcPayer, arcEmitter, 1, 1, micro(1000000))
-	toOther.Topics = []common.Hash{transferTopic, common.BytesToHash(arcPayer.Bytes()), common.BytesToHash(arcPayer.Bytes())}
+	toOther := arcLog(arcPayer, ArcEmitter, 1, 1, micro(1000000))
+	toOther.Topics = []common.Hash{TransferTopic, common.BytesToHash(arcPayer.Bytes()), common.BytesToHash(arcPayer.Bytes())}
 	for name, c := range map[string]struct {
 		logs []types.Log
 		want []string
 	}{
 		"an ERC-20 transfer logs a system twin just before it": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 1, micro(5000000)), arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(5000000))},
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 1, micro(5000000)), arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(5000000))},
 			[]string{"0x3600:2:5000000"}},
 		"a native send logs only the system log": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 0, micro(5000000))},
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 0, micro(5000000))},
 			[]string{"0x3600:0:5000000"}},
 		"a native send floors to 6 decimals": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 0, new(big.Int).Add(micro(5000000), big.NewInt(999999999999)))},
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 0, new(big.Int).Add(micro(5000000), big.NewInt(999999999999)))},
 			[]string{"0x3600:0:5000000"}},
 		"under one micro-USDC is no credit": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 0, big.NewInt(999999999999))},
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 0, big.NewInt(999999999999))},
 			nil},
 		"a CCTP mint's twin comes two logs later": {
-			[]types.Log{arcLog(common.Address{}, arcEmitter, 1, 3, micro(2000000)), arcLog(common.Address{}, arcUSDC, 1, 5, big.NewInt(2000000))},
+			[]types.Log{arcLog(common.Address{}, ArcEmitter, 1, 3, micro(2000000)), arcLog(common.Address{}, arcUSDC, 1, 5, big.NewInt(2000000))},
 			[]string{"0x3600:5:2000000"}},
 		"a native send and an equal ERC-20 transfer in one transaction both count": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 0, micro(1000000)), arcLog(arcPayer, arcEmitter, 1, 1, micro(1000000)),
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 0, micro(1000000)), arcLog(arcPayer, ArcEmitter, 1, 1, micro(1000000)),
 				arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(1000000))},
 			[]string{"0x3600:0:1000000", "0x3600:2:1000000"}},
 		"a system log of another transaction is no twin": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 1, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 2, big.NewInt(1000000))},
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 1, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 2, big.NewInt(1000000))},
 			[]string{"0x3600:1:1000000", "0x3600:2:1000000"}},
 		"a system log of another sender is no twin": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 0, micro(1000000)), arcLog(arcReceiver, arcEmitter, 1, 1, micro(1000000)),
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 0, micro(1000000)), arcLog(arcReceiver, ArcEmitter, 1, 1, micro(1000000)),
 				arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(1000000))},
 			[]string{"0x3600:1:1000000", "0x3600:2:1000000"}},
 		"a system log to another receiver is no twin": {
 			[]types.Log{toOther, arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(1000000))},
 			[]string{"0x3600:1:1000000", "0x3600:2:1000000"}},
 		"a system log of another amount is no twin": {
-			[]types.Log{arcLog(arcPayer, arcEmitter, 1, 1, micro(3000000)), arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(1000000))},
+			[]types.Log{arcLog(arcPayer, ArcEmitter, 1, 1, micro(3000000)), arcLog(arcPayer, arcUSDC, 1, 2, big.NewInt(1000000))},
 			[]string{"0x3600:1:3000000", "0x3600:2:1000000"}},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -157,8 +157,8 @@ func asked(logs []types.Log) func([]common.Address) []types.Log {
 func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	lookalike := common.HexToAddress("0x00000000000000000000000000000000000000c3")
 	mined := []types.Log{
-		arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
-		arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
+		arcLog(arcPayer, ArcEmitter, 1, 0, micro(4000000)),
+		arcLog(arcPayer, ArcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
 		arcLog(arcPayer, lookalike, 3, 0, big.NewInt(9000000)),
 	}
 	c, node := arcChain(t, func([]common.Address) []types.Log { return mined }, mined)
@@ -166,7 +166,7 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(node.asked, arcEmitter) || !slices.Contains(node.asked, arcUSDC) {
+	if !slices.Contains(node.asked, ArcEmitter) || !slices.Contains(node.asked, arcUSDC) {
 		t.Fatalf("asked for logs of %v, want the token and the system emitter", node.asked)
 	}
 	if got := credited(logs); !slices.Equal(got, []string{"0x3600:0:4000000", "0x3600:1:1000000"}) {
@@ -177,7 +177,7 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.Contains(node.asked, arcEmitter) {
+	if slices.Contains(node.asked, ArcEmitter) {
 		t.Fatalf("asked for the system emitter's logs for an invoice in another token: %v", node.asked)
 	}
 	if got := credited(logs); !slices.Equal(got, []string{lookalike.Hex()[:6] + ":0:9000000"}) {
@@ -188,7 +188,7 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 // An answer with an ERC-20 transfer's system log but without its token log must not make it a second deposit, at
 // another log index: the receipt shows the token log, so the transfer counts at that index, as in a whole answer.
 func TestArcTransferMissingItsTokenLogCountsOnce(t *testing.T) {
-	system, token := arcLog(arcPayer, arcEmitter, 1, 4, micro(5000000)), arcLog(arcPayer, arcUSDC, 1, 5, big.NewInt(5000000))
+	system, token := arcLog(arcPayer, ArcEmitter, 1, 4, micro(5000000)), arcLog(arcPayer, arcUSDC, 1, 5, big.NewInt(5000000))
 	c, node := arcChain(t, asked([]types.Log{system}), []types.Log{system, token})
 	invoices := map[common.Address]receiver{arcReceiver: {"0x01", hexutil.Encode(arcUSDC[:])}}
 	logs, err := c.logs(t.Context(), 1, 10, invoices)
@@ -212,8 +212,8 @@ func TestArcTransferMissingItsTokenLogCountsOnce(t *testing.T) {
 // The wallet scan reads Arc's system logs too, so a native send shows in activity once, as the ERC-20 transfer does.
 func TestArcWalletScanReadsNativeSends(t *testing.T) {
 	mined := []types.Log{
-		arcLog(arcPayer, arcEmitter, 1, 0, micro(4000000)),
-		arcLog(arcPayer, arcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
+		arcLog(arcPayer, ArcEmitter, 1, 0, micro(4000000)),
+		arcLog(arcPayer, ArcEmitter, 2, 0, micro(1000000)), arcLog(arcPayer, arcUSDC, 2, 1, big.NewInt(1000000)),
 	}
 	c, _ := arcChain(t, asked(mined), mined)
 	logs, err := c.walletLogs(t.Context(), 1, 10, wallets{addresses: map[common.Address]bool{arcReceiver: true},
@@ -249,7 +249,7 @@ func TestReceiverEventsAreReadInPartsWhenEveryEndpointRefusesTheList(t *testing.
 		var logs []types.Log
 		for _, a := range req.Params[0].Address {
 			l := arcLog(arcPayer, a, 1, 0, big.NewInt(1))
-			l.Topics[0] = settledTopic
+			l.Topics[0] = SettledTopic
 			logs = append(logs, l)
 		}
 		out, _ := json.Marshal(logs)

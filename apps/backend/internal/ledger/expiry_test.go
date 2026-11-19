@@ -593,7 +593,6 @@ func TestOutboxEventsFollowTheLedger(t *testing.T) {
 	}
 }
 
-// R-82.
 func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()

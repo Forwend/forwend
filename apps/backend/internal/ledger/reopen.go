@@ -55,7 +55,7 @@ func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 		if move.Sign() <= 0 {
 			break
 		}
-		if err := book(ctx, tx, option, "reopen", p.Transfer, new(big.Int), move, new(big.Int).Neg(move)); err != nil {
+		if _, err := book(ctx, tx, option, "reopen", p.Transfer, new(big.Int), move, new(big.Int).Neg(move)); err != nil {
 			return err
 		}
 		left.Sub(left, move)
@@ -84,4 +84,16 @@ func ReopenReady(ctx context.Context, db interface {
 	err := db.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = $1 AND d.status = 'detected')
   AND NOT (`+UnreconciledSQL("$1")+`)`, invoiceID).Scan(&ready)
 	return ready, err
+}
+
+func ensureNoReturnedFunds(ctx context.Context, tx pgx.Tx, invoiceID string) error {
+	var returned bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))`, invoiceID).Scan(&returned)
+	if err != nil {
+		return err
+	}
+	if returned {
+		return errors.New("confirmed return prevents reopening")
+	}
+	return nil
 }

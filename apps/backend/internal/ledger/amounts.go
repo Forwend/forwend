@@ -9,6 +9,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// querier is a pool or a transaction.
+type querier interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
 type ReconciliationStatus string
 
 const (
@@ -26,9 +31,7 @@ type Amounts struct {
 	Unreconciled, HasPolicyException                                   bool
 }
 
-func ReadAmounts(ctx context.Context, db interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, invoiceID string) (*Amounts, error) {
+func ReadAmounts(ctx context.Context, db querier, invoiceID string) (*Amounts, error) {
 	amounts, err := ReadAmountsFor(ctx, db, []string{invoiceID})
 	if err != nil {
 		return nil, err
@@ -39,9 +42,7 @@ func ReadAmounts(ctx context.Context, db interface {
 	return nil, pgx.ErrNoRows
 }
 
-func ReadAmountsFor(ctx context.Context, db interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, invoiceIDs []string) (map[string]*Amounts, error) {
+func ReadAmountsFor(ctx context.Context, db querier, invoiceIDs []string) (map[string]*Amounts, error) {
 	rows, err := db.Query(ctx, `WITH entries AS (
       SELECT t.invoice_id,
         sum(e.amount) FILTER (WHERE e.account = 'receiver') AS receiver,
@@ -127,9 +128,7 @@ func reconciliationReviewSQL(invoiceID string) string {
 
 // OwedNotPaid lists invoices owed in full whose newest booking is older than after, yet not paid: the finalized
 // balance check keeps failing, so money may have left unbooked or the balance RPC disagrees with the scan (R-184).
-func OwedNotPaid(ctx context.Context, db interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, after time.Duration) ([]string, error) {
+func OwedNotPaid(ctx context.Context, db querier, after time.Duration) ([]string, error) {
 	rows, err := db.Query(ctx, `SELECT i.id FROM invoices i
 		WHERE i.payment_status IN ('detected', 'partially_paid')
 		  AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id

@@ -4,32 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math/big"
-	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
-
-const BalanceTimeout = 10 * time.Second
-
-// leastAmount is the least an option's payments must add up to before they choose it (D-76): a tenth of the amount, at
-// most 1.00 USD (one whole token of a stablecoin, D-75). A partial payment then chooses, and a stranger's dust can't.
-const leastAmount = `least(greatest(div(i.amount, 10), 1), (10::numeric ^ tk.decimals)::numeric(78, 0))`
-
-// optionTotals are the on-time payments of the options of invoice $1, each with its option's running total; the caller
-// adds the status it counts.
-const optionTotals = `SELECT t.invoice_id, t.block_time, t.chain_id, t.block_number, t.log_index, t.booked,
-	    sum(t.amount) OVER (PARTITION BY t.invoice_id ORDER BY t.block_time, t.block_number, t.log_index) AS total,
-	    ` + leastAmount + ` AS least
-	FROM chain_transfers t JOIN invoices i ON i.id = t.invoice_id
-	JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract
-	WHERE coalesce(i.main_id, i.id) = $1 AND t.block_time <= i.closes_at`
-
-// ChoosingSeenSQL is true while a payment that can choose an option of invoice $1 is seen, final or not.
-const ChoosingSeenSQL = `EXISTS (SELECT 1 FROM (` + optionTotals + ` AND t.status <> 'reorged') s WHERE total >= least)`
 
 // Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
 // One owed in full but not yet paid waits for the finalized balance check, so it is checked every round.
@@ -107,68 +87,22 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		invoiceID).Scan(&anyTransfer, &anyPending); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", invoiceID, err)
 	}
-	// Payer chooses (R-56, D-76): the first option whose final payments add up to its least amount is the invoice's,
-	// under the main row's lock so two options can't both win; money on any other option is held for the payer.
-	superseded, noneChosen := false, false
-	applyEarlier := false
-	shown := true // the row invoices_current shows: the chosen option, or the main row until one is chosen
-	closedEverywhere := true
+	choice := optionChoice{shown: true, closedEverywhere: true}
 	if options {
-		var chosen *string
-		if err := tx.QueryRow(ctx, "SELECT chosen_id FROM invoices WHERE id = $1 FOR NO KEY UPDATE", group).Scan(&chosen); err != nil {
-			return fmt.Errorf("read invoice %s chosen option: %w", group, err)
+		var waiting bool
+		if choice, waiting, err = chooseOption(ctx, tx, invoiceID, group, current, refund, settlementState, closesAt,
+			finalizedTime); err != nil {
+			return err
 		}
-		if chosen == nil {
-			// No other network is waited for: each payment is confirmed on its own network, as hosted crypto checkouts do.
-			var first string
-			err := tx.QueryRow(ctx, `SELECT invoice_id FROM (`+optionTotals+` AND t.status = 'confirmed') s
-				WHERE total >= least ORDER BY block_time, chain_id, block_number, log_index LIMIT 1`, group).Scan(&first)
-			switch {
-			case errors.Is(err, pgx.ErrNoRows):
-				// Waits for the choice only while a payment that can choose confirms: dust never holds the page.
-				var seen bool
-				if err := tx.QueryRow(ctx, `SELECT `+ChoosingSeenSQL, group).Scan(&seen); err != nil {
-					return err
-				}
-				if seen {
-					return recordAwaitingChoice(ctx, tx, invoiceID, group, current)
-				}
-			case err != nil:
-				return fmt.Errorf("read invoice %s first paid option: %w", group, err)
-			default:
-				if _, err := tx.Exec(ctx, "UPDATE invoices SET chosen_id = $2 WHERE id = $1", group, first); err != nil {
-					return fmt.Errorf("choose invoice %s option %s: %w", group, first, err)
-				}
-				if err := history.Add(ctx, tx, group, history.OptionChosen, history.System, history.Data{Option: first}); err != nil {
-					return err
-				}
-				chosen = &first
-			}
+		if waiting {
+			return recordAwaitingChoice(ctx, tx, invoiceID, group, current)
 		}
-		noneChosen = chosen == nil
-		// The chosen option's parts held while nothing was chosen pay the creator (applyHeldParts), unless it takes no
-		// more money (a cancel, D-26) or a return of it is under way.
-		applyEarlier = chosen != nil && *chosen == invoiceID && refund != "refund_pending" && !Final(current) &&
-			settlementState != "settled"
-		if chosen == nil && finalizedTime > closesAt {
-			// A payment made before the close may still come on an option chain not final past it.
-			if err := tx.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM invoices o
-				    JOIN chains c ON c.chain_id = o.chain_id AND c.enabled
-				    LEFT JOIN chain_cursors cur ON cur.chain_id = o.chain_id
-				    WHERE (o.id = $1 OR o.main_id = $1) AND coalesce(cur.last_finalized_time, 0) <= o.closes_at)`,
-				group).Scan(&closedEverywhere); err != nil {
-				return fmt.Errorf("read invoice %s option chains past its close: %w", group, err)
-			}
-		}
-		superseded = chosen != nil && *chosen != invoiceID
-		shown = chosen == nil && invoiceID == group || chosen != nil && *chosen == invoiceID
 	}
 	amount, _ := new(big.Int).SetString(amountText, 10)
-	owed, err := accountBalance(ctx, tx, invoiceID, "recipient_payable")
+	owed, err := currentPayable(ctx, tx, invoiceID)
 	if err != nil {
 		return err
 	}
-	owed.Neg(owed) // credit balances are negative
 
 	if err := attachLegacySettlement(ctx, tx, invoiceID); err != nil {
 		return err
@@ -177,7 +111,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	if err != nil {
 		return err
 	}
-	if applyEarlier {
+	if choice.applyEarlier {
 		moved, err := applyHeldParts(ctx, tx, invoiceID, closesAt, new(big.Int).Sub(amount, owed))
 		if err != nil {
 			return err
@@ -220,18 +154,18 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	for _, d := range movements {
 		if d.Kind != "deposit" {
 			// A movement out after the close settles the close first, so it takes money from the right account.
-			if !final && closedEverywhere && d.BlockTime > closesAt && owed.Sign() == 0 {
+			if !final && choice.closedEverywhere && d.BlockTime > closesAt && owed.Sign() == 0 {
 				final, eventClosed = true, true
 			}
 			if !final && d.BlockTime > closesAt && owed.Sign() > 0 && owed.Cmp(amount) < 0 {
-				if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
+				if _, err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
 					return err
 				}
 				hold(HeldExpired, owed)
 				owed.SetInt64(0)
 				final, eventExpired = true, true
 			}
-			booked, err := bookOutflow(ctx, tx, invoiceID, d, amount, shown)
+			booked, err := bookOutflow(ctx, tx, invoiceID, d, amount, choice.shown)
 			if err != nil {
 				return err
 			}
@@ -253,9 +187,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		value, _ := new(big.Int).SetString(d.Amount, 10)
 		late := d.BlockTime > closesAt
 		// While no option is chosen a payment is the payer's; applyHeldParts gives it to the creator once its option is.
-		early := noneChosen
-		toCreator, toHeld := split(amount, owed, value, late, final || superseded || early)
-		if err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
+		toCreator, toHeld := split(amount, owed, value, late, final || choice.superseded || choice.noneChosen)
+		if _, err := book(ctx, tx, invoiceID, "deposit", &d.ID, value, toCreator, toHeld); err != nil {
 			return err
 		}
 		depositsBooked++
@@ -264,7 +197,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 			onTime.Add(onTime, value)
 		}
 		if dust := options && !late && !final && onTime.Cmp(least) < 0; !dust {
-			hold(heldReason(current, late, superseded), toHeld)
+			hold(heldReason(current, late, choice.superseded), toHeld)
 		}
 	}
 	if depositsBooked > 0 { // new money: an unexplained balance may be explained now
@@ -280,7 +213,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		if funded, err = s.funded(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
 			return err
 		}
-	case finalizedTime > closesAt && !anyPending && !more && closedEverywhere:
+	case finalizedTime > closesAt && !anyPending && !more && choice.closedEverywhere:
 		// Expiry is final, so the ledger must explain the whole balance first: more on chain than booked is a
 		// deposit the watcher hasn't booked yet (a missed log).
 		if mayExpire, err = s.balanced(ctx, tx, invoiceID, chainID, finalizedBlock, token, receive); err != nil {
@@ -301,13 +234,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		next = PartiallyPaid
 	}
 	// Money that chose no option is held, so it never makes the invoice confirming or partly paid.
-	if noneChosen && next == Detected {
+	if choice.noneChosen && next == Detected {
 		next = Open
 	}
 	if next == ExpiredPartiallyPaid && current != ExpiredPartiallyPaid {
 		// Held for the payer (D-26): what was owed to the creator is theirs again only if the owner reopens (R-130).
 		if !eventExpired {
-			if err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
+			if _, err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
 				return err
 			}
 			hold(HeldExpired, owed)
@@ -351,7 +284,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return fmt.Errorf("update invoice %s status: %w", invoiceID, err)
 	}
 	// Only the shown row's status is history: an option not chosen doesn't change the invoice's status.
-	if shown && next != current {
+	if choice.shown && next != current {
 		if err := history.Add(ctx, tx, invoiceID, "invoice."+next, history.System, history.Data{}); err != nil {
 			return err
 		}
@@ -416,174 +349,4 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 	}
 	return tx.Commit(ctx)
-}
-
-// applyHeldParts moves the held parts of option's on-time deposits, booked while no option was chosen, to the creator,
-// at most up to; each part names its transfer, so readers see which deposits paid the creator. It returns what moved.
-func applyHeldParts(ctx context.Context, tx pgx.Tx, option string, closesAt int64, up *big.Int) (*big.Int, error) {
-	// A refund names no deposit, so after one, booked or not, a held deposit row may be money already returned: nothing
-	// moves, and what is held stays the payer's.
-	var refunded bool
-	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind = 'refund')",
-		option).Scan(&refunded); err != nil || refunded {
-		return new(big.Int), err
-	}
-	held, err := accountBalance(ctx, tx, option, "payer_held")
-	if err != nil {
-		return nil, err
-	}
-	left := minInt(new(big.Int).Set(up), held.Neg(held)) // a part already returned to its payer stays returned
-	// Each deposit's held part net of what a reopen already gave the creator; one with a chosen booking is done.
-	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-sum(e.amount))::text
-		FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'payer_held'
-		JOIN chain_transfers t ON t.id = x.chain_transfer_id
-		WHERE x.invoice_id = $1 AND x.kind IN ('deposit', 'reopen') AND t.block_time <= $2
-		  AND NOT EXISTS (SELECT 1 FROM ledger_transactions c WHERE c.chain_transfer_id = x.chain_transfer_id
-		                  AND c.kind = 'chosen')
-		GROUP BY x.chain_transfer_id, t.block_number, t.log_index HAVING sum(e.amount) < 0
-		ORDER BY t.block_number, t.log_index`, option, closesAt)
-	if err != nil {
-		return nil, fmt.Errorf("read invoice %s held parts: %w", option, err)
-	}
-	type part struct {
-		Transfer int64
-		Amount   string
-	}
-	parts, err := pgx.CollectRows(rows, pgx.RowToStructByPos[part])
-	if err != nil {
-		return nil, fmt.Errorf("read invoice %s held parts: %w", option, err)
-	}
-	moved := new(big.Int)
-	for _, p := range parts {
-		move, _ := new(big.Int).SetString(p.Amount, 10)
-		move = minInt(move, new(big.Int).Sub(left, moved))
-		if move.Sign() <= 0 {
-			break
-		}
-		if err := book(ctx, tx, option, "chosen", &p.Transfer, new(big.Int), move, new(big.Int).Neg(move)); err != nil {
-			return nil, err
-		}
-		moved.Add(moved, move)
-	}
-	return moved, nil
-}
-
-// funded asks the selected RPC whether the receive address holds at least every booked deposit (D-15).
-func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
-	booked, onChain, block, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
-	if err != nil || onChain == nil {
-		return false, err
-	}
-	if onChain.Cmp(booked) < 0 {
-		slog.Warn("receive address holds less than booked; not paid", "invoice", invoiceID,
-			"booked", booked.String(), "onChain", onChain.String())
-		return false, nil
-	}
-	return true, Unbooked(ctx, tx, invoiceID, booked, onChain, block)
-}
-
-// Unbooked alerts when the receive address holds at least DustExcess more than booked while every transfer the scan saw
-// is booked: a deposit the scan missed. Its excess alert holds the invoice's refunds (bookOutflow), never "paid" or the
-// settle: settle pays out only the amount, and the rest stays held for its payer. A balance read at a block the scan
-// hasn't reached yet can show a deposit it will still record, so it says nothing.
-func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain *big.Int, block uint64) error {
-	if onChain.Cmp(booked) <= 0 {
-		return nil
-	}
-	var missed bool
-	var decimals int
-	if err := tx.QueryRow(ctx, `SELECT c.last_finalized_block >= $2 AND NOT EXISTS (SELECT 1 FROM chain_transfers t
-		    WHERE t.invoice_id = i.id AND t.status <> 'reorged' AND NOT t.booked), tk.decimals
-		FROM invoices i JOIN chain_cursors c ON c.chain_id = i.chain_id
-		JOIN tokens tk ON tk.chain_id = i.chain_id AND tk.contract = i.token_contract WHERE i.id = $1`, invoiceID,
-		int64(block)).Scan(&missed, &decimals); err != nil || !missed ||
-		new(big.Int).Sub(onChain, booked).Cmp(DustExcess(decimals)) < 0 {
-		return err
-	}
-	slog.Error("ALERT receive address holds money with no booked transfer", "invoice", invoiceID,
-		"booked", booked.String(), "onChain", onChain.String(),
-		"next", "record the deposit with ops deposit -tx <transaction> <invoice>, then return it with ops return")
-	return alertAgainLater(ctx, tx, invoiceID, true)
-}
-
-// DustExcess: an unexplained balance under 0.01 of a token with these decimals (one base unit when it has fewer than
-// 2) doesn't stop expiry. Arc floors each native transfer but balanceOf floors their sum, so sub-micro sends leave dust
-// no transfer explains, and anyone could send some to keep an invoice open for good. The dust stays for the Safe.
-func DustExcess(decimals int) *big.Int {
-	return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(max(decimals-2, 0))), nil)
-}
-
-// balanced asks the selected RPC whether the receive address holds exactly what is booked.
-func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
-	var waiting bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = $1
-		AND next_check_at > now())`, invoiceID).Scan(&waiting); err != nil || waiting {
-		return false, err
-	}
-	booked, onChain, _, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
-	if err != nil || onChain == nil {
-		return false, err
-	}
-	excess := new(big.Int).Sub(onChain, booked)
-	var decimals int
-	if excess.Sign() > 0 {
-		if err := tx.QueryRow(ctx, "SELECT decimals FROM tokens WHERE chain_id = $1 AND contract = $2", int64(chainID),
-			token).Scan(&decimals); err != nil {
-			return false, fmt.Errorf("read invoice %s token decimals: %w", invoiceID, err)
-		}
-	}
-	if excess.Cmp(DustExcess(decimals)) >= 0 {
-		// A deposit the watcher never saw: an operator records it, then returns it (money-safety.md).
-		slog.Error("ALERT receive address holds money with no booked transfer; not expiring", "invoice", invoiceID,
-			"booked", booked.String(), "onChain", onChain.String(),
-			"next", "record the deposit with ops deposit -tx <transaction> <invoice>, then return it with ops return")
-		return false, alertAgainLater(ctx, tx, invoiceID, true)
-	} else if excess.Sign() > 0 {
-		slog.Warn("receive address holds dust no transfer explains; expiring", "invoice", invoiceID,
-			"booked", booked.String(), "onChain", onChain.String())
-	}
-	if onChain.Cmp(booked) < 0 {
-		slog.Error("ALERT receive address holds less than booked; not expiring", "invoice", invoiceID,
-			"booked", booked.String(), "onChain", onChain.String())
-		return false, alertAgainLater(ctx, tx, invoiceID, false)
-	}
-	if _, err := tx.Exec(ctx, "DELETE FROM invoice_balance_alerts WHERE invoice_id = $1", invoiceID); err != nil {
-		return false, fmt.Errorf("clear invoice %s balance alert: %w", invoiceID, err)
-	}
-	return true, nil
-}
-
-// Backs off 1 min, doubling to at most a day, so unexplained balances can't use up the round's RPC calls (R-120).
-// The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval. excess is more on chain
-// than booked: refunds of the invoice wait while it lasts (bookOutflow).
-func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string, excess bool) error {
-	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at, excess)
-		VALUES ($1, 1, now() + interval '1 minute', $2)
-		ON CONFLICT (invoice_id) DO UPDATE SET alerts = invoice_balance_alerts.alerts + 1, excess = excluded.excess,
-		    next_check_at = now() + least(interval '1 minute' * power(2, least(invoice_balance_alerts.alerts, 11)),
-		        interval '1 day')`,
-		invoiceID, excess); err != nil {
-		return fmt.Errorf("record invoice %s balance alert: %w", invoiceID, err)
-	}
-	return nil
-}
-
-// onChain is nil when the RPC snapshot is behind the watcher's finalized block: nothing is decided until it catches up.
-// ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
-func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, block uint64, err error) {
-	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {
-		return nil, nil, 0, err
-	}
-	ctx, cancel := context.WithTimeout(ctx, BalanceTimeout)
-	defer cancel()
-	onChain, block, err = s.balance(ctx, chainID, token, receive)
-	if err != nil {
-		return nil, nil, 0, fmt.Errorf("check invoice %s balance: %w", invoiceID, err)
-	}
-	if block < finalized {
-		slog.Warn("RPC snapshot is behind the finalized block; deciding later", "invoice", invoiceID,
-			"rpcBlock", block, "finalized", finalized)
-		return booked, nil, block, nil
-	}
-	return booked, onChain, block, nil
 }

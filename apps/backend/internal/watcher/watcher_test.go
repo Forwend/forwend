@@ -129,7 +129,6 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if err != nil || amount != "5000000" || from != chaintest.Sender || blockTime == 0 {
 		t.Fatalf("row: amount %s from %s time %d err %v", amount, from, blockTime, err)
 	}
-	// R-119.
 	var scannedTime int64
 	if err := e.pool.QueryRow(context.Background(), "SELECT last_scanned_time FROM chain_cursors").Scan(&scannedTime); err != nil ||
 		scannedTime != e.anvil.Now() {
@@ -273,7 +272,7 @@ func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 			var sizes []uint64
 			var answered [][2]uint64
 			for _, call := range proxy.Calls() {
-				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), transferTopic.Hex()) {
+				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), TransferTopic.Hex()) {
 					from, to := logRange(t, call)
 					sizes = append(sizes, to-from+1)
 					if call.Fault == chaintest.Forward {
@@ -636,7 +635,7 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	amount := common.LeftPadBytes(big.NewInt(5000000).Bytes(), 32)
 	settled := func(address common.Address, block uint64, hash common.Hash) types.Log {
 		return types.Log{Address: address, BlockNumber: block, BlockHash: hash, TxHash: common.HexToHash("0xfeed"), Index: 1, Data: amount,
-			Topics: []common.Hash{settledTopic, common.HexToHash(id), common.BytesToHash(common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes())}}
+			Topics: []common.Hash{SettledTopic, common.HexToHash(id), common.BytesToHash(common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes())}}
 	}
 	final, other := common.HexToHash("0xf1"), common.HexToHash("0xf2")
 	headers := map[uint64]header{5: {Number: 5, Hash: final}, 6: {Number: 6, Hash: final}, 50: {Number: 50, Hash: final}}
@@ -664,7 +663,7 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	}
 	again[0].Transfers = []types.Log{{Address: common.HexToAddress(invoices[watched].token), BlockNumber: 5,
 		BlockHash: final, TxHash: common.HexToHash("0xfeed"), Index: 0, Data: amount,
-		Topics: []common.Hash{transferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
+		Topics: []common.Hash{TransferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
 	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, again) }); err != nil {
 		t.Fatal(err)
 	}
@@ -703,11 +702,11 @@ func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 			return types.Log{Address: address, BlockNumber: 5, BlockHash: block, TxHash: block, Index: index, Data: data, Topics: topics}
 		}
 		transfer := func(index uint, to common.Address, amount int64) types.Log {
-			return log(index, common.HexToAddress(e.token), word(amount), transferTopic, topic(at), topic(to))
+			return log(index, common.HexToAddress(e.token), word(amount), TransferTopic, topic(at), topic(to))
 		}
 		transfers := []types.Log{transfer(0, recipient, 4950000), transfer(1, settler, network), transfer(2, authority, 20000)}
 		return []Outflow{
-			{InvoiceID: id, Log: log(3, at, word(4950000), settledTopic, common.HexToHash(id), topic(recipient)), Transfers: transfers, Verified: 5},
+			{InvoiceID: id, Log: log(3, at, word(4950000), SettledTopic, common.HexToHash(id), topic(recipient)), Transfers: transfers, Verified: 5},
 			{InvoiceID: id, Log: log(4, at, append(word(network), word(20000)...), feesPaidTopic, common.HexToHash(id), topic(settler)),
 				Transfers: transfers, Verified: 5},
 		}
