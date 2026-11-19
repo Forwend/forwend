@@ -1,6 +1,7 @@
 "use client";
 
 import { useSaveProfileTokensMutation } from "@/features/profiles/api/profiles-api";
+import { SaveStatus } from "@/features/profiles/components/save-status";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import type { TokenSwitch } from "@/features/profiles/types/tokens";
 import { AssetSelection, assetKey } from "@/shared/components/chains/asset-selection";
@@ -40,14 +41,7 @@ export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
         onChange={(keys, on) => void change(keys, on)}
         lockedReason={() => (selected.size === 1 ? COPY.lastOn : null)}
       />
-      <p role="status" className="min-h-5 text-sm text-muted">
-        {isLoading ? COPY.saving : isError ? null : isSuccess ? COPY.savedAll : null}
-      </p>
-      {isError ? (
-        <p role="alert" className="text-sm text-danger">
-          {COPY.saveFailed}
-        </p>
-      ) : null}
+      <SaveStatus saving={isLoading} saved={isSuccess} failed={isError} />
     </div>
   );
 }

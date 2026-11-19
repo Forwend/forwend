@@ -4,7 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Provider } from "react-redux";
-import { FreshSignInProvider } from "@/features/auth/components/fresh-sign-in";
+import { FreshSignInProvider } from "@/features/auth/components/fresh-sign-in-provider";
 import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { makeStore } from "@/store/store";
 

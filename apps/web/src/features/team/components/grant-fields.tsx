@@ -5,6 +5,7 @@ import { ROLE_LABELS, ROLES } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 import { MEMBER_ROLES } from "@/features/team/constants/team";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
+import { memberRole } from "@/features/team/lib/team";
 import type { MemberRole } from "@/features/team/types/team";
 
 export interface GrantFieldsProps {
@@ -35,7 +36,7 @@ export function GrantFields({
         label={COPY.role}
         options={MEMBER_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
         value={role}
-        onValueChange={(value) => onRole(MEMBER_ROLES.find((r) => r === value) ?? ROLES.admin)}
+        onValueChange={(value) => onRole(memberRole(value))}
         hint={COPY.roleHints[role]}
       />
       {role === ROLES.admin ? null : (

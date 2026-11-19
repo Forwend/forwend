@@ -1,6 +1,6 @@
 "use client";
 
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { PageError } from "@/shared/components/landscape-page/page-error";
 
 // The page only shows the payment; the chain and the API keep it, so an error here loses nothing already sent.

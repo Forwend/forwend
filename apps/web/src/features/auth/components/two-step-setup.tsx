@@ -23,21 +23,21 @@ import {
   useCheckFreshSignInMutation,
   useRecordTwoStepMutation,
 } from "@/features/auth/api/auth-api";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
-import { useMfaStep } from "@/features/auth/components/mfa-step";
 import { StepLead } from "@/features/auth/components/step-lead";
-import { TWO_STEP_COPY as COPY, FRESH_SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
+import { TWO_STEP_COPY as COPY } from "@/features/auth/constants/auth-copy";
 import { CODE_LENGTH } from "@/features/auth/constants/sign-in";
 import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 import { PasskeyOnDevice, tappedPasskey } from "@/features/auth/lib/passkeys";
+import { passkeyIds } from "@/features/auth/lib/privy-user";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
-
-type Method = "passkey" | "totp";
+import type { TwoStepMethod } from "@/features/auth/types/two-step";
 
 export interface TwoStepSetupProps {
   /** One method only, as a row of Security sets it up; without, every method not on yet. */
-  only?: Method;
+  only?: TwoStepMethod;
   onDone: () => void;
   onCancel: () => void;
 }
@@ -59,13 +59,11 @@ export function TwoStepSetup({ only, onDone, onCancel }: TwoStepSetupProps) {
   const toast = useToast();
   const on = user?.mfaMethods ?? [];
   // What this setup turns on, fixed as it opens; the step is the first of them not on yet.
-  const [plan] = useState<Method[]>(() =>
-    only ? [only] : (["passkey", "totp"] as Method[]).filter((m) => !on.includes(m)),
+  const [plan] = useState<TwoStepMethod[]>(() =>
+    only ? [only] : (["passkey", "totp"] as TwoStepMethod[]).filter((m) => !on.includes(m)),
   );
   const step = plan.find((m) => !on.includes(m));
-  const passkeys = (user?.linkedAccounts ?? []).flatMap((a) =>
-    a.type === "passkey" ? [a.credentialId] : [],
-  );
+  const passkeys = passkeyIds(user);
   // A method added beside another needs that one first. Privy asks for it itself when adding a passkey; when adding
   // the app it answers with an error, so the existing method is asked for here, in place, and the call made again.
   const withTwoStep = async <T,>(act: () => Promise<T>): Promise<T> => {
@@ -144,16 +142,15 @@ export function TwoStepSetup({ only, onDone, onCancel }: TwoStepSetupProps) {
     run(async () => {
       setTotp(await withTwoStep(initEnrollmentWithTotp));
     }, COPY.startFailed);
-  const begin = (m: Method) => (m === "passkey" ? turnOnPasskey() : startApp());
+  const begin = (m: TwoStepMethod) => (m === "passkey" ? turnOnPasskey() : startApp());
 
   // The app's step starts on its own, once. The passkey waits for its button: a browser shows one only on a click.
-  const started = useRef<Method | null>(null);
+  const started = useRef<TwoStepMethod | null>(null);
   useEffect(() => {
     if (step !== "totp" || started.current === step) return;
     started.current = step;
     void begin(step);
   });
-  // Every step done: Forwend records the methods, once.
   const recorded = useRef(false);
   useEffect(() => {
     if (step || recorded.current) return;
@@ -222,7 +219,7 @@ export function TwoStepSetup({ only, onDone, onCancel }: TwoStepSetupProps) {
           </Button>
         ) : null}
         {actions(
-          FRESH_SIGN_IN_COPY.cancel,
+          COPY.cancel,
           <Button type="button" className="w-full" onClick={() => void turnOnPasskey()}>
             <Fingerprint aria-hidden className="size-[var(--fw-icon-sm)]" />
             {make ? COPY.createPasskey : COPY.usePasskey}
@@ -241,7 +238,7 @@ export function TwoStepSetup({ only, onDone, onCancel }: TwoStepSetupProps) {
         {failure}
         {/* The buttons of the view that follows, the main one busy until it is ready, so nothing jumps. */}
         {actions(
-          FRESH_SIGN_IN_COPY.cancel,
+          COPY.cancel,
           <Button
             type="button"
             className="w-full"
@@ -299,7 +296,6 @@ function AppCode({
       .finally(() => setChecking(false));
   });
   return (
-    // Centered, as the two-step ask is.
     <div ref={box} className="flex w-full flex-col items-center gap-5 text-center">
       <StepLead icon={Smartphone} title={COPY.scanTitle} body={COPY.scan} />
       {/* Always dark on light, as QrCode draws it; the frame keeps it apart from the dark surface. */}
@@ -349,7 +345,7 @@ function AppCode({
         />
       </div>
       {actions(
-        FRESH_SIGN_IN_COPY.cancel,
+        COPY.cancel,
         <Button
           type="button"
           className="w-full"

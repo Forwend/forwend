@@ -4,9 +4,9 @@ import { Badge, BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwen
 import { type MfaMethod, useMfaEnrollment, usePrivy } from "@privy-io/react-auth";
 import { Fingerprint, type LucideIcon, Smartphone } from "lucide-react";
 import { useRef, useState } from "react";
-import { useMfaStep } from "@/features/auth/components/mfa-step";
 import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
 import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";

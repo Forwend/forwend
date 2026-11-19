@@ -7,9 +7,10 @@ import { ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
-import { PasskeyOnDevice } from "@/features/auth/lib/passkeys";
+import { addPasskeyError } from "@/features/auth/lib/passkeys";
+import { passkeyIds } from "@/features/auth/lib/privy-user";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
-import { CHECKLIST_STEPS, PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
+import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
 import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
 import {
   checklistSteps,
@@ -24,7 +25,6 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import type { ProfileKind } from "@/features/profiles/types/profile";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/constants/transactions";
-import { needsFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -63,7 +63,7 @@ export function SetupGuide() {
   if (!invoices.data || !transactions.data || (freelancer && billing.data === undefined))
     return null;
   const steps = checklistSteps(kind, {
-    passkeyLinked: user.linkedAccounts.some((account) => account.type === PRIVY_PASSKEY),
+    passkeyLinked: passkeyIds(user).length > 0,
     hasBillingDetails: Boolean(billing.data),
     invoices: invoices.data.pages[0]?.items ?? [],
     transactions: transactions.data.items,
@@ -83,9 +83,7 @@ export function SetupGuide() {
     try {
       await linkPasskey();
     } catch (e) {
-      // A confirm the owner gave up isn't a failure.
-      if (!needsFreshSignIn(e))
-        setError(e instanceof PasskeyOnDevice ? e.message : COPY.passkeyFailed);
+      setError(addPasskeyError(e, COPY.passkeyFailed));
     } finally {
       setLinking(false);
     }

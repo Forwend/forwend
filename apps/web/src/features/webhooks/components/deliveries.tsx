@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Badge,
-  BUTTON_VARIANTS,
-  Button,
-  cx,
-  EmptyState,
-  SelectField,
-  Skeleton,
-  TONES,
-  type Tone,
-} from "@forwend/ui-web";
+import { BUTTON_VARIANTS, Button, cx, EmptyState, SelectField, Skeleton } from "@forwend/ui-web";
 import { ChevronRight, Send } from "lucide-react";
 import { useState } from "react";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
@@ -20,14 +10,14 @@ import {
   useResendFailedMutation,
   useSendTestMutation,
 } from "@/features/webhooks/api/webhooks-api";
+import { DeliveryStatusBadge } from "@/features/webhooks/components/delivery-status-badge";
 import {
   DEFAULT_FAILED_SINCE_HOURS,
-  DELIVERY_STATUSES,
   FAILED_SINCE_HOURS,
   TEST_EVENT,
 } from "@/features/webhooks/constants/webhooks";
 import { WEBHOOKS_COPY as COPY } from "@/features/webhooks/constants/webhooks-copy";
-import type { Delivery, DeliveryStatus, WebhookEndpoint } from "@/features/webhooks/types/webhooks";
+import type { Delivery, WebhookEndpoint } from "@/features/webhooks/types/webhooks";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { LIVE_QUERY } from "@/shared/config/refresh";
@@ -40,17 +30,6 @@ export interface DeliveriesProps {
 
 const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" });
 const HOUR = 60 * 60 * 1000;
-
-// Waiting is neither good nor bad yet, so it stays neutral, as a confirming payment does.
-const TONE: Record<DeliveryStatus, Tone> = {
-  [DELIVERY_STATUSES.pending]: TONES.neutral,
-  [DELIVERY_STATUSES.succeeded]: TONES.success,
-  [DELIVERY_STATUSES.failed]: TONES.danger,
-};
-
-export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
-  return <Badge tone={TONE[status]}>{COPY.status[status]}</Badge>;
-}
 
 /** What the last action here did, said in place: the sheet is where it was asked for. */
 type Said = { failed: boolean; text: string } | null;

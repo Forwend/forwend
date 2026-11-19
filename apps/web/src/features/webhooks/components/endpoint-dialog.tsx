@@ -12,7 +12,7 @@ import {
 import { Plus } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import type { Store } from "@/features/stores/types/stores";
 import { useSaveEndpointMutation } from "@/features/webhooks/api/webhooks-api";
 import {

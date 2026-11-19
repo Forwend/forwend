@@ -66,7 +66,7 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
       }),
       invalidatesTags: [TEAM_TAG],
     }),
-    /** D-63, as an invite. */
+    /** D-63: needs a fresh sign-in, as an invite does. */
     setMember: build.mutation<Member, { profileId: string; memberId: string; body: GrantBody }>({
       query: ({ profileId, memberId, body }) => ({
         url: `${profileUrl(profileId)}/members/${encodeURIComponent(memberId)}`,

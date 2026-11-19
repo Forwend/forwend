@@ -45,7 +45,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   `/sign-in` and calls `POST /v1/me` each time it loads, which makes the personal profile and its wallet once (R-34).
   - The signed-in redirect follows query changes, so Privy's Google callback cleanup cannot leave users waiting on `/sign-in`.
 - A fresh sign-in (R-137): when the API answers 401 `reauth_required`, `shared/api/fresh-sign-in.ts` holds the request.
-  - `providers/store-provider.tsx` mounts `FreshSignInProvider` (`features/auth/components/fresh-sign-in.tsx`) once.
+  - `providers/store-provider.tsx` mounts `FreshSignInProvider` (`features/auth/components/fresh-sign-in-provider.tsx`) once.
   - A form sends its request through `useFreshSignIn().run`, which claims the ask: its `step` shows in the form.
   - A request no form claimed asks in the provider's own dialog.
   - The step asks the api for Forwend's emailed code and confirms it (`/v1/me/fresh-sign-in`), then repeats the request.
@@ -123,8 +123,9 @@ features own product behavior, and shared UI components are grouped by purpose. 
   invoices (the exact amount parser), profiles; transactions → send (the Sending rows, R-215); invoices → activity, balances, clients (the client block
   an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
   (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
-  pattern, Send to client); onboarding → activity, invoices, profiles,
-  transactions; transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
+  pattern, Send to client); onboarding → auth (adding a passkey), invoices, profiles, stores (the website),
+  transactions; team, api-keys → auth (the in-place fresh sign-in), profiles, stores; webhooks → auth, invoices (the
+  invoice number), stores; stores → pay (the payee preview), profiles (the token list); transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
   `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
 - Payments imports invoice purpose, document and money schemas, plus its compact confirmation component and activity status constants.
   - It also imports the invoices cache tag.

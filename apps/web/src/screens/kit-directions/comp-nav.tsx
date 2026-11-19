@@ -1,4 +1,4 @@
-import { CTA } from "@/features/waitlist/constants/waitlist";
+import { CTA } from "@/screens/kit/constants/sample-cta";
 import { NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
 import type { NavVariant } from "@/screens/kit-directions/types/comp";
 

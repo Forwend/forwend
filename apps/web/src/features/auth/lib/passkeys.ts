@@ -1,10 +1,18 @@
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
+import { needsFreshSignIn } from "@/shared/api/fresh-sign-in";
 
 /** The device or password manager holds a passkey for this account already; its message says so. */
 export class PasskeyOnDevice extends Error {
   constructor() {
     super(AUTH_COPY.passkeyOnDevice);
   }
+}
+
+/** What a failed add shows: nothing when the owner gave up the confirm, the reason when the passkey is already on
+ * this device, else the caller's message. */
+export function addPasskeyError(error: unknown, failed: string): string {
+  if (needsFreshSignIn(error)) return "";
+  return error instanceof PasskeyOnDevice ? error.message : failed;
 }
 
 /** Privy fixes every registration option but hints, so Forwend sets two on the browser's own create call while Privy

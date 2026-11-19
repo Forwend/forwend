@@ -1,5 +1,6 @@
 import { BILLING_DETAILS_COPY } from "@/features/profiles/constants/profiles-copy";
 import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
 
 // The assigned ISO 3166-1 alpha-2 codes the API accepts (internal/profile/billing.go).
 const COUNTRY_CODES = (
@@ -36,7 +37,7 @@ export function billingErrors(
   for (const field of ["name", "address", "email"] as const) {
     if (!body[field]) shown[field] = BILLING_DETAILS_COPY.errors.required;
   }
-  if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email))
+  if (body.email && !EMAIL_PATTERN.test(body.email))
     shown.email = BILLING_DETAILS_COPY.errors.email;
   if (!body.country) shown.country = BILLING_DETAILS_COPY.errors.country;
   return shown;

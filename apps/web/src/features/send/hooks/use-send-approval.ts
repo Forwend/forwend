@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
-import { useMfaStep } from "@/features/auth/components/mfa-step";
 import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
 import { useApproveSendMutation, useSubmitSendMutation } from "@/features/send/api/send-api";

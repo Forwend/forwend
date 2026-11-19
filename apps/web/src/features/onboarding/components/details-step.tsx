@@ -10,6 +10,7 @@ import type { ProfileDetails } from "@/features/onboarding/types/onboarding";
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { PROFILE_KINDS, PROFILE_NAME_MAX } from "@/features/profiles/constants/profile";
 import { countryOptions } from "@/features/profiles/lib/billing-details";
+import type { NewProfileKind } from "@/features/profiles/types/profile";
 
 const COPY = FIRST_RUN_COPY.details;
 const PREVIEW = NEW_INVOICE_COPY.preview;
@@ -17,7 +18,7 @@ const PREVIEW = NEW_INVOICE_COPY.preview;
 export type DetailsField = keyof ProfileDetails | "website";
 
 export interface DetailsStepProps {
-  kind: typeof PROFILE_KINDS.freelancer | typeof PROFILE_KINDS.merchant;
+  kind: NewProfileKind;
   value: ProfileDetails;
   onChange: (field: keyof ProfileDetails, value: string) => void;
   /** Only when the user builds with the API: the store's first allowed origin. */

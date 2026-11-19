@@ -1,0 +1,18 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+/** A local file's address for an image preview, released when the file changes or the preview goes. */
+export function useObjectUrl(file: File | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return url;
+}

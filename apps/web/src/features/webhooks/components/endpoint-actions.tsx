@@ -14,8 +14,8 @@ import {
   useToast,
 } from "@forwend/ui-web";
 import { Ellipsis, KeyRound, ListChecks, Pencil, Power, RefreshCw, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
-import { useFreshSignIn, useOpenWhilePending } from "@/features/auth/components/fresh-sign-in";
+import { useEffect, useRef, useState } from "react";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import type { Store } from "@/features/stores/types/stores";
 import {
   useDeleteEndpointMutation,
@@ -57,8 +57,13 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
   const secretFresh = useFreshSignIn();
   const rotateFresh = useFreshSignIn();
   const toggleFresh = useFreshSignIn();
-  useOpenWhilePending(secretFresh.pending, open.current.secret);
-  useOpenWhilePending(toggleFresh.pending, open.current.toggle);
+  // These have no form of their own: their dialog opens to show the step.
+  useEffect(() => {
+    if (secretFresh.pending) open.current.secret?.();
+  }, [secretFresh.pending]);
+  useEffect(() => {
+    if (toggleFresh.pending) open.current.toggle?.();
+  }, [toggleFresh.pending]);
   const toggleBody = useRef<HTMLDivElement>(null);
   const [sheet, setSheet] = useState(false);
   const [secrets, setSecrets] = useState<WebhookSecret[] | null>(null);

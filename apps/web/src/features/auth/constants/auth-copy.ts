@@ -24,7 +24,6 @@ export const FRESH_SIGN_IN_COPY = {
   resendIn: (seconds: number) => `Resend in ${seconds}s`,
   sendFailed: "We couldn't send the code.",
   tooMany: (wait: string) => `Too many codes for now. Try again in ${wait}.`,
-  /** A wait as the countdown reads it: seconds under a minute, else whole minutes rounded up. */
   wait: (seconds: number) => (seconds < 60 ? `${seconds}s` : `${Math.ceil(seconds / 60)} min`),
   tryAgain: "Try again",
   cancel: "Cancel",
@@ -87,12 +86,37 @@ export const TWO_STEP_COPY = {
   cancel: "Cancel",
 } as const;
 
-/** R-137. */
 export const SIGN_OUT_EVERYWHERE_COPY = {
-  item: "Sign out everywhere",
   title: "Sign out everywhere?",
   body: "This signs you out on every device and browser, this one too. You sign in again with your email.",
   keep: "Keep me signed in",
   confirm: "Sign out everywhere",
   failed: "We could not sign you out everywhere. Try again.",
+} as const;
+
+export const SIGN_IN_COPY = {
+  homeLabel: "Forwend home",
+  title: "Sign in to Forwend",
+  intro: "New here? Signing in creates your account and wallet.",
+  emailLabel: "Email",
+  emailPlaceholder: "you@example.com",
+  sendCode: "Email me a code",
+  or: "or",
+  google: "Continue with Google",
+  passkey: "Sign in with passkey",
+  codeTitle: "Check your email",
+  codeSentTo: "Enter the 6-digit code we sent to",
+  codeLabel: "Code",
+  signIn: "Sign in",
+  resend: "Send a new code",
+  resent: "We sent a new code.",
+  otherEmail: "Use another email",
+  errors: {
+    email: "Enter an email like name@example.com.",
+    sendFailed: "We could not send the code. Try again.",
+    code: "Enter all 6 digits.",
+    codeFailed: "Wrong or expired code. Try again.",
+    google: "Google sign-in did not finish. Try again.",
+    passkey: "Passkey sign-in did not finish. Try again.",
+  },
 } as const;

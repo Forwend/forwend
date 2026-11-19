@@ -9,7 +9,6 @@ const FIELDS: StoreField[] = [
   "tokensOff",
 ];
 
-/** One origin per line; blank lines are dropped. */
 export function originLines(text: string): string[] {
   return text
     .split("\n")

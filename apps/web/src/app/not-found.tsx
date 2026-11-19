@@ -1,7 +1,7 @@
 import { BUTTON_SIZES, buttonClasses } from "@forwend/ui-web";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
+import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { LandscapePage } from "@/shared/components/landscape-page/landscape-page";
 
 const NOT_FOUND = {

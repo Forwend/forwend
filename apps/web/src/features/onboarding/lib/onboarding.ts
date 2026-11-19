@@ -1,6 +1,6 @@
 import {
   CHECKLIST_STEPS,
-  ONBOARDING_CHOICES,
+  CHOICE_KINDS,
   ONBOARDING_STEPS,
 } from "@/features/onboarding/constants/onboarding";
 import type {
@@ -9,9 +9,11 @@ import type {
   ChecklistStep,
   OnboardingChoice,
   OnboardingStep,
+  ProfileDetails,
 } from "@/features/onboarding/types/onboarding";
-import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
-import type { Profile, ProfileKind } from "@/features/profiles/types/profile";
+import { NEW_PROFILE_KINDS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
+import type { NewProfileKind, Profile, ProfileKind } from "@/features/profiles/types/profile";
 import {
   TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
@@ -19,18 +21,10 @@ import {
 import { APP_ROUTES } from "@/shared/config/routes";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 
-// As the API maps them (profile/onboard.go): receive and send is the personal profile every user has (D-73).
-const CHOICE_KINDS: Readonly<Record<OnboardingChoice, ProfileKind>> = {
-  [ONBOARDING_CHOICES.receiveAndSend]: PROFILE_KINDS.personal,
-  [ONBOARDING_CHOICES.getPaidByClients]: PROFILE_KINDS.freelancer,
-  [ONBOARDING_CHOICES.acceptBusinessPayments]: PROFILE_KINDS.merchant,
-  [ONBOARDING_CHOICES.buildIntegration]: PROFILE_KINDS.merchant,
-};
-
 /** The profiles the choices add, freelancer first: two business choices share one merchant profile. */
-export function newKinds(choices: readonly OnboardingChoice[]): ProfileKind[] {
-  const kinds = new Set(choices.map((choice) => CHOICE_KINDS[choice]));
-  return [PROFILE_KINDS.freelancer, PROFILE_KINDS.merchant].filter((kind) => kinds.has(kind));
+export function newKinds(choices: readonly OnboardingChoice[]): NewProfileKind[] {
+  const kinds = new Set<ProfileKind>(choices.map((choice) => CHOICE_KINDS[choice]));
+  return NEW_PROFILE_KINDS.filter((kind) => kinds.has(kind));
 }
 
 /** The steps a first run shows for these choices (R-50): a details step per new profile, the passkey only when none
@@ -48,6 +42,32 @@ export function onboardingSteps(
     ...(passkeyLinked ? [] : [ONBOARDING_STEPS.passkey]),
     ONBOARDING_STEPS.ready,
   ];
+}
+
+/** The billing details a details step saves; the tax ID waits for the setup guide. */
+export function billingBody(details: ProfileDetails): BillingDetailsBody {
+  return {
+    name: details.name.trim(),
+    email: details.email.trim(),
+    country: details.country,
+    address: details.address.trim(),
+    taxId: null,
+  };
+}
+
+// The rule profile/stores.go origin() applies, so the store save after the profiles exist cannot be refused.
+const ORIGIN =
+  /^(?<scheme>https?):\/\/(?<host>[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*)(?<port>:[0-9]{1,5})?\/?$/;
+
+/** An origin as a store allows it: https, or http on this machine for test mode, and nothing after the host. */
+export function websiteOrigin(text: string): string | null {
+  const groups = ORIGIN.exec(text.trim().toLowerCase())?.groups;
+  if (!groups?.scheme || !groups.host) return null;
+  const { scheme, host, port = "" } = groups;
+  if (scheme === "https") return `https://${host}${port === ":443" ? "" : port}`;
+  if (host === "localhost" || host === "127.0.0.1")
+    return `http://${host}${port === ":80" ? "" : port}`;
+  return null;
 }
 
 // The page asked for before the first run waits in the tab, so the address stays /app/onboarding (R-50).

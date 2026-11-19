@@ -5,7 +5,6 @@ export const PROFILES_COPY = {
   newProfile: "New profile",
   profiles: "Profiles",
   switchProfile: "Switch profile",
-  profileLabel: "Profile",
 } as const;
 
 export const NEW_PROFILE_COPY = {
@@ -77,7 +76,6 @@ export const BILLING_DETAILS_COPY = {
   },
 } as const;
 
-/** R-136. */
 export const TOKENS_COPY = {
   title: "Accepted assets",
   note: "For new invoices and requests. Sent ones keep theirs.",
@@ -93,7 +91,6 @@ export const TOKENS_COPY = {
     "which stays on. Clients cover the cost.",
 } as const;
 
-/** D-122: who pays new invoices' fees. */
 export const FEES_COPY = {
   title: "Who pays the network fee",
   legend: "Who pays the network fee",
@@ -107,7 +104,6 @@ export const FEES_COPY = {
   saveFailed: "We could not save who pays the fees. Try again.",
 } as const;
 
-/** R-221. */
 export const DEVELOPER_MODE_COPY = {
   title: "Developer mode",
   toggle: "Developer mode",
@@ -130,7 +126,6 @@ export const DEVELOPER_MODE_COPY = {
     developer ? "Turn off Developer mode" : "Turn on Developer mode",
 } as const;
 
-/** R-80. */
 export const NOTIFICATIONS_COPY = {
   title: "Notifications",
   note: "When an invoice is paid, reaches your wallet or has money held.",

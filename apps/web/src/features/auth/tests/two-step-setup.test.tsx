@@ -36,10 +36,10 @@ vi.mock("@/features/auth/api/auth-api", () => ({
   useCheckFreshSignInMutation: () => [() => ({ unwrap: async () => ({}) })],
   useRecordTwoStepMutation: () => [vi.fn()],
 }));
-vi.mock("@/features/auth/components/fresh-sign-in", () => ({
+vi.mock("@/features/auth/hooks/use-fresh-sign-in", () => ({
   useFreshSignIn: () => ({ run: (f: () => unknown) => f(), step: null, cancelled: () => false }),
 }));
-vi.mock("@/features/auth/components/mfa-step", () => ({
+vi.mock("@/features/auth/hooks/use-mfa-step", () => ({
   useMfaStep: () => ({ run: (a: () => unknown) => a(), step: null }),
 }));
 vi.mock("@/features/auth/hooks/use-add-passkey", () => ({ useAddPasskey: () => privy.addPasskey }));

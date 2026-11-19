@@ -1,5 +1,5 @@
 import type { LinkedAccountWithMetadata } from "@privy-io/react-auth";
-import { PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
+import { PRIVY_PASSKEY } from "@/features/auth/constants/sign-in";
 
 export interface PasskeyRow {
   credentialId: string;

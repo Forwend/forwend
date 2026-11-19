@@ -1,10 +1,18 @@
-import { TEAM_ERRORS } from "@/features/team/constants/team";
+import { ROLES } from "@/features/profiles/constants/profile";
+import { MEMBER_ROLES, TEAM_ERRORS } from "@/features/team/constants/team";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
+import type { GrantBody, MemberRole } from "@/features/team/types/team";
 
-const EXPIRES = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
+/** A role an invite or a change can give; the owner shows as an Admin, which the owner is for good (D-93). */
+export function memberRole(role: string): MemberRole {
+  return MEMBER_ROLES.find((r) => r === role) ?? ROLES.admin;
+}
 
-export function formatExpiry(at: string): string {
-  return EXPIRES.format(new Date(at));
+/** D-93: an Admin reaches every store, so the grant names none; a Developer or Finance member needs at least one.
+ * null when the stores are missing. */
+export function grant(role: MemberRole, stores: readonly string[]): GrantBody | null {
+  if (role === ROLES.admin) return { role, stores: [] };
+  return stores.length > 0 ? { role, stores: [...stores] } : null;
 }
 
 /** Where an invite or a role change's error shows: under the email, under the stores, or for the whole form. */

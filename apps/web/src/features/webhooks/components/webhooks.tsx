@@ -15,7 +15,7 @@ import {
   useListDeliveriesQuery,
   useListEndpointsQuery,
 } from "@/features/webhooks/api/webhooks-api";
-import { DeliveryStatusBadge } from "@/features/webhooks/components/deliveries";
+import { DeliveryStatusBadge } from "@/features/webhooks/components/delivery-status-badge";
 import { EndpointActions } from "@/features/webhooks/components/endpoint-actions";
 import { EndpointDialog } from "@/features/webhooks/components/endpoint-dialog";
 import { WEBHOOKS_COPY as COPY } from "@/features/webhooks/constants/webhooks-copy";

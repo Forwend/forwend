@@ -3,7 +3,7 @@
 import { THEME_ATTRIBUTE, THEMES, type Theme } from "@forwend/design-tokens";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { type ReactNode, useEffect, useState } from "react";
-import { MfaProvider } from "@/features/auth/components/mfa-step";
+import { MfaProvider } from "@/features/auth/components/mfa-provider";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { PRIVY_CHAINS } from "@/features/auth/constants/privy-chains";
 
