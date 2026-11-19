@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// R-98.
 func TestRepeatFromCreate(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

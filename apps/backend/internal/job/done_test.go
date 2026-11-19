@@ -17,7 +17,6 @@ func threeSteps() Request {
 			{Title: "Design approved", AmountUSD: "400", DueDays: 14}, {Title: "Final delivery", AmountUSD: "300.50", DueDays: 30}}}
 }
 
-// R-103.
 func TestMarkDone(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)

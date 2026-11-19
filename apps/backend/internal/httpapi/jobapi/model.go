@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
 )
 
@@ -109,13 +110,13 @@ type jobSummaryJSON struct {
 }
 
 func toPublicJobJSON(j job.Job) publicJobJSON {
-	out := publicJobJSON{Title: j.Title, Scope: httpio.OrNull(j.Scope), TotalUSD: job.USD(j.TotalCents()),
+	out := publicJobJSON{Title: j.Title, Scope: httpio.OrNull(j.Scope), TotalUSD: invoice.USD(j.TotalCents()),
 		Issuer: issuerJSON{Name: j.Issuer.Name, Address: j.Issuer.Address, Country: j.Issuer.Country,
 			TaxID: httpio.OrNull(j.Issuer.TaxID), Email: j.Issuer.Email},
 		AcceptedName: httpio.OrNull(j.AcceptedName), AcceptedAt: httpio.OrNullTime(j.AcceptedAt),
 		CreatedAt: j.CreatedAt.Format(time.RFC3339), Payments: []paymentJSON{}}
 	for _, p := range j.Payments {
-		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: job.USD(p.AmountCents), DueDays: p.DueDays,
+		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: invoice.USD(p.AmountCents), DueDays: p.DueDays,
 			OnAccept: p.OnAccept, InvoiceID: httpio.OrNull(p.InvoiceID), PayToken: httpio.OrNull(p.PayToken),
 			Status: httpio.OrNull(p.Status),
 			DoneAt: httpio.OrNullTime(p.DoneAt), DeliveryLink: httpio.OrNull(p.DeliveryLink),
@@ -152,7 +153,7 @@ func toJobJSON(j job.Job) jobJSON {
 }
 
 func toJobSummaryJSON(s job.Summary) jobSummaryJSON {
-	return jobSummaryJSON{JobID: s.ID, Title: s.Title, ClientName: s.ClientName, TotalUSD: job.USD(s.TotalCents),
+	return jobSummaryJSON{JobID: s.ID, Title: s.Title, ClientName: s.ClientName, TotalUSD: invoice.USD(s.TotalCents),
 		Payments: s.Payments, Paid: s.Paid, AcceptedAt: httpio.OrNullTime(s.AcceptedAt),
 		CreatedAt: s.CreatedAt.Format(time.RFC3339)}
 }

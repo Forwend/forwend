@@ -53,7 +53,6 @@ func quote(deposit bool) Request {
 			{Title: "Final delivery", AmountUSD: "700.50", DueDays: 14}}}
 }
 
-// R-100.
 func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -142,7 +141,6 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	}
 }
 
-// R-100.
 func TestAcceptWithoutDepositMakesNoInvoice(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -203,7 +201,6 @@ func TestAcceptAcrossMidnight(t *testing.T) {
 	}
 }
 
-// R-101.
 func TestAcceptOfADeletedJobMakesNoInvoice(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)

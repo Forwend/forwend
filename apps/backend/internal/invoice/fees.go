@@ -145,9 +145,6 @@ func (s *Service) QuoteFees(ctx context.Context, profileID string, r Request) (s
 	if err != nil {
 		return "", nil, err
 	}
-	if r.FeesPaidBy != "" && r.FeesPaidBy != FeesPaidByOwner && r.FeesPaidBy != FeesPaidByClient {
-		return "", nil, fmt.Errorf("%w: feesPaidBy must be owner or client", ErrInvalid)
-	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return "", nil, fmt.Errorf("quote fees: %w", err)

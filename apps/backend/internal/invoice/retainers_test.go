@@ -176,7 +176,6 @@ func TestStoppedRetainerMakesNothing(t *testing.T) {
 	}
 }
 
-// R-98, R-96.
 func TestRetainerSkipsPassedMonthsAndKeepsAReminderStop(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

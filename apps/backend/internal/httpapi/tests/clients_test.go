@@ -16,7 +16,6 @@ const (
 	clientB = "22222222-2222-4222-8222-222222222222"
 )
 
-// R-86.
 func TestClients(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"

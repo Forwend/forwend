@@ -122,7 +122,6 @@ func TestUnknownInvoicesDoNotUseTheSharedCheckLimit(t *testing.T) {
 	}
 }
 
-// R-55.
 func TestRecheckBudgetHasAShareForEachOwner(t *testing.T) {
 	e := invoiceAPI(t)
 	victim := e.post(t, "did:privy:alice", e.aliceProfile, "victim", basicBody).body["invoiceId"].(string)

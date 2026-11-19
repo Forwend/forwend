@@ -152,7 +152,6 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	}
 }
 
-// R-77.
 func TestClosedCheckoutReadsExpired(t *testing.T) {
 	e := invoiceAPI(t)
 	var ids []string

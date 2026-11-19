@@ -12,6 +12,7 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/paymentio"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
@@ -27,11 +28,6 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
-		}
-		lines := make([]invoice.LineRequest, 0, len(body.Lines))
-		for _, l := range body.Lines {
-			lines = append(lines, invoice.LineRequest{Description: l.Description, Quantity: l.Quantity,
-				UnitPrice: l.UnitPrice})
 		}
 		var agreed *invoice.AgreedRequest
 		if a := body.AgreedValue; a != nil {
@@ -51,15 +47,13 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 				return
 			}
 		}
-		var metadata map[string]string
-		if len(body.Metadata) > 0 {
-			if err := json.Unmarshal(body.Metadata, &metadata); err != nil {
-				httpio.WriteError(w, r, fmt.Errorf("%w: metadata must be an object of text values", invoice.ErrInvalid))
-				return
-			}
+		metadata, err := paymentio.Metadata(body.Metadata)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
 		}
 		inv, created, err := invoices.Create(r.Context(), r.PathValue("profileId"), key, invoice.Request{
-			Lines:     lines,
+			Lines:     paymentio.Lines(body.Lines),
 			Agreed:    agreed,
 			Reminders: body.Reminders,
 			Repeat:    repeat,
@@ -72,8 +66,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 			Replaces:   body.Replaces,
 			FeesPaidBy: body.FeesPaidBy,
 			StoreID:    body.StoreID,
-			Stores:     mid.ProfileAccess(r).Stores,
-			Livemode:   mid.ProfileAccess(r).Livemode,
+			Caller:     invoice.Caller{Stores: mid.ProfileAccess(r).Stores, Livemode: mid.ProfileAccess(r).Livemode},
 		})
 		if err != nil {
 			httpio.WriteError(w, r, err)
@@ -130,7 +123,6 @@ func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-79.
 func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Cancel(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
@@ -142,7 +134,6 @@ func cancelInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-94, R-116.
 func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -170,7 +161,6 @@ func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFun
 	}
 }
 
-// R-96.
 func putReminders(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -193,7 +183,6 @@ func putReminders(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-98.
 func stopRepeat(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.StopRetainer(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))
@@ -205,7 +194,7 @@ func stopRepeat(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-96. It reads no body, so the mail provider's "List-Unsubscribe=One-Click" POST works too.
+// It reads no body, so the mail provider's "List-Unsubscribe=One-Click" POST works too.
 func stopReminders(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		number, from, err := invoices.StopReminders(r.Context(), r.PathValue("token"))
@@ -247,7 +236,6 @@ func getProfileInvoice(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-95.
 func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, err := httpio.IntQuery(r, "limit", invoice.DefaultOwedLimit)
@@ -277,7 +265,6 @@ func listOwed(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-81.
 func listEvents(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit := invoice.MaxEvents
@@ -305,7 +292,6 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-82.
 func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -331,7 +317,6 @@ func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerF
 	}
 }
 
-// R-57.
 func putPick(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -363,7 +348,6 @@ func embedAllowed(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-125.
 func countView(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := invoices.CountView(r.Context(), r.PathValue("payToken")); err != nil {
@@ -400,7 +384,6 @@ func putDetails(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-130.
 func reopenInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Reopen(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"))

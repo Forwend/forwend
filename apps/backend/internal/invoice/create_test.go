@@ -27,10 +27,10 @@ func TestCreationAndExpiryUseOneClock(t *testing.T) {
 	inv, _, err := s.Create(t.Context(), profile, "creation-clock", Request{
 		AmountUSD: "1", ExpiresInSeconds: &expires,
 		Lines: []LineRequest{{Description: "Work", Quantity: "1", UnitPrice: "1"}},
-		Before: func(ctx context.Context, tx pgx.Tx) error {
+		Caller: Caller{Before: func(ctx context.Context, tx pgx.Tx) error {
 			_, err := tx.Exec(ctx, "SELECT pg_sleep(1.1)")
 			return err
-		},
+		}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +87,7 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		VALUES ($1, $2, 84532, 'evm', $3, 5000000, 1800000000, 1800086400, '0x1111111111111111111111111111111111111111',
 		    'evm_create2', '0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333',
-		    'key-1', $4)`, winner, profile, usdc, requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{}, nil, false, nil, "", ""))
+		    'key-1', $4)`, winner, profile, usdc, requestHash(Request{}, 84532, usdc, big.NewInt(5000000), DefaultExpiresIn, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestPaymentLinkInvoicesHaveTheirOwnQuota(t *testing.T) {
 	if _, _, err := NewService(pool).Create(ctx, profile, "owner", req); err != nil {
 		t.Fatalf("the owner's invoice after a day of link invoices: %v", err)
 	}
-	req.LinkID = link
+	req.Caller.LinkID = link
 	if _, _, err := NewService(pool).Create(ctx, profile, "payer", req); !errors.Is(err, ErrInvalid) ||
 		!strings.Contains(err.Error(), "payment links") {
 		t.Fatalf("over the links' daily quota: %v, want ErrInvalid", err)
@@ -281,7 +281,7 @@ func TestOwnerInvoicesLeaveTheLinksQuota(t *testing.T) {
 		FROM generate_series(1, $3::int) n`, profile, usdc, MaxPerDay); err != nil {
 		t.Fatal(err)
 	}
-	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000", LinkID: link}
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000", Caller: Caller{LinkID: link}}
 	if _, _, err := NewService(pool).Create(ctx, profile, "payer", req); err != nil {
 		t.Fatalf("a payer's invoice after a day of the owner's: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestConcurrentRetryReplaysWhenTheWinnerUsesTheLastDailySlot(t *testing.T) {
 	for range 2 {
 		go func() {
 			inv, created, err := NewService(pool).Create(ctx, profileID, "same-purchase",
-				Request{Purpose: PurposeCheckout, AmountUSD: "2"})
+				Request{AmountUSD: "2", Caller: Caller{Purpose: PurposeCheckout}})
 			results <- result{inv, created, err}
 		}()
 	}

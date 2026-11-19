@@ -31,7 +31,6 @@ func scanLink(row pgx.CollectableRow) (Link, error) {
 	return l, err
 }
 
-// DefaultLimit and MaxLimit bound a page of links.
 const (
 	DefaultLimit = 50
 	MaxLimit     = 100

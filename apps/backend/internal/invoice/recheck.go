@@ -21,10 +21,6 @@ const RescanAgainAfter = 10 * time.Minute
 
 var ErrChainUnavailable = errors.New("chain unavailable")
 
-type TooSoonError struct{ Wait time.Duration }
-
-func (e *TooSoonError) Error() string { return fmt.Sprintf("checked recently: wait %s", e.Wait) }
-
 // OnChain is the receive address's balance at the finalized block; Recorded sums its transfers.
 type Recheck struct {
 	OnChain, Recorded *big.Int

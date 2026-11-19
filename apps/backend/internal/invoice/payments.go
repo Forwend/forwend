@@ -42,7 +42,7 @@ func (i Invoice) PaymentSource() PaymentSource {
 	return PaymentSource(i.Purpose)
 }
 
-// D-114: the merchant's payment and wallet states, derived from separate facts; the raw statuses keep their values.
+// The merchant's payment and wallet states, derived from separate facts; the raw statuses keep their values.
 var (
 	PaymentStates = []string{"waiting", "confirming", "partially_paid", "paid", "overpaid", "expired", "canceled"}
 	WalletStates  = []string{"none", "pending", "in_wallet", "delayed", "refused"}
@@ -166,7 +166,7 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	for i := range page.Items {
 		page.Items[i].Receipts = receipts[page.Items[i].ID]
 	}
-	// R-239: the list tags a payment a deposit through 1Click pays.
+	// The list tags a payment that a deposit through 1Click pays (R-239).
 	crossChain, err := readCrossChainFor(ctx, db, mains, true)
 	if err != nil {
 		return Page{}, err

@@ -15,7 +15,6 @@ type Views struct {
 	FirstAt, LastAt time.Time // zero before the first load
 }
 
-// CountView counts one load of the pay page.
 func (s *Service) CountView(ctx context.Context, payToken string) error {
 	id, ok := idOf(payToken)
 	if !ok {

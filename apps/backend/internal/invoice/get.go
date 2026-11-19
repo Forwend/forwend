@@ -317,7 +317,6 @@ func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, 
 	return result, rows.Err()
 }
 
-// R-88.
 func readLines(ctx context.Context, q paymentReader, id string) ([]Line, error) {
 	rows, err := q.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
 		FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, id)

@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
-// R-129.
 func TestReviseReplacesTheInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

@@ -23,6 +23,23 @@ type detailsJSON struct {
 	Problems   []problemJSON     `json:"problems"`
 }
 
+type attentionItemJSON struct {
+	paymentio.Payment
+	Problems []problemJSON `json:"problems"`
+}
+
+type webhookProblemJSON struct {
+	EndpointID      string                `json:"endpointId"`
+	StoreID         *string               `json:"storeId"`
+	Description     string                `json:"description"`
+	Enabled         bool                  `json:"enabled"`
+	Livemode        bool                  `json:"livemode"`
+	Failed          int64                 `json:"failed"`
+	DisabledPending int64                 `json:"disabledPending"`
+	LastProblemAt   string                `json:"lastProblemAt"`
+	Action          invoice.PaymentAction `json:"action"`
+}
+
 type customerJSON struct {
 	Name  *string `json:"name"`
 	Email *string `json:"email"`

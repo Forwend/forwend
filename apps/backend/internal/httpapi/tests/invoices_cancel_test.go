@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// R-79, D-79.
 func TestCancelInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	cancel := func(profile, id string) reply {
@@ -96,7 +95,6 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 	}
 }
 
-// D-79.
 func TestCanceledInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",

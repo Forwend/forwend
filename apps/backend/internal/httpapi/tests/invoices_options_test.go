@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// R-56.
 func TestPayerChoosesInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO tokens (chain_id, chain_family, contract, symbol,
@@ -65,7 +64,6 @@ func TestPayerChoosesInvoice(t *testing.T) {
 	}
 }
 
-// R-58.
 func TestInvoiceReturnURL(t *testing.T) {
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"amountUsd": "5", "returnUrl": "https://shop.example/thanks?order=7"}`)

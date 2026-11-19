@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// R-96, D-69.
 func TestPaymentReminders(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -141,7 +140,6 @@ func TestPaymentReminders(t *testing.T) {
 	}
 }
 
-// R-97.
 func TestRemindersFromCreate(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

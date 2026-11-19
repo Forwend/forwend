@@ -15,7 +15,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// R-100.
 func createJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -83,7 +82,6 @@ func getJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-101.
 func deleteJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := jobs.Delete(r.Context(), r.PathValue("profileId"), r.PathValue("jobId")); err != nil {
@@ -94,7 +92,6 @@ func deleteJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-103.
 func markDone(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -118,7 +115,6 @@ func markDone(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-105.
 func proposeChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -149,7 +145,6 @@ func proposeChange(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-105.
 func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		position, err := strconv.Atoi(r.PathValue("position"))
@@ -165,7 +160,6 @@ func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-105.
 func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -204,7 +198,6 @@ func getPublicJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-100.
 func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body acceptBody

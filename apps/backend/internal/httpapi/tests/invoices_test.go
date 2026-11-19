@@ -373,7 +373,6 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	}
 }
 
-// R-43.
 func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -409,7 +408,6 @@ func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	}
 }
 
-// R-92, D-52.
 func TestBusinessInvoiceNeedsBillingDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -767,7 +765,6 @@ func TestListInvoices(t *testing.T) {
 	}
 }
 
-// R-54.
 func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()

@@ -102,7 +102,6 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 	return errors.Join(errs...)
 }
 
-// track reads q's status once and keeps it.
 func (s *Service) track(ctx context.Context, q trackedQuote, now time.Time) error {
 	read, cancel := context.WithTimeout(ctx, trackTimeout)
 	status, err := s.crossChain.Status(read, q.address)

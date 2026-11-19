@@ -1,8 +1,7 @@
 package invoice
 
 import (
-	"bytes"
-	"math/big"
+	"encoding/hex"
 	"testing"
 )
 
@@ -14,7 +13,7 @@ func TestCheckoutOptionsSharePurposeAndNeverConsumeInvoiceNumbers(t *testing.T) 
 		t.Fatal(err)
 	}
 	s := NewService(pool)
-	inv, _, err := s.Create(ctx, profileID, "session", Request{Purpose: PurposeCheckout, AmountUSD: "12.50"})
+	inv, _, err := s.Create(ctx, profileID, "session", Request{AmountUSD: "12.50", Caller: Caller{Purpose: PurposeCheckout}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,8 +32,7 @@ func TestCheckoutOptionsSharePurposeAndNeverConsumeInvoiceNumbers(t *testing.T) 
 	if err := pool.QueryRow(ctx, "SELECT request_hash FROM invoices WHERE id = $1", legacy.ID).Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	want := requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{}, nil, false, nil, "", "")
-	if !bytes.Equal(stored, want) {
+	if hex.EncodeToString(stored) != bareRequestHash {
 		t.Fatal("legacy request fingerprint changed")
 	}
 	if replay, created, err := s.Create(ctx, profileID, "legacy", r); err != nil || created || replay.ID != legacy.ID {

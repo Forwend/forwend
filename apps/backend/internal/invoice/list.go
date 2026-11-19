@@ -100,7 +100,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		where += fmt.Sprintf(" AND %s AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)",
 			StatusColumnsSQL[status], len(args), ListStatusFilterSQL, len(args))
 	}
-	// D-114: the same states the Payments list filters by, so both lists name a payment alike.
+	// The same states the Payments list filters by, so both lists name a payment alike.
 	if state != "" {
 		args = append(args, state)
 		where += fmt.Sprintf(" AND %s AND %s = $%d", PaymentStateColumnsSQL[state], PaymentStateSQL, len(args))

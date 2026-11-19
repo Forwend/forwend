@@ -12,7 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 )
 
-// R-105.
 func TestScopeChange(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -158,7 +157,6 @@ func TestScopeChange(t *testing.T) {
 	}
 }
 
-// R-105.
 func TestScopeChangeConsent(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -220,7 +218,6 @@ func TestScopeChangeConsent(t *testing.T) {
 	}
 }
 
-// R-105.
 func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)

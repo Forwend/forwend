@@ -1,4 +1,4 @@
-// Package paymentio owns the financial JSON shared by checkout and payment reads.
+// Package paymentio owns the payment JSON the invoice, checkout and payment modules share.
 package paymentio
 
 import (
