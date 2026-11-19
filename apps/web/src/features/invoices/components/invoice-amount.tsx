@@ -8,7 +8,6 @@ import { exactDigits } from "@/shared/lib/money";
 export interface InvoiceAmountProps {
   invoice: InvoiceSummary;
   tokens: readonly InvoiceToken[] | null;
-  /** Keeps the figures and the token on one line, as a table cell needs. */
   nowrap?: boolean;
   className?: string;
 }
@@ -18,7 +17,7 @@ export function InvoiceAmount({ invoice, tokens, nowrap, className }: InvoiceAmo
   if (!tokens) return <Skeleton className="inline-block h-4 w-24" />;
   const token = tokens.find((t) => tokenKey(t) === tokenKey(invoice));
   const amount = BigInt(invoice.amount);
-  // An invoice the client may pay in any of several stablecoins is priced in USD, also once one is chosen (D-75).
+  // Priced in USD when the client may choose the token, also once one is chosen.
   const choosing = invoice.optionCount > 1;
   return token ? (
     <Money

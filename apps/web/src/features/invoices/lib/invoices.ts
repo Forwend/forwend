@@ -1,45 +1,37 @@
 import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
 import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import {
-  AGREED_CURRENCIES,
   AMOUNT_ERRORS,
-  DEFAULT_EXPIRY,
-  DUE_GRACE_DAYS,
-  EXPIRY_BOUNDS_S,
-  EXPIRY_CHOICES,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
-  LINE_ERRORS,
-  LINE_LIMITS,
   OWED_KINDS,
   PAY_WITH,
+  RECORD_STEP_STATES,
   RECORD_STEPS,
   RESTART_PARAMS,
 } from "@/features/invoices/constants/invoices";
+import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import type {
   AgreedValue,
   AmountError,
   Deposit,
-  ExpiryChoice,
-  FeeQuote,
   FeeTerms,
   Invoice,
   InvoiceClient,
   InvoiceException,
   InvoiceField,
+  InvoiceOption,
   InvoicePdf,
   InvoiceReminders,
   InvoiceSend,
   InvoiceStart,
   InvoiceSummary,
   InvoiceViews,
-  LineDraft,
-  LineError,
-  LineField,
   OptionFees,
   Owed,
   RecordStep,
+  RecordStepState,
 } from "@/features/invoices/types/invoices";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { TokenRef } from "@/features/profiles/types/tokens";
@@ -52,7 +44,17 @@ import {
 } from "@/shared/constants/payment-state";
 import { paymentStatusOf } from "@/shared/lib/payment-state";
 
-/** "" for a payment-link invoice before its first deposit (R-141). */
+const DAY_MS = 86_400_000;
+
+const PAYABLE: ReadonlySet<PaymentStatus> = new Set([
+  PAYMENT_STATUS.open,
+  PAYMENT_STATUS.overdue,
+  PAYMENT_STATUS.partiallyPaid,
+  PAYMENT_STATUS.detected,
+  PAYMENT_STATUS.confirming,
+]);
+
+/** "" for a payment-link invoice before its first deposit. */
 export function invoiceNumber(n: number | null): string {
   return n === null ? "" : `INV-${String(n).padStart(4, "0")}`;
 }
@@ -61,12 +63,16 @@ export function invoicePdfUrl(payToken: string, pdf: InvoicePdf): string {
   return `${API_BASE}/v1/invoices/${encodeURIComponent(payToken)}/${pdf}.pdf`;
 }
 
+/** "" while rendered on the server. */
+export function payLinkUrl(payToken: string): string {
+  return typeof window === "undefined" ? "" : `${window.location.origin}/pay/${payToken}`;
+}
+
 export function tokenKey(t: { chainId: number; token: string }): string {
   return `${t.chainId}:${t.token.toLowerCase()}`;
 }
 
-/** A partly paid invoice whose next payment still confirms reads as confirming (R-69); waiting past its due date
- * reads Overdue (D-114). */
+/** Partly paid with a payment still confirming reads Confirming; open past its due date, Overdue. */
 export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
   return paymentStatusOf({
     paymentStatus: inv.paymentStatus,
@@ -77,7 +83,22 @@ export function invoiceStatus(inv: InvoiceSummary): PaymentStatus {
   });
 }
 
-/** Exact, never through a float. A comma is refused, not guessed: "12,50" could mean 12.50 or 1250. */
+/** Payable and not closed: money sent after the close is held for a refund. */
+export function canStillBePaid(
+  inv: Pick<InvoiceSummary, "closesAt">,
+  status: PaymentStatus,
+  now: Date,
+): boolean {
+  return PAYABLE.has(status) && Date.parse(inv.closesAt) > now.getTime();
+}
+
+/** Whole UTC days, as the API counts lateness: 0 today, negative once late. */
+export function daysUntilDue(dueDate: string, now: Date): number {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((Date.parse(`${dueDate}T00:00:00Z`) - today) / DAY_MS);
+}
+
+/** Exact, never through a float. A comma is refused: "12,50" could mean 12.50 or 1250. */
 export function parseTokenAmount(text: string, decimals: number): bigint | AmountError {
   const match = /^(\d*)\.?(\d*)$/.exec(text.trim());
   if (!match || (!match[1] && !match[2])) return AMOUNT_ERRORS.format;
@@ -86,52 +107,6 @@ export function parseTokenAmount(text: string, decimals: number): bigint | Amoun
   const units = BigInt(whole + fraction.padEnd(decimals, "0"));
   return units === 0n ? AMOUNT_ERRORS.zero : units;
 }
-
-/** R-56: a new payment asks for at least 1.00 USD, one whole stablecoin (D-75). */
-export function atLeastMinimum(
-  units: bigint | AmountError,
-  decimals: number,
-): bigint | AmountError {
-  return typeof units === "bigint" && units < 10n ** BigInt(decimals) ? AMOUNT_ERRORS.min : units;
-}
-
-/** R-88: quantity has 2 decimals, so the total must come out in whole base units; a price of 0 is free. */
-export function lineUnits(
-  line: Pick<LineDraft, "description" | "quantity" | "price">,
-  decimals: number,
-): { price: bigint; units: bigint } | LineError {
-  const description = line.description.trim();
-  if (!description || description.length > LINE_LIMITS.description) return LINE_ERRORS.description;
-  const quantity = /^(\d{1,7})(?:\.(\d{1,2}))?$/.exec(line.quantity.trim());
-  const hundredths = quantity ? BigInt(`${quantity[1]}${(quantity[2] ?? "").padEnd(2, "0")}`) : 0n;
-  if (hundredths === 0n || hundredths > BigInt(LINE_LIMITS.quantityMax) * 100n)
-    return LINE_ERRORS.quantity;
-  const price = parseTokenAmount(line.price, decimals);
-  if (typeof price === "string" && price !== AMOUNT_ERRORS.zero) return LINE_ERRORS.price;
-  const units = typeof price === "string" ? 0n : price;
-  if ((units * hundredths) % 100n !== 0n) return LINE_ERRORS.exact;
-  return { price: units, units: (units * hundredths) / 100n };
-}
-
-/** What a row adds to the total as it is typed: its price counts before its description is written. Continue and
- * Create still check the description with lineUnits. */
-export function lineFigure(
-  line: Pick<LineDraft, "description" | "quantity" | "price">,
-  decimals: number,
-): ReturnType<typeof lineUnits> {
-  return lineUnits({ ...line, description: line.description.trim() || "-" }, decimals);
-}
-
-export function lineErrorField(error: LineError): LineField {
-  return error === LINE_ERRORS.exact ? LINE_ERRORS.price : error;
-}
-
-/** R-93. */
-export function agreedDigits(currency: string): number | undefined {
-  return (AGREED_CURRENCIES as Record<string, number>)[currency];
-}
-
-/** R-93. */
 export function formatAgreed(agreed: AgreedValue): string {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
@@ -153,33 +128,6 @@ export function decimalText(units: bigint, decimals: number): string {
   return fraction ? `${units / scale}.${fraction}` : `${units / scale}`;
 }
 
-/** Null when either is missing or the result is outside the API's 15 minutes to 365 days. */
-export function customExpiresIn(date: string, time: string, now: number): number | null {
-  const at = Date.parse(`${date}T${time}`);
-  if (!date || !time || Number.isNaN(at)) return null;
-  const seconds = Math.round((at - now) / 1000);
-  return seconds >= EXPIRY_BOUNDS_S.min && seconds <= EXPIRY_BOUNDS_S.max ? seconds : null;
-}
-
-const DAY_MS = 86_400_000;
-
-export function addDays(day: string, days: number): string {
-  return new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
-}
-
-/** D-80. */
-export function dueCheckoutTarget(dueDate: string): string {
-  return addDays(dueDate, DUE_GRACE_DAYS);
-}
-
-/** Capped at the day before the 365th (D-18), so the close time on it stays within 365 days. */
-export function dueCheckoutDate(dueDate: string, today: string): string {
-  const target = dueCheckoutTarget(dueDate);
-  const latest = addDays(today, EXPIRY_BOUNDS_S.max / EXPIRY_CHOICES.day - 1);
-  // biome-ignore lint/complexity/useMathMinMax: ISO date strings; Math.min would give NaN
-  return target < latest ? target : latest;
-}
-
 /** As the API accepts for returnUrl. */
 export function isReturnLink(text: string): boolean {
   try {
@@ -190,32 +138,27 @@ export function isReturnLink(text: string): boolean {
   }
 }
 
-/** The accepted tokens after profile and store exclusions. An empty result stays empty. */
+/** An empty result stays empty: disabled tokens never come back. */
 export function tokensOn<T extends TokenRef>(
   tokens: readonly T[],
   off: readonly TokenRef[],
 ): readonly T[] {
-  const on = tokens.filter(
+  return tokens.filter(
     (t) => !off.some((o) => o.chainId === t.chainId && o.token === t.token.toLowerCase()),
   );
-  return on;
 }
 
-/** The choice whose seconds a store's default close has (R-134); New invoice's default otherwise. */
-export function expiryChoice(seconds: number | undefined): ExpiryChoice {
-  const choices = Object.entries(EXPIRY_CHOICES) as [ExpiryChoice, number][];
-  return choices.find(([, value]) => value === seconds)?.[0] ?? DEFAULT_EXPIRY;
-}
-
-/** R-134: the API refused a merchant invoice's return link for its store's origins, not for its form. */
-export function offStoreOrigins(message: string): boolean {
-  return invalidField(message) === INVOICE_FIELDS.returnUrl && message.includes("allowed origins");
-}
-
-// The API's 422 names the field only in its message: "invalid invoice request: client.email must be …".
-export function invalidField(message: string): InvoiceField | null {
+/** The API names a refused field only in its 422 message: "invalid invoice request: client.email …". */
+export function refusedField(message: string): { field: InvoiceField; message: string } | null {
   const name = message.split(": ")[1]?.split(" ")[0];
-  return Object.values(INVOICE_FIELDS).find((field) => field === name) ?? null;
+  const field = Object.values(INVOICE_FIELDS).find((f) => f === name);
+  if (!field) return null;
+  // A well-formed link outside the store's allowed origins.
+  const offStore = field === INVOICE_FIELDS.returnUrl && message.includes("allowed origins");
+  return {
+    field,
+    message: offStore ? NEW_INVOICE_COPY.returnOriginError : NEW_INVOICE_COPY.fieldErrors[field],
+  };
 }
 
 export function invoiceProgress(inv: Invoice) {
@@ -228,14 +171,14 @@ export function invoiceProgress(inv: Invoice) {
         : inv.deposits
   ).filter((d) => !d.late);
   const onChain = deposits.filter((d) => d.status !== API_DEPOSIT_STATUSES.confirmed);
-  // Final on chain is not confirmed for the payer until the ledger books it (paid is set).
+  // Final on chain is not confirmed until the ledger books it (paid is set).
   const confirming = deposits.filter(
     (d) => d.status !== API_DEPOSIT_STATUSES.confirmed || d.paid === null,
   );
   const settled =
     inv.paymentStatus === API_PAYMENT_STATUSES.paid &&
     inv.settlementStatus === API_SETTLEMENT_STATUSES.settled;
-  // Waiting is done once money is seen, and Detected with it: a seen payment is already confirming.
+  // A seen payment is already confirming, so Waiting and Detected are both done.
   const done = settled
     ? 5
     : inv.paymentStatus === API_PAYMENT_STATUSES.paid
@@ -245,7 +188,6 @@ export function invoiceProgress(inv: Invoice) {
         : deposits.length > 0
           ? 3
           : 0;
-  // Closed (R-77) and canceled (R-79) take no more money: nothing moves.
   const ended =
     settled ||
     inv.closed ||
@@ -260,8 +202,7 @@ export function invoiceProgress(inv: Invoice) {
   };
 }
 
-/** The invoice's record so far and what comes next, never a step ahead of the facts. Emailing is optional: its step
- * shows once an email went out. A canceled or closed unpaid invoice ends on how it ended. */
+/** Never a step ahead of the facts; the emailed step shows only once an email went out. */
 export function recordSteps(
   inv: Invoice,
   sends: readonly InvoiceSend[],
@@ -288,6 +229,21 @@ export function recordSteps(
         }
       : { id: RECORD_STEPS.wallet, at: inv.settledAt, done: inv.settledAt !== null },
   ];
+}
+
+/** The last step of a closed or canceled invoice is stopped. */
+export function recordStepStates(steps: readonly RecordStep[]): RecordStepState[] {
+  const ended = steps.some((s) => s.id === RECORD_STEPS.closed || s.id === RECORD_STEPS.canceled);
+  const current = steps.findIndex((s) => !s.done);
+  return steps.map((step, i) =>
+    ended && i === steps.length - 1
+      ? RECORD_STEP_STATES.stopped
+      : step.done
+        ? RECORD_STEP_STATES.done
+        : i === current && !ended
+          ? RECORD_STEP_STATES.current
+          : RECORD_STEP_STATES.upcoming,
+  );
 }
 
 function slowest(deposits: readonly Deposit[]) {
@@ -328,7 +284,7 @@ const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {
   [PAYMENT_STATUS.expiredPartiallyPaid]: INVOICE_EXCEPTIONS.closedPartial,
 };
 
-/** An option's fees and what the owner receives of its amount (R-228): the amount less both fees. */
+/** net: the amount less both fees, what the owner receives. */
 export function optionFees(o: FeeTerms): OptionFees {
   const network = BigInt(o.networkFee);
   const platform = BigInt(o.platformFee);
@@ -341,33 +297,7 @@ export function optionFees(o: FeeTerms): OptionFees {
   };
 }
 
-/** What the client pays and the owner receives of a quoted price (R-227), in the form's units. Every option carries
- * the same fees, the highest network's (D-122), so one figure covers any network. Null before a quote. */
-export function feeFigures(
-  quote: FeeQuote | undefined,
-  decimals: number,
-  clientPays: boolean,
-): {
-  fee: bigint;
-  pays: bigint;
-  receives: bigint;
-  /** A platform fee is part of fee. */
-  platform: boolean;
-} | null {
-  const option = quote?.options.find((o) => o.decimals === decimals);
-  if (!option) return null;
-  const fee = BigInt(option.networkFee) + BigInt(option.platformFee);
-  const price = BigInt(option.price);
-  return {
-    fee,
-    pays: clientPays ? price + fee : price,
-    receives: clientPays ? price : price - fee,
-    platform: BigInt(option.platformFee) > 0n,
-  };
-}
-
-/** The line table's total and fees: the shown option's when its units are the lines', since each option has its own
- * fees (R-228); else the main option's amount, whose units the lines are in (R-88), without fee rows. */
+/** The shown option's total and fees when the lines are in its units; else the main amount, no fees. */
 export function linesFigures(
   main: FeeTerms & { decimals: number },
   shown: (FeeTerms & { decimals: number }) | undefined,
@@ -387,7 +317,20 @@ export function depositAmount(
     : inv.deposits.filter((d) => d.late === late).reduce((sum, d) => sum + BigInt(d.amount), 0n);
 }
 
-/** Money after the checkout closed is late and held for the payer (D-26), whatever the status. */
+/** Paid on time above the amount, and the recorded part of it returned to the customer. */
+export function overpaid(
+  inv: Pick<Invoice, "amount" | "paidAt" | "deposits" | "depositSummary">,
+  shown: Pick<InvoiceOption, "amounts"> | undefined,
+): { extra: bigint; returned: bigint; refunded: bigint } {
+  const deposited = depositAmount(inv, false);
+  const amount = BigInt(inv.amount);
+  const extra = inv.paidAt && deposited > amount ? deposited - amount : 0n;
+  const returned = BigInt(shown?.amounts?.observedRefunded ?? "0");
+  // biome-ignore lint/complexity/useMathMinMax: bigint amounts; Math.min throws on them
+  return { extra, returned, refunded: returned < extra ? returned : extra };
+}
+
+/** Money after the checkout closed is late and held for the payer, whatever the status. */
 export function invoiceException(inv: Invoice, status: PaymentStatus): InvoiceException {
   const sum = (late: boolean) => depositAmount(inv, late);
   const closed =
@@ -416,18 +359,17 @@ export function shortQuantity(quantity: string): string {
   return quantity.replace(/\.?0+$/, "");
 }
 
-/** New invoice filled from this invoice (R-91), or with only what is left of a closed one (R-77). */
+/** New invoice filled from this one, or with only what is left of a closed one. */
 export function invoiceCopyHref(invoiceId: string, rest: boolean): string {
   return `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}${rest ? `&${RESTART_PARAMS.rest}=1` : ""}`;
 }
 
-/** R-129: New invoice filled from this one, which it replaces once created. */
+/** New invoice filled from this one, which it replaces once created. */
 export function invoiceReviseHref(invoiceId: string): string {
   return `${APP_ROUTES.newInvoice}?${RESTART_PARAMS.from}=${invoiceId}&${RESTART_PARAMS.revise}=1`;
 }
 
-// R-91, R-77: a new invoice, never the old one topped up (D-25); payer-chooses amounts are USD at 1 per token (D-75).
-// The rest is asked in the token paid with on time: a late payment also locks an option.
+// A new invoice, never the old one topped up; the rest is asked in the token paid with on time.
 export function restartFrom(
   inv: Invoice,
   client: InvoiceClient | undefined,
@@ -436,11 +378,11 @@ export function restartFrom(
 ): InvoiceStart {
   const decimals = inv.options.find((o) => o.optionId === inv.optionId)?.decimals ?? 0;
   const { received, left } = invoiceException(inv, PAYMENT_STATUS.expiredPartiallyPaid);
-  // The price, without the fees a client paid on top: the new invoice adds its own (R-227).
+  // Without the fees the client paid on top: the new invoice adds its own.
   const fees = optionFees(inv);
   const onTop = fees.clientPays ? fees.total : 0n;
   const units = rest ? (left > onTop ? left - onTop : 0n) : BigInt(inv.amount) - onTop;
-  // Lines are in the base units of the invoice's own option (R-88).
+  // Lines are in the base units of the invoice's own option.
   const lineDecimals = inv.options.find((o) => o.optionId === inv.invoiceId)?.decimals ?? decimals;
   return {
     payWith: inv.options.length > 1 && !(rest && received > 0n) ? PAY_WITH.any : PAY_WITH.fixed,
@@ -459,7 +401,7 @@ export function restartFrom(
     feesPaidBy: inv.feesPaidBy,
     returnUrl: inv.returnUrl ?? "",
     reference: inv.reference ?? "",
-    // The price agreed for the whole amount (R-93): it does not describe the rest.
+    // It priced the whole amount, not the rest.
     agreed:
       rest || !inv.agreedValue
         ? null
@@ -468,7 +410,7 @@ export function restartFrom(
             amount: decimalText(BigInt(inv.agreedValue.amount), inv.agreedValue.decimals),
             date: inv.agreedValue.date,
           },
-    // Reminders the client stopped stay off on the copy (R-97); the rest of a closed invoice starts without them.
+    // Reminders the client stopped stay off; the rest of a closed invoice starts without them.
     reminders: !rest && !!reminders?.on && !reminders.stoppedAt,
     ...(inv.store ? { storeId: inv.store.storeId } : {}),
     client: {
@@ -481,7 +423,7 @@ export function restartFrom(
   };
 }
 
-/** At 1 USD per stablecoin (D-75), in cents cut once, never rounded up. */
+/** At 1 USD per stablecoin, in cents cut once, never rounded up. */
 export function owedCents(
   items: readonly (Pick<Owed, "amount" | "decimals"> & { kind?: string })[],
 ): bigint {

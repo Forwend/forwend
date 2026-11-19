@@ -28,7 +28,6 @@ import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 
 const CONFLICT = 409;
 const ICON = "size-[var(--fw-icon-md)] shrink-0 text-muted";
-// A link row looks like the sheet's RowButton rows.
 const ROW = rowButtonClasses();
 
 export interface InvoiceActionsProps {
@@ -36,18 +35,13 @@ export interface InvoiceActionsProps {
   invoiceId: string;
   number: string;
   noun: string;
-  /** Check status (R-55), while the checkout can take money; what it found shows in the amount panel. */
   recheck: CheckStatusState | null;
-  /** Nothing paid yet, on any option (R-79). */
   cancelable: boolean;
-  // The page moves keyboard focus: the dialog and its trigger go away with the status.
   onCanceled: () => void;
-  /** What Edit shows (R-127); null until the owner's read is in, so Edit never starts from another invoice's values. */
-  editable: Omit<EditInvoiceProps, "profileId" | "invoiceId" | "number"> | null;
+  editable: Omit<EditInvoiceProps, "profileId" | "invoiceId" | "number"> | null; // null until the owner's read is in
 }
 
-// Edit (R-127) as its own button on desktop; Check status (R-55), revise (R-129) and cancel (R-79, D-79) before any
-// money, and duplicate (R-91) in a menu. On phones every one of them waits in a sheet, within thumb reach.
+// Desktop: Edit as its own button, the rest in a menu. Phones: all of them in a sheet.
 export function InvoiceActions({
   profileId,
   invoiceId,
@@ -63,7 +57,7 @@ export function InvoiceActions({
   const [cancel, { isLoading, error }] = useCancelInvoiceMutation();
   const toast = useToast();
   const status = (error as { status?: unknown } | undefined)?.status;
-  // A dialog opens once the menu or sheet has closed, so neither hands focus back to its trigger over the dialog.
+  // A dialog opens once the menu or sheet has closed, so neither hands focus back over it.
   const chosen = useRef<(() => void) | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -128,7 +122,7 @@ export function InvoiceActions({
                 <MenuSeparator />
               </>
             ) : null}
-            {/* R-129: in the same window as cancel, which it does. */}
+            {/* Revising cancels this one, so it shows only while cancel does. */}
             {cancelable ? (
               <MenuItem asChild>
                 <Link href={invoiceReviseHref(invoiceId)}>

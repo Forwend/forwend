@@ -13,12 +13,7 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 import { useEditInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_FIELDS, INVOICE_LIMITS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY, NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import {
-  formatDueDate,
-  invalidField,
-  isReturnLink,
-  offStoreOrigins,
-} from "@/features/invoices/lib/invoices";
+import { formatDueDate, isReturnLink, refusedField } from "@/features/invoices/lib/invoices";
 import type { InvoiceField } from "@/features/invoices/types/invoices";
 
 const COPY = INVOICE_COPY.edit;
@@ -35,20 +30,16 @@ export interface EditInvoiceProps {
   reference: string | null;
   note: string | null;
   dueDate: string | null;
-  /** Every option open, the checkout open and no money seen (R-128). */
-  beforePayment: boolean;
-  /** The UTC day the checkout closes: the latest due date. */
-  closesOn: string;
-  /** Today's UTC day: the earliest due date. */
-  today: string;
-  /** A personal profile's request has no client to email. */
+  beforePayment: boolean; // no money seen and the checkout open
+  closesOn: string; // the latest due date
+  today: string; // UTC; the earliest due date
   request: boolean;
 }
 
-/** R-127, R-128: a blank field clears it; the last three change only before any payment. */
+/** A blank field clears it; reference, note and due date change only before any payment. */
 export function EditInvoice(props: EditInvoiceProps) {
   const { memo, clientEmail, returnUrl, reference, note, dueDate, beforePayment } = props;
-  // A save closes the dialog before the new values arrive: a new key starts the form, and its state, from them.
+  // A save closes the dialog before the new values arrive: a new key starts the form from them.
   const saved = [memo, clientEmail, returnUrl, reference, note, dueDate, beforePayment];
   return <EditForm key={saved.join("|")} {...props} />;
 }
@@ -121,16 +112,14 @@ function EditForm({
         status?: unknown;
         data?: { error?: { message?: string } };
       };
-      const field = status === INVALID_VALUE ? invalidField(body?.error?.message ?? "") : null;
-      const message =
-        field === INVOICE_FIELDS.dueDate
-          ? COPY.dueHint(formatDueDate(closesOn))
-          : offStoreOrigins(body?.error?.message ?? "")
-            ? NEW_INVOICE_COPY.returnOriginError
-            : field
-              ? (NEW_INVOICE_COPY.fieldErrors as Record<string, string>)[field]
-              : null;
-      if (field && message) setErrors({ [field]: message });
+      const refused = status === INVALID_VALUE ? refusedField(body?.error?.message ?? "") : null;
+      if (refused)
+        setErrors({
+          [refused.field]:
+            refused.field === INVOICE_FIELDS.dueDate
+              ? COPY.dueHint(formatDueDate(closesOn))
+              : refused.message,
+        });
       else setFailed(status === CONFLICT ? COPY.locked : COPY.failed);
     }
   };
@@ -169,10 +158,8 @@ function EditForm({
           error={errors[INVOICE_FIELDS.returnUrl]}
         />
       </Group>
-      {/* Once money arrived or the checkout closed these can't change, so they don't show. */}
       {beforePayment ? (
         <Group title={COPY.beforePayment} hint={COPY.beforePaymentHint}>
-          {/* A request has no reference or due date, as its form has none. */}
           {request ? null : (
             <TextField
               label={COPY.reference}
@@ -228,7 +215,7 @@ function EditForm({
 
 function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   const hintId = useId();
-  // A legend is laid out apart from the fieldset's flex: as in FieldGroup, it is for screen readers only.
+  // A legend sits outside the fieldset's flex, so it is for screen readers only.
   return (
     <fieldset
       aria-describedby={hint ? hintId : undefined}

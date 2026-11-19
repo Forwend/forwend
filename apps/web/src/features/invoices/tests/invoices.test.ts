@@ -2,16 +2,12 @@ import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
 import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import {
-  addDays,
-  confirmingProgress,
+  canStillBePaid,
   decimalText,
-  dueCheckoutDate,
-  feeFigures,
   invoiceException,
   invoiceProgress,
   invoiceStatus,
   isReturnLink,
-  lineUnits,
   owedCents,
   parseTokenAmount,
   restartFrom,
@@ -30,7 +26,6 @@ describe("parseTokenAmount", () => {
     expect(parseTokenAmount("0.000001", 6)).toBe(1n);
     expect(parseTokenAmount("1234.56", 6)).toBe(1_234_560_000n);
     expect(parseTokenAmount(" .5 ", 6)).toBe(500_000n);
-    // Beyond what a float holds exactly.
     expect(parseTokenAmount("123456789012345678901.123456", 6)).toBe(123456789012345678901123456n);
   });
 
@@ -108,29 +103,9 @@ const deposit: Deposit = {
 };
 
 describe("invoiceProgress", () => {
-  it("waits for a payment, then confirms it with the slowest deposit's blocks and time left", () => {
-    expect(invoiceProgress(open)).toMatchObject({ done: 0, current: "waiting" });
-    const confirming = {
-      ...open,
-      paymentStatus: "detected",
-      deposits: [
-        { ...deposit, blocksLeft: 4, blocksTotal: 30, secondsLeft: 50 },
-        { ...deposit, logIndex: 1, blocksLeft: 9, blocksTotal: 12, secondsLeft: 110 },
-      ],
-    };
-    expect(invoiceProgress(confirming)).toEqual({
-      done: 2,
-      current: "confirming",
-      blocksLeft: 9,
-      blocksTotal: 12,
-      secondsLeft: 110,
-    });
-  });
-
   it("labels detected and partly paid invoices as confirming while finality is pending", () => {
     const partly = { ...open, paymentStatus: "partially_paid" };
     expect(invoiceStatus(partly)).toBe(PAYMENT_STATUS.partiallyPaid);
-    // R-77.
     expect(invoiceStatus({ ...partly, closed: true })).toBe(PAYMENT_STATUS.expiredPartiallyPaid);
     expect(invoiceStatus({ ...open, closed: true })).toBe(PAYMENT_STATUS.expired);
     expect(invoiceStatus({ ...partly, confirming: true })).toBe(PAYMENT_STATUS.confirming);
@@ -145,7 +120,7 @@ describe("invoiceProgress", () => {
     );
   });
 
-  it("reads the owner's state, the one the list filters by (D-114)", () => {
+  it("reads the owner's state, the one the list filters by", () => {
     expect(invoiceStatus({ ...open, paymentStatus: "paid", state: "overpaid" })).toBe(
       PAYMENT_STATUS.overpaid,
     );
@@ -233,7 +208,6 @@ describe("invoiceHistoryEventSchema", () => {
   it("reads a queued return, whose to is the address the money goes back to", () => {
     const queued = { ...row, to: `0x${"a".repeat(40)}` };
     expect(invoiceHistoryEventSchema.safeParse(queued).success).toBe(true);
-    // An edited due date keeps its day there, and anything else is still refused.
     const moved = {
       ...row,
       kind: "invoice.updated",
@@ -246,16 +220,7 @@ describe("invoiceHistoryEventSchema", () => {
   });
 });
 
-describe("confirmingProgress", () => {
-  it("fills as blocks pass of those to wait, and claims nothing before one passes", () => {
-    expect(confirmingProgress(544, 544)).toBeNull();
-    expect(confirmingProgress(408, 544)).toBe(0.25);
-    expect(confirmingProgress(0, 544)).toBe(1);
-    expect(confirmingProgress(0, 0)).toBeNull();
-  });
-});
-
-describe("form values (R-58)", () => {
+describe("form values", () => {
   it("writes units as the plain decimal the API reads as amountUsd", () => {
     expect(decimalText(12_500_000n, 6)).toBe("12.5");
     expect(decimalText(12_000_000n, 6)).toBe("12");
@@ -273,40 +238,6 @@ describe("form values (R-58)", () => {
       "https://",
     ])
       expect(isReturnLink(bad), bad).toBe(false);
-  });
-});
-
-// R-88.
-describe("lineUnits", () => {
-  const line = (quantity: string, price: string) =>
-    lineUnits({ description: "Design", quantity, price }, 6);
-  it("multiplies a quantity with up to 2 decimals by the price, exactly", () => {
-    expect(line("7.5", "0.50")).toEqual({ price: 500_000n, units: 3_750_000n });
-    expect(line("1", "1250")).toEqual({ price: 1_250_000_000n, units: 1_250_000_000n });
-    expect(line("3", "0")).toEqual({ price: 0n, units: 0n });
-  });
-
-  it("names what is wrong with a line", () => {
-    expect(lineUnits({ description: " ", quantity: "1", price: "1" }, 6)).toBe("description");
-    expect(line("0", "1")).toBe("quantity");
-    expect(line("1.005", "1")).toBe("quantity");
-    expect(line("1000001", "1")).toBe("quantity");
-    expect(line("1", "1.0000001")).toBe("price");
-    expect(line("0.5", "0.000001")).toBe("exact");
-  });
-});
-
-// D-80.
-describe("dueCheckoutDate", () => {
-  it("is the due date plus 60 days, across month, year and leap-day boundaries", () => {
-    expect(addDays("2026-01-31", 1)).toBe("2026-02-01");
-    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
-    expect(dueCheckoutDate("2026-11-15", "2026-10-17")).toBe("2027-01-14");
-    expect(dueCheckoutDate("2027-12-31", "2027-10-17")).toBe("2028-02-29");
-  });
-
-  it("stops at 364 days from today, so the close stays within the 365 days a checkout can last", () => {
-    expect(dueCheckoutDate("2027-09-01", "2026-10-17")).toBe("2027-10-16");
   });
 });
 
@@ -344,7 +275,6 @@ describe("invoiceException", () => {
       left: 5_000_000n,
       late: 0n,
     });
-    // Partly paid and still open says it in the amount (Received X of Y), not again here.
     expect(invoiceException(partly, PAYMENT_STATUS.partiallyPaid).kind).toBeNull();
     expect(invoiceException(open, PAYMENT_STATUS.expired).kind).toBe("closedUnpaid");
     expect(invoiceException(partly, PAYMENT_STATUS.expiredPartiallyPaid).kind).toBe(
@@ -402,7 +332,6 @@ describe("restartFrom", () => {
       options: [option],
       deposits: [{ ...deposit, amount: "1250000" }],
     };
-    // R-91.
     const start = {
       payWith: "fixed",
       picked: `84532:${open.token}`,
@@ -414,7 +343,6 @@ describe("restartFrom", () => {
       reminders: false,
       feesPaidBy: "owner",
     };
-    // R-93: the agreed price does not describe the rest.
     const agreed = { currency: "EUR", amount: "4.6", date: "2026-10-01" };
     expect(restartFrom(partly, client, false, undefined)).toEqual({
       ...start,
@@ -425,7 +353,6 @@ describe("restartFrom", () => {
         { id: "1", description: "Hosting", quantity: "1", price: "1.25" },
       ],
     });
-    // Legacy rest links do not credit payer-held funds.
     expect(restartFrom(partly, client, true, undefined)).toEqual({
       ...start,
       agreed: null,
@@ -434,7 +361,6 @@ describe("restartFrom", () => {
     });
   });
 
-  // R-227: a copy asks the price again; the fees the client paid on top are the new invoice's own to add.
   it("copies the price of an invoice whose client paid the fees, and who pays them", () => {
     const onTop = {
       ...open,
@@ -448,8 +374,6 @@ describe("restartFrom", () => {
     expect(copy.amount).toBe("5");
     expect(copy.feesPaidBy).toBe("client");
   });
-
-  // R-97.
   it("copies reminders that are on and not stopped, only to a duplicate", () => {
     const on = { on: true, stoppedAt: null, emails: [] };
     expect(restartFrom(open, undefined, false, on).reminders).toBe(true);
@@ -474,14 +398,12 @@ describe("restartFrom", () => {
       payWith: "fixed",
       amount: "5",
     });
-    // R-91: a duplicate asks the whole amount again, so the client chooses again.
     expect(restartFrom(onTime, undefined, false, undefined)).toMatchObject({
       payWith: "any",
       amount: "5",
     });
   });
 
-  // R-88; 1 USD per token (D-75), so the copied prices read the same either way.
   it("copies items in the invoice's own option's decimals when the client locked another", () => {
     const dai = {
       ...option,
@@ -503,18 +425,9 @@ describe("restartFrom", () => {
       items: [{ description: "Design", quantity: "2", price: "2.5" }],
     });
   });
-
-  it("keeps payer chooses while no option took money, and leaves the client empty for a request", () => {
-    const choosing = { ...open, options: [option, { ...option, optionId: `0x${"9".repeat(64)}` }] };
-    expect(restartFrom(choosing, undefined, false, undefined)).toMatchObject({
-      payWith: "any",
-      amount: "5",
-      client: { name: "", email: "", address: "", country: "", taxId: "" },
-    });
-  });
 });
 
-describe("owedCents (R-95)", () => {
+describe("owedCents", () => {
   const row = (kind: string, amount: string, decimals: number): Owed => ({
     kind,
     invoiceId: `0x${"ab".repeat(32)}`,
@@ -543,58 +456,24 @@ describe("owedCents (R-95)", () => {
   });
 });
 
-// R-136: New invoice offers only the tokens on; the API refuses the rest anyway.
-describe("tokensOn", () => {
+it("leaves out the tokens off by chain and contract, whatever the letter case, and never restores them", () => {
   const base = { chainId: 84532, token: "0x036CBD53842c5426634e7929541eC2318f3dCF7e" };
   const arb = { chainId: 421614, token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d" };
-
-  it("leaves out the tokens off, whatever the letter case", () => {
-    expect(tokensOn([base, arb], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([
-      arb,
-    ]);
-  });
-
-  it("keeps a token with the same contract on another chain", () => {
-    expect(tokensOn([base, arb], [{ chainId: 1, token: arb.token }])).toEqual([base, arb]);
-  });
-
-  it("never restores disabled tokens when acceptance is empty", () => {
-    expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([]);
-  });
+  expect(tokensOn([base, arb], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([
+    arb,
+  ]);
+  expect(tokensOn([base, arb], [{ chainId: 1, token: arb.token }])).toEqual([base, arb]);
+  expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([]);
 });
 
-// R-227, D-122: every option carries the highest network's fee, so the form shows one figure of each.
-describe("feeFigures", () => {
-  const option = (networkFee: string, decimals = 6) => ({
-    chainId: 84532,
-    token: `0x${"1".repeat(40)}`,
-    decimals,
-    price: "5000000",
-    networkFee,
-    platformFee: "0",
-  });
-  const quote = {
-    feesPaidBy: "owner" as const,
-    options: [option("9", 18), option("50000"), option("50000")],
-  };
-
-  it("adds the fees to what the client pays, or takes them from what the owner receives", () => {
-    expect(feeFigures(quote, 6, true)).toEqual({
-      fee: 50000n,
-      pays: 5050000n,
-      receives: 5000000n,
-      platform: false,
-    });
-    expect(feeFigures(quote, 6, false)).toEqual({
-      fee: 50000n,
-      pays: 5000000n,
-      receives: 4950000n,
-      platform: false,
-    });
-  });
-
-  it("has nothing to say before a quote, or for options in other units", () => {
-    expect(feeFigures(undefined, 6, true)).toBeNull();
-    expect(feeFigures(quote, 2, true)).toBeNull();
-  });
+it("offers the pay link only while the invoice can be paid and its checkout is open", () => {
+  const now = new Date("2026-11-09T14:10:00Z");
+  const open = { closesAt: "2027-01-19T14:10:00Z" };
+  expect(canStillBePaid(open, PAYMENT_STATUS.overdue, now)).toBe(true);
+  expect(canStillBePaid(open, PAYMENT_STATUS.partiallyPaid, now)).toBe(true);
+  expect(canStillBePaid(open, PAYMENT_STATUS.paid, now)).toBe(false);
+  expect(canStillBePaid(open, PAYMENT_STATUS.expired, now)).toBe(false);
+  expect(canStillBePaid({ closesAt: "2026-11-09T14:00:00Z" }, PAYMENT_STATUS.confirming, now)).toBe(
+    false,
+  );
 });

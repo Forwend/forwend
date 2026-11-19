@@ -23,7 +23,7 @@ export function countryName(code: string | null): string | null {
   return name;
 }
 
-/** The API keeps no kind, so a saved client with only a name and email reads as a person; the form can switch. */
+/** The API keeps no kind: a saved client with only a name and email reads as a person. */
 export function clientKind(client: Client | undefined): ClientKind {
   return client && !client.address && !client.country && !client.taxId
     ? CLIENT_KINDS.person
@@ -40,7 +40,7 @@ export function clientBody(client: Client): ClientBody {
   };
 }
 
-/** The field a refused save names: the API's message reads "invalid profile request: email must be …". */
+/** The API names a refused field only in its message: "invalid profile request: email …". */
 export function invalidClientField(message: string): ClientTextField | null {
   const name = message.split(": ")[1]?.split(" ")[0];
   return FIELDS.find((field) => field === name) ?? null;
@@ -50,7 +50,6 @@ export function clientCountryOptions(noCountry: string): { value: string; label:
   return [{ value: "", label: noCountry }, ...countryOptions()];
 }
 
-/** A client picker's options: the matches, each with its email under the name. */
 export function clientOptions(clients: readonly Client[]): ComboboxOption[] {
   return clients.map((c) => ({ value: c.clientId, label: c.name, detail: c.email ?? undefined }));
 }

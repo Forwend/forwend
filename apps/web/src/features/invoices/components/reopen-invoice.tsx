@@ -3,25 +3,22 @@
 import { BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-web";
 import { useReopenInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { dateTime } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.reopen;
 const CONFLICT = 409;
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 export interface ReopenInvoiceProps {
   profileId: string;
   invoiceId: string;
   number: string;
   noun: string;
-  /** The close a reopen gives, as the API says (R-130). */
-  until: string;
-  // The page moves keyboard focus: the dialog and its trigger go away with the status.
+  until: string; // the close a reopen gives
   onReopened: () => void;
-  /** The trigger button's place in the page's actions. */
   className?: string;
 }
 
-// R-130: an invoice that closed partly paid takes payments again, once.
+// An invoice that closed partly paid takes payments again, once.
 export function ReopenInvoice({
   profileId,
   invoiceId,
@@ -34,7 +31,7 @@ export function ReopenInvoice({
   const [reopen, { isLoading, error }] = useReopenInvoiceMutation();
   const toast = useToast();
   const status = (error as { status?: unknown } | undefined)?.status;
-  const day = TIME.format(new Date(until));
+  const day = dateTime(until);
   const confirm = async () => {
     try {
       await reopen({ profileId, invoiceId }).unwrap();

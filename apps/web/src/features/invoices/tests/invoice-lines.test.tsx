@@ -18,7 +18,6 @@ const option = (amount: string, feesPaidBy: "owner" | "client") => ({
 });
 const row = (term: string) => screen.getByText(term).nextElementSibling?.textContent;
 
-// R-228, D-122: every option carries the same fee, so the owner's Items show it before the client picks a network.
 describe("InvoiceLines fees", () => {
   it("takes the fee from what the owner receives when the owner pays", () => {
     const main = option("45000000", "owner");

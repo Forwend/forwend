@@ -31,7 +31,7 @@ export interface ClientsTableProps {
   profileId: string;
 }
 
-// R-86, R-177: one page at a time, and the search goes to the API, kept in ?q.
+// One page at a time; the search goes to the API and stays in ?q.
 export function ClientsTable({ profileId }: ClientsTableProps) {
   const search = useListSearch();
   const list = useListClientsInfiniteQuery({ profileId, q: search.apiQuery });
@@ -46,7 +46,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
       aria-busy={(!list.currentData && !list.isError) || undefined}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
         <h1
           id="clients-title"
@@ -54,7 +53,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
         >
           {COPY.title}
         </h1>
-        {/* An empty list offers it in its own block instead. */}
         {noClients ? null : <AddClientLink size="sm" className="lg:hidden" />}
       </div>
       {!noClients ? (
@@ -168,7 +166,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
   );
 }
 
-// A name with no letters (only digits, say) has no initials.
 function ClientIcon() {
   return <UserRound className="size-[var(--fw-icon-sm)]" />;
 }

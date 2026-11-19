@@ -11,26 +11,12 @@ import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 
 export interface NewInvoicePreviewProps {
   document: InvoiceDocumentProps;
-  /** Who the payer sees asking, the amount and how it can be paid. */
   payer: { name: string; amount: string; network: string };
-  /** The email the client gets when it is sent. */
   email: { subject: string; lead: string; details: readonly (readonly [string, string])[] };
-  /** Inside the phone's sheet: no panel of its own, the views across the full width, the zoom on a row under them. */
   inSheet?: boolean;
 }
 
-const COPY = {
-  ...NEW_INVOICE_COPY.preview,
-  invoice: "Invoice",
-  payer: "Payer page",
-  email: "Email",
-  amount: "Amount",
-  payWith: "Pay with",
-  showAddress: "Show address",
-  sample: "Preview: the address shows once it is created.",
-  viewAndPay: "View and pay",
-  emailNote: "Sent from Forwend. Replies go to you.",
-} as const;
+const COPY = NEW_INVOICE_COPY.preview;
 
 const VIEWS = { invoice: "invoice", payer: "payer", email: "email" } as const;
 type View = (typeof VIEWS)[keyof typeof VIEWS];
@@ -42,8 +28,7 @@ const FIT = "fit";
 // The canvas's padding on both sides, which a fitted page leaves free.
 const GAP = 32;
 
-/** The three things the client will see, drawn from what the form holds now; switching keeps every typed value.
- * Fit shows a whole page; the levels zoom in to read it. */
+/** Fit shows a whole page; the levels zoom in to read it. */
 export function NewInvoicePreview({
   document,
   payer,
@@ -64,7 +49,6 @@ export function NewInvoicePreview({
     return () => watch.disconnect();
   }, []);
   const width = WIDTHS[view];
-  // A page fits by both sides; the pay page and the email are as long as their content, so they fit by width.
   const fitted =
     room.width === 0
       ? 0.5
@@ -97,11 +81,7 @@ export function NewInvoicePreview({
           label={COPY.show}
           value={view}
           onValueChange={setView}
-          options={[
-            { value: VIEWS.invoice, label: COPY.invoice },
-            { value: VIEWS.payer, label: COPY.payer },
-            { value: VIEWS.email, label: COPY.email },
-          ]}
+          options={Object.values(VIEWS).map((value) => ({ value, label: COPY.views[value] }))}
         />
         <div className="ml-auto flex items-center gap-1">
           <IconButton
@@ -138,7 +118,6 @@ export function NewInvoicePreview({
         ref={canvas}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users scroll a page zoomed past the pane
         tabIndex={0}
-        // A quiet line for keyboard focus: the whole canvas is the target, and lime around it reads as a selection.
         className={`flex min-h-0 flex-1 overflow-auto overscroll-contain bg-sunken p-4 outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-inset ${inSheet ? "rounded-md" : ""}`}
       >
         {/* Sized by zoom, not a transform: the text stays sharp and the canvas scrolls by the real size. */}
@@ -162,7 +141,6 @@ export function NewInvoicePreview({
   );
 }
 
-/** The pay page's first screen, in its layout: who asks, the amount, then the pay box. */
 function PayerPage({
   name,
   amount,
@@ -200,7 +178,7 @@ function PayerPage({
   );
 }
 
-/** The invoice email's layout (apps/backend/internal/notify), at a phone's width when the panel is narrow. */
+/** As apps/backend/internal/notify lays out the email. */
 function EmailPage({
   subject,
   lead,

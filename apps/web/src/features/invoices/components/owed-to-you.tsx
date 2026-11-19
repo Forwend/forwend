@@ -28,7 +28,7 @@ import { exactDigits } from "@/shared/lib/money";
 
 const SHOWN = 5;
 
-// R-95, D-114: receivables only. Held money is the payer's: it shows as Overpaid on its payment, never as owed.
+// Receivables only: held money is the payer's and shows as Overpaid on its payment.
 export function OwedToYou({ profileId }: { profileId: string }) {
   const owed = useGetOwedQuery(profileId, LIVE_QUERY);
   const [all, setAll] = useState(false);
@@ -61,7 +61,6 @@ export function OwedToYou({ profileId }: { profileId: string }) {
       }
       className="flex flex-col"
     >
-      {/* One height for every state, so the card beside it never jumps. */}
       <div className="flex min-h-40 flex-1 flex-col">
         {owed.isError && !items ? (
           <LoadError message={COPY.failed} onRetry={() => void owed.refetch()} />

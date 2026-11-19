@@ -29,6 +29,7 @@ import type {
 import { FieldGroup } from "@/shared/components/field-group";
 import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
 
 type Field = ClientTextField;
 
@@ -42,7 +43,7 @@ export interface ClientFormProps {
   client?: Client;
 }
 
-// R-86: a new client's id is made once, so a retried save after an error makes one client.
+// A new client's id is made once, so a retried save after an error makes one client.
 export function ClientForm({ profileId, client }: ClientFormProps) {
   const [save] = useSaveClientMutation();
   const toast = useToast();
@@ -63,11 +64,9 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
     const value = (name: Field) => String(new FormData(form).get(name) ?? "").trim();
     const shown: Partial<Record<Field, string>> = {};
     if (!value("name")) shown.name = COPY.errors.required;
-    if (value("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value("email")))
-      shown.email = COPY.errors.email;
+    if (value("email") && !EMAIL_PATTERN.test(value("email"))) shown.email = COPY.errors.email;
     return shown;
   };
-  // The preview reads the free-text fields as they are typed; they stay uncontrolled.
   const [typed, setTyped] = useState(() => ({
     name: client?.name ?? "",
     email: client?.email ?? "",

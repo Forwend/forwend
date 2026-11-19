@@ -4,19 +4,16 @@ import type { ReactNode } from "react";
 export interface MoneyTerm {
   label: string;
   units: bigint;
-  /** Shown after the amount, such as the transaction's explorer link. */
-  after?: ReactNode;
+  after?: ReactNode; // such as an explorer link
 }
 
 export interface InvoiceMoneyLineProps {
-  /** The first term, each amount taken from it, then the result. */
-  terms: readonly MoneyTerm[];
+  terms: readonly MoneyTerm[]; // the first, the amounts taken from it, the result
   money: (units: bigint) => string;
   className?: string;
 }
 
-/** R-228: the invoice's money as one sum, "Client pays − Network fee = You receive": a ruled statement, each amount
- * taken from the first, the result under a rule. */
+/** "Client pays − Network fee = You receive" as a ruled statement. */
 export function InvoiceMoneyLine({ terms, money, className }: InvoiceMoneyLineProps) {
   return (
     <dl

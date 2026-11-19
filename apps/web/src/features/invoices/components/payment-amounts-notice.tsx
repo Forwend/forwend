@@ -2,11 +2,11 @@ import { formatTokenAmount } from "@forwend/ui-web";
 import Link from "next/link";
 import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { paymentVerification } from "@/features/invoices/lib/payment-verification";
 import type { InvoiceOption } from "@/features/invoices/types/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
+
 export interface PaymentAmountsNoticeProps {
   options: readonly Pick<
     InvoiceOption,
@@ -14,31 +14,35 @@ export interface PaymentAmountsNoticeProps {
   >[];
   detailsHref?: string;
   showVerification?: boolean;
-  /** The option whose whole return the page already shows, in its money line: left out here. */
-  returnsShownFor?: string;
+  returnsShownFor?: string; // its money line already shows the return
 }
+
 export function PaymentAmountsNotice({
   options,
   detailsHref,
   showVerification = true,
   returnsShownFor,
 }: PaymentAmountsNoticeProps) {
-  const state = paymentVerification(options);
+  const review =
+    showVerification &&
+    options.some(
+      ({ amounts }) =>
+        amounts?.hasPolicyException ||
+        amounts?.reconciliationStatus === RECONCILIATION_STATES.review ||
+        (amounts?.unreconciled && !amounts.reconciliationStatus),
+    );
   const returns = options.filter(
     (option) =>
       option.optionId !== returnsShownFor &&
       option.amounts &&
       BigInt(option.amounts.observedRefunded) > 0n,
   );
-  const verification = showVerification && state === RECONCILIATION_STATES.review;
-  if (!verification && returns.length === 0) return null;
+  if (!review && returns.length === 0) return null;
   return (
     <div role="status" className="flex flex-col gap-2 text-sm">
-      {verification ? (
-        <p className={state === RECONCILIATION_STATES.review ? "text-warning" : "text-muted"}>
-          {state === RECONCILIATION_STATES.review
-            ? COPY.reconciliationNeeded
-            : COPY.verificationPending}
+      {review ? (
+        <p className="text-warning">
+          {COPY.reconciliationNeeded}
           {detailsHref ? (
             <>
               {" "}
@@ -46,7 +50,7 @@ export function PaymentAmountsNotice({
                 href={detailsHref}
                 className="text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink"
               >
-                View verification details
+                {COPY.verificationDetails}
               </Link>
             </>
           ) : null}

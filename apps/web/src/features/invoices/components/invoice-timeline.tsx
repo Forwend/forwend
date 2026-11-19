@@ -1,6 +1,7 @@
 import { cx, TIMELINE_STATES, Timeline, type TimelineEntry } from "@forwend/ui-web";
-import { RECORD_STEPS } from "@/features/invoices/constants/invoices";
+import { RECORD_STEP_STATES } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { recordStepStates } from "@/features/invoices/lib/invoices";
 import type { RecordStep } from "@/features/invoices/types/invoices";
 import { dateTime } from "@/shared/lib/dates";
 
@@ -9,7 +10,6 @@ export interface InvoiceTimelineProps {
   className?: string;
 }
 
-/** The invoice's record as a vertical timeline: the phone's form of the amount panel's step row. */
 export function InvoiceTimeline({ steps, className }: InvoiceTimelineProps) {
   return (
     <section aria-labelledby="invoice-timeline" className={cx("fw-panel", className)}>
@@ -23,18 +23,21 @@ export function InvoiceTimeline({ steps, className }: InvoiceTimelineProps) {
   );
 }
 
+// The timeline has no stopped state: how the invoice ended is its last done step.
+const TIMELINE_STATE = {
+  [RECORD_STEP_STATES.done]: TIMELINE_STATES.done,
+  [RECORD_STEP_STATES.stopped]: TIMELINE_STATES.done,
+  [RECORD_STEP_STATES.current]: TIMELINE_STATES.current,
+  [RECORD_STEP_STATES.upcoming]: TIMELINE_STATES.upcoming,
+};
+
 function entries(steps: readonly RecordStep[]): TimelineEntry[] {
-  const ended = steps.some((s) => s.id === RECORD_STEPS.closed || s.id === RECORD_STEPS.canceled);
-  const current = steps.findIndex((s) => !s.done);
+  const states = recordStepStates(steps);
   return steps.map((step, i) => ({
     id: step.id,
     title: COPY.timelineSteps[step.id],
     time: step.at ? dateTime(step.at) : undefined,
     chips: step.count ? [{ label: COPY.openedChip, value: COPY.opened(step.count) }] : undefined,
-    state: step.done
-      ? TIMELINE_STATES.done
-      : i === current && !ended
-        ? TIMELINE_STATES.current
-        : TIMELINE_STATES.upcoming,
+    state: TIMELINE_STATE[states[i] ?? RECORD_STEP_STATES.upcoming],
   }));
 }
