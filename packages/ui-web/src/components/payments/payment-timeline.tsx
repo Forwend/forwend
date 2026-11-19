@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { cx } from "../../lib/cx";
 import { TONE_CLASSES, type Tone } from "../../lib/tone";
 import { IconButton } from "../buttons/icon-button";
+import { StepRing } from "../display/step-ring";
 import { Tooltip } from "../overlays/tooltip";
 
 export const STEP_STATES = {
@@ -29,10 +30,6 @@ export interface TimelineStep {
 export interface PaymentTimelineProps {
   steps: readonly TimelineStep[];
   label: string;
-  /** Read after a complete step's label. */
-  doneLabel?: string;
-  /** Read after an upcoming step's label. */
-  notStartedLabel?: string;
 }
 
 /** Done, now and next differ by shape as well as color: a filled disc with a check, a ring, and an empty circle. */
@@ -50,31 +47,7 @@ function Marker({ step }: { step: TimelineStep }) {
   return <StepRing progress={step.progress} />;
 }
 
-/** A step in progress: its share done as the ring's fill, or a turning ring while no share is known. */
-export function StepRing({ progress }: { progress?: number | null }) {
-  const share = typeof progress === "number" ? Math.min(1, Math.max(0, progress)) : null;
-  return (
-    <span className="relative grid size-5 shrink-0 place-items-center rounded-pill bg-surface">
-      {share === null ? (
-        // Turning says "working on it", not "almost there"; reduced motion keeps a still quarter.
-        <span className="absolute inset-0 rounded-pill border-2 border-line border-t-accent animate-[fw-spin_var(--fw-duration-slower)_linear_infinite] motion-reduce:animate-none" />
-      ) : (
-        <span
-          className="absolute inset-0 rounded-pill [background:conic-gradient(var(--fw-accent)_calc(var(--fw-share)*1turn),var(--fw-line)_0)] [mask:radial-gradient(circle,transparent_calc(50%-2px),#000_calc(50%-2px))]"
-          style={{ "--fw-share": share } as CSSProperties}
-        />
-      )}
-      <span className="size-1.5 rounded-pill bg-accent" />
-    </span>
-  );
-}
-
-export function PaymentTimeline({
-  steps,
-  label,
-  doneLabel = ", done",
-  notStartedLabel = ", not started",
-}: PaymentTimelineProps) {
+export function PaymentTimeline({ steps, label }: PaymentTimelineProps) {
   // Side by side, the path runs edge to edge with the steps evenly apart: the first at the start, the last at the end,
   // each between centered on two half columns. Five steps can't share a phone's width, so narrower than 28rem they
   // stack into one vertical path; up to four always sit side by side.
@@ -94,7 +67,6 @@ export function PaymentTimeline({
         {steps.map((step, i) => {
           const first = i === 0;
           const last = i === lastIndex && !first;
-          // Where the label sits under its marker; a first or last label may run into the next half column.
           const align = cx(
             "w-max",
             first
@@ -122,7 +94,6 @@ export function PaymentTimeline({
                   "@max-md:col-span-1 @max-md:grid-cols-[1.25rem_minmax(0,1fr)] @max-md:gap-x-3",
               )}
             >
-              {/* The path to and from the marker: ink once the step before is done, so it shows how far it got. */}
               {first ? null : (
                 <span
                   aria-hidden
@@ -168,7 +139,7 @@ export function PaymentTimeline({
                   {step.label}
                   {step.state === STEP_STATES.current ? null : (
                     <span className="sr-only">
-                      {step.state === STEP_STATES.complete ? doneLabel : notStartedLabel}
+                      {step.state === STEP_STATES.complete ? ", done" : ", not started"}
                     </span>
                   )}
                 </span>

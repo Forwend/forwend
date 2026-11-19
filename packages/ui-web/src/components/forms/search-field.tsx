@@ -11,7 +11,6 @@ export interface SearchFieldProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
-  clearLabel?: string;
   className?: string;
 }
 
@@ -20,7 +19,6 @@ export function SearchField({
   value,
   onValueChange,
   placeholder,
-  clearLabel = "Clear search",
   className,
 }: SearchFieldProps) {
   const input = useRef<HTMLInputElement>(null);
@@ -47,7 +45,7 @@ export function SearchField({
       </label>
       {value ? (
         <IconButton
-          label={clearLabel}
+          label="Clear search"
           onClick={() => {
             onValueChange("");
             input.current?.focus();

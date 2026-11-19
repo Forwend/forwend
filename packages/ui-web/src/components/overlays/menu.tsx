@@ -23,8 +23,6 @@ export function Menu(props: RadixMenu.DropdownMenuProps) {
 
 export const MenuTrigger = RadixMenu.Trigger;
 
-export const MenuGroup = RadixMenu.Group;
-
 export const MenuRadioGroup = RadixMenu.RadioGroup;
 
 export function MenuContent({

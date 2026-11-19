@@ -28,7 +28,6 @@ export function Cart() {
     }).catch(() => null);
     if (!answer?.ok) {
       setBusy(false);
-      // The server's own reason, such as its order limit; any other failure gets the general one.
       const reason = await answer?.json().then(
         (b) => b?.error,
         () => null,

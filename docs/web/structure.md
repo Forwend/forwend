@@ -145,14 +145,17 @@ for a distinct family of real components. Avoid one flat folder for every compon
 ```text
 packages/ui-web/src/
   components/
-    buttons/                   button, action-button, icon-button, row-button
+    buttons/                   button, action-button, hold-button, icon-button, row-button
     forms/                     text-field, text-area-field, amount-field, select-field, combobox-field, search-field,
                                checkbox, switch, switch-card, choice-card, code-input, email-capture, form,
-                               field-classes, date-picker/ (calendar, date-picker, iso-date)
-    navigation/                tabs, nav-pill, theme-switch, segmented-control, select-menu
-    overlays/                  dialog, sheet, menu, tooltip
-    feedback/                  toast, empty-state, spinner, skeleton, shimmer, dot-loader, success-check
-    display/                   panel, badge, stat-tile, accordion, progress-bar, code-block
+                               field-classes, field-message (a field's error or hint line),
+                               date-picker/ (calendar, range-calendar, calendar-grid, date-picker,
+                               date-range-picker, use-date-popover, iso-date)
+    navigation/                tabs, nav-pill, theme-switch, segmented-control, select-menu, stepper
+    overlays/                  dialog, sheet, menu, tooltip, step-transition
+    feedback/                  toast, notice, empty-state, spinner, skeleton, shimmer, dot-loader, success-check
+    display/                   panel, card, badge, stat-tile, detail-list, accordion, progress-bar, code-block,
+                               timeline, step-ring
     payments/                  money, address, activity-row, status-pill, token-chip, payment-timeline,
                                receive-address, network-warning, qr-code
   hooks/                       hooks shared by multiple component families

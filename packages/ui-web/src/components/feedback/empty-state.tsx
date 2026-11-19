@@ -13,7 +13,6 @@ export interface EmptyStateProps {
   page?: boolean;
 }
 
-// R-75: an empty or filtered-out list never looks broken.
 export function EmptyState({
   title,
   description,

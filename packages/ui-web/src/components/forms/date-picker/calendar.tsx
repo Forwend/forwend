@@ -4,16 +4,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { cx } from "../../../lib/cx";
 import { IconButton } from "../../buttons/icon-button";
-import {
-  addDays,
-  addMonths,
-  clamp,
-  monthGrid,
-  monthStart,
-  today,
-  toTime,
-  weekday,
-} from "./iso-date";
+import { dayForKey, FULL_DATE, MONTH, WEEK, WEEKDAY } from "./calendar-grid";
+import { addDays, addMonths, clamp, monthGrid, monthStart, today, toTime } from "./iso-date";
 
 export interface CalendarProps {
   /** The grid's accessible name, such as the field's label. */
@@ -28,20 +20,9 @@ export interface CalendarProps {
   isDisabled?: (iso: string) => boolean;
   /** Move focus into the grid when it mounts (a picker that just opened). */
   autoFocus?: boolean;
-  previousMonthLabel?: string;
-  nextMonthLabel?: string;
 }
 
-const MONTH = new Intl.DateTimeFormat(undefined, {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" });
 const WEEKDAY_LONG = new Intl.DateTimeFormat(undefined, { weekday: "long", timeZone: "UTC" });
-const FULL_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeZone: "UTC" });
-// 2024-01-01 is a Monday: the header reads Monday to Sunday in the viewer's language.
-const WEEK = Array.from({ length: 7 }, (_, i) => addDays("2024-01-01", i));
 
 /** ARIA grid pattern with one tab stop; disabled days can be reached but not chosen. */
 export function Calendar({
@@ -52,8 +33,6 @@ export function Calendar({
   max,
   isDisabled,
   autoFocus = false,
-  previousMonthLabel = "Previous month",
-  nextMonthLabel = "Next month",
 }: CalendarProps) {
   const [focused, setFocused] = useState(() => clamp(value ?? today(), min, max));
   // Bumped when a key or click moves to a day, so focus follows it; the month buttons keep their own focus.
@@ -76,17 +55,7 @@ export function Calendar({
   const now = today();
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const targets: Record<string, string> = {
-      ArrowLeft: addDays(focused, -1),
-      ArrowRight: addDays(focused, 1),
-      ArrowUp: addDays(focused, -7),
-      ArrowDown: addDays(focused, 7),
-      PageUp: addMonths(focused, event.shiftKey ? -12 : -1),
-      PageDown: addMonths(focused, event.shiftKey ? 12 : 1),
-      Home: addDays(focused, -weekday(focused)),
-      End: addDays(focused, 6 - weekday(focused)),
-    };
-    const target = targets[event.key];
+    const target = dayForKey(focused, event);
     if (target) {
       event.preventDefault();
       go(target);
@@ -115,11 +84,11 @@ export function Calendar({
   return (
     <div className="flex w-[19rem] max-w-full flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        {monthButton(-1, previousMonthLabel, ChevronLeft)}
+        {monthButton(-1, "Previous month", ChevronLeft)}
         <p aria-live="polite" className="text-sm font-medium text-ink">
           {MONTH.format(toTime(shown))}
         </p>
-        {monthButton(1, nextMonthLabel, ChevronRight)}
+        {monthButton(1, "Next month", ChevronRight)}
       </div>
       <table
         ref={grid}

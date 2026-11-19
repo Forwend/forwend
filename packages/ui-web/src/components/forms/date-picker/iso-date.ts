@@ -12,7 +12,7 @@ export function toTime(iso: string): number {
   return toIso(time) === iso ? time : Number.NaN; // rejects 2026-02-30
 }
 
-export function toIso(time: number): string {
+function toIso(time: number): string {
   return new Date(time).toISOString().slice(0, 10);
 }
 

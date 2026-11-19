@@ -7,9 +7,8 @@ import { Button, type ButtonProps } from "./button";
 export const HOLD_MS = 1200;
 
 export interface HoldButtonProps extends Omit<ButtonProps, "onClick"> {
-  /** Runs once the press has lasted holdMs; letting go sooner does nothing. */
+  /** Runs once the press has lasted HOLD_MS; letting go sooner does nothing. */
   onHold: () => void;
-  holdMs?: number;
 }
 
 const HOLD_KEYS = [" ", "Enter"];
@@ -19,7 +18,6 @@ const HOLD_KEYS = [" ", "Enter"];
  * activate sends a click with no press before it (detail 0): that is deliberate, so it acts at once. */
 export function HoldButton({
   onHold,
-  holdMs = HOLD_MS,
   disabled,
   loading,
   className,
@@ -41,7 +39,7 @@ export function HoldButton({
     timer.current = setTimeout(() => {
       setHeld(false);
       latest.current();
-    }, holdMs);
+    }, HOLD_MS);
   };
   const key = (event: KeyboardEvent, down: boolean) => {
     if (!HOLD_KEYS.includes(event.key)) return;
@@ -79,7 +77,7 @@ export function HoldButton({
         className="absolute inset-0 origin-left bg-current opacity-15 transition-transform"
         style={{
           transform: `scaleX(${held ? 1 : 0})`,
-          transitionDuration: held ? `${holdMs}ms` : "var(--fw-duration-fast)",
+          transitionDuration: held ? `${HOLD_MS}ms` : "var(--fw-duration-fast)",
           transitionTimingFunction: held ? "linear" : "var(--fw-ease-out)",
         }}
       />

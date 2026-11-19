@@ -20,23 +20,13 @@ export interface EmailCaptureProps {
   message?: string;
   onSubmit: (email: string) => void;
   submitLabel: string;
-  /** Visually hidden label for the email field. */
-  label?: string;
-  placeholder?: string;
 }
 
 // One box, one fixed height, for every state: the control never jumps and never shows a
 // greyed-out button. 13.5 = 1px border + 6px padding + 40px button + 6px padding + 1px border.
 const PILL = "flex h-13.5 w-full items-center gap-2 rounded-lg border bg-surface p-1.5";
 
-export function EmailCapture({
-  status,
-  message,
-  onSubmit,
-  submitLabel,
-  label = "Email address",
-  placeholder = "you@example.com",
-}: EmailCaptureProps) {
+export function EmailCapture({ status, message, onSubmit, submitLabel }: EmailCaptureProps) {
   const id = useId();
   const [email, setEmail] = useState("");
   // The error belongs to the submitted address; it clears as soon as the user edits it.
@@ -77,7 +67,7 @@ export function EmailCapture({
             )}
           >
             <label htmlFor={id} className="sr-only">
-              {label}
+              Email address
             </label>
             <input
               id={id}
@@ -90,7 +80,7 @@ export function EmailCapture({
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder={placeholder}
+              placeholder="you@example.com"
               aria-invalid={isError || undefined}
               aria-describedby={isError && message ? `${id}-error` : undefined}
               className="h-10 min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-subtle focus:outline-none autofill:shadow-[inset_0_0_0_10rem_var(--fw-surface)] autofill:[-webkit-text-fill-color:var(--fw-ink)]"

@@ -7,29 +7,20 @@ import { IconButton } from "../buttons/icon-button";
 export interface ReceiveAddressProps {
   address: string;
   label?: string;
-  copyLabel?: string;
-  copiedLabel?: string;
-  failedLabel?: string;
 }
 
 // The whole address shows on one line, its ends standing out (R-78): a shortened one is what look-alikes copy.
 // 42 characters at 0.6em are 25.2 times the size; 21px stay free for Chromium on Linux rounding each one up.
 const START = 6;
 const END = 4;
-export function ReceiveAddress({
-  address,
-  label = "Receive address",
-  copyLabel = "Copy address",
-  copiedLabel = "Address copied",
-  failedLabel = "Copy failed: select the address",
-}: ReceiveAddressProps) {
+export function ReceiveAddress({ address, label = "Receive address" }: ReceiveAddressProps) {
   const [status, copy] = useCopy(address);
   const text =
     status === COPY_STATUS.copied
-      ? copiedLabel
+      ? "Address copied"
       : status === COPY_STATUS.failed
-        ? failedLabel
-        : copyLabel;
+        ? "Copy failed: select the address"
+        : "Copy address";
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 rounded-md border border-field bg-surface px-3 pt-1 pb-3">
       <p className="text-xs text-muted">{label}</p>

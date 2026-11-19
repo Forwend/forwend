@@ -1,5 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import { cx } from "../../lib/cx";
 
 export const NOTICE_TONES = { warning: "warning", danger: "danger" } as const;
 export type NoticeTone = (typeof NOTICE_TONES)[keyof typeof NOTICE_TONES];
@@ -30,13 +31,18 @@ export function Notice({
   action,
   align = NOTICE_ALIGNS.start,
   role,
-  className = "",
+  className,
 }: NoticeProps) {
   const center = align === NOTICE_ALIGNS.center;
   return (
     <div
       role={role ?? (tone === NOTICE_TONES.danger ? "alert" : "status")}
-      className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-4 py-2 text-sm ${center ? "justify-center text-center" : ""} ${TONE_CLASSES[tone]} ${className}`}
+      className={cx(
+        "flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-4 py-2 text-sm",
+        center && "justify-center text-center",
+        TONE_CLASSES[tone],
+        className,
+      )}
     >
       <TriangleAlert aria-hidden className="size-[var(--fw-icon-sm)] shrink-0" />
       <span className={center ? "min-w-0" : "min-w-0 flex-1"}>{children}</span>

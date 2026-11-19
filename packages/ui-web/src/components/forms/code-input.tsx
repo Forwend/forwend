@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { cx } from "../../lib/cx";
+import { FieldMessage, fieldMessageId } from "./field-message";
 
 export interface CodeInputProps {
   label: string;
@@ -35,7 +36,7 @@ export function CodeInput({
   const autoId = useId();
   const fieldId = id ?? autoId;
   const [focused, setFocused] = useState(false);
-  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
+  const describedBy = fieldMessageId(fieldId, error, hint);
   const active = Math.min(value.length, length - 1);
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
@@ -88,15 +89,7 @@ export function CodeInput({
           className="absolute inset-0 h-full w-full cursor-text bg-transparent text-base text-transparent caret-transparent outline-none selection:bg-transparent disabled:cursor-not-allowed"
         />
       </div>
-      {error ? (
-        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${fieldId}-hint`} className="text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldMessage fieldId={fieldId} error={error} hint={hint} />
     </div>
   );
 }

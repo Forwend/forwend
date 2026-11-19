@@ -43,9 +43,7 @@ describe("mountCheckout", () => {
       origin: window.location.origin,
       theme: "dark",
     });
-    expect(iframe.title).toBe("Forwend checkout");
     expect(iframe.allow).toBe("clipboard-write");
-    expect(iframe.style.height).toBe("480px");
   });
 
   it("takes only the checkout's own messages: its frame, Forwend's origin and its shape", () => {

@@ -7,6 +7,7 @@ import {
   FIELD_CONTROL_CLASSES,
   FIELD_FRAME_CLASSES,
 } from "./field-classes";
+import { FieldMessage, fieldMessageId } from "./field-message";
 
 export interface TextFieldProps extends ComponentPropsWithoutRef<"input"> {
   label: string;
@@ -39,16 +40,8 @@ export function TextField({
 }: TextFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
-  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
-  const line = error ? (
-    <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
-      {error}
-    </p>
-  ) : hint ? (
-    <p id={`${fieldId}-hint`} className="text-sm text-muted">
-      {hint}
-    </p>
-  ) : null;
+  const describedBy = fieldMessageId(fieldId, error, hint);
+  const line = <FieldMessage fieldId={fieldId} error={error} hint={hint} />;
   if (inline) {
     return (
       <div className={cx("flex items-center justify-between gap-4", className)}>

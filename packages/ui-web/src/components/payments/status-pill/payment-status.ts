@@ -1,6 +1,5 @@
 import { TONES } from "../../../lib/tone";
 
-/** Status ids, for code that names one status. */
 export const PAYMENT_STATUS = {
   open: "open",
   // A send the owner signed that no block holds yet (R-215).
