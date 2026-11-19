@@ -15,7 +15,6 @@ export interface PaymentToastsProps {
   profileId: string;
 }
 
-// The bell and toasts share the same cached business-event read.
 export function PaymentToasts({ profileId }: PaymentToastsProps) {
   return <ProfileToasts key={profileId} profileId={profileId} />;
 }

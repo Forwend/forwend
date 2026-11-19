@@ -16,17 +16,14 @@ const TOO_MANY = 429;
 export interface ConsentFormProps {
   text: string;
   action: string;
-  /** A rejection is the API's failure. */
   onConsent: (name: string, email: string) => Promise<void>;
   loading: boolean;
-  /** Said when the API answers 404, unless onConsent handles it. */
   notFound?: string;
   compact?: boolean;
   className?: string;
   "aria-label"?: string;
 }
 
-// The consent a quote (R-102) and each scope change (R-106) are accepted with.
 export function ConsentForm({
   text,
   action,

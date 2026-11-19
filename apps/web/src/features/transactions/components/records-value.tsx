@@ -28,7 +28,6 @@ export function RecordsValue({ value }: RecordsValueProps) {
       <button
         type="button"
         aria-label={`${text}, ${rate}`}
-        // On a touch screen a 44px band, at least as wide, takes the tap; the line keeps its size.
         className="relative rounded-sm text-xs whitespace-nowrap text-muted tabular-nums underline decoration-dotted underline-offset-2 outline-none before:absolute focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:h-11 pointer-coarse:before:w-[max(100%,2.75rem)] pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
       >
         {text}

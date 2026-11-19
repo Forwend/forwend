@@ -49,7 +49,6 @@ describe("job amounts", () => {
 });
 
 describe("job record", () => {
-  // R-104: acceptance and its deposit share a time.
   it("lists the events oldest first, acceptance before the invoice it made", () => {
     const payment = (position: number, more: object) => ({
       position,

@@ -13,10 +13,8 @@ export interface SendAmountStepProps {
   option: SendOption;
   amount: string;
   error: string | null;
-  /** The network fee in the token's base units; null until read. */
   fee: bigint | null;
   feeFailed: boolean;
-  /** What Max may send: the balance less the fee; null until the fee is known. */
   room: bigint | null;
   preparing: boolean;
   onAmount: (amount: string) => void;

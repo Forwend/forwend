@@ -20,7 +20,6 @@ export const jobsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [JOBS_TAG, PUBLIC_JOB_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** q matches the title or the client's name. */
       listJobs: build.infiniteQuery<JobsPage, { profileId: string; q?: string }, string | null>({
         infiniteQueryOptions: {
           initialPageParam: null,
@@ -37,13 +36,11 @@ export const jobsApi = apiSlice
         responseSchema: jobsPageSchema,
         providesTags: [JOBS_TAG],
       }),
-      /** The owner's read: the client, the link token and each payment's invoice; 404 for another profile's. */
       getJob: build.query<Job, { profileId: string; jobId: string }>({
         query: ({ profileId, jobId }) => jobUrl(profileId, jobId),
         responseSchema: jobSchema,
         providesTags: [JOBS_TAG],
       }),
-      /** One key per filled-in form, so a retried create makes one job (R-100). */
       createJob: build.mutation<
         Job,
         { profileId: string; idempotencyKey: string; body: CreateJobBody }
@@ -62,13 +59,11 @@ export const jobsApi = apiSlice
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
       }),
-      /** The client's read by its link (R-102): public, without the client block; 404 for a link that is not one. */
       getPublicJob: build.query<PublicJob, string>({
         query: (token) => `/v1/jobs/${encodeURIComponent(token)}`,
         responseSchema: publicJobSchema,
         providesTags: [PUBLIC_JOB_TAG],
       }),
-      /** The client accepts with a typed name and email (R-100): public, the same answer twice. */
       acceptJob: build.mutation<PublicJob, { token: string; name: string; email: string }>({
         query: ({ token, name, email }) => ({
           url: `/v1/jobs/${encodeURIComponent(token)}/accept`,
@@ -78,7 +73,6 @@ export const jobsApi = apiSlice
         responseSchema: publicJobSchema,
         invalidatesTags: [PUBLIC_JOB_TAG],
       }),
-      /** Marks a step of an accepted job done, which makes its invoice (R-103); in order, the same answer twice. */
       markPaymentDone: build.mutation<
         Job,
         { profileId: string; jobId: string; position: number; deliveryLink: string }
@@ -91,7 +85,6 @@ export const jobsApi = apiSlice
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
       }),
-      /** Proposes a scope change at the end of an accepted job (R-105); one key per filled-in form. */
       proposeChange: build.mutation<
         Job,
         {
@@ -117,7 +110,6 @@ export const jobsApi = apiSlice
         }),
         invalidatesTags: [JOBS_TAG],
       }),
-      /** The client accepts a change: proposedAt is the read's string, untouched, so it names that exact change. */
       acceptChange: build.mutation<
         PublicJob,
         { token: string; position: number; proposedAt: string; name: string; email: string }
@@ -130,7 +122,6 @@ export const jobsApi = apiSlice
         responseSchema: publicJobSchema,
         invalidatesTags: [PUBLIC_JOB_TAG],
       }),
-      /** Before the client accepts (R-101); 409 job_accepted after. */
       deleteJob: build.mutation<void, { profileId: string; jobId: string }>({
         query: ({ profileId, jobId }) => ({ url: jobUrl(profileId, jobId), method: "DELETE" }),
         invalidatesTags: [JOBS_TAG],

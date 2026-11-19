@@ -7,12 +7,10 @@ import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 export interface MoneyActionsProps {
   onReceive: () => void;
   onRequest: () => void;
-  /** Null where the user can't move this profile's money. */
   onSend: (() => void) | null;
   onTransfer: (() => void) | null;
 }
 
-// Five buttons share a phone's row: below 360 px the labels shrink, so they never touch.
 const NARROW = "min-w-0 max-[359px]:text-xs sm:w-20";
 
 export function MoneyActions({ onReceive, onRequest, onSend, onTransfer }: MoneyActionsProps) {
@@ -23,7 +21,6 @@ export function MoneyActions({ onReceive, onRequest, onSend, onTransfer }: Money
     primary?: boolean;
     onClick?: () => void;
   }[] = [
-    // One lime action per view: Receive, the app's standing one.
     { label: BALANCES_COPY.receive, icon: QrCode, onClick: onReceive, primary: true },
     { label: BALANCES_COPY.request, icon: HandCoins, onClick: onRequest },
     ...(onSend ? [{ label: BALANCES_COPY.send, icon: Send, onClick: onSend }] : []),

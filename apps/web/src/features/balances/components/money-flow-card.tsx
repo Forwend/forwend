@@ -46,7 +46,6 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
           <Skeleton className="h-14" />
         )
       ) : (
-        // Beside the balance chart the two figures stack and share its height.
         <dl className="grid flex-1 grid-cols-2 divide-x divide-line xl:grid-cols-1 xl:grid-rows-2 xl:divide-x-0 xl:divide-y">
           {flows.map(([label, series, Icon]) => (
             <div

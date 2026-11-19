@@ -8,15 +8,12 @@ import { MONEY_COPY } from "@/shared/constants/money-copy";
 const COPY = JOBS_COPY.form;
 
 export interface JobFormPreviewProps {
-  /** The free-text fields as typed so far. */
   typed: { title: string; scope: string; client: string };
   payments: PaymentDraft[];
   deposit: boolean;
-  /** The payments' sum in USD cents. */
   total: bigint;
 }
 
-/** The quote as the client will read it, from what the form holds now. */
 export function JobFormPreview({ typed, payments, deposit, total }: JobFormPreviewProps) {
   return (
     <FormPreview title={COPY.preview.title} note={COPY.preview.note}>

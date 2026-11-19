@@ -1,4 +1,4 @@
-/** The API's limits (apps/backend/api/openapi.yaml, CreateJobRequest). */
+// Must match CreateJobRequest in apps/backend/api/openapi.yaml.
 export const JOB_LIMITS = {
   title: 200,
   scope: 5000,
@@ -10,7 +10,7 @@ export const JOB_LIMITS = {
 
 export const JOBS_PAGE_SIZE = 20;
 
-/** Fields the API names in a 422, as its messages start (R-100). */
+// Field names as the API's 422 messages start.
 export const JOB_FIELDS = {
   title: "title",
   scope: "scope",
@@ -22,7 +22,7 @@ export const JOB_FIELDS = {
   payments: "payments",
 } as const;
 
-/** What a job's record lists (R-104), in the order events at the same time happened. */
+// Events at the same time sort in this order.
 export const RECORD_EVENTS = {
   created: "created",
   accepted: "accepted",
@@ -33,18 +33,14 @@ export const RECORD_EVENTS = {
   paid: "paid",
 } as const;
 
-/** A job's link token: the secret in /w/<token> (R-102). */
 export const JOB_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
-/** The accept form's fields, as the API's 422 names them. */
 export const ACCEPT_FIELDS = { name: "name", email: "email" } as const;
 
-/** The API's error codes a scope change's 409 can carry (R-105). */
 export const CHANGE_ERRORS = { pending: "change_pending", finished: "job_finished" } as const;
 
 export const PAYMENT_FIELDS = { title: "title", amount: "amount", dueDays: "dueDays" } as const;
 
-/** Where a payment stands on the job's Payments timeline. */
 export const PAYMENT_STEPS = {
   paid: "paid",
   invoiced: "invoiced",

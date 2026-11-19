@@ -9,7 +9,7 @@ import { smoothPath, toNumber } from "@/features/balances/lib/chart";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
-// Points are the ends of UTC days (00:00 of the next day); a point is labeled with the day it closes. The last is now.
+// A point is the end of a UTC day (00:00 the next day), labeled with the day it closes.
 const DAY = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "numeric",
@@ -55,7 +55,7 @@ export function BalanceChart({
   const { width, height, active } = chart;
 
   const numbers = series.values.map((v) => toNumber(v, USD_DECIMALS));
-  // From 0, so the line's height is the real amount; an empty wallet draws along the bottom.
+  // From 0, so the line's height is the real amount.
   const top = Math.max(...numbers, 0) * HEADROOM || 1;
   const y = (n: number) => pad.top + (1 - n / top) * (height - pad.top - pad.bottom);
   const line = smoothPath(numbers.map((n, i) => [x(i, width), y(n)] as const));
@@ -199,7 +199,6 @@ interface ChartReadoutProps {
   active: number | null;
   announce: boolean;
   left: number;
-  /** The chosen point's height in the plot; the readout floats above it. */
   top?: number;
   width: number;
   note?: (index: number) => string;
@@ -221,7 +220,6 @@ function ChartReadout({
         <div
           aria-hidden
           className="pointer-events-none absolute top-0 left-0 z-10 flex flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2 shadow-lg transition-transform duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] motion-safe:animate-[fw-fade-in_var(--fw-duration-fast)_var(--fw-ease-out)]"
-          // Centered over the point and above it, kept inside the chart; the percentages are the readout's own size.
           style={{
             transform: `translate(clamp(0px, calc(${left}px - 50%), calc(${width}px - 100%)), max(-0.5rem, calc(${top}px - 100% - 0.875rem)))`,
           }}
@@ -243,14 +241,13 @@ function ChartReadout({
   );
 }
 
-// Every day of the series, for screen readers. Memoized: a pointer move changes the readout, not these rows.
 const ChartTable = memo(function ChartTable({
   series,
   label,
   note,
 }: Pick<ChartReadoutProps, "series" | "label" | "note">) {
   return (
-    // A wrapper, because sr-only on a table doesn't clip it: a table grows to its rows.
+    // A wrapper, because sr-only on a table doesn't clip it.
     <div className="sr-only">
       <table>
         <caption>{label}</caption>

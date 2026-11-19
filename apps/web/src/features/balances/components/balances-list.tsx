@@ -18,7 +18,6 @@ import { TOKEN_SEARCH_FROM, tokenMatches } from "@/shared/lib/chains";
 
 export interface BalancesListProps {
   balances: Balances | null;
-  /** Market prices (D-115): each in-wallet amount adds its USD value under it when one is fresh. */
   prices?: readonly TokenPrice[];
   failed: boolean;
   onRetry: () => void;
@@ -27,7 +26,6 @@ export interface BalancesListProps {
 const isEmpty = (t: TokenBalance) =>
   [t.wallet, t.pending, t.held].every((v) => v === null || v === "0");
 
-// Money on its way or on hold, beside what is in the wallet.
 const PARTS = [
   { label: BALANCES_COPY.movingLabel, field: BALANCE_FIELDS.settling },
   { label: BALANCES_COPY.notFinalLabel, field: BALANCE_FIELDS.notFinal },
@@ -35,7 +33,6 @@ const PARTS = [
 ] as const;
 
 const COLUMNS = "md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,1fr))]";
-// Phones: the token on the left, what is in the wallet on the right. Wide screens: a column per kind of money.
 const ROW = `grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-sm sm:px-5 md:min-h-16 md:gap-4 ${COLUMNS}`;
 const AMOUNT = "text-ink md:text-base";
 
@@ -70,7 +67,6 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
   if (balances.tokens.length === 0)
     return <EmptyState icon={Wallet} title={BALANCES_COPY.noTokens} />;
   const found = balances.tokens.filter((t) => tokenMatches(t, query));
-  // Tokens on but never used would bury what is held; a search still finds them.
   const shown = query || showEmpty ? found : found.filter((t) => !isEmpty(t));
   const hidden = found.length - shown.length;
   return (
@@ -118,8 +114,6 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
                     </>
                   )}
                 </div>
-                {/* Phones show money on its way or on hold in one box under the token, and nothing when there is
-                    none; wide screens give each kind its column. */}
                 <div
                   className={`${parts.some((p) => p.value !== "0") ? "col-span-2 ml-12 flex flex-col gap-1 rounded-md bg-surface-2 px-3 py-2" : "hidden"} md:contents`}
                 >
@@ -148,7 +142,6 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
   );
 }
 
-/** Wide screens name each column once; each amount keeps its own label for screen readers. */
 function ColumnTitles() {
   return (
     <div
@@ -165,7 +158,6 @@ function ColumnTitles() {
 }
 
 function Part({ label, value, decimals }: { label: string; value: string; decimals: number }) {
-  // Nothing on its way or held is the usual case: a quiet dash on wide screens, no line at all on phones.
   if (value === "0") {
     return (
       <span className="hidden text-right text-subtle md:block">

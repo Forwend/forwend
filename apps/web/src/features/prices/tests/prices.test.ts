@@ -35,7 +35,6 @@ describe("prices (R-178)", () => {
   });
 
   it("values exact base units without floating point", () => {
-    // A float gives 100000099999999983616 here.
     expect(usdCents(999_999_999_999_999_999_999_999n, 6, "1.000001")).toBe(
       100_000_099_999_999_999_999n,
     );

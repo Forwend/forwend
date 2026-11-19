@@ -33,7 +33,6 @@ export const transactionsApi = apiSlice
         responseSchema: transactionsPageSchema,
         providesTags: [TRANSACTIONS_TAG],
       }),
-      /** Cursor pages for the Transactions page, so history reaches its start however long it is. */
       getTransactionPages: build.infiniteQuery<
         TransactionsPage,
         { profileId: string; direction?: TransactionDirection; q?: string },
@@ -54,7 +53,6 @@ export const transactionsApi = apiSlice
         responseSchema: transactionsPageSchema,
         providesTags: [TRANSACTIONS_TAG],
       }),
-      /** Labels money in that Forwend can't classify (R-108); null clears the label. */
       labelTransaction: build.mutation<
         void,
         { profileId: string; transaction: Transaction; label: TransactionLabel | null }
@@ -66,13 +64,11 @@ export const transactionsApi = apiSlice
         }),
         invalidatesTags: [TRANSACTIONS_TAG],
       }),
-      /** The profile's other records currency (R-110), null for none. */
       getRecordsCurrency: build.query<RecordsCurrencySetting, string>({
         query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/records-currency`,
         responseSchema: recordsCurrencySchema,
         providesTags: [RECORDS_CURRENCY_TAG],
       }),
-      /** Sets it, null for none; the transactions read again with their values in it. */
       setRecordsCurrency: build.mutation<
         RecordsCurrencySetting,
         { profileId: string } & RecordsCurrencySetting
@@ -85,7 +81,7 @@ export const transactionsApi = apiSlice
         responseSchema: recordsCurrencySchema,
         invalidatesTags: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG],
       }),
-      /** R-112: an object URL the caller saves and revokes, so no file sits in the store. */
+      // An object URL the caller saves and revokes, so no file sits in the store.
       downloadStatement: build.mutation<string, { profileId: string; from: string; to: string }>({
         query: ({ profileId, from, to }) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/statement.pdf`,
@@ -94,7 +90,6 @@ export const transactionsApi = apiSlice
             response.ok ? URL.createObjectURL(await response.blob()) : response.json(),
         }),
       }),
-      /** CSV text of the UTC days given (R-108); an error stays JSON. */
       exportTransactions: build.query<string, { profileId: string; from?: string; to?: string }>({
         query: ({ profileId, ...params }) => ({
           url: `/v1/profiles/${encodeURIComponent(profileId)}/transactions.csv`,

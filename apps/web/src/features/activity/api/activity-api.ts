@@ -6,7 +6,6 @@ import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 export const activityApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    /** Cursor pages, so history reaches its start however long it is. */
     getActivity: build.infiniteQuery<
       ActivityPage,
       { profileId: string; state?: ApiPaymentState; q?: string },

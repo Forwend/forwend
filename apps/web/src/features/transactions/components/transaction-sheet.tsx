@@ -21,13 +21,11 @@ import { exactDigits } from "@/shared/lib/money";
 
 export interface TransactionSheetProps {
   profileId: string;
-  /** Kept while the sheet closes, so it doesn't empty first. */
   t: Transaction | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** A phone row opened: the amount, the sum its fee belongs to, the addresses and links, and the type. */
 export function TransactionSheet({ profileId, t, open, onOpenChange }: TransactionSheetProps) {
   const incoming = t?.direction === TRANSACTION_DIRECTIONS.in;
   return (
@@ -42,7 +40,7 @@ function SheetBody({ profileId, t }: { profileId: string; t: Transaction }) {
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
   const fee = transactionFee(t);
   const amount = BigInt(t.amount);
-  // Each line of the sum to its last digit, so the three figures add up as shown.
+  // Every digit, so the three figures add up as shown.
   const exact = (units: bigint) => (
     <Money
       baseUnits={units}

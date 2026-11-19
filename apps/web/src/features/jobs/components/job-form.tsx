@@ -49,17 +49,15 @@ const draft = (title: string, days: string): PaymentDraft => ({
 
 export interface JobFormProps {
   profileId: string;
-  /** Saved clients, searched through the API (R-86, R-177): picking one fills the client fields with a copy. */
   clientSearch?: ClientSearch;
 }
 
-// R-101. One idempotency key per filled-in form: a double click or a retry makes one job.
+// One idempotency key per filled-in form, so a double click or retry makes one job.
 export function JobForm({ profileId, clientSearch }: JobFormProps) {
   const [createJob] = useCreateJobMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, string>());
   const countries = useMemo(() => clientCountryOptions(COPY.noCountry), []);
-  // The client fields are drawn again with a picked client's values, keyed by it.
   const [fill, setFill] = useState({ key: "", client: NO_CLIENT });
   const [country, setCountry] = useState("");
   const [payments, setPayments] = useState(() => [
@@ -84,7 +82,6 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
     { id: STEPS.client, label: COPY.clientGroup },
     { id: STEPS.payments, label: COPY.paymentsGroup },
   ]);
-  // The preview reads the free-text fields as they are typed; they stay uncontrolled.
   const [typed, setTyped] = useState({ title: "", scope: "", client: "" });
   const readTyped = (event: FormEvent<HTMLFormElement>) => {
     const data = new FormData(event.currentTarget);
@@ -92,7 +89,6 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
     setTyped({ title: text("title"), scope: text("scope"), client: text("clientName") });
   };
 
-  // Every problem the form has now, whichever step holds it.
   const problems = (form: HTMLFormElement) => {
     const data = new FormData(form);
     const text = (name: string) => String(data.get(name) ?? "").trim();

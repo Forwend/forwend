@@ -7,7 +7,6 @@ export const ACTIVITY_COPY = {
     amount: "Amount",
   },
   activity: "Activity",
-  // Events are past; the status column is where the payment stands now, so the intro says so.
   intro: "What happened, newest first. Status is where each payment stands now.",
   emptyTitle: "No activity yet",
   emptyText: "Payments and invoices show here as they happen.",
@@ -23,7 +22,6 @@ export const ACTIVITY_COPY = {
   extraHeldNote: "extra held",
   search: "Search activity",
   searchPlaceholder: "Amount, token or hash",
-  // The bell's words (R-81), with the payment each names.
   toasts: {
     paid: (amount: string, payment: string) => ({
       title: "Payment received",

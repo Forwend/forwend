@@ -23,7 +23,6 @@ import { exactDigits } from "@/shared/lib/money";
 export interface TransactionsDesktopTableProps {
   profileId: string;
   title: string;
-  /** The overview's preview names no type (R-109). */
   preview: boolean;
   rows: Transaction[];
 }
@@ -48,7 +47,6 @@ export function TransactionsDesktopTable({
               <Party t={t} />
             </td>
             {preview ? null : (
-              // A compact select keeps the row on one line; touch keeps the full-size target.
               <td className="whitespace-nowrap pointer-fine:[&_[role=combobox]]:h-8">
                 <TransactionType profileId={profileId} t={t} />
               </td>
@@ -81,7 +79,6 @@ export function TransactionsDesktopTable({
   );
 }
 
-/** Shared with the loading form, so the real headers stay while rows load. */
 export function TransactionsTableHead({ preview }: { preview: boolean }) {
   const c = TRANSACTIONS_COPY.columns;
   return (
@@ -107,7 +104,6 @@ export function TransactionsTableHead({ preview }: { preview: boolean }) {
   );
 }
 
-// The network is a column or, without room, the logo on the icon.
 function Party({ t }: { t: Transaction }) {
   const minted = mintOrBurn(t);
   return (
@@ -130,7 +126,6 @@ function Party({ t }: { t: Transaction }) {
   );
 }
 
-/** Never part of the amount: taken before money arrived, or paid on top of money sent. A dash where none was recorded. */
 function Fee({ t }: { t: Transaction }) {
   const fee = transactionFee(t);
   if (fee === null)

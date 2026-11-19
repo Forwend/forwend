@@ -43,7 +43,6 @@ import { LoadError } from "@/shared/components/load-error";
 
 export interface SendSheetProps {
   open: boolean;
-  /** Transfer starts on the owner's other profiles; Send also offers a wallet address. */
   mode: SendMode;
   onOpenChange: (open: boolean) => void;
   profile: Profile;
@@ -51,7 +50,6 @@ export interface SendSheetProps {
   balances: Balances | null;
   failed: boolean;
   onRetry: () => void;
-  /** The send reached the chain: balances and lists can read again. */
   onSent: () => void;
 }
 
@@ -65,9 +63,6 @@ const TITLES: Record<SendStep, string> = {
   [SEND_STEPS.progress]: "",
 };
 
-// R-213: one sheet walks recipient, money, amount and review, then follows the send to the chain (R-214). Each
-// step slides in from its direction and the sheet's height follows it; the server checks the send before the review
-// (R-211), so the review shows what the server will let the wallet sign.
 export function SendSheet({
   open,
   mode,
@@ -92,15 +87,11 @@ export function SendSheet({
   const [prepared, setPrepared] = useState<Send | null>(null);
   const [submitted, setSubmitted] = useState<Send | null>(null);
   const [relay, setRelay] = useState<Relay | null>(null);
-  // While Privy signs, the sheet stays open: closing it would not stop the money.
   const [signing, setSigning] = useState(false);
-  // Every send checked this time; the unsigned ones are given up when the sheet closes.
   const [checked, setChecked] = useState<string[]>([]);
-  // The send whose warning the owner ticked as checked: it holds while the confirm step comes and goes.
   const [ticked, setTicked] = useState<string | null>(null);
   const [prepare, preparing] = usePrepareSendMutation();
   const [cancel] = useCancelSendMutation();
-  // Every opening starts over: a send is chosen and checked anew each time.
   const [wasOpen, setWasOpen] = useState(open);
   const [wasMode, setWasMode] = useState(mode);
   if (open !== wasOpen || mode !== wasMode) {
@@ -137,7 +128,6 @@ export function SendSheet({
       go(SEND_STEPS.progress);
     },
   });
-  // R-137: Confirm it's you comes after the owner holds Send, as a step of its own; Back gives it up for the Summary.
   const confirming =
     (approval.confirmStep !== null || approval.settingUp) && shown === SEND_STEPS.review;
   const step = confirming ? SEND_STEPS.confirm : shown;
@@ -148,7 +138,6 @@ export function SendSheet({
     }
     setPath((p) => (p.length > 1 ? p.slice(0, -1) : p));
   };
-  // With one network and token to send, there is nothing to choose.
   const toMoney = (to: Recipient) => {
     setRecipient(to);
     if (sendable.length === 1 && sendable[0]) {
@@ -168,13 +157,11 @@ export function SendSheet({
   };
 
   const units = option ? parseTokenAmount(amount, option.decimals) : null;
-  // R-216: where the wallet pays its gas, the fee comes out of the same balance, so Max and the check keep room for it.
   const recipientAddress = recipient
     ? "profile" in recipient
       ? (recipient.profile.walletAddress ?? "")
       : recipient.address
     : "";
-  // Read anew on each visit to the amount step: gas prices move.
   const feeRead = useGetSendFeeQuery(
     step === SEND_STEPS.amount && option
       ? {
@@ -187,7 +174,6 @@ export function SendSheet({
     { refetchOnMountOrArgChange: true },
   );
   const fee = feeRead.currentData ? BigInt(feeRead.currentData.amount) : null;
-  // Max waits for the fee: a full balance would leave no room for it. The server checks an amount typed meanwhile.
   const room = option ? roomForFee(option.balance, fee) : null;
 
   const submitAmount = async (event: FormEvent) => {
@@ -220,7 +206,6 @@ export function SendSheet({
       .unwrap()
       .catch((error: unknown) => {
         setAmountError(sendError(error));
-        // The fee may have risen since it was read: Max then uses the new one.
         if (fee) void feeRead.refetch();
         return null;
       });
@@ -250,7 +235,7 @@ export function SendSheet({
         ? TWO_STEP_COPY.setUp
         : TITLES[step];
   const canGoBack = path.length > 1 && step !== SEND_STEPS.progress;
-  // Signing, or the approve that comes before it (R-214): closing would not stop the money.
+  // Once the approve or signing has started, closing can't stop the money.
   const locked = signing || approval.locked;
 
   let body: ReactNode;

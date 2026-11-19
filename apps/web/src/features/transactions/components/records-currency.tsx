@@ -23,7 +23,6 @@ export interface RecordsCurrencyProps {
   profileId: string;
 }
 
-// The choice shows at once, until the read confirms it.
 export function RecordsCurrency({ profileId }: RecordsCurrencyProps) {
   const saved = useGetRecordsCurrencyQuery(profileId, { refetchOnMountOrArgChange: true });
   const [save, saving] = useSetRecordsCurrencyMutation({

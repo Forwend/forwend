@@ -13,7 +13,6 @@ export function receiveChoice<T extends ReceiveOption>(
   return { symbols, symbol: token ?? null, networks, option };
 }
 
-/** Each chain family has its own receive address; one EVM wallet address serves every EVM network. */
 export function addressFor(
   option: ReceiveOption,
   addresses: Readonly<Record<string, string>>,

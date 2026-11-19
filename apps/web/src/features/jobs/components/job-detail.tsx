@@ -35,22 +35,19 @@ const LINK = "text-ink underline decoration-line-strong underline-offset-4 hover
 export interface JobDetailProps {
   profileId: string;
   job: Job;
-  /** The More actions menu, at the header's end. */
   actions?: ReactNode;
-  /** The heading's text, which takes focus when the menu goes. */
   titleRef?: Ref<HTMLSpanElement>;
 }
 
-// R-101. Once accepted, the next agreed payment can be marked done (R-103) and a change proposed (R-106).
 export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps) {
-  // The app renders only in the browser, after sign-in.
+  // Browser only: the app renders after sign-in.
   const link = `${window.location.origin}/w/${job.token}`;
   const c = job.client;
   const next = job.acceptedAt
     ? job.payments.find((p) => !p.invoiceId && !isPendingChange(p))
     : undefined;
   const pending = job.payments.find(isPendingChange);
-  // The final is the last payment the client agreed to; once it is done the job takes no change (R-105).
+  // The final is the last agreed payment; a waiting change comes after it.
   const final = job.payments.at(pending ? -2 : -1);
   const agreed = job.payments.filter((p) => !isPendingChange(p));
   const paid = agreed.filter((p) => paymentStep(p) === PAYMENT_STEPS.paid).length;
@@ -61,7 +58,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
     job.payments.length < JOB_LIMITS.payments;
   const [withdraw, withdrawing] = useWithdrawChangeMutation();
   const toast = useToast();
-  // Proposing takes its button away: focus moves to the change's Withdraw once the job shows it.
   const [focusWithdraw, setFocusWithdraw] = useState(false);
   useEffect(() => {
     if (focusWithdraw && pending) {
@@ -69,7 +65,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
       setFocusWithdraw(false);
     }
   }, [focusWithdraw, pending]);
-  // Marking a step done takes its button away: focus moves to its invoice once the job shows it.
   const [focusInvoice, setFocusInvoice] = useState<number | null>(null);
   const made = focusInvoice ? job.payments[focusInvoice - 1]?.invoiceId : null;
   useEffect(() => {
@@ -80,7 +75,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
   }, [focusInvoice, made]);
   return (
     <div className="flex flex-col gap-6">
-      {/* As the payment and invoice pages: the status says where it stands, and each payment's row what to do. */}
       <DetailHeader
         back={{ href: APP_ROUTES.jobs, label: JOBS_COPY.title }}
         icon={<BriefcaseBusiness aria-hidden />}
@@ -161,7 +155,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                           toast({ tone: TONES.success, title: COPY.withdrawn(p.title) });
                           document.getElementById("job-payments")?.focus();
                         } catch (failure) {
-                          // The client accepted it meanwhile, or it is already gone: trying again can't help.
                           const gone =
                             (failure as { status?: unknown }).status === CONFLICT ||
                             notFound(failure);

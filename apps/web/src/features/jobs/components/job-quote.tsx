@@ -25,24 +25,20 @@ import { usdCents } from "@/shared/lib/money";
 
 const PANEL = "fw-panel";
 const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
-// The pay link carries its token (D-86).
 const payHref = (p: JobPayment) => `/pay/${p.payToken}`;
 const payable = (p: JobPayment) => p.payToken !== null && p.status === PAYMENT_STATUS.open;
 
-// R-102. Once accepted, focus moves to who accepted and when.
 export function JobQuote({ token }: { token: string }) {
   const query = useGetPublicJobQuery(token);
   const [accept, accepted] = useAcceptJobMutation();
   const heading = useRef<HTMLHeadingElement>(null);
   const [justAccepted, setJustAccepted] = useState(false);
-  // The accept's answer until the read shows the acceptance; then the read, which also follows the changes.
   const job = query.currentData?.acceptedAt
     ? query.currentData
     : (accepted.data ?? query.currentData);
   useEffect(() => {
     if (justAccepted) heading.current?.focus();
   }, [justAccepted]);
-  // An accepted change's form goes: focus moves to the line that says it is accepted, once the job shows it.
   const [focusChange, setFocusChange] = useState<number | null>(null);
   const changeAccepted = focusChange ? Boolean(job?.payments[focusChange - 1]?.acceptedAt) : false;
   useEffect(() => {
@@ -52,7 +48,6 @@ export function JobQuote({ token }: { token: string }) {
     }
   }, [focusChange, changeAccepted]);
 
-  // A change withdrawn or replaced before the client's accept: the read takes its form away, so the page says so.
   const [gone, setGone] = useState(0);
   const goneNotice = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -83,7 +78,6 @@ export function JobQuote({ token }: { token: string }) {
   const deposit = job.payments.find((p) => p.onAccept && payable(p));
   const agreed = job.payments.filter((p) => !isPendingChange(p)).length;
   const i = job.issuer;
-  // From large screens the quote reads on the left half and the client acts on the right, as on the checkout pages.
   return (
     <>
       <Backdrop />
@@ -105,7 +99,6 @@ export function JobQuote({ token }: { token: string }) {
           </div>
         </header>
 
-        {/* Plain sections on the summary's ground, as the checkout lists its items. */}
         <section aria-labelledby="quote-payments" className="flex flex-col">
           <h2
             id="quote-payments"

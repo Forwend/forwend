@@ -1,7 +1,7 @@
 import { INVOICE_EVENTS } from "@/features/invoices/constants/invoices";
 import type { InvoiceEvent } from "@/features/invoices/types/invoices";
 
-// Held money, delivery errors and unknown events are never announced as payment success.
+// Held money and unknown events are never announced as a payment.
 const ANNOUNCED: readonly string[] = [INVOICE_EVENTS.paid, INVOICE_EVENTS.settled];
 
 // No seen set means the first load: payments already there are not news.

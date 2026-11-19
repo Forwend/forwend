@@ -40,7 +40,6 @@ const STATES = Object.values(PAYMENT_STATE_FILTERS);
 
 interface ActivityListProps {
   profileId: string;
-  /** The empty page's next step, such as New invoice. */
   emptyAction?: ReactNode;
 }
 
@@ -50,21 +49,17 @@ interface Row {
 }
 
 const isDeposit = (item: ActivityItem) => item.kind === ACTIVITY_KINDS.deposit;
-// The owner got part of the deposit; the rest is held for the payer.
 const isSplit = (item: ActivityItem) =>
   isDeposit(item) &&
   !item.held &&
   Boolean(item.heldAmount && item.merchantAmount && BigInt(item.heldAmount) > 0n);
-// An invoice the client may pay in several tokens reads in USD on any of their networks.
 const anyOption = (item: ActivityItem) => !isDeposit(item) && item.optionCount > 1;
 
-/** What happened. A split deposit says its extra in a label beside it. */
 function eventName(item: ActivityItem): string {
   if (!isDeposit(item)) return ACTIVITY_COPY.invoice;
   return item.held ? ACTIVITY_COPY.held : ACTIVITY_COPY.deposit;
 }
 
-/** Who and what for: the client, then the order reference or invoice number, so two rows never read the same. */
 function forParts(item: ActivityItem): { who: string | null; ref: string | null } {
   return {
     who: item.clientName ?? null,
@@ -72,14 +67,12 @@ function forParts(item: ActivityItem): { who: string | null; ref: string | null 
   };
 }
 
-/** The whole event in words: the row link's name and the event's hover. */
 function rowTitle(item: ActivityItem): string {
   const { who, ref } = forParts(item);
   const what = isSplit(item) ? ACTIVITY_COPY.partHeld : eventName(item);
   return [what, who, ref].filter(Boolean).join(" · ");
 }
 
-// A deposit opens its payment, an invoice row its invoice.
 const rowHref = (item: ActivityItem) =>
   `${isDeposit(item) ? APP_ROUTES.payments : APP_ROUTES.invoices}/${item.invoiceId}`;
 
@@ -135,14 +128,14 @@ const COLUMNS: DataColumn<Row>[] = [
   },
 ];
 
-// A new list per profile: the rows shown while more load are always this profile's.
+// A new list per profile: rows shown while more load are always this profile's.
 export function ActivityList(props: ActivityListProps) {
   return <ProfileActivity key={props.profileId} {...props} />;
 }
 
 function ProfileActivity({ profileId, emptyAction }: ActivityListProps) {
   const filters = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
-  // Polling refetches every loaded page, so the list stays live only while it shows its first page.
+  // Polling refetches every loaded page, so only the first page stays live.
   const [pages, setPages] = useState(1);
   const list = useGetActivityInfiniteQuery(
     { profileId, state: filters.apiFilter, q: filters.apiQuery },
@@ -150,14 +143,13 @@ function ProfileActivity({ profileId, emptyAction }: ActivityListProps) {
   );
   const data = useShownData(filters.key, list.currentData, list.data);
   if ((data?.pages.length ?? 1) !== pages) setPages(data?.pages.length ?? 1);
-  // The same transaction can pay two invoices, and one invoice can get two payments in it: the position completes the key.
+  // One transaction can pay two invoices, and one invoice twice: the position completes the key.
   const rows: Row[] = (data?.pages.flatMap((page) => page.items) ?? []).map((item, i) => ({
     item,
     key: `${item.kind}:${item.invoiceId}:${item.txHash ?? ""}:${i}`,
   }));
   const noActivity = !filters.filtered && data && rows.length === 0;
   const stale = !list.currentData && Boolean(data);
-  // A new filter or search loads in place of as many rows as were shown.
   const [skeletonRows, setSkeletonRows] = useState(SKELETON_ROWS);
   if (rows.length > 0 && rows.length !== skeletonRows) setSkeletonRows(rows.length);
 
@@ -167,7 +159,6 @@ function ProfileActivity({ profileId, emptyAction }: ActivityListProps) {
       aria-busy={(!data && !list.isError) || stale || undefined}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
       <h1 id="activity-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
         {ACTIVITY_COPY.activity}
       </h1>
@@ -261,7 +252,6 @@ function ProfileActivity({ profileId, emptyAction }: ActivityListProps) {
   );
 }
 
-/** The round icon that leads a row: what happened, with the network's logo on its corner, as on Transactions. */
 function Lead({ item, large = false }: { item: ActivityItem; large?: boolean }) {
   const deposit = isDeposit(item);
   const Icon = deposit ? ArrowDownLeft : FileText;
@@ -275,8 +265,6 @@ function Lead({ item, large = false }: { item: ActivityItem; large?: boolean }) 
   );
 }
 
-/** The network in words for screen readers; shown only when no logo can carry it. An invoice in several tokens says
- * so by its USD amount. */
 function NetworkWords({ item }: { item: ActivityItem }) {
   if (anyOption(item)) return <span className="sr-only">, {MONEY_COPY.anyNetwork}</span>;
   return hasChainBadge(item.chainId) ? (
@@ -299,8 +287,7 @@ function For({ item }: { item: ActivityItem }) {
   );
 }
 
-// An invoice is a request, so its amount has no sign; only a payment shows "+". Money held for the payer is
-// theirs, so it never reads as income.
+// Money held for the payer is theirs, so it never reads as income.
 function Amount({ item }: { item: ActivityItem }) {
   const deposit = isDeposit(item);
   const amount = BigInt(item.amount);
@@ -318,7 +305,6 @@ function Amount({ item }: { item: ActivityItem }) {
   );
 }
 
-// Under its day's heading: the event and its time, then who it was for. A confirmed payment names no status.
 function phoneRow(item: ActivityItem) {
   const status = activityStatus(item);
   const { who, ref } = forParts(item);

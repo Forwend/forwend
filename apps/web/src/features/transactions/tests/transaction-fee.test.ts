@@ -23,7 +23,6 @@ const sent: Transaction = {
   feePaid: null,
 };
 
-// R-224, R-228: the Fee column and the opened row's sum read this; it is never part of the amount.
 describe("transactionFee", () => {
   it("is the gas a send's wallet paid, 0 where Forwend paid, and null where none was recorded", () => {
     expect(transactionFee({ ...sent, feePaid: "3908" })).toBe(3908n);

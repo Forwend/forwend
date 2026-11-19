@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 
 export interface ChoicesProps {
   title: string;
-  /** The list keeps its name for screen readers where the sheet's title already shows it. */
   titleHidden?: boolean;
   children: ReactNode;
 }

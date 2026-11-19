@@ -9,13 +9,11 @@ import type { SendMode } from "@/features/send/types/send";
 
 export interface SendRecipientStepProps {
   mode: SendMode;
-  /** The owner's other profiles with a wallet. */
   own: Profile[];
   onProfile: (profile: Profile) => void;
   onAddress: () => void;
 }
 
-/** Send offers the owner's other profiles and another wallet; Transfer only the profiles. */
 export function SendRecipientStep({ mode, own, onProfile, onAddress }: SendRecipientStepProps) {
   if (own.length === 0)
     return (

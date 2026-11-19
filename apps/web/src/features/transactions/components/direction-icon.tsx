@@ -9,7 +9,6 @@ export interface DirectionIconProps {
   large?: boolean;
 }
 
-/** The round icon that leads a row: the direction, with the network's logo on its corner. */
 export function DirectionIcon({ t, badgeClassName = "", large = false }: DirectionIconProps) {
   const incoming = t.direction === TRANSACTION_DIRECTIONS.in;
   const Icon = incoming ? ArrowDownLeft : ArrowUpRight;

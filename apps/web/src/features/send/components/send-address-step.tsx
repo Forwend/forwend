@@ -11,12 +11,9 @@ export interface SendAddressStepProps {
   error: string | null;
   onAddress: (address: string) => void;
   onError: (error: string | null) => void;
-  /** A valid address was submitted, trimmed. */
   onContinue: (address: string) => void;
 }
 
-// The sheet's title names the field. As in wallets: Paste sits in the field and gives way to Clear; a whole address
-// that isn't valid says so at once, and Continue waits for a valid one.
 export function SendAddressStep({
   address,
   error,
