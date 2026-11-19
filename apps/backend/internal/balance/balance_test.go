@@ -257,8 +257,6 @@ func TestHungChainLeavesTheOthers(t *testing.T) {
 		VALUES (1, 'evm', '0x0000000000000000000000000000000000000001', 'USDC', 6, true)`); err != nil {
 		t.Fatal(err)
 	}
-	defer func(old time.Duration) { ReadTimeout = old }(ReadTimeout)
-	ReadTimeout = 300 * time.Millisecond
 	anvilRead := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(anvil.RPC)})
 	s := NewService(pool, func(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
 		if chainID == 1 { // listed first
@@ -267,13 +265,14 @@ func TestHungChainLeavesTheOthers(t *testing.T) {
 		}
 		return anvilRead(ctx, chainID, token, holder)
 	})
+	s.readTimeout = 300 * time.Millisecond
 	start := time.Now()
 	got, err := s.Of(context.Background(), profile)
 	if err != nil || len(got.Tokens) != 2 || got.Tokens[0].Wallet != nil || got.Tokens[1].Wallet == nil ||
 		got.EstimatedUSD != "" {
 		t.Fatalf("got %+v, %v; want the hung chain's balance missing, Anvil's read, and no total", got, err)
 	}
-	if d := time.Since(start); d > 2*ReadTimeout {
-		t.Fatalf("took %v, want about one ReadTimeout (%v)", d, ReadTimeout)
+	if d := time.Since(start); d > 2*s.readTimeout {
+		t.Fatalf("took %v, want about one read timeout (%v)", d, s.readTimeout)
 	}
 }

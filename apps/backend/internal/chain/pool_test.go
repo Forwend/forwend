@@ -88,8 +88,8 @@ func TestRefusingEndpointRestsLong(t *testing.T) {
 			if got := number(t, context.Background(), r.Client); got != want {
 				t.Fatalf("block %d, want %d", got, want)
 			}
-			if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || time.Until(until) < RestMax/2-time.Second {
-				t.Fatalf("%d failures, rests %v; want 1 and about half of RestMax or more", failures, time.Until(until))
+			if failures, until := health(r, r.pool.endpoints[0]); failures != 1 || time.Until(until) < restMax/2-time.Second {
+				t.Fatalf("%d failures, rests %v; want 1 and about half of restMax or more", failures, time.Until(until))
 			}
 		})
 	}
@@ -258,7 +258,7 @@ func TestRestDoublesUpToTheCapWithJitter(t *testing.T) {
 		{2, 0, time.Second},
 		{3, 0.5, 3 * time.Second},
 		{9, 0, 128 * time.Second},
-		{10, 0, 150 * time.Second}, // 512 s, capped at RestMax
+		{10, 0, 150 * time.Second}, // 512 s, capped at restMax
 		{10, 0.5, 225 * time.Second},
 		{1000, 0, 150 * time.Second},
 	} {
@@ -836,5 +836,29 @@ func TestBatchOneEndpointRefusesGoesToTheNext(t *testing.T) {
 	}
 	if limitedBatches.Load() != 1 || fullBatches.Load() != 2 {
 		t.Fatalf("limited endpoint got %d batches, full one %d; want the refusal remembered", limitedBatches.Load(), fullBatches.Load())
+	}
+}
+
+func TestProviderErrorCannotReflectCredentials(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			ID     json.RawMessage
+			Method string
+		}
+		_ = json.NewDecoder(r.Body).Decode(&request)
+		if request.Method == "eth_chainId" {
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, request.ID)
+			return
+		}
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprint(w, "private credential reflected: SECRET-DO-NOT-LOG")
+	}))
+	defer server.Close()
+	r := newRPCs(t, server.URL, localhost(server.URL))
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancel()
+	_, err := tryNumber(ctx, r.Client)
+	if err == nil || strings.Contains(err.Error(), "SECRET-DO-NOT-LOG") {
+		t.Fatalf("provider error exposed its body: %v", err)
 	}
 }

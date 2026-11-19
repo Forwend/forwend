@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const StartupTimeout = 30 * time.Second
+const startupTimeout = 30 * time.Second
 
 // errUnavailable marks a chain whose RPC hosts don't answer at startup: an outage, not a mistake.
 var errUnavailable = errors.New("its RPCs did not answer")
@@ -46,13 +46,13 @@ func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, 
 }
 
 func (r RPCs) check(ctx context.Context, also func(context.Context, uint64, RPCs) error) error {
-	ctx, cancel := context.WithTimeout(ctx, StartupTimeout)
+	ctx, cancel := context.WithTimeout(ctx, startupTimeout)
 	defer cancel()
 	var block hexutil.Uint64
 	if err := r.Client.CallContext(ctx, &block, "eth_blockNumber"); err != nil {
 		answered, hosts := r.pool.answered()
 		err := fmt.Errorf("chain %d: %d of %d RPC hosts answered: %s", r.pool.chainID, answered, hosts, Redact(err))
-		if !r.pool.serves() {
+		if r.pool.serving() == 0 {
 			return err
 		}
 		return fmt.Errorf("%w: %w", err, errUnavailable)

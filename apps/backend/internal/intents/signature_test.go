@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// testdata holds two answers 1Click gave on 2026-11-09 for 2.5 USDC from Arbitrum to Base, signed by ManagerKey.
+// testdata holds two answers 1Click gave on 2026-11-09 for 2.5 USDC from Arbitrum to Base, signed by managerKey.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := os.ReadFile("testdata/" + name)
@@ -26,7 +26,7 @@ func verify(signed []byte, key string) error {
 
 func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 	for _, name := range []string{"quote-dry.json", "quote.json"} {
-		if err := verify(fixture(t, name), ManagerKey); err != nil {
+		if err := verify(fixture(t, name), managerKey); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
@@ -42,19 +42,19 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 		if bytes.Equal(changed, signed) {
 			t.Fatalf("%s is not in the answer", change[0])
 		}
-		if err := verify(changed, ManagerKey); !errors.Is(err, ErrSignature) {
+		if err := verify(changed, managerKey); !errors.Is(err, ErrSignature) {
 			t.Fatalf("changing %s: %v, want ErrSignature", change[0], err)
 		}
 	}
 	// 1Click spreads a real quote's fields over its request's, so the address's deadline is signed and the request's
 	// is not.
-	if err := verify(bytes.Replace(signed, []byte(`"deadline":"2026-11-12T02:41:33.000Z"`), []byte(`"deadline":"2026-11-13T02:41:33.000Z"`), 1), ManagerKey); !errors.Is(err, ErrSignature) {
+	if err := verify(bytes.Replace(signed, []byte(`"deadline":"2026-11-12T02:41:33.000Z"`), []byte(`"deadline":"2026-11-13T02:41:33.000Z"`), 1), managerKey); !errors.Is(err, ErrSignature) {
 		t.Fatalf("changed quote deadline: %v", err)
 	}
 	// A key in another case beside a signed one must not take its place: Go's struct decoding would read either.
 	for _, extra := range []string{`"DepositAddress":"0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",`, `"DepositMemo":"1",`, `"AmountIn":"1",`} {
 		changed := bytes.Replace(signed, []byte(`"quote":{`), []byte(`"quote":{`+extra), 1)
-		q, err := Check(changed, quoteAsk(), false, ManagerKey, signedAt)
+		q, err := Check(changed, quoteAsk(), false, managerKey, signedAt)
 		if err != nil {
 			t.Fatalf("%s: %v", extra, err)
 		}
@@ -82,7 +82,7 @@ func quoteAsk() Ask {
 func TestCheckRefusesAQuoteForAnotherPaymentThanAsked(t *testing.T) {
 	ask := quoteAsk()
 	deadline := ask.Deadline
-	q, err := Check(fixture(t, "quote.json"), ask, false, ManagerKey, signedAt)
+	q, err := Check(fixture(t, "quote.json"), ask, false, managerKey, signedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,14 +100,14 @@ func TestCheckRefusesAQuoteForAnotherPaymentThanAsked(t *testing.T) {
 	} {
 		other := quoteAsk()
 		change(&other)
-		if _, err := Check(fixture(t, "quote.json"), other, false, ManagerKey, signedAt); !errors.Is(err, ErrMismatch) {
+		if _, err := Check(fixture(t, "quote.json"), other, false, managerKey, signedAt); !errors.Is(err, ErrMismatch) {
 			t.Fatalf("%s: %v, want ErrMismatch", name, err)
 		}
 	}
 	// A dry quote is checked as dry: it has no address, and its refund goes to 1Click's own ledger.
 	dry := quoteAsk()
 	dry.RefundTo = ""
-	if _, err := Check(fixture(t, "quote-dry.json"), dry, true, ManagerKey, signedAt); !errors.Is(err, ErrMismatch) {
+	if _, err := Check(fixture(t, "quote-dry.json"), dry, true, managerKey, signedAt); !errors.Is(err, ErrMismatch) {
 		t.Fatalf("a dry quote refunding to the payer's address is not what Quote asks for: %v", err)
 	}
 }

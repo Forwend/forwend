@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// R-88.
 func TestInvoiceLines(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()

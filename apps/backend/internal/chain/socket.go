@@ -82,7 +82,7 @@ func (s *socket) send(ctx context.Context, body []byte) ([]byte, int, http.Heade
 	out := encode(calls, batch)
 	deadline, ok := ctx.Deadline()
 	if !ok {
-		deadline = time.Now().Add(AttemptTimeout)
+		deadline = time.Now().Add(attemptTimeout)
 	}
 	_ = conn.SetWriteDeadline(deadline)
 	s.usedAt = time.Now()

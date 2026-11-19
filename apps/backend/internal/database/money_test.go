@@ -415,7 +415,6 @@ func TestInvoicePaidInSeveralTransfers(t *testing.T) {
 	}
 }
 
-// R-21.
 func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -491,7 +490,6 @@ func TestInvoiceNumbers(t *testing.T) {
 	}
 }
 
-// R-56, D-76.
 func TestInvoiceOptions(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -531,7 +529,6 @@ func TestInvoiceOptions(t *testing.T) {
 	wantCode(t, err, codeRaise, "leaving the group")
 	must(t, choose(3, 3))
 
-	// F144.
 	must(t, insertInvoice(conn, profile, 5, hex20(105), "key-5", "5000000"))
 	_, err = insertTransfer(conn, 5, hex20(105), 50, 50, 0)
 	must(t, err)

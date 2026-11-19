@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 const (
@@ -25,7 +24,7 @@ type ChainReader struct {
 	rpcs    map[uint64]chain.RPCs
 	errs    map[uint64]error // chains whose RPC list can't confirm balances
 	clients map[uint64]*ethclient.Client
-	cache   cache
+	cache   *memoryCache
 }
 
 // NewChainReader sends each RPC at most rate calls per second.
@@ -58,12 +57,9 @@ func (c *ChainReader) Client(chainID uint64) (*ethclient.Client, error) {
 // Read is a ledger.BalanceOf at the selected RPC's finalized block. Requests share one finalized read per chain per
 // finalizedTTL and one balanceOf per block, so a balance is always the one at the block it is returned with.
 func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
-	if err := c.errs[chainID]; err != nil {
+	client, err := c.Client(chainID)
+	if err != nil {
 		return nil, 0, err
-	}
-	client, ok := c.clients[chainID]
-	if !ok {
-		return nil, 0, fmt.Errorf("no balance RPC for chain %d", chainID)
 	}
 	head, err := c.cache.get(ctx, fmt.Sprintf("finalized/%d", chainID), finalizedTTL,
 		func(ctx context.Context) (string, error) {
@@ -85,7 +81,7 @@ func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder st
 	raw, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%s", chainID, token, holder, final.Hash.Hex()), balanceTTL,
 		func(ctx context.Context) (string, error) {
 			balance, err := chain.TokenBalanceAtHash(ctx, client, chainID, token, holder, final.Hash)
-			if errors.Is(err, ledger.ErrNoToken) {
+			if errors.Is(err, chain.ErrNoToken) {
 				balance, err = new(big.Int), nil // a token deployed after that block holds nothing there
 			}
 			if err != nil {

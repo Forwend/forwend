@@ -16,10 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReadTimeout bounds each chain read; reads run in parallel, so one request waits about this long at most, under
-// the api's 30 s write timeout.
-var ReadTimeout = 10 * time.Second
-
 type Token struct {
 	chain.Asset
 	Livemode bool
@@ -53,17 +49,27 @@ type Balances struct {
 type Service struct {
 	pool *pgxpool.Pool
 	read ledger.BalanceOf
+	// readTimeout bounds each chain read; reads run in parallel, so one request waits about this long at most, under
+	// the api's 30 s write timeout.
+	readTimeout time.Duration
 }
 
 // NewService reads wallet balances with read; give it each chain's RPC pool (D-15).
 func NewService(pool *pgxpool.Pool, read ledger.BalanceOf) *Service {
-	return &Service{pool: pool, read: read}
+	return &Service{pool: pool, read: read, readTimeout: 10 * time.Second}
 }
 
 // The caller has checked the user's access to the profile.
 func (s *Service) Of(ctx context.Context, profileID string) (Balances, error) {
 	return s.of(ctx, profileID, true)
 }
+
+// tokenColumns and profileTokens list the enabled tokens of a profile's mode; Sendable is tokenColumns' last.
+const (
+	tokenColumns  = `t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, t.native_gas OR t.fee_asset IS NOT NULL`
+	profileTokens = `c.enabled AND t.enabled AND c.chain_family = 'evm'
+		AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY t.chain_id, t.contract`
+)
 
 // of reads the wallet balances and, with records, pending and held from our records; without, those are 0. It lists
 // only the profile's mode, so the USD total never adds testnet tokens to real money (D-120).
@@ -101,19 +107,16 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		    WHERE i.profile_id = $1 AND (ct.status = 'detected' AND NOT ct.booked OR ct.status = 'confirmed' AND NOT ct.booked)
 		    GROUP BY ct.chain_id, ct.token_contract
 		)
-		SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, t.native_gas OR t.fee_asset IS NOT NULL, coalesce(b.settling, 0)::text,
+		SELECT `+tokenColumns+`, coalesce(b.settling, 0)::text,
 		    (coalesce(u.amount, 0) + coalesce(b.confirming, 0))::text, coalesce(b.partial, 0)::text,
 		    coalesce(b.held, 0)::text
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
 		LEFT JOIN booked b ON b.chain_id = t.chain_id AND b.token_contract = t.contract
 		LEFT JOIN unbooked u ON u.chain_id = t.chain_id AND u.token_contract = t.contract
-		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm' AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
-		ORDER BY t.chain_id, t.contract`, []any{profileID}
+		WHERE `+profileTokens, []any{profileID}
 	if !records {
-		query = `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, t.native_gas OR t.fee_asset IS NOT NULL, '0', '0', '0', '0'
-			FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
-			WHERE c.enabled AND t.enabled AND c.chain_family = 'evm' AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
-			ORDER BY t.chain_id, t.contract`
+		query = `SELECT ` + tokenColumns + `, '0', '0', '0', '0' FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
+			WHERE ` + profileTokens
 	}
 	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -141,7 +144,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 			wg.Add(1)
 			go func(t *Token) {
 				defer wg.Done()
-				ctx, cancel := context.WithTimeout(ctx, ReadTimeout)
+				ctx, cancel := context.WithTimeout(ctx, s.readTimeout)
 				defer cancel()
 				balance, block, err := s.read(ctx, t.ChainID, t.Token, wallet)
 				if err != nil {

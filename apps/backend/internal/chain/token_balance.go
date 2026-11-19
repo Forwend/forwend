@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"math/big"
 )
 
 // An empty token call cannot establish a zero balance.
@@ -18,8 +19,7 @@ var ErrNoToken = errors.New("no token contract at the block")
 func TokenBalanceAt(ctx context.Context, client *ethclient.Client, chainID uint64, token, holder string,
 	block uint64) (*big.Int, error) {
 	to := common.HexToAddress(token)
-	data := append(common.FromHex("0x70a08231"), common.LeftPadBytes(common.HexToAddress(holder).Bytes(), 32)...)
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &to, Data: data}, new(big.Int).SetUint64(block))
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &to, Data: balanceOf(holder)}, new(big.Int).SetUint64(block))
 	if err != nil {
 		return nil, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, err)
 	}
@@ -27,9 +27,7 @@ func TokenBalanceAt(ctx context.Context, client *ethclient.Client, chainID uint6
 }
 
 func TokenBalanceAtHash(ctx context.Context, client *ethclient.Client, chainID uint64, token, holder string, block common.Hash) (*big.Int, error) {
-	to := common.HexToAddress(token)
-	data := append(common.FromHex("0x70a08231"), common.LeftPadBytes(common.HexToAddress(holder).Bytes(), 32)...)
-	out, err := CallAtHash(ctx, client, to, data, block)
+	out, err := CallAtHash(ctx, client, common.HexToAddress(token), balanceOf(holder), block)
 	if err != nil {
 		return nil, fmt.Errorf("balanceOf %s on chain %d: %w", holder, chainID, err)
 	}
@@ -41,6 +39,10 @@ func CallAtHash(ctx context.Context, client *ethclient.Client, to common.Address
 	var out hexutil.Bytes
 	err := client.Client().CallContext(ctx, &out, "eth_call", map[string]any{"to": to, "data": hexutil.Bytes(data)}, rpc.BlockNumberOrHashWithHash(block, true))
 	return out, err
+}
+
+func balanceOf(holder string) []byte {
+	return append(common.FromHex("0x70a08231"), common.LeftPadBytes(common.HexToAddress(holder).Bytes(), 32)...)
 }
 
 func tokenAmount(out []byte, chainID uint64, holder string) (*big.Int, error) {

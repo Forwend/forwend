@@ -119,7 +119,6 @@ type transactionPaymentJSON struct {
 	Fees *string `json:"fees"`
 }
 
-// R-108.
 type transactionInvoiceJSON struct {
 	InvoiceID  string  `json:"invoiceId"`
 	Number     int64   `json:"number"`

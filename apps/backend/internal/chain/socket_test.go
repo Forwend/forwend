@@ -237,8 +237,8 @@ func TestRefusedUpgradeRestsTheSocketEndpointLong(t *testing.T) {
 	if n := number(t, t.Context(), r.Client); n != 16 {
 		t.Fatalf("block %d", n)
 	}
-	if _, until := health(r, r.pool.endpoints[0]); time.Until(until) < RestMax/2 {
-		t.Fatalf("an upgrade refused with 403 rests until %v, want about %v", until, RestMax)
+	if _, until := health(r, r.pool.endpoints[0]); time.Until(until) < restMax/2 {
+		t.Fatalf("an upgrade refused with 403 rests until %v, want about %v", until, restMax)
 	}
 }
 
