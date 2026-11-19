@@ -3,6 +3,7 @@ import type { TokenBalance } from "@/features/balances/types/balances";
 import type { ClientBody } from "@/features/clients/types/clients";
 import type {
   AMOUNT_ERRORS,
+  CUSTOM_EXPIRY,
   EXPIRY_CHOICES,
   HISTORY_ACTORS,
   HISTORY_CATEGORIES,
@@ -13,10 +14,10 @@ import type {
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_PDFS,
-  INVOICE_STEPS,
   LINE_ERRORS,
   OWED_KINDS,
   PAY_WITH,
+  RECORD_STEP_STATES,
   RECORD_STEPS,
   REMINDER_STEPS,
   SETTLEMENT_WAITS,
@@ -29,6 +30,7 @@ import type {
   invoiceClientSchema,
   invoiceEventSchema,
   invoiceHistoryEventSchema,
+  invoiceIssuerSchema,
   invoiceLineSchema,
   invoiceOptionSchema,
   invoiceRemindersSchema,
@@ -47,7 +49,6 @@ import type {
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
 
 export type PayWith = (typeof PAY_WITH)[keyof typeof PAY_WITH];
-/** An option's amount and the fees in its terms (R-228). */
 export interface FeeTerms {
   amount: string;
   networkFee: string;
@@ -83,17 +84,16 @@ export type Revision = z.infer<typeof revisionSchema>;
 export type InvoiceExceptionKind = (typeof INVOICE_EXCEPTIONS)[keyof typeof INVOICE_EXCEPTIONS];
 
 export type RecordStepId = (typeof RECORD_STEPS)[keyof typeof RECORD_STEPS];
+export type RecordStepState = (typeof RECORD_STEP_STATES)[keyof typeof RECORD_STEP_STATES];
 
-/** One step of the owner's record, from the facts the API gave. */
 export interface RecordStep {
   id: RecordStepId;
   at: string | null;
   done: boolean;
-  /** How often the pay page was opened, on the opened step. */
-  count?: number;
+  count?: number; // pay page opens, on the opened step
 }
 
-/** Base units of the shown option: received before expiry, still left to pay, and arrived after it (held). */
+/** Base units of the shown option; late arrived after the close and is held. */
 export interface InvoiceException {
   kind: InvoiceExceptionKind | null;
   received: bigint;
@@ -104,9 +104,7 @@ export interface InvoiceException {
 export interface InvoiceStart {
   payWith: PayWith;
   picked: string;
-  /** The price: what the client pays less any fees they paid on top. */
-  amount: string;
-  /** Who paid the fees of the invoice it starts from (D-122). */
+  amount: string; // less any fees the client paid on top
   feesPaidBy?: FeesPaidBy;
   items: LineDraft[];
   title: string;
@@ -116,32 +114,30 @@ export interface InvoiceStart {
   agreed: AgreedDraft | null;
   client: ClientBody;
   reminders: boolean;
-  // A merchant invoice's store (R-134).
   storeId?: string;
 }
 
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;
+export type Expiry = ExpiryChoice | typeof CUSTOM_EXPIRY;
 export type InvoiceField = (typeof INVOICE_FIELDS)[keyof typeof INVOICE_FIELDS];
 export type AmountError = (typeof AMOUNT_ERRORS)[keyof typeof AMOUNT_ERRORS];
-export type InvoiceStep = (typeof INVOICE_STEPS)[keyof typeof INVOICE_STEPS];
 export type InvoicePdf = (typeof INVOICE_PDFS)[keyof typeof INVOICE_PDFS];
 
 export type InvoiceToken = Pick<TokenBalance, "chainId" | "token" | "symbol" | "decimals">;
 
 export type InvoiceClient = z.infer<typeof invoiceClientSchema>;
+export type InvoiceIssuer = z.infer<typeof invoiceIssuerSchema>;
 
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
 
 export type AgreedValue = z.infer<typeof agreedValueSchema>;
 
-/** An agreed value as the form holds it (R-93): no currency yet is "". */
+/** No currency yet is "". */
 export interface AgreedDraft {
   currency: string;
   amount: string;
   date: string | null;
 }
-
-/** R-88. */
 export interface LineDraft {
   id: string;
   description: string;

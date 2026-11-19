@@ -18,7 +18,7 @@ export const clientsApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [CLIENTS_TAG] })
   .injectEndpoints({
     endpoints: (build) => ({
-      /** R-177: one page at a time, by name; q searches the name, the email and the tax ID. */
+      /** By name; q searches the name, the email and the tax ID. */
       listClients: build.infiniteQuery<
         ClientsPage,
         { profileId: string; q?: string },
@@ -39,7 +39,6 @@ export const clientsApi = apiSlice
         responseSchema: clientsPageSchema,
         providesTags: [CLIENTS_TAG],
       }),
-      /** A client picker's first matches for what is typed, or the first clients by name. */
       searchClients: build.query<Client[], { profileId: string; q?: string }>({
         query: ({ profileId, q }) => ({
           url: clientsUrl(profileId),
@@ -55,7 +54,7 @@ export const clientsApi = apiSlice
         responseSchema: clientSchema,
         providesTags: [CLIENTS_TAG],
       }),
-      /** PUT to an id the browser picks, so a retried save makes one client (R-86). */
+      /** PUT to an id the browser picks, so a retried save makes one client. */
       saveClient: build.mutation<
         Client,
         { profileId: string; clientId: string; body: SavedClientBody }

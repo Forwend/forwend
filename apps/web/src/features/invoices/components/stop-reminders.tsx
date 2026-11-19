@@ -8,7 +8,7 @@ import { invoiceNumber } from "@/features/invoices/lib/invoices";
 
 const NOT_FOUND = 404;
 
-// R-96: asks first, since mail scanners open links; focus then moves to the heading that says so.
+// Asks first, since mail scanners open links.
 export function StopReminders({ token }: { token: string }) {
   const [stop, { data, error, isLoading }] = useStopRemindersMutation();
   const status = (error as { status?: unknown } | undefined)?.status;

@@ -13,8 +13,7 @@ const TOO_SOON_REST_MS = 30_000;
 export const recheckKey = (payToken: string) => `recheck:${payToken}`;
 
 export interface CheckStatusInput {
-  /** The pay link's token (D-86): Check status is public, like the checkout read. Null while it can't be asked. */
-  payToken: string | null;
+  payToken: string | null; // null while it can't be asked
   network: string;
   money: (units: bigint) => string;
   nextCheckAt: string | null;
@@ -23,15 +22,12 @@ export interface CheckStatusInput {
 export interface CheckStatusState {
   check: () => void;
   busy: boolean;
-  /** Until the next check the api allows. */
-  resting: boolean;
-  /** What the last check found, for a live region. */
+  resting: boolean; // until the next check the API allows
   found: string;
-  /** The wait before the next check, outside the live region so it is not read out each second. */
-  next: string | null;
+  next: string | null; // kept out of the live region
 }
 
-/** R-55. Rests until the next check the api allows, which the invoice read also gives. */
+/** Rests until the next check the API allows, which the invoice read also gives. */
 export function useCheckStatus({
   payToken,
   network,

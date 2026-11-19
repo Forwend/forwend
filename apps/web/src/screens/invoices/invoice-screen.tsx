@@ -15,7 +15,6 @@ export function InvoiceScreen({ invoiceId }: InvoiceScreenProps) {
     <InvoiceDetail
       invoiceId={invoiceId}
       profileId={profile.profileId}
-      tokens={[]}
       request={profile.kind === PROFILE_KINDS.personal}
       notFound={<OtherModeHint />}
     />

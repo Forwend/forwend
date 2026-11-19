@@ -1,8 +1,9 @@
 "use client";
 
-import { ComboboxField, DatePicker, IconButton, TextField } from "@forwend/ui-web";
-import { X } from "lucide-react";
+import { Button, ComboboxField, DatePicker, IconButton, TextField } from "@forwend/ui-web";
+import { Plus, X } from "lucide-react";
 import { useId, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { AGREED_CURRENCIES } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import { currencyOptions } from "@/features/invoices/lib/invoices";
@@ -10,17 +11,54 @@ import type { AgreedDraft } from "@/features/invoices/types/invoices";
 
 const COPY = NEW_INVOICE_COPY.agreed;
 
-export interface AgreedValueFieldsProps {
-  /** On the currency field, so the form can move focus to it. */
-  id: string;
-  value: AgreedDraft;
+export interface AgreedValueProps {
+  value: AgreedDraft | null; // null until added
   onChange: (value: AgreedDraft | null) => void;
   today: string;
   errors: Partial<Record<keyof AgreedDraft, string>>;
 }
 
-// R-93: typed by the owner (no exchange-rate API); a day after today can't have been agreed yet.
-export function AgreedValueFields({ id, value, onChange, today, errors }: AgreedValueFieldsProps) {
+/** Typed by the owner (no exchange-rate API); Add and Remove move focus to what replaces them. */
+export function AgreedValue({ value, onChange, today, errors }: AgreedValueProps) {
+  const id = useId();
+  const toggle = (next: AgreedDraft | null) => {
+    flushSync(() => onChange(next));
+    document.getElementById(id)?.focus();
+  };
+  return value ? (
+    <AgreedValueFields
+      id={id}
+      value={value}
+      onChange={onChange}
+      onRemove={() => toggle(null)}
+      today={today}
+      errors={errors}
+    />
+  ) : (
+    <div className="flex flex-col items-start gap-1">
+      <Button
+        id={id}
+        variant="ghost"
+        size="sm"
+        className="-ml-2"
+        onClick={() => toggle({ currency: "", amount: "", date: today })}
+      >
+        <Plus aria-hidden className="size-[var(--fw-icon-sm)]" />
+        {COPY.add}
+      </Button>
+      <p className="text-xs text-muted">{COPY.addHint}</p>
+    </div>
+  );
+}
+
+function AgreedValueFields({
+  id,
+  value,
+  onChange,
+  onRemove,
+  today,
+  errors,
+}: Omit<AgreedValueProps, "value"> & { id: string; value: AgreedDraft; onRemove: () => void }) {
   const currencies = useMemo(() => currencyOptions(Object.keys(AGREED_CURRENCIES)), []);
   const hintId = useId();
   return (
@@ -57,7 +95,7 @@ export function AgreedValueFields({ id, value, onChange, today, errors }: Agreed
         />
         <IconButton
           label={COPY.remove}
-          onClick={() => onChange(null)}
+          onClick={onRemove}
           className="mt-7 self-start max-sm:col-start-2 max-sm:row-start-1"
         >
           <X aria-hidden className="size-[var(--fw-icon-sm)]" />

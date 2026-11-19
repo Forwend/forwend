@@ -13,12 +13,12 @@ const mm = (n: number) => `calc(var(--mm) * ${n})`;
 /** A font size in points: 1 pt is 0.3528 mm. */
 const pt = (n: number) => mm(n * 0.3528);
 
-export interface DocumentParty {
+interface DocumentParty {
   name: string;
   lines: readonly string[];
 }
 
-export interface DocumentLine {
+interface DocumentLine {
   description: string;
   quantity: string;
   unitPrice: string;
@@ -26,9 +26,7 @@ export interface DocumentLine {
 }
 
 export interface InvoiceDocumentProps {
-  /** "Invoice", or "Request" for a personal profile. */
   kind: string;
-  /** The number once it has one; a new invoice shows what it will be called. */
   number: string;
   reference: string;
   testnet: boolean;
@@ -41,13 +39,12 @@ export interface InvoiceDocumentProps {
   totals: readonly (readonly [string, string])[];
   note: string;
   pay: readonly string[];
-  /** Read aloud in place of the drawing. */
-  label: string;
+  label: string; // read aloud in place of the drawing
 }
 
 const TESTNET = "Test mode: testnet tokens have no value";
 
-/** The invoice as its PDF draws it: A4 pages with the same blocks, sizes and page breaks, scaled to fit. */
+/** The invoice as its PDF draws it, scaled to fit. */
 export function InvoiceDocument(props: InvoiceDocumentProps) {
   const { kind, number, lines, testnet, label } = props;
   const pages = documentPages(
@@ -103,7 +100,6 @@ function Head({ kind, number, reference, testnet, status, from, to, facts }: Inv
   return (
     <>
       <div className="flex items-start justify-between">
-        {/* As the PDF draws it: the 7.5mm mark, then the name 10mm from the margin. */}
         <span className="flex items-center font-bold" style={{ fontSize: pt(13), gap: mm(2.5) }}>
           <span style={{ width: mm(7.5), height: mm(7.5), marginTop: mm(0.5) }}>
             <LogoMark className="size-full" />

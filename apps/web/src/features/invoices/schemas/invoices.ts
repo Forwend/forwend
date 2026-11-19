@@ -35,7 +35,6 @@ import {
 } from "@/shared/schemas/api";
 import type { CrossChainStatus } from "@/shared/types/chains";
 
-/** An option's fees, in its contract terms, and who pays them (R-228). */
 export const optionFeesShape = {
   networkFee: baseUnits,
   platformFee: baseUnits,
@@ -67,17 +66,14 @@ export const depositSchema = z.object({
   blockNumber: count,
   blockTime: apiTime,
   status: openEnum<ApiDepositStatus>(),
-  // Paid after expiry: held for the payer, never the creator's.
-  late: z.boolean(),
-  // The part the ledger booked to the creator at booking (R-121): all, part, or "0" when held; null until booked.
-  paid: baseUnits.nullable(),
+  late: z.boolean(), // after the close: held for the payer
+  paid: baseUnits.nullable(), // booked to the owner; null until booked
   blocksLeft: count,
-  // The blocks it had to wait when first seen, fixed across reads: blocksTotal - blocksLeft have passed (R-73).
   blocksTotal: count,
   secondsLeft: count,
 });
 
-/** The price agreed with the client in fiat (R-93): amount in the currency's minor units (cents). */
+/** A price agreed in fiat; amount is in the currency's minor units. */
 export const agreedValueSchema = z.object({
   currency: z.string(),
   amount: baseUnits,
@@ -85,88 +81,62 @@ export const agreedValueSchema = z.object({
   date: apiDate,
 });
 
-/** openapi.yaml, InvoiceSummary. */
 export const invoiceSummarySchema = z.object({
   purpose: z.enum(PAYMENT_PURPOSES),
   documentKind: z.enum(DOCUMENT_KINDS),
   linkId: z.guid().optional(),
-  // keccak256 of payToken; the chain shows it, so it opens no public route (D-86).
   invoiceId: hash32,
-  // The pay link's token; null for an invoice made before D-86, which has no pay link.
-  payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
-  // The on-chain id in the terms below: invoiceId, or the chosen or first option's of a payer-chooses invoice.
+  payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(), // null before pay links existed
   optionId: hash32,
-  // An option's payments added up to 1.00 USD, so the payer can't pick another (R-56).
   optionLocked: z.boolean(),
-  // The option the payer last picked (R-57); it decides nothing, payments that add up to 1.00 USD do (R-56).
   pickedOptionId: hash32.nullable().optional(),
   optionCount: z.number().int().positive(),
-  // A payment before expiry is seen and not final: a partly paid invoice reads as confirming meanwhile (R-69).
   confirming: z.boolean(),
-  // The checkout closed and it can no longer be paid, before paymentStatus catches up: show it expired (R-77).
-  closed: z.boolean(),
-  // Null for a payment-link invoice before its first deposit, when only its payer sees it (R-141).
-  number: z.number().int().positive().nullable(),
+  closed: z.boolean(), // before paymentStatus catches up
+  number: z.number().int().positive().nullable(), // null on a link invoice before money
   title: z.string().nullable(),
   note: z.string().nullable(),
-  // YYYY-MM-DD; shown only, payment closes at closesAt.
-  dueDate: apiDate.nullable(),
-  // When the work was done or delivered (R-89).
+  dueDate: apiDate.nullable(), // shown only; payment closes at closesAt
   supplyDate: apiDate.nullable(),
-  // The client's PO number or their reference (R-90).
   reference: z.string().nullable(),
   agreedValue: agreedValueSchema.nullable(),
-  // Only in the owner's answers (create, list and the profile's read); the public GET leaves it out.
   client: invoiceClientSchema.optional(),
-  // A merchant invoice's store (R-134), in the owner's answers only.
   store: z.object({ storeId: z.guid(), name: z.string() }).optional(),
-  // Its store's branding (R-135); null without a store.
   brand: storeBrandSchema.nullish(),
   issuer: invoiceIssuerSchema.nullable(),
-  // The name the payer sees when there is no issuer, such as on a personal profile's request.
   senderName: z.string().nullable(),
-  // The creator's https link, offered to the payer once paid (R-58).
   returnUrl: z.string().nullable(),
   chainId: count,
-  // False on a testnet: test mode, whose tokens have no value (D-87, R-143).
-  livemode: z.boolean(),
+  livemode: z.boolean(), // false on a testnet
   token: evmAddress,
   amount: baseUnits,
   ...optionFeesShape,
-  // The profile wallet that settlement pays.
   recipient: evmAddress,
-  // The factory the receive address comes from: the one the invoice was made with.
   factory: evmAddress,
   receiveAddress: evmAddress,
-  // The terms' expiry, which the receive address commits to; checkout closes at closesAt (R-130).
-  expiresAt: apiTime,
+  expiresAt: apiTime, // the terms'; checkout closes at closesAt
   closesAt: apiTime,
   settleDeadline: apiTime,
   paymentStatus: openEnum<ApiPaymentStatus>(),
   settlementStatus: openEnum<ApiSettlementStatus>(),
-  // The payment and wallet states the list filters by (D-114), in the owner's answers only.
   state: z.string().optional(),
   wallet: z.string().optional(),
   settlementTxHash: hash32.nullable(),
   createdAt: apiTime,
 });
 
-export const settlementWaitSchema = z.object({
+const settlementWaitSchema = z.object({
   kind: z.enum(SETTLEMENT_WAITS),
-  // retrying and dailyLimit: when the signer tries again.
-  until: apiTime.nullable(),
-  // finalizing: estimated chain time until the settle is final.
-  secondsLeft: count.nullable(),
+  until: apiTime.nullable(), // retrying, dailyLimit
+  secondsLeft: count.nullable(), // finalizing
 });
 
-/** One token and network the invoice accepts, with its own on-chain id, amount and address (R-56). */
 export const paymentAmountsSchema = z.object({
   reconciliationStatus: z.enum(RECONCILIATION_STATES).optional(),
   receiver: z.string().regex(/^-?\d+$/),
   payable: z.string().regex(/^-?\d+$/),
   held: z.string().regex(/^-?\d+$/),
   settled: baseUnits,
-  // The network and platform fees settlement paid (R-230).
   fees: baseUnits.optional(),
   refunded: baseUnits,
   observedRefunded: baseUnits,
@@ -194,12 +164,11 @@ export const invoiceOptionSchema = z.object({
   amount: baseUnits,
   ...optionFeesShape,
   receiveAddress: evmAddress,
-  // On an option other than the shown one, these are held for the payer (D-76).
   deposits: z.array(depositSchema),
   depositSummary: depositSummarySchema.optional(),
 });
 
-/** One line item (R-88), in the base units of the option whose id is the invoice's; quantity has 2 decimals. */
+/** In base units of the option whose id is the invoice's; quantity has 2 decimals. */
 export const invoiceLineSchema = z.object({
   description: z.string(),
   quantity: z.string(),
@@ -207,21 +176,20 @@ export const invoiceLineSchema = z.object({
   amount: baseUnits,
 });
 
-/** One Send to client (R-94): sentAt and failedAt stay null while the email waits. */
+/** sentAt and failedAt stay null while the email waits. */
 export const invoiceSendSchema = z.object({
   requestedAt: apiTime,
   sentAt: apiTime.nullable(),
   failedAt: apiTime.nullable(),
 });
 
-/** Payment reminders (R-96); stoppedAt is when the client stopped them. */
 export const invoiceRemindersSchema = z.object({
   on: z.boolean(),
   stoppedAt: apiTime.nullable(),
   emails: z.array(invoiceSendSchema.extend({ step: openEnum<ReminderStep>() })),
 });
 
-/** R-98: the next dates are null once the retainer ended or stopped. */
+/** The next dates are null once the retainer ended or stopped. */
 export const invoiceRetainerSchema = z.object({
   endDate: apiDate.nullable(),
   nextDueDate: apiDate.nullable(),
@@ -229,14 +197,14 @@ export const invoiceRetainerSchema = z.object({
   stoppedAt: apiTime.nullable(),
 });
 
-/** The other invoice of a Revise (R-129); payToken is the replacement's pay link. */
+/** The other invoice of a Revise. */
 export const revisionSchema = z.object({
   invoiceId: hash32,
   number: z.number().int().positive(),
   payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
 });
 
-/** One history row (R-124, R-126 to R-130); its last nine fields are null when the row has none. */
+/** Fields from optionId on are null when the row has none. */
 export const invoiceHistoryEventSchema = z.object({
   id: count,
   kind: openEnum<HistoryKind>(),
@@ -248,35 +216,32 @@ export const invoiceHistoryEventSchema = z.object({
   step: openEnum<ReminderStep>().nullable(),
   field: openEnum<HistoryField>().nullable(),
   from: apiDate.nullable(),
-  // An edited due date's new day; on a queued return, the address the money goes back to.
-  to: z.union([apiDate, evmAddress]).nullable(),
+  to: z.union([apiDate, evmAddress]).nullable(), // a new due date, or a return's address
   until: apiTime.nullable(),
   related: revisionSchema.nullable(),
 });
 
-/** An edit the payer sees (R-128); from and to are a due date's old and new value. */
-export const invoiceUpdateSchema = z.object({
+const invoiceUpdateSchema = z.object({
   at: apiTime,
   field: openEnum<HistoryField>(),
   from: apiDate.nullable(),
   to: apiDate.nullable(),
 });
 
-/** Pay page loads (R-125); both times are null before the first. */
+/** Pay page loads; both times are null before the first. */
 export const invoiceViewsSchema = z.object({
   count,
   firstAt: apiTime.nullable(),
   lastAt: apiTime.nullable(),
 });
 
-/** POST /v1/reminders/{token}/stop. */
 export const stoppedRemindersSchema = z.object({
   number: z.number().int().positive(),
   from: z.string().nullable(),
 });
 
-/** A payment through NEAR Intents (R-235): the shown quote, 1Click's status and what the payer sent and got back. */
-export const crossChainTxSchema = z.object({ hash: z.string(), explorerUrl: z.string() });
+/** A payment through NEAR Intents. */
+const crossChainTxSchema = z.object({ hash: z.string(), explorerUrl: z.string() });
 export const crossChainSchema = z.object({
   quoteId: z.string(),
   assetId: z.string(),
@@ -300,67 +265,47 @@ export const crossChainSchema = z.object({
   createdAt: apiTime,
   depositSeenAt: apiTime.nullable(),
   convertedAt: apiTime.nullable(),
-  // 1Click's signed answer: the pay page checks it again before it shows the address (D-124).
-  signed: z.unknown(),
+  signed: z.unknown(), // checked again before the address shows
 });
 
+/** From replaces on, the fields come only in the owner's reads. */
 export const invoiceSchema = invoiceSummarySchema.extend({
   amounts: paymentAmountsSchema.optional(),
-  // Every accepted option, the shown one included: one for a fixed invoice.
   options: z.array(invoiceOptionSchema),
-  // Once paid: the block time of the deposit that completed the amount.
   paidAt: apiTime.nullable(),
-  // Once settled: when the settlement was recorded as final.
   settledAt: apiTime.nullable(),
-  // When the owner canceled it (R-79).
   canceledAt: apiTime.nullable(),
   deposits: z.array(depositSchema),
   depositSummary: depositSummarySchema.optional(),
-  // When Check status may run again; null when it may now (R-55).
   nextCheckAt: apiTime.nullable(),
-  // Its line items, empty without a breakdown (R-88).
   lines: z.array(invoiceLineSchema),
-  // The edits the payer sees, newest first (R-128).
   updates: z.array(invoiceUpdateSchema),
-  // The invoice a Revise replaced it with (R-129).
   replacedBy: revisionSchema.nullable(),
-  // A payment through NEAR Intents, in an invoice's own read (R-235).
   crossChain: crossChainSchema.nullable().optional(),
-  // The payee takes payments from other chains (R-240), in an invoice's own read.
   crossChainOn: z.boolean().optional(),
-  // Only in the owner's reads: the invoice it replaced.
   replaces: revisionSchema.nullable().optional(),
-  // Only in the owner's reads: null while not paid or once settled.
   settlementWait: settlementWaitSchema.nullable().optional(),
-  // Only in the owner's reads: each Send to client, oldest first.
   sends: z.array(invoiceSendSchema).optional(),
-  // Only in the owner's reads.
   reminders: invoiceRemindersSchema.optional(),
-  // Only in the owner's reads: null when it doesn't repeat.
   retainer: invoiceRetainerSchema.nullable().optional(),
-  // Only in the owner's reads: every change, newest first.
   history: z.array(invoiceHistoryEventSchema).optional(),
-  // Only in the owner's reads.
   views: invoiceViewsSchema.optional(),
-  // Only in the owner's reads: the owner's own note (R-127).
   memo: z.string().nullable().optional(),
-  // Only in the owner's reads: the close a reopen would give now (R-130); null when it can't reopen.
   reopenUntil: apiTime.nullable().optional(),
 });
 
-/** POST /v1/invoices/{payToken}/recheck (R-55): what Check status found. Amounts in base units. */
+/** What Check status found. */
 export const recheckSchema = z.object({
   onChain: baseUnits,
   recorded: baseUnits,
   rescanning: z.boolean(),
   nextCheckAt: apiTime,
-  // Chains of options whose network did not answer; the others were checked (F144).
-  unreadable: z.array(count),
+  unreadable: z.array(count), // chains whose network didn't answer
 });
 
 export const invoicesPageSchema = pageOf(invoiceSummarySchema);
 
-/** GET /v1/profiles/{profileId}/fees: each option's fees for a price, before the invoice is made (R-227). */
+/** Each option's fees for a price, before the invoice is made. */
 export const feeQuoteSchema = z.object({
   feesPaidBy: z.enum(FEES_PAID_BY),
   options: z.array(
@@ -375,13 +320,10 @@ export const feeQuoteSchema = z.object({
   ),
 });
 
-/** Fixed: chainId, token and amount; payer chooses: amountUsd alone (R-56). */
+/** One token: chainId, token and amount; the payer chooses: amountUsd alone. */
 export const createInvoiceBodySchema = z.object({
-  // R-129: the invoice it replaces.
   replaces: hash32.optional(),
-  // D-122: who pays the fees; left out, the profile's choice.
-  feesPaidBy: z.enum(FEES_PAID_BY).optional(),
-  // R-134: a merchant invoice's store.
+  feesPaidBy: z.enum(FEES_PAID_BY).optional(), // left out: the profile's
   storeId: z.guid().optional(),
   chainId: count.optional(),
   token: evmAddress.optional(),
@@ -394,21 +336,17 @@ export const createInvoiceBodySchema = z.object({
   dueDate: z.string(),
   supplyDate: z.string(),
   reference: z.string(),
-  // R-93: amount as a decimal in the currency's own decimals.
   agreedValue: z.object({ currency: z.string(), amount: z.string(), date: z.string() }).optional(),
-  // Payment reminders on at once (R-97); sent only when true.
   reminders: z.literal(true).optional(),
-  // Repeat every month (R-98); sent only when checked, with endDate only when picked.
   repeat: z.object({ endDate: z.string().optional() }).optional(),
   senderName: z.string(),
   client: clientBodySchema,
-  // R-88: unitPrice in the amount's own unit, base units with amount and a USD decimal with amountUsd.
   lines: z
     .array(z.object({ description: z.string(), quantity: z.string(), unitPrice: z.string() }))
     .optional(),
 });
 
-/** One of the bell's events (R-81): GET /v1/profiles/{id}/events. */
+/** amount: net of fees when settled, the newly held part when held. */
 export const invoiceEventSchema = z.object({
   id: z.number().int(),
   kind: openEnum<InvoiceEventKind>(),
@@ -421,26 +359,22 @@ export const invoiceEventSchema = z.object({
   token: evmAddress,
   symbol: z.string(),
   decimals: count,
-  // The option's amount; settled: what reached the wallet, less any fees; held: the amount newly held for the payer.
   amount: baseUnits,
   at: apiTime,
 });
 
 export const invoiceEventsSchema = z.object({ items: z.array(invoiceEventSchema) });
 
-/** One Owed to you row (R-95): amount is what is left to pay, or for held money the held amount. */
+/** amount is what is left to pay, or the held amount for held money. */
 export const owedSchema = z.object({
   kind: openEnum<OwedKind>(),
   invoiceId: hash32,
-  // null for a checkout session, which has no invoice document; its reference names it instead.
   number: z.number().int().positive().nullable(),
   reference: z.string().nullable().optional(),
   title: z.string().nullable(),
   clientName: z.string().nullable(),
   dueDate: apiDate.nullable(),
-  // Whole UTC days past the due date; 0 unless overdue.
-  daysLate: count,
-  // Above 1 the client chooses the token, so an unpaid row reads in USD (D-75).
+  daysLate: count, // whole UTC days
   optionCount: count,
   chainId: count,
   token: evmAddress,
@@ -449,7 +383,7 @@ export const owedSchema = z.object({
   amount: baseUnits,
 });
 
-/** The first rows by urgency, how many there are in all, and what is left per token over every row. */
+/** The first rows by urgency; count and totals cover every row. */
 export const owedListSchema = z.object({
   items: z.array(owedSchema),
   count: count.optional(),

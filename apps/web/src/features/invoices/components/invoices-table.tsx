@@ -15,15 +15,16 @@ import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { InvoicesAttention } from "@/features/invoices/components/invoices-attention";
 import { NewInvoiceLink } from "@/features/invoices/components/new-invoice-link";
 import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invoices-copy";
-import { canStillBePaid, daysUntilDue } from "@/features/invoices/lib/invoice-list";
 import {
+  canStillBePaid,
+  daysUntilDue,
   formatDueDate,
   formatDueDateShort,
   invoiceNumber,
   invoiceStatus,
+  payLinkUrl,
 } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
-import { ChainBadge } from "@/shared/components/chains/chain-badge";
 import { NetworkName } from "@/shared/components/chains/network-name";
 import { type DataColumn, DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
@@ -44,7 +45,8 @@ const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoi
 
 const clientName = (inv: InvoiceSummary) => inv.client?.name ?? inv.client?.email ?? null;
 
-// A merchant invoice's store (R-134) follows its title.
+const STATES = Object.values(PAYMENT_STATE_FILTERS);
+const REQUEST_HIDDEN = new Set(["client", "due", "store"]);
 
 export interface InvoicesTableProps {
   profileId: string;
@@ -52,10 +54,7 @@ export interface InvoicesTableProps {
   onRequest?: () => void;
 }
 
-/** With onRequest the list is a personal profile's requests: no client or due date, so rows show the note. */
-const STATES = Object.values(PAYMENT_STATE_FILTERS);
-const REQUEST_HIDDEN = new Set(["client", "due", "store"]);
-
+/** With onRequest it lists a personal profile's requests, which rows name by their note. */
 export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTableProps) {
   const COPY = onRequest ? REQUESTS_COPY : INVOICES_COPY;
   const label = (inv: InvoiceSummary) => (onRequest ? inv.note : clientName(inv));
@@ -70,12 +69,10 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
   const rows = data?.pages.flatMap((page) => page.items) ?? [];
   const noInvoices = !filters.filtered && list.currentData && rows.length === 0;
   const now = new Date();
-  // How far the due date is, while the invoice can still be paid: negative once late.
   const dueDays = (inv: InvoiceSummary) =>
     inv.dueDate && canStillBePaid(inv, invoiceStatus(inv), now)
       ? daysUntilDue(inv.dueDate, now)
       : null;
-  // A request has no client, due date or store: those columns leave, the rest match Invoices.
   const columns = (
     [
       {
@@ -92,7 +89,11 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
         cell: (inv) =>
           clientName(inv) ? (
             <span className="flex min-w-0 items-center gap-2.5">
-              <Avatar name={clientName(inv)} small />
+              <InitialsAvatar
+                name={clientName(inv)}
+                small
+                fallback={<FileText className="size-[var(--fw-icon-sm)]" />}
+              />
               <span className="truncate text-ink">{clientName(inv)}</span>
             </span>
           ) : (
@@ -102,13 +103,11 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       {
         key: "title",
         header: COPY.columns.title,
-        // A request is named by its note, so the column stays at every width; an invoice's client comes first.
         from: onRequest ? undefined : "lg",
         cell: (inv) => (
           <span className="text-muted">{inv.title || (onRequest ? inv.note : null) || "—"}</span>
         ),
       },
-      // A freelancer's invoices belong to no store, so the column shows only when one does.
       ...(rows.some((inv) => inv.store)
         ? [
             {
@@ -125,7 +124,6 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
         key: "due",
         header: COPY.columns.due,
         fit: true,
-        // The row stays one line: how late it is shows as the date's color, and in words on hover.
         title: (inv) => {
           const days = dueDays(inv);
           return days === null ? null : COPY.dueIn(days);
@@ -194,7 +192,6 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       aria-busy={(!list.currentData && !list.isError) || undefined}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
         <h1
           id="invoices-title"
@@ -202,12 +199,10 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
         >
           {COPY.invoices}
         </h1>
-        {/* An empty list offers it in its own block instead. */}
         {noInvoices ? null : (
           <NewInvoiceLink size="sm" className="lg:hidden" onRequest={onRequest} />
         )}
       </div>
-      {/* A personal profile's requests have no due dates to be late on. */}
       {onRequest || noInvoices ? null : <InvoicesAttention profileId={profileId} />}
       {!noInvoices ? (
         <ListToolbar
@@ -262,8 +257,6 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
             rowHref={invoiceHref}
             rowLabel={(inv) => [invoiceNumber(inv.number), label(inv)].filter(Boolean).join(", ")}
             columns={columns}
-            // As the template's phone list: the number and who it is for, the status under them; the amount and
-            // the due day on the right.
             phone={(inv) => ({
               title: (
                 <>
@@ -308,15 +301,12 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
   );
 }
 
-/** Copies an invoice's pay link from its row; it sits over the row's own link. */
+/** It sits over the row's own link. */
 function CopyLink({ payToken, number }: { payToken: string; number: string }) {
-  const [status, copy] = useCopy(
-    typeof window === "undefined" ? "" : `${window.location.origin}/pay/${payToken}`,
-  );
+  const [status, copy] = useCopy(payLinkUrl(payToken));
   const copied = status === COPY_STATUS.copied;
   return (
     <span className="relative z-[1] flex justify-end">
-      {/* xs keeps the row at its one-line height; its hit area is still 44px. */}
       <IconButton
         size="xs"
         label={
@@ -335,25 +325,5 @@ function CopyLink({ payToken, number }: { payToken: string; number: string }) {
         )}
       </IconButton>
     </span>
-  );
-}
-
-function Avatar({
-  name,
-  chainId,
-  small = false,
-}: {
-  name: string | null;
-  chainId?: number | null;
-  small?: boolean;
-}) {
-  return (
-    <InitialsAvatar
-      name={name}
-      small={small}
-      fallback={<FileText className="size-[var(--fw-icon-sm)]" />}
-    >
-      {chainId ? <ChainBadge chainId={chainId} /> : null}
-    </InitialsAvatar>
   );
 }

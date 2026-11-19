@@ -4,9 +4,9 @@ import { Switch, TONES, useToast } from "@forwend/ui-web";
 import { useSetRemindersMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import type { InvoiceReminders, ReminderStep } from "@/features/invoices/types/invoices";
+import { dateTime } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.reminders;
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const CONFLICT = 409;
 
 export interface PaymentRemindersProps {
@@ -17,7 +17,7 @@ export interface PaymentRemindersProps {
   payable: boolean;
 }
 
-// R-96, D-69. The client's stop is final, so the switch stays off and says when.
+// The client's stop is final, so the switch stays off and says when.
 export function PaymentReminders({
   profileId,
   invoiceId,
@@ -51,7 +51,7 @@ export function PaymentReminders({
       />
       <p className="pb-1 text-sm text-muted">
         {reminders.stoppedAt
-          ? COPY.stopped(TIME.format(new Date(reminders.stoppedAt)))
+          ? COPY.stopped(dateTime(reminders.stoppedAt))
           : hasDueDate
             ? COPY.hint
             : COPY.needsDue}
@@ -61,11 +61,7 @@ export function PaymentReminders({
           {reminders.emails.map((r) => (
             <li key={r.requestedAt} className="break-words">
               {COPY.steps[r.step as ReminderStep] ?? r.step} ·{" "}
-              {r.sentAt
-                ? COPY.sent(TIME.format(new Date(r.sentAt)))
-                : r.failedAt
-                  ? COPY.failed
-                  : COPY.sending}
+              {r.sentAt ? COPY.sent(dateTime(r.sentAt)) : r.failedAt ? COPY.failed : COPY.sending}
             </li>
           ))}
         </ul>

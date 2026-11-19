@@ -16,16 +16,12 @@ import { ENTER } from "@/shared/constants/motion";
 import { exactDigits } from "@/shared/lib/money";
 
 const COPY = INVOICES_COPY.attention;
-// Beside the total from medium panels up; a phone lists every one under the strip when it is opened.
 const SHOWN = 2;
 
-/** R-253: the late and partly paid invoices, with what is left to pay, before the list. It reads the answer the
- * Overview's Unpaid panel loads; a checkout session has no invoice, so it stays out. Nothing shows while it loads
- * or when nothing needs attention. */
+/** Late and partly paid invoices; a checkout session has no invoice, so it stays out. */
 export function InvoicesAttention({ profileId }: { profileId: string }) {
   const owed = useGetOwedQuery(profileId, LIVE_QUERY);
-  // ponytail: counted from the first rows the API returns, most urgent first; a profile with more late invoices
-  // than that page shows a lower total here. Ask the API for a count per kind if that matters.
+  // ponytail: totals only the first rows the API returns; ask it for counts per kind if that matters.
   const items = (owed.currentData?.items ?? []).filter(
     (o) => o.number !== null && (o.kind === OWED_KINDS.overdue || o.kind === OWED_KINDS.partlyPaid),
   );
@@ -44,7 +40,6 @@ export function InvoicesAttention({ profileId }: { profileId: string }) {
           <Row key={`${o.invoiceId}-${o.kind}`} owed={o} className="min-w-0 flex-1" />
         ))}
       </div>
-      {/* Narrow panels: one strip that opens to the invoices it counts. */}
       <details className="group overflow-hidden rounded-lg bg-warning-soft @3xl:hidden">
         <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">
           <TriangleAlert aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-warning" />

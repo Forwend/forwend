@@ -3,7 +3,7 @@
 import { Button, buttonClasses, EmptyState, Skeleton } from "@forwend/ui-web";
 import { IdCard } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useGetClientQuery } from "@/features/clients/api/clients-api";
 import { useClientSearch } from "@/features/clients/hooks/use-client-search";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
@@ -30,7 +30,6 @@ import { APP_ROUTES } from "@/shared/config/routes";
 // R-77), read through the cache; nothing comes from the URL but the id.
 export function NewInvoiceScreen() {
   const { profile } = useAppSession();
-  const router = useRouter();
   const params = useSearchParams();
   const from = params.get(RESTART_PARAMS.from);
   const owned = useGetProfileInvoiceQuery(
@@ -165,15 +164,7 @@ export function NewInvoiceScreen() {
                 ? { invoiceId: replaced.invoiceId, number: invoiceNumber(replaced.number) }
                 : undefined
             }
-            request={
-              request
-                ? {
-                    senderName: profile.name ?? "",
-                    onCreated: (invoice) =>
-                      router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`),
-                  }
-                : undefined
-            }
+            request={request ? { senderName: profile.name ?? "" } : undefined}
           />
         </>
       )}
