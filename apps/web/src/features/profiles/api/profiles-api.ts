@@ -12,7 +12,7 @@ import {
 } from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Notifications } from "@/features/profiles/types/notifications";
-import type { FeesPaidBy, Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
+import type { FeesPaidBy, Me, NewProfileKind, Profile } from "@/features/profiles/types/profile";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { HTTP_STATUS } from "@/shared/api/api-error";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
@@ -26,7 +26,7 @@ export const profilesApi = apiSlice.injectEndpoints({
     }),
     createProfile: build.mutation<
       Profile,
-      { idempotencyKey: string; body: { kind: ProfileKind; name: string } }
+      { idempotencyKey: string; body: { kind: NewProfileKind; name: string } }
     >({
       query: ({ idempotencyKey, body }) => ({
         url: "/v1/profiles",

@@ -295,8 +295,9 @@ function rowOf(step: JourneyStep, payment: PaymentDetail): Row {
         ? settlement?.txHash
         : (settlement?.receiptTxHash ?? settlement?.txHash);
       // Settlement pays the option's fees out of what is owed; the wallet gets the rest.
-      const owed = BigInt(option.amounts.payable) - optionFees(option).total;
-      const amount = settled ? BigInt(option.amounts.settled) : owed;
+      const fees = optionFees(option);
+      const owed = option.amounts ? BigInt(option.amounts.payable) - fees.total : fees.net;
+      const amount = settled && option.amounts ? BigInt(option.amounts.settled) : owed;
       return {
         node,
         title: settled ? COPY.sum.cells.wallet : COPY.toWallet,

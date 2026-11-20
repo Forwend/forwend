@@ -196,6 +196,22 @@ describe("payment sum", () => {
     expect(paymentMoney(dust).moving).toBe(false);
   });
 
+  it("sums a settled payment from the option's own fees when the API leaves out its amounts", () => {
+    const settled = option({
+      settlementStatus: "settled",
+      amounts: null,
+      deposits: [deposit(BASE_TX, "1230000")],
+    });
+    expect(sum(payment({ ...paid, options: [settled] }))).toEqual({
+      adds: true,
+      cells: [
+        ["paid", 1230000n],
+        ["networkFee", 60000n],
+        ["wallet", 1170000n],
+      ],
+    });
+  });
+
   it("leaves out a fee of 0", () => {
     const free = option({
       networkFee: "0",

@@ -58,7 +58,7 @@ export const paymentSchema = z.object({
   hostedUrl: z.url().nullable(),
   payToken: z.string().nullable().optional(), // hostedUrl's last part
   crossChain: crossChainSchema.nullable().optional(),
-  amounts: paymentAmountsSchema,
+  amounts: paymentAmountsSchema.optional(),
   state: z.string().optional(),
   wallet: z.string().optional(),
   dueDate: z.string().nullable().optional(),
@@ -111,7 +111,7 @@ export const paymentDetailSchema = paymentSchema.extend({
       paymentStatus: z.string(),
       settlementStatus: z.string(),
       refundStatus: z.string(),
-      amounts: paymentAmountsSchema,
+      amounts: paymentAmountsSchema.nullable(),
       coverage: coverageSchema,
       settlement: z
         .object({

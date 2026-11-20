@@ -4089,7 +4089,7 @@ components:
         createdAt: { type: string, format: date-time }
         depositSeenAt: { type: [string, "null"], format: date-time }
         convertedAt: { type: [string, "null"], format: date-time }
-        signed: { type: object, description: "1Click's signed answer, which the pay page checks (D-124)." }
+        signed: { type: object, additionalProperties: true, description: "1Click's signed answer, which the pay page checks (D-124)." }
     CrossChainTx:
       type: object
       required: [hash, explorerUrl]
@@ -4168,9 +4168,9 @@ components:
           description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
         receiveAddress: { type: "string" }
         closesAt: { type: "string" }
-        paymentStatus: { type: "string" }
-        settlementStatus: { type: "string" }
-        refundStatus: { type: "string" }
+        paymentStatus: { type: "string", enum: [open, detected, partially_paid, paid, expired, expired_partially_paid, canceled] }
+        settlementStatus: { type: "string", enum: [none, pending, settled] }
+        refundStatus: { type: "string", enum: [none, held, refund_pending, refunded] }
         amounts:
           anyOf:
             - $ref: "#/components/schemas/PaymentAmounts"
@@ -4279,7 +4279,7 @@ components:
       properties:
         endpointId: { type: "string" }
         eventId: { type: "string" }
-        eventType: { type: "string" }
+        eventType: { type: "string", enum: [invoice.detected, invoice.partially_paid, invoice.paid, invoice.settled, invoice.expired, invoice.canceled, invoice.held, invoice.open, invoice.reopened] }
         status: { type: "string" }
         enabled: { type: "boolean" }
         attempts: { type: "integer" }
@@ -5000,7 +5000,7 @@ components:
       type: object
       additionalProperties: false
       required: [name, address, country, email]
-      description: Lengths count characters; no NUL. Only taxId is optional; empty means none.
+      description: Lengths count characters; no NUL. Only taxId is optional; empty or null means none.
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
         address:
@@ -5012,7 +5012,7 @@ components:
           type: string
           pattern: "^[A-Z]{2}$"
           description: An assigned ISO 3166-1 alpha-2 code in upper case, like DE.
-        taxId: { type: string, maxLength: 50 }
+        taxId: { type: [string, "null"], maxLength: 50 }
         email:
           type: string
           minLength: 1
@@ -6489,6 +6489,7 @@ components:
         createdAt: { type: [string, "null"], format: date-time }
         signed:
           type: [object, "null"]
+          additionalProperties: true
           description: "1Click's answer as it signed it (D-124): the pay page verifies it before showing the address."
     Error:
       type: object
