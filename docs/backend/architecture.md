@@ -3,16 +3,14 @@
 The Go backend in `apps/backend`. Code rules: [rules.md](rules.md).
 Requirements: the task's rows in [PROJECT.md](../PROJECT.md). Whole system: [architecture.md](../architecture.md).
 
-Built: signup and profiles API, billing details, saved clients, balances, activity, wallet transactions and balance history API, invoice API, invoice and receipt PDFs (`internal/document`, drawn in Go from the stored invoice), Privy auth, watcher, ledger and signer, run by `api`, `worker` and `signer`; the gate
-(`apps/backend/e2e`, R-23) runs the whole loop. Merchant profiles, stores, teams, API keys, payment links and checkout
-sessions are built; `webhooks` sends their webhooks. Support returns held money with `cmd/ops` (PLAN 11.10). Not built
-yet: refund claims by payers.
+Six binaries live in `cmd/`. `api`, `worker`, `signer` and `webhooks` run all the time; `canary` and `ops` run on
+their own. The gate (`apps/backend/e2e`, R-23) runs the whole loop.
 
 Read only the sections your task touches:
 
 | Section | Covers |
 |---|---|
-| [Processes](#processes) | What `api`, `worker`, `signer` and `canary` each do |
+| [Processes](#processes) | What `api`, `worker`, `signer`, `webhooks`, `canary` and `ops` each do |
 | [Startup](#startup) | What each process checks before it reports ready |
 | [Scaling](#scaling) | Read caches, RPC and Postgres pools, rate limits |
 | [Load test](#load-test) | The load test and what it measured |
@@ -56,6 +54,7 @@ Read only the sections your task touches:
     minutes, 2 minutes after a failure. A token 1Click drops is removed. Only tests set `ONECLICK_API_URL`.
     - It leaves out a token whose symbol 1Click marks deprecated, as `USDC(DEPRECATED)`.
     - It keeps each token's CoinGecko id from 1Click's `coingeckoId` in `intents_tokens.coingecko_id` (R-250).
+    - One dry quote every 5 s (`intents.ProbeGap`) learns a token's 1Click minimum; each token is asked again hourly (D-126).
   - On a loop of its own it reads the 1Click status of each quote due for a check (R-234).
     - Up to 64 a round, 8 at once, each answer within 5 s. Deposits 1Click saw go first.
     - It writes what changed to `crosschain_quotes` and the history; it never decides paid.
@@ -69,11 +68,11 @@ Read only the sections your task touches:
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
   typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`, plus the USDC approve and
   Uniswap swap that buy its own gas (R-229). Refunds are never signed
-  here: they will be Safe transactions the multisig owners approve (PLAN 11.10.3). Re-reads the ledger and the chain
+  here: the refund authority's Safe sends them ([returns](money-safety.md#returns-through-support)). Re-reads the ledger and the chain
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
   An invoice with a network fee pays that gas itself (R-226), so it is not counted or held back.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
-  `DATABASE_URL` today; a separate signer database role is planned for deployment (Q-8).
+  `DATABASE_URL`; a separate signer database role waits for the hosting choice (Q-8).
 - `webhooks`: runs 16 independent delivery workers (R-148, R-175).
   - Idle workers wait for one shared poll, which checks every second for a due delivery and wakes them.
   - It holds only `DATABASE_URL` and `WEBHOOK_SECRET_KEY`.
@@ -85,7 +84,7 @@ Read only the sections your task touches:
 - `canary`: run on its own host by a scheduler, not beside the others. Checks open invoices' receive addresses
   against `factory.predict` on two RPCs, the api and the pay page drawn in Chromium (address text and QR code), with
   its own config and no shared address code ([money safety](money-safety.md#canary), R-51).
-- `ops`: support's command for held money, run by hand on a server with the database and RPCs (PLAN 11.10.3).
+- `ops`: support's command for held money, run by hand on a server with the database and RPCs (D-118).
   It reads cases and queues returns, and holds no key ([returns through support](money-safety.md#returns-through-support)).
 
 ## Startup
@@ -94,7 +93,8 @@ Each binary checks what it needs before it serves. A setup mistake stops it with
 D-71); a chain whose RPCs don't answer is logged and skipped:
 - `DATABASE_URL` answers within 10 s. The api then applies migrations. The worker, signer and webhooks sender only read
   that every migration they embed is applied; if not, they stop and ask for the api to be started first (only the api migrates).
-- With `ENABLE_TESTNET_USDC=1`, the API then enables the three USDC testnet pairs before chain checks.
+- With `ENABLE_TESTNET_USDC=1`, the API then enables four testnet pairs before chain checks (`chain.EnableTestnetTokens`).
+  - USDC on Base Sepolia, Arbitrum Sepolia and Arc Testnet, and OUSD on Tempo Moderato.
   - Dokploy defaults to 1. Local development leaves it off; `0` leaves existing network settings unchanged.
   - Repeated startup enables those pairs again. Other pairs keep their settings; see [staging](../staging.md#dokploy-staging).
 - With `ENABLE_MAINNETS` set, it then switches the named live chains on, all or none.
@@ -138,13 +138,13 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
     - It buys nothing while one of the executor's transactions waits to be mined.
     - A failed or refused swap adds its reason to the alert; settlement waits as before.
     - `go test -tags mainnetfork` runs it on forks of both mainnets through their public RPCs.
-  - No fee it signs exceeds the chain's ceiling per gas unit (`settlement.maxFeePerGas`), whatever a provider suggests.
-    - Base and Arbitrum Sepolia: 1 gwei. Arc: 1,000 gwei. Tempo: 100 gwei (attodollars). Fees in October 2026 were far below.
+  - No fee it signs exceeds the chain's ceiling per gas unit (`chain.FeeCeiling`), whatever a provider suggests.
+    - Base, Arbitrum and their testnets: 1 gwei. Arc: 1,000 gwei. Tempo: 100 gwei (attodollars).
     - Replacements and stuck-deploy replacements stop at it too; above it a settlement waits and its delay alert fires.
     - A chain without a ceiling fails the start-up check, so the signer never serves it unbounded.
 
-Then each logs its ready line: `api listening`, `worker ready`, `signer ready`. The checks run once; an RPC failing
-later is handled by the pool as before.
+Then each logs its ready line: `api listening`, `worker ready`, `signer ready`, `webhooks ready`. The checks run once;
+an RPC failing later is handled by the pool.
 
 The worker and the signer each run as one copy. Before the checks each takes a Postgres session advisory lock
 (`worker.LockKey`, `settlement.LockKey`) on a connection of its own and holds it for its lifetime. A second copy logs
@@ -167,9 +167,8 @@ stops the others and exits 1; the same when one stops later. Ctrl+C stops them a
 Deployment model (D-72): the api is stateless and runs as N replicas behind a load balancer; exactly one worker and
 one signer run beside it (more copies wait on their locks, [startup](#startup)). Each api replica keeps its own
 balance cache and rate-limit buckets in memory, so with N replicas the RPC reads and each caller's limit grow N times.
-Redis is the next step when more than a few replicas run: the cache sits behind the `cache` interface in
-`internal/balance`, with string keys and values so a Redis implementation can take its place; the limit buckets in
-`internal/httpapi/mid` would move with it. Nothing else in the api keeps state between requests.
+Redis is the next step when more than a few replicas run: the balance cache in `internal/balance` (`memoryCache`)
+and the limit buckets in `internal/httpapi/mid` would move to it. Nothing else in the api keeps state between requests.
 
 - Balance reads (`balance.ChainReader`): a chain's finalized block is read once per 3 s (`finalizedTTL`) for every
   request, then `balanceOf` once per chain, token, wallet and that block. Requests asking for the same key meanwhile
@@ -179,8 +178,9 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
   again. The read keeps the deadline of the request that started it but not its cancel, so one closed tab does not
   fail the others. `/balance-history` reads through the same cache, so a dashboard poll of both routes costs one
   `balanceOf` per token. The worker reads finalized balances through the selected provider, sharing one finalized header within each chain round.
-- The RPC pool keeps up to 100 idle connections per host. With net/http's default of 2, each call beyond 2 at once
-  opened a new connection (and TLS session), and under load the api ran out of local ports ([load test](#load-test)).
+- The RPC pool keeps up to 100 idle connections per host (`internal/outbound`).
+  - net/http's default keeps 2: each call beyond that opens a new connection and TLS session.
+  - Under load the api then runs out of local ports ([load test](#load-test)).
 - Postgres: `pool_max_conns` in `DATABASE_URL` sets each process's pool (without it pgxpool takes the larger of 4 and
   the CPU count; `.env.example` sets 20). `database.Migrate` parses the URL as the pool does, so `pool_` parameters
   never reach Postgres as settings.
@@ -195,9 +195,9 @@ Redis is the next step when more than a few replicas run: the cache sits behind 
 
 `pnpm --filter @forwend/backend loadtest -users=10000 -duration=3m` (`e2e/load_test.go`; needs Postgres and Foundry,
 like the gate). Each user polls the dashboard routes every 15 s against Anvil behind a counting proxy; it prints
-p50/p95/p99 per route, errors, unread balances and RPC calls per second. On 2026-10-10 (one Apple M4 Pro running
-everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 when the finalized block moves every
-60 s). What keeps it there:
+p50/p95/p99 per route, errors, unread balances and RPC calls per second. On one Apple M4 Pro running everything,
+10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 when the finalized block moves every 60 s). What
+keeps it there:
 
 - RPC demand ≈ users × tokens ÷ max(15 s, how long a finalized block stays) + chains ÷ 3 s. It has to fit
   the endpoint limits and the api's share of the weighted budget described below. These figures exclude worker and signer traffic.
@@ -206,7 +206,6 @@ everything) 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 wh
 - `/balances` needs the `ledger_transactions_invoice` index (migration 00011): 21.5 ms without it, 0.37 ms with it.
 - `/balances` finds a profile's invoice rows through `invoices_money_profile` (migration 00120).
   - Activity deposits use `invoices_profile_created` or `invoices_profile_closes`, which start with `profile_id`.
-  - So `invoices_profile` (migration 00088) was redundant and is dropped (migration 00124).
   - With 220,000 invoices, a profile without payments read its balances in 0.05 ms, not 19 ms.
 - The RPC pool keeps up to 100 idle connections per host ([scaling](#scaling)).
 
@@ -215,8 +214,7 @@ Privy.
 
 ## Data model
 
-Built in `internal/database/migrations` (R-17), except rows marked planned; Postgres enforces the rules below, each
-with a test.
+Built in `internal/database/migrations` (R-17). Postgres enforces the rules below, each with a test.
 
 - `users(onboarded_at, sessions_revoked_at)` (set once by the first-run choice, R-50; Sign out everywhere's cutoff, R-137), `profiles(kind: personal|freelancer|merchant, name, idempotency_key, invoice_seq)` (one personal per user, made at
   signup without a key; other kinds once per user and key, or without a key by the first-run choice), `profile_wallets(provider, provider_wallet_id, address, chain_family)` (one per profile and family),
@@ -253,15 +251,16 @@ with a test.
   - One open invite per address and profile (a unique index); a new one revokes the last.
 - `chains(chain_id, chain_family, enabled, livemode)`, `tokens(chain_id, contract, decimals, enabled)`. `livemode` is
   false unless whatever adds a chain says live: the testnets are test mode (D-87, R-143). One confirm rule for all
-  chains (D-45), so no per-chain rule columns. From `00015` on, migrations add each planned network and its token
-  switched off (Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`), so
-  isolated tests need no public RPCs or testnet gas. Migration 82 adds Base Sepolia disabled, with public RPC metadata. Activation below adds its token.
-  An operator can enable another pair after the executor has gas and the endpoint registry has at least one working provider:
-  `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
-  Then restart the api, worker and signer so their startup checks cover it. A chain they log as unavailable at
-  startup is not checked yet: restart them again once it answers.
+  chains (D-45), so no per-chain rule columns. Migrations add each testnet and its token switched off, so isolated
+  tests need no public RPCs or testnet gas:
+  - Arbitrum Sepolia USDC in `00015`, Arc testnet USDC in `00016`, Tempo Moderato OUSD in `00017`;
+  - Base Sepolia in `00082`, with public RPC metadata. Activation below adds its token.
+  - An operator enables another pair once the executor has gas and the endpoint registry has a working provider:
+    `UPDATE chains SET enabled = true WHERE chain_id = 421614; UPDATE tokens SET enabled = true WHERE chain_id = 421614;`
+  - Then restart the api, worker and signer so their startup checks cover it.
+    - A chain they log as unavailable at startup is not checked: restart them again once it answers.
   - Migrations 105 and 106 add the mainnets, live mode and switched off, and their enabled tokens. `ENABLE_MAINNETS` switches each chain on.
-  - With `ENABLE_TESTNET_USDC=1`, startup adds Base Sepolia and enables its USDC alongside Arbitrum Sepolia and Arc Testnet USDC.
+  - With `ENABLE_TESTNET_USDC=1`, startup adds Base Sepolia if missing and enables the four testnet pairs ([startup](#startup)).
   - This activation runs after migrations on fresh and existing databases. Schema migrations alone still leave the pairs disabled.
 - `profiles.livemode` is the profile's mode (D-120): false while Developer mode is on.
   - A trigger starts a new profile live when a mainnet is switched on, else in test mode.
@@ -360,8 +359,6 @@ with a test.
 - `retainers` (R-98): an invoice that repeats every month, with the create `request` as JSON, `first_due`, `end_date`
   and `stopped_at`. `retainer_invoices` numbers each month's invoice from 0, so each month is made once.
   - `failures` counts a month's failed tries in a row; `retry_at` is when the next try may run.
-- Planned (PLAN 11.10): `refund_intents` (one per approved claim), `refund_claims`, `support_cases` (wrong chain,
-  late).
 - `chain_cursors(chain_id, last_scanned_block, last_finalized_block)`.
 
 Rules:
@@ -414,7 +411,7 @@ never holds the app's load.
 - [RPC operations](rpc.md) defines configuration, secret references, routing, recovery, migration and the deferred architecture.
 - `internal/chain` owns configuration validation and go-ethereum client construction.
 - Payment services receive resolved chain specifications; they never read secrets or construct provider URLs.
-- Each chain has one pool containing all enabled endpoints; legacy role labels do not restrict routing.
+- Each chain has one pool containing all enabled endpoints; role labels do not restrict routing.
 - Private endpoints precede public endpoints; then the fastest measured answer wins ([routing](rpc.md#routing-and-health)).
 - An endpoint that refuses a request's size passes it to the next one; priority orders only unmeasured endpoints.
 - Each request tries each eligible endpoint once, bounded by its caller deadline and a 30-second transport deadline.

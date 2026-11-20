@@ -20,8 +20,7 @@ type Budget struct {
 	share string
 }
 
-// Share is a process role's part of each budget group's rate, kept in its own bucket. Signed-in api reads can
-// then never take what deposit detection and settlement (worker and signer) need.
+// Share is a process role's part of each group's rate, so api reads never take what worker and signer need.
 type Share struct {
 	name string
 	part float64

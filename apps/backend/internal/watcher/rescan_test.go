@@ -49,7 +49,6 @@ func TestRequestedRescanKeepsItsStartAndDefersFailedReads(t *testing.T) {
 	}
 }
 
-// A rescan of an invoice older than the history the RPCs keep moves past the pruned blocks instead of retrying (R-191).
 func TestRescanMovesPastHistoryNoRPCKeeps(t *testing.T) {
 	e := setup(t)
 	id := "0x" + strings.Repeat("01", 32)

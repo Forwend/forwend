@@ -3,6 +3,8 @@ package invoice
 import (
 	"context"
 	"errors"
+
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 type CheckoutState string
@@ -16,10 +18,10 @@ const (
 )
 
 func (i Invoice) CheckoutState() CheckoutState {
-	if i.PaymentStatus == "paid" {
+	if i.PaymentStatus == ledger.Paid {
 		return CheckoutComplete
 	}
-	if i.Closed || i.PaymentStatus == "expired" || i.PaymentStatus == "expired_partially_paid" || i.PaymentStatus == "canceled" {
+	if i.Closed || ledger.Final(i.PaymentStatus) {
 		return CheckoutExpired
 	}
 	return CheckoutOpen

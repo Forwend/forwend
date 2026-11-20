@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
 )
 
@@ -30,7 +31,6 @@ type acceptBody struct {
 	Email string `json:"email"`
 }
 
-// The client's link view: no client block and no typed email.
 type publicJobJSON struct {
 	Title        string        `json:"title"`
 	Scope        *string       `json:"scope"`
@@ -46,14 +46,11 @@ type jobJSON struct {
 	JobID string `json:"jobId"`
 	Token string `json:"token"`
 	publicJobJSON
-	// Shadows publicJobJSON's Payments, adding each change's typed email.
-	Payments      []ownerPaymentJSON `json:"payments"`
+	Payments      []ownerPaymentJSON `json:"payments"` // shadows publicJobJSON.Payments
 	Client        clientJSON         `json:"client"`
 	AcceptedEmail *string            `json:"acceptedEmail"`
 }
 
-// paymentJSON is one payment; invoiceId, payToken, number, status and invoicedAt are null until its invoice is made,
-// doneAt and deliveryLink until the owner marks the step done, paidAt until it is paid.
 type paymentJSON struct {
 	Position     int     `json:"position"`
 	Title        string  `json:"title"`
@@ -61,20 +58,18 @@ type paymentJSON struct {
 	DueDays      int     `json:"dueDays"`
 	OnAccept     bool    `json:"onAccept"`
 	InvoiceID    *string `json:"invoiceId"`
-	PayToken     *string `json:"payToken"` // the pay link's (D-86)
+	PayToken     *string `json:"payToken"`
 	Number       *int64  `json:"number"`
 	Status       *string `json:"status"`
 	DoneAt       *string `json:"doneAt"`
 	DeliveryLink *string `json:"deliveryLink"`
 	InvoicedAt   *string `json:"invoicedAt"`
 	PaidAt       *string `json:"paidAt"`
-	// A scope change (R-105): null for the quote's payments, and acceptedName and acceptedAt until the client accepts.
-	ProposedAt   *string `json:"proposedAt"`
+	ProposedAt   *string `json:"proposedAt"` // null for the quote's payments
 	AcceptedName *string `json:"acceptedName"`
 	AcceptedAt   *string `json:"acceptedAt"`
 }
 
-// Owner only (R-107).
 type ownerPaymentJSON struct {
 	paymentJSON
 	AcceptedEmail *string `json:"acceptedEmail"`
@@ -109,13 +104,13 @@ type jobSummaryJSON struct {
 }
 
 func toPublicJobJSON(j job.Job) publicJobJSON {
-	out := publicJobJSON{Title: j.Title, Scope: httpio.OrNull(j.Scope), TotalUSD: job.USD(j.TotalCents()),
+	out := publicJobJSON{Title: j.Title, Scope: httpio.OrNull(j.Scope), TotalUSD: invoice.USD(j.TotalCents()),
 		Issuer: issuerJSON{Name: j.Issuer.Name, Address: j.Issuer.Address, Country: j.Issuer.Country,
 			TaxID: httpio.OrNull(j.Issuer.TaxID), Email: j.Issuer.Email},
 		AcceptedName: httpio.OrNull(j.AcceptedName), AcceptedAt: httpio.OrNullTime(j.AcceptedAt),
 		CreatedAt: j.CreatedAt.Format(time.RFC3339), Payments: []paymentJSON{}}
 	for _, p := range j.Payments {
-		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: job.USD(p.AmountCents), DueDays: p.DueDays,
+		pj := paymentJSON{Position: p.Position, Title: p.Title, AmountUSD: invoice.USD(p.AmountCents), DueDays: p.DueDays,
 			OnAccept: p.OnAccept, InvoiceID: httpio.OrNull(p.InvoiceID), PayToken: httpio.OrNull(p.PayToken),
 			Status: httpio.OrNull(p.Status),
 			DoneAt: httpio.OrNullTime(p.DoneAt), DeliveryLink: httpio.OrNull(p.DeliveryLink),
@@ -130,7 +125,7 @@ func toPublicJobJSON(j job.Job) publicJobJSON {
 	return out
 }
 
-// proposedAt keeps the microseconds the database stores: the client's accept names the change by it (R-105).
+// proposedAt keeps microseconds: the client's accept names the change by it.
 func proposedAt(t time.Time) *string {
 	if t.IsZero() {
 		return nil
@@ -152,7 +147,7 @@ func toJobJSON(j job.Job) jobJSON {
 }
 
 func toJobSummaryJSON(s job.Summary) jobSummaryJSON {
-	return jobSummaryJSON{JobID: s.ID, Title: s.Title, ClientName: s.ClientName, TotalUSD: job.USD(s.TotalCents),
+	return jobSummaryJSON{JobID: s.ID, Title: s.Title, ClientName: s.ClientName, TotalUSD: invoice.USD(s.TotalCents),
 		Payments: s.Payments, Paid: s.Paid, AcceptedAt: httpio.OrNullTime(s.AcceptedAt),
 		CreatedAt: s.CreatedAt.Format(time.RFC3339)}
 }

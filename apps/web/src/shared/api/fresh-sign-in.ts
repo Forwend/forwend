@@ -4,8 +4,9 @@ import type {
   FetchBaseQueryError,
   FetchBaseQueryMeta,
 } from "@reduxjs/toolkit/query";
+import { apiError, errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 
-/** The API's answer when an action needs a sign-in from the last 15 minutes (R-137, D-49). */
+/** The API's answer when an action needs a sign-in from the last 15 minutes. */
 export const REAUTH_REQUIRED = "reauth_required";
 
 type BaseQuery<Options> = BaseQueryFn<
@@ -20,16 +21,10 @@ type BaseQuery<Options> = BaseQueryFn<
 export type AskFreshSignIn = () => Promise<boolean>;
 
 /** True for the API's reauth_required answer; a form shows no error for it once the user cancelled the sign-in. */
-export const needsFreshSignIn = (error: unknown) => {
-  const e = error as FetchBaseQueryError | undefined;
-  return (
-    e?.status === 401 &&
-    (e.data as { error?: { code?: string } } | undefined)?.error?.code === REAUTH_REQUIRED
-  );
-};
+export const needsFreshSignIn = (error: unknown) =>
+  errorStatus(error) === HTTP_STATUS.unauthorized && apiError(error).code === REAUTH_REQUIRED;
 
-/** On reauth_required, waits for a fresh sign-in, then sends the request once more with the new token. Requests that
- * hit it together share one dialog. */
+/** On reauth_required, waits for a fresh sign-in and resends once; concurrent requests share one dialog. */
 export function withFreshSignIn<Options>(
   base: BaseQuery<Options>,
   ask: (extra: unknown) => AskFreshSignIn | undefined,

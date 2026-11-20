@@ -16,26 +16,23 @@ import {
 } from "@forwend/ui-web";
 import { Check, ChevronRight, Copy, ExternalLink, QrCode as QrIcon, Share } from "lucide-react";
 import { useState } from "react";
-import { PHONE_ACTION_BAR } from "@/features/invoices/constants/invoices";
+import { PHONE_ACTION_BAR } from "@/features/invoices/constants/invoice-detail";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { payLinkUrl } from "@/features/invoices/lib/invoices";
 
 const ICON = "size-[var(--fw-icon-sm)]";
 const ROW_ICON = "size-[var(--fw-icon-md)] shrink-0 text-muted";
 
 export interface InvoicePayLinkProps {
-  /** The pay link's token (D-86). */
   payToken: string;
 }
 
-// The app renders only in the browser, after sign-in. The page never prints the link: it is long, and the QR, Copy
-// link and Share carry it.
-const payLinkOf = (payToken: string) => `${window.location.origin}/pay/${payToken}`;
-// An outlined icon button, beside the outlined Edit.
+// The page never prints the link: it is long, and the QR, Copy link and Share carry it.
 const OUTLINED = "border border-line bg-surface text-ink hover:bg-surface-2";
 
-/** Desktop: the pay link's actions in the page header, Copy link first. */
+/** Desktop: in the page header. */
 export function InvoicePayLinkActions({ payToken }: InvoicePayLinkProps) {
-  const link = payLinkOf(payToken);
+  const link = payLinkUrl(payToken);
   const [qr, setQr] = useState(false);
   return (
     <>
@@ -67,10 +64,9 @@ export function InvoicePayLinkActions({ payToken }: InvoicePayLinkProps) {
   );
 }
 
-/** Phones: the pay link's actions as rows under the amount panel, with Copy link and Share in the bar at the
- * bottom. */
+/** Phones: rows under the amount panel, with Copy link and Share in the bottom bar. */
 export function InvoicePayLinkPhone({ payToken }: InvoicePayLinkProps) {
-  const link = payLinkOf(payToken);
+  const link = payLinkUrl(payToken);
   const [qr, setQr] = useState(false);
   return (
     <div className="col-span-full flex flex-col gap-2 lg:hidden">
@@ -147,7 +143,6 @@ function CopyLink({ link, className }: { link: string; className?: string }) {
   );
 }
 
-// Only where the browser has a share sheet.
 function ShareLink({
   link,
   ...style

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import { activityItem, hash, mockApi, sampleInvoice, sampleTransfer } from "./sample-api";
 import { session } from "./session";
 
@@ -223,6 +223,7 @@ const report = {
       minVerifiedBlock: 100,
       maxVerifiedBlock: 100,
       chainFinalizedBlock: 100,
+      scanCurrent: true,
     },
   ],
 };
@@ -830,8 +831,8 @@ for (const width of [1440, 390]) {
         await expect(
           page
             .getByRole("main")
-            .getByText(/Returned/)
-            .first(),
+            .getByRole("term")
+            .filter({ hasText: /^Refunded$/ }),
         ).toBeVisible();
       await expect(page.getByRole("link", { name: "INV-0002", exact: true })).toHaveAttribute(
         "href",

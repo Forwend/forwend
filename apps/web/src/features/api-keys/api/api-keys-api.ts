@@ -5,13 +5,12 @@ import {
   newApiKeySchema,
 } from "@/features/api-keys/schemas/api-keys";
 import type { ApiKey, ApiKeyBody, NewApiKey } from "@/features/api-keys/types/api-keys";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const KEYS_TAG = "ApiKeys";
 
-const keysUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/keys`;
+const keysUrl = (profileId: string) => profilePath(profileId, "keys");
 
-// R-144: making or rolling a key asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export const apiKeysApi = apiSlice.enhanceEndpoints({ addTagTypes: [KEYS_TAG] }).injectEndpoints({
   endpoints: (build) => ({
     listKeys: build.query<ApiKey[], string>({

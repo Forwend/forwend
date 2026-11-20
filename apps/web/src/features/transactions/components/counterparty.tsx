@@ -3,7 +3,6 @@ import { TRANSACTIONS_COPY } from "@/features/transactions/constants/transaction
 import type { Transaction } from "@/features/transactions/types/transactions";
 import { addressLink } from "@/shared/lib/chains";
 
-/** The other side's address, short, linking its explorer page where the chain has one. */
 export function Counterparty({ t }: { t: Transaction }) {
   const link = addressLink(t.chainId, t.counterparty);
   const short = shortAddress(t.counterparty);

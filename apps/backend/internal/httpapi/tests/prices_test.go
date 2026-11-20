@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// R-178.
 func TestPrices(t *testing.T) {
 	e := invoiceAPI(t)
 	if r := e.call(t, "GET", "/v1/prices", "", "", ""); r.status != http.StatusUnauthorized || errorCode(r) != "unauthorized" {
@@ -17,7 +16,6 @@ func TestPrices(t *testing.T) {
 		return map[string]any{"chainId": float64(84532), "token": usdc, "symbol": "USDC", "coinId": "usd-coin",
 			"usd": usd, "sourceUpdatedAt": source, "fetchedAt": fetched, "stale": stale}
 	}
-	// Bob's personal profile has no member role anywhere: any signed-in user reads them.
 	if r := e.call(t, "GET", "/v1/prices", "did:privy:bob", "", ""); r.status != http.StatusOK ||
 		!reflect.DeepEqual(r.body, map[string]any{"prices": []any{price(nil, nil, nil, true)}}) {
 		t.Fatalf("GET before any read: %d %v", r.status, r.body)

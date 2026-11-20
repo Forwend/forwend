@@ -3,19 +3,9 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
 import { makeStore } from "@/store/store";
-
-// The app calls the API same-origin ("/api/…"); the test's Request needs an absolute URL.
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
 
 const TOKEN = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 const BALANCES = {
@@ -69,16 +59,16 @@ describe("usePricedBalances", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <Provider store={store}>{children}</Provider>
     );
-    const { result } = renderHook(() => usePricedBalances("p"), { wrapper });
-
-    // The balances have answered; the prices have not.
-    await waitFor(() =>
-      expect(store.getState().api.queries['getBalances("p")']?.status).toBe("fulfilled"),
+    const { result } = renderHook(
+      () => ({ priced: usePricedBalances("p"), read: useGetBalancesQuery("p") }),
+      { wrapper },
     );
-    expect(result.current.balances).toBeNull();
+
+    await waitFor(() => expect(result.current.read.currentData).toBeDefined());
+    expect(result.current.priced.balances).toBeNull();
 
     await act(async () => pricesAnswer(answer(PRICES)));
-    await waitFor(() => expect(result.current.balances?.tokens[0]?.wallet).toBe("2500000"));
-    expect(result.current.prices?.[0]?.usd).toBe("1");
+    await waitFor(() => expect(result.current.priced.balances?.tokens[0]?.wallet).toBe("2500000"));
+    expect(result.current.priced.prices?.[0]?.usd).toBe("1");
   });
 });

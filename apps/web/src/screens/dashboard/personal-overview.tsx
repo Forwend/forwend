@@ -16,7 +16,6 @@ const ROW = "grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,2fr)_mi
 export function PersonalOverview() {
   const { profile, openReceive, openRequest, openSend, openTransfer } = useAppSession();
   const { balances, prices, failed, retry } = usePricedBalances(profile.profileId);
-  // Two rows as on the business overview: the balance beside the assets it holds, then its history beside the flow.
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">{profileLabel(profile)} overview</h1>

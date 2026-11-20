@@ -14,14 +14,13 @@ import {
 } from "@forwend/ui-web";
 import { Ellipsis, Trash2, UserCog } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
-import { ROLE_LABELS, ROLES } from "@/features/profiles/constants/profile";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
+import { ROLE_LABELS } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 import { useRemoveMemberMutation, useSetMemberMutation } from "@/features/team/api/team-api";
 import { GrantFields } from "@/features/team/components/grant-fields";
-import { MEMBER_ROLES } from "@/features/team/constants/team";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
-import { grantError } from "@/features/team/lib/team";
+import { grant, grantError, memberRole } from "@/features/team/lib/team";
 import type { Member, MemberRole, ToRoll } from "@/features/team/types/team";
 
 const hasAnything = (r: ToRoll) => r.keys.length + r.webhooks.length > 0;
@@ -29,46 +28,36 @@ const hasAnything = (r: ToRoll) => r.keys.length + r.webhooks.length > 0;
 export interface MemberActionsProps {
   profileId: string;
   member: Member;
-  /** How the member is named: their email, or a placeholder when they have none. */
   who: string;
   stores: readonly Store[];
-  /** A removal or role change left the member with less: what they could still use, for the owner to roll. */
   onToRoll: (toRoll: ToRoll) => void;
 }
 
-const memberRole = (member: Member): MemberRole =>
-  MEMBER_ROLES.find((r) => r === member.role) ?? ROLES.admin;
-
-// D-93: a role change needs a fresh sign-in, which the API asks for (D-63); removing someone does not.
 export function MemberActions({ profileId, member, who, stores, onToRoll }: MemberActionsProps) {
   const [setMember, saving] = useSetMemberMutation();
   const fresh = useFreshSignIn();
   const [remove, removing] = useRemoveMemberMutation();
   const toast = useToast();
   const form = useRef<HTMLFormElement>(null);
-  // Which dialog opens once the menu has closed and handed focus back (as on Delete client).
+  // The dialog opens once the menu has closed and handed focus back.
   const chosen = useRef<"change" | "remove" | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const [role, setRole] = useState<MemberRole>(memberRole(member));
+  const [role, setRole] = useState<MemberRole>(memberRole(member.role));
   const [storeIds, setStoreIds] = useState<string[]>(member.stores);
   const [errors, setErrors] = useState<ReturnType<typeof grantError>>({});
   const resetChange = () => {
-    setRole(memberRole(member));
+    setRole(memberRole(member.role));
     setStoreIds(member.stores);
     setErrors({});
   };
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (role !== ROLES.admin && storeIds.length === 0)
-      return setErrors({ stores: COPY.errors.stores });
+    const body = grant(role, storeIds);
+    if (!body) return setErrors({ stores: COPY.errors.stores });
     setErrors({});
     try {
       const saved = await fresh.run(() =>
-        setMember({
-          profileId,
-          memberId: member.memberId,
-          body: { role, stores: role === ROLES.admin ? [] : storeIds },
-        }).unwrap(),
+        setMember({ profileId, memberId: member.memberId, body }).unwrap(),
       );
       toast({ tone: TONES.success, title: COPY.changed(who, ROLE_LABELS[role]) });
       form.current?.closest("dialog")?.close();
@@ -83,7 +72,7 @@ export function MemberActions({ profileId, member, who, stores, onToRoll }: Memb
       toast({ tone: TONES.success, title: COPY.removed(who) });
       if (hasAnything(toRoll)) onToRoll(toRoll);
     } catch {
-      // The dialog shows the error.
+      // Shown by the dialog.
     }
   };
 
@@ -115,10 +104,9 @@ export function MemberActions({ profileId, member, who, stores, onToRoll }: Memb
                   if (!open) return;
                   chosen.current = null;
                   event.preventDefault();
-                  // The trigger holds focus as the dialog opens, so the dialog hands it back there when it closes.
+                  // The dialog hands focus back to what held it as it opened.
                   trigger.current?.focus();
                   if (open === "remove") return openRemove();
-                  // From the member as the list has it now, which a saved change has updated.
                   resetChange();
                   openChange();
                 }}
@@ -132,7 +120,7 @@ export function MemberActions({ profileId, member, who, stores, onToRoll }: Memb
                   {COPY.change}
                 </MenuItem>
                 <MenuItem
-                  className="text-danger data-[highlighted]:bg-danger-soft"
+                  danger
                   onSelect={() => {
                     chosen.current = "remove";
                   }}

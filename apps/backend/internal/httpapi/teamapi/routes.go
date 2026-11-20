@@ -1,4 +1,3 @@
-// Package teamapi serves a merchant profile's team and its invites (R-139) of docs/backend/api.md.
 package teamapi
 
 import (
@@ -11,7 +10,7 @@ import (
 
 func Routes(mux *http.ServeMux, g mid.Guards, members *team.Service) {
 	mux.Handle("GET /v1/profiles/{profileId}/members", g.Can(auth.Team)(listTeam(members)))
-	// D-63: giving someone a role, by invite or by change, needs a fresh sign-in; taking access away does not.
+	// Giving someone a role, by invite or by change, needs a fresh sign-in; taking access away does not.
 	mux.Handle("PUT /v1/profiles/{profileId}/members/{memberId}", g.FreshSignIn(auth.Team)(setMember(members)))
 	mux.Handle("DELETE /v1/profiles/{profileId}/members/{memberId}", g.Can(auth.Team)(removeMember(members)))
 	mux.Handle("POST /v1/profiles/{profileId}/invites", g.FreshSignIn(auth.Team)(invite(members)))

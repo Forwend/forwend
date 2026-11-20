@@ -9,7 +9,6 @@ export interface ProjectIdProps {
   storeId: string;
 }
 
-/** The store's project ID (D-31) inline in a line of text, with a copy icon that says when it copied. */
 export function ProjectId({ storeId }: ProjectIdProps) {
   const [status, copy] = useCopy(storeId);
   const said =

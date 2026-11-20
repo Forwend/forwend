@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
-	"github.com/forwend/forwend/apps/backend/internal/job"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
@@ -17,10 +17,8 @@ type linkBody struct {
 	MaxUSD      string     `json:"maxUsd"`
 	EndsAt      *time.Time `json:"endsAt"`
 	MaxPayments *int       `json:"maxPayments"`
-	// Left out: on.
-	Active *bool `json:"active"`
-	// Who pays its invoices' fees (D-122); null or left out: the profile's choice.
-	FeesPaidBy *string `json:"feesPaidBy"`
+	Active      *bool      `json:"active"`     // nil: on
+	FeesPaidBy  *string    `json:"feesPaidBy"` // nil: the profile's choice
 }
 
 type linkJSON struct {
@@ -44,12 +42,12 @@ type linkJSON struct {
 	UpdatedAt   string  `json:"updatedAt"`
 }
 
-// usd is cents as a decimal with two places; nil for none.
+// usd is cents as a two-place decimal; nil for 0.
 func usd(cents int64) *string {
 	if cents == 0 {
 		return nil
 	}
-	s := job.USD(cents)
+	s := invoice.USD(cents)
 	return &s
 }
 
@@ -71,13 +69,12 @@ func toLinkJSON(l link.Link) linkJSON {
 	return out
 }
 
-// publicLinkJSON is a link as /l/<slug> shows it to its payer (R-142).
 type publicLinkJSON struct {
 	Version   string           `json:"version"`
 	Slug      string           `json:"slug"`
 	Title     string           `json:"title"`
-	Payee     *string          `json:"payee"` // the billing name; null before the owner saves billing details
-	Brand     *publicBrandJSON `json:"brand"` // a merchant store's (R-135); null for a freelancer
+	Payee     *string          `json:"payee"` // null before billing details are saved
+	Brand     *publicBrandJSON `json:"brand"`
 	AmountUSD *string          `json:"amountUsd"`
 	MinUSD    *string          `json:"minUsd"`
 	MaxUSD    *string          `json:"maxUsd"`

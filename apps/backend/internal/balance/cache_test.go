@@ -20,11 +20,11 @@ func TestReadsAreSharedUntilTheFinalizedBlockMoves(t *testing.T) {
 	token := anvil.DeployToken()
 	anvil.Mint(token, "1000000000")
 	anvil.Transfer(token, holder, "2500000")
-	anvil.Mine(2) // final
+	anvil.Mine(2)
 	proxy := anvil.Proxy()
 	c := NewChainReader(map[uint64]chain.Spec{
 		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: proxy.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(proxy.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
-	}, 1000)
+	}, 1000, nil)
 	defer c.Close()
 	reads := func() (headers, balances int) {
 		for _, call := range proxy.Calls() {
@@ -79,7 +79,7 @@ func TestReadsAreSharedUntilTheFinalizedBlockMoves(t *testing.T) {
 	}
 
 	anvil.Transfer(token, holder, "1")
-	anvil.Mine(2) // the finalized block moves past the transfer
+	anvil.Mine(2)
 	time.Sleep(finalizedTTL)
 	balance, block := read(holder)
 	if block <= first.block || balance != "2500001" {
@@ -92,9 +92,9 @@ func TestReadsAreSharedUntilTheFinalizedBlockMoves(t *testing.T) {
 
 func TestFailedReadIsNotKept(t *testing.T) {
 	m, ctx, calls := newMemoryCache(), context.Background(), 0
-	read := func(context.Context) (string, error) {
+	read := func(context.Context) (any, error) {
 		if calls++; calls == 1 {
-			return "", errors.New("rpc down")
+			return nil, errors.New("rpc down")
 		}
 		return "42", nil
 	}
@@ -112,13 +112,13 @@ func TestFailedReadIsNotKept(t *testing.T) {
 func TestReadOutlivesTheRequestThatStartedIt(t *testing.T) {
 	m := newMemoryCache()
 	release, reads := make(chan struct{}), atomic.Int32{}
-	read := func(ctx context.Context) (string, error) {
+	read := func(ctx context.Context) (any, error) {
 		reads.Add(1)
 		select {
 		case <-release:
 			return "7", nil
 		case <-ctx.Done():
-			return "", ctx.Err()
+			return nil, ctx.Err()
 		}
 	}
 	leaving, leave := context.WithCancel(context.Background())
@@ -127,7 +127,7 @@ func TestReadOutlivesTheRequestThatStartedIt(t *testing.T) {
 	for reads.Load() == 0 {
 		time.Sleep(time.Millisecond)
 	}
-	waiting := make(chan string, 1)
+	waiting := make(chan any, 1)
 	go func() { v, _ := m.get(context.Background(), "k", time.Minute, read); waiting <- v }()
 	leave()
 	if err := <-left; !errors.Is(err, context.Canceled) {

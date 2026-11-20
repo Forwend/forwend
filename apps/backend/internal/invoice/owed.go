@@ -10,36 +10,33 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/chain"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
-// Owed is one row of the Owed to you list (R-95): a payment the customer can still pay, with what is left of it.
-// Money held for a payer is the payer's (D-114), so it is never a row.
+// Owed is one row of the Owed to you list; money held for a payer is never a row.
 type Owed struct {
-	// overdue or partlyPaid.
-	Kind      string
-	InvoiceID string
-	// Number is nil for a checkout session, which has no document (D-107); its Reference names the order.
+	Kind         string // overdue or partlyPaid
+	InvoiceID    string
 	Number       *int64
 	Purpose      Purpose
 	DocumentKind DocumentKind
 	Reference    string
 	Title        string
 	ClientName   string
-	DueDate      string // YYYY-MM-DD; "" without one
-	DaysLate     int    // overdue only
-	OptionCount  int    // above 1 the client chooses, so an unpaid row reads in USD (D-75)
+	DueDate      string // YYYY-MM-DD
+	DaysLate     int
+	OptionCount  int // above 1 the client chooses: an unpaid row reads in USD
 	chain.Asset
 	Amount *big.Int
 }
 
-// OwedTotal is what is left to pay in one token, over every row and not only the page's.
+// OwedTotal covers every row, not only the page's.
 type OwedTotal struct {
 	chain.Asset
 	Amount *big.Int
 }
 
-// OwedPage holds the first rows; Count and Totals cover them all.
 type OwedPage struct {
 	Items  []Owed
 	Count  int
@@ -48,13 +45,11 @@ type OwedPage struct {
 
 const DefaultOwedLimit = 50
 
-// Owed compares the due date with today's UTC date. The caller must check the user's access to the profile.
-// stores, when not nil, keeps only those stores' payments (R-138); live, when not nil, only that mode's (D-87).
+// Owed compares due dates with today's UTC date; stores and live, when not nil, narrow it.
 func (s *Service) Owed(ctx context.Context, profileID string, stores []string, live *bool, limit int) (OwedPage, error) {
 	if limit < 1 || limit > MaxLimit {
 		return OwedPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
-	// A checkout session has no number; a link invoice without one yet is its payer's alone (R-141).
 	args := []any{profileID}
 	where := `invoices.profile_id = $1 AND (invoices.number IS NOT NULL OR invoices.document_kind = 'none')
 		AND (invoices.due_date < (now() AT TIME ZONE 'UTC')::date OR invoices.payment_status = 'partially_paid')
@@ -67,8 +62,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 		args = append(args, *live)
 		where += fmt.Sprintf(" AND (SELECT livemode FROM chains c WHERE c.chain_id = invoices.chain_id) = $%d", len(args))
 	}
-	// Paid in full and waiting for the finalized balance check: nothing is left, so no row. MATERIALIZED: the status
-	// filter, not the costlier amount left, picks the rows first.
+	// MATERIALIZED: the status filter, not the costlier amount left, picks the rows first.
 	rows, err := s.pool.Query(ctx, `WITH owed AS MATERIALIZED (
 		SELECT CASE WHEN invoices.due_date < (now() AT TIME ZONE 'UTC')::date THEN 'overdue' ELSE 'partlyPaid' END AS kind,
 		    invoices.id, invoices.number, invoices.purpose, invoices.document_kind, coalesce(invoices.reference, ''),
@@ -77,7 +71,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 		    greatest((now() AT TIME ZONE 'UTC')::date - invoices.due_date, 0) AS days_late,
 		    (SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id),
 		    invoices.chain_id, invoices.token_contract, t.symbol, t.decimals,
-		    invoices.amount + `+PaidToOwnerSQL("invoices.option_id")+` AS amount, invoices.created_at
+		    invoices.amount - `+ledger.OwedSQL("invoices.option_id")+` AS amount, invoices.created_at
 		FROM `+invoicesCurrent+` JOIN tokens t ON t.chain_id = invoices.chain_id AND t.contract = invoices.token_contract
 		WHERE `+where+`)
 		SELECT * FROM owed WHERE amount > 0
@@ -86,9 +80,7 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 	if err != nil {
 		return OwedPage{}, fmt.Errorf("read owed: %w", err)
 	}
-	// ponytail: every row is read to add up the totals; the open status filter keeps them within the profile's open
-	// receive addresses (three times MaxOpen: the owner's, its links' and its checkouts'). Sum in SQL if that limit
-	// grows.
+	// ponytail: every row is read to sum the totals, bounded by the open receive addresses; sum in SQL if that grows.
 	page := OwedPage{Items: []Owed{}, Totals: []OwedTotal{}}
 	totals := map[chain.Asset]*big.Int{}
 	var o Owed

@@ -24,8 +24,7 @@ type PaymentAttentionPage struct {
 
 func paymentAttentionSQL(delay string) string {
 	return `EXISTS (SELECT 1 FROM invoices attention WHERE coalesce(attention.main_id,attention.id) = invoices.id AND (
-    attention.payment_status = 'partially_paid' AND (SELECT -coalesce(sum(e.amount),0) FROM ledger_transactions l
-      JOIN ledger_entries e ON e.transaction_id = l.id WHERE l.invoice_id = attention.id AND e.account = 'recipient_payable') < attention.amount
+    attention.payment_status = 'partially_paid' AND ` + ledger.OwedSQL("attention.id") + ` < attention.amount
     OR attention.refund_status IN ('held', 'refund_pending')
     OR ((` + ledger.UnreconciledSQL("attention.id") + `) AND (
       EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id=attention.id AND d.status<>'reorged')
@@ -36,7 +35,7 @@ func paymentAttentionSQL(delay string) string {
       AND (intent.status = 'refused' OR intent.wait IS NOT NULL OR intent.created_at <= transaction_timestamp()-make_interval(secs => ` + delay + `)))
  )) OR EXISTS (SELECT 1 FROM webhook_events event JOIN webhook_deliveries delivery ON delivery.event_id = event.id
     JOIN webhook_endpoints endpoint ON endpoint.id = delivery.endpoint_id WHERE event.invoice_id = invoices.id
-    AND (delivery.status = 'failed' OR NOT endpoint.enabled AND delivery.status = 'pending'))`
+    AND ` + webhook.ProblemSQL("delivery", "endpoint") + `)`
 }
 
 func (s *Service) PaymentAttention(ctx context.Context, profileID string, q PaymentQuery) (PaymentAttentionPage, error) {

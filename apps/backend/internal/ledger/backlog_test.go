@@ -92,7 +92,6 @@ func TestBatchTheChainNoLongerHoldsIsNotPaid(t *testing.T) {
  last_finalized_time=1800000001 WHERE chain_id=$1`, chaintest.ChainID); err != nil {
 		t.Fatal(err)
 	}
-	// On chain: 101 deposited, 100 refunded. The finalized balance keeps the first 100 from counting as paid.
 	service := NewService(e.pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return big.NewInt(1), 10000, nil
 	}, func(context.Context, uint64, string, string) (uint64, error) { return 0, nil })
@@ -147,7 +146,6 @@ func TestRefundFoundAfterLaterMovementsWaitsForReview(t *testing.T) {
 	if err := service.Process(ctx, id); err != nil {
 		t.Fatal(err)
 	}
-	// A refund at block 100 that the scan missed until now: the late deposit at 110 is already held for its payer.
 	if _, err := e.pool.Exec(ctx, `INSERT INTO receiver_outflows
  (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,block_hash,block_number,block_time,verified_block,transfer_log_index)
  VALUES($1,$2,$3,$4,'refund','0x4444444444444444444444444444444444444444',5,'0x'||repeat('a',64),1,'0x'||lpad(to_hex(100),64,'0'),100,100,10000,0)`,

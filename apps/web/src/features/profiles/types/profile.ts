@@ -1,6 +1,8 @@
 import type { z } from "zod";
 import type {
+  BILLING_THEN,
   FEES_PAID_BY,
+  NEW_PROFILE_KINDS,
   PERMISSIONS,
   PROFILE_KINDS,
   ROLES,
@@ -8,6 +10,8 @@ import type {
 import type { meSchema, profileSchema } from "@/features/profiles/schemas/profiles";
 
 export type ProfileKind = (typeof PROFILE_KINDS)[keyof typeof PROFILE_KINDS];
+
+export type NewProfileKind = (typeof NEW_PROFILE_KINDS)[number];
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
@@ -18,3 +22,8 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 export type Profile = z.infer<typeof profileSchema>;
 
 export type Me = z.infer<typeof meSchema>;
+
+export type BillingThen = Exclude<
+  (typeof BILLING_THEN)[keyof typeof BILLING_THEN],
+  typeof BILLING_THEN.param
+>;

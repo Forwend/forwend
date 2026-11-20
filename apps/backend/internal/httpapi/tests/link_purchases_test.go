@@ -111,7 +111,7 @@ func TestLinkCreationReadsCapacityAfterAConcurrentReopenCommits(t *testing.T) {
 	store := storeIDs(t, e, shop)[0]
 	const linkID = "eeeeeeee-0000-4000-8000-000000000051"
 	template := e.call(t, "PUT", "/v1/profiles/"+shop+"/links/"+linkID, "did:privy:alice", "", `{"title":"One seat","amountUsd":"5","maxPayments":1}`)
-	inv, _, err := invoice.NewService(e.pool).Create(ctx, shop, "legacy-partial", invoice.Request{AmountUSD: "5", StoreID: store, LinkID: linkID})
+	inv, _, err := invoice.NewService(e.pool).Create(ctx, shop, "legacy-partial", invoice.Request{AmountUSD: "5", StoreID: store, Caller: invoice.Caller{LinkID: linkID}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestLinkRetriesKeepLegacyHashesAndTheExactPublicInput(t *testing.T) {
 	template := e.call(t, "PUT", path, alice, "", `{"title":"Coffee","amountUsd":"2"}`)
 	pay := "/v1/links/" + template.body["slug"].(string) + "/pay"
 	legacy, _, err := invoice.NewService(e.pool).Create(ctx, shop, "link:"+id+":legacy", invoice.Request{
-		AmountUSD: "2", StoreID: store, LinkID: id, Details: invoice.Details{Title: "Coffee"},
+		AmountUSD: "2", StoreID: store, Caller: invoice.Caller{LinkID: id}, Details: invoice.Details{Title: "Coffee"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -317,7 +317,6 @@ func TestLimitedLinkReservesTheLastPurchaseSlotOnce(t *testing.T) {
 	}
 }
 
-// Anyone can start a purchase: one with no deposit holds its slot only briefly, while its checkout stays open.
 func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -343,7 +342,7 @@ func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
 	if state := e.call(t, "GET", "/v1/invoices/"+first.body["payToken"].(string), "", "", ""); state.body["paymentStatus"] != "open" {
 		t.Fatalf("the hold closed the checkout: %v", state.body)
 	}
-	// A slow payer's deposit takes a slot again: the link reads full, as it sold one over its cap.
+	// The first purchase's deposit is seen: it holds a slot again beside the buyer's.
 	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
  SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,2000000,'detected' FROM invoices WHERE id=$1`, unpaid, aliceWallet)
 	if owner := e.call(t, "GET", path, alice, "", ""); owner.body["reserved"] != 2.0 {

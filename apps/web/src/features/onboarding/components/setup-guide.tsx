@@ -7,9 +7,10 @@ import { ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 import { useAddPasskey } from "@/features/auth/hooks/use-add-passkey";
-import { PasskeyOnDevice } from "@/features/auth/lib/passkeys";
+import { addPasskeyError } from "@/features/auth/lib/passkeys";
+import { passkeyIds } from "@/features/auth/lib/privy-user";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
-import { CHECKLIST_STEPS, PRIVY_PASSKEY } from "@/features/onboarding/constants/onboarding";
+import { CHECKLIST_STEPS } from "@/features/onboarding/constants/onboarding";
 import { CHECKLIST_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
 import {
   checklistSteps,
@@ -24,7 +25,6 @@ import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import type { ProfileKind } from "@/features/profiles/types/profile";
 import { useGetTransactionsQuery } from "@/features/transactions/api/transactions-api";
 import { TRANSACTIONS_PAGE_SIZE } from "@/features/transactions/constants/transactions";
-import { needsFreshSignIn } from "@/shared/api/fresh-sign-in";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 
@@ -37,9 +37,6 @@ function stepCopy(id: ChecklistStepId, kind: ProfileKind) {
   return COPY.steps[id];
 }
 
-// R-50, D-53: read from data the app already loads. A small card at the sidebar's foot (the phone's More sheet) shows
-// the progress; opened, only the next step, so setup never takes over the overview. It goes once every step is done
-// or skipped.
 export function SetupGuide() {
   const { profile, openReceive, openRequest } = useAppSession();
   const { profileId, kind } = profile;
@@ -63,7 +60,7 @@ export function SetupGuide() {
   if (!invoices.data || !transactions.data || (freelancer && billing.data === undefined))
     return null;
   const steps = checklistSteps(kind, {
-    passkeyLinked: user.linkedAccounts.some((account) => account.type === PRIVY_PASSKEY),
+    passkeyLinked: passkeyIds(user).length > 0,
     hasBillingDetails: Boolean(billing.data),
     invoices: invoices.data.pages[0]?.items ?? [],
     transactions: transactions.data.items,
@@ -83,9 +80,7 @@ export function SetupGuide() {
     try {
       await linkPasskey();
     } catch (e) {
-      // A confirm the owner gave up isn't a failure.
-      if (!needsFreshSignIn(e))
-        setError(e instanceof PasskeyOnDevice ? e.message : COPY.passkeyFailed);
+      setError(addPasskeyError(e, COPY.passkeyFailed));
     } finally {
       setLinking(false);
     }
@@ -106,8 +101,6 @@ export function SetupGuide() {
 
   return (
     <section aria-labelledby="setup-guide" className="rounded-lg border border-line bg-surface">
-      {/* Closed, it is one row with the progress; it opens on the next step and stays until every step is done or
-          skipped. */}
       <h2 id="setup-guide">
         <button
           type="button"
@@ -126,7 +119,6 @@ export function SetupGuide() {
           />
         </button>
       </h2>
-      {/* One segment per step, so the count reads at a glance. */}
       <ol aria-hidden className="flex gap-1 px-3 pb-3">
         {shown.map((step) => (
           <li

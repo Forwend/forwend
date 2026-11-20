@@ -6,7 +6,7 @@ export interface NetworkNameProps {
   chainId: number;
 }
 
-/** The network's logo, then its name: scanning a list by network is faster with the logo (R-64). */
+/** The network's logo, then its name: scanning a list by network is faster with the logo. */
 export function NetworkName({ chainId }: NetworkNameProps) {
   const icon = CHAINS[chainId]?.icon;
   return (

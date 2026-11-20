@@ -1,26 +1,27 @@
 "use client";
 
 import { Badge, BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-web";
-import { type MfaMethod, useMfaEnrollment, usePrivy } from "@privy-io/react-auth";
+import { useMfaEnrollment, usePrivy } from "@privy-io/react-auth";
 import { Fingerprint, type LucideIcon, Smartphone } from "lucide-react";
 import { useRef, useState } from "react";
-import { useMfaStep } from "@/features/auth/components/mfa-step";
 import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
 import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
+import type { TwoStepMethod } from "@/features/auth/types/two-step";
 import { SETTINGS_COPY } from "@/screens/settings/constants/settings-copy";
 import { SETTINGS_ROW } from "@/shared/components/settings-group";
 
 const COPY = SETTINGS_COPY.account;
-type Method = Extract<MfaMethod, "passkey" | "totp">;
 
-// R-219: each second step Privy can ask for before it signs a send or shows a key, as a row of its own: a passkey and
-// an authenticator app. Money moves once both are on, so losing one never locks the owner out (Q-13).
+// Privy's second steps for sends and key export; with both on, one lost never locks the owner out.
 export function TwoStep() {
   const { user } = usePrivy();
   const { required } = useWalletMfa();
-  const on = (user?.mfaMethods ?? []).filter((m): m is Method => m === "passkey" || m === "totp");
+  const on = (user?.mfaMethods ?? []).filter(
+    (m): m is TwoStepMethod => m === "passkey" || m === "totp",
+  );
   return (
     <div className="fw-panel divide-y divide-line overflow-hidden">
       <MethodRow
@@ -48,9 +49,9 @@ function MethodRow({
   required,
   hint,
 }: {
-  method: Method;
+  method: TwoStepMethod;
   icon: LucideIcon;
-  on: Method[];
+  on: TwoStepMethod[];
   required: boolean;
   hint: string;
 }) {
@@ -151,7 +152,6 @@ function MethodRow({
       {/* Mounted whatever the state: Privy turns the method on before the setup has recorded it with Forwend. */}
       <Dialog
         triggerLabel={`${COPY.setUp} ${name.toLowerCase()}`}
-        // Beside a method already on, this adds one, and its first step asks for the one on.
         title={on.length > 0 ? COPY.addMethod(name) : TWO_STEP_COPY.setUp}
         onClose={() => setSetup(0)}
         trigger={(open) =>

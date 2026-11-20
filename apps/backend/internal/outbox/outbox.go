@@ -1,5 +1,4 @@
-// Package outbox queues the events the worker sends as email (R-80): one row per event, written in the transaction
-// that makes the change, so an event is never lost or sent for a change that rolled back.
+// Package outbox queues emails in the transaction that makes the change, so none is lost or sent for a rollback.
 package outbox
 
 import (
@@ -15,28 +14,22 @@ import (
 
 // Event kinds, as the outbox_events check allows.
 const (
-	Paid    = "invoice.paid"
-	Settled = "invoice.settled"
-	Held    = "invoice.held"    // money held for the payer: an excess, an expired partial payment, a late deposit, one after cancel or on another option
-	Receipt = "invoice.receipt" // the payer's receipt, to the address they gave (R-82); at most one per invoice
-	Welcome = "account.welcome" // a new account's welcome, to its login email (R-84); at most one per user
-	Sent    = "invoice.sent"    // the invoice, to its client's email when the owner presses Send to client (R-94)
-	// A payment reminder to the client's email (R-96); at most one per invoice and step.
-	Reminder = "invoice.reminder"
-	Change   = "job.change"  // a scope change, to the email the client typed accepting the job (R-107)
-	Invite   = "team.invite" // a team invite, to the address invited (R-139)
-	// A webhook endpoint Forwend turned off, to the profile owner's login email (R-148); payload has the reason.
+	Paid            = "invoice.paid"
+	Settled         = "invoice.settled"
+	Held            = "invoice.held"
+	Receipt         = "invoice.receipt" // at most one per invoice
+	Welcome         = "account.welcome" // at most one per user
+	Sent            = "invoice.sent"
+	Reminder        = "invoice.reminder" // at most one per invoice and step
+	Change          = "job.change"
+	Invite          = "team.invite"
 	WebhookDisabled = "webhook.disabled"
-	// SettleWaiting: paid invoices wait on the day's sponsored settlements, to their owner; at most one a day per user.
-	SettleWaiting = "settlement.waiting"
-	// WalletOutflow: money left a profile wallet with no send its owner approved in Forwend, to the owner (D-49).
-	WalletOutflow = "wallet.outflow"
-	// RetainerFailed: a retainer's month could not be made several times in a row, to the owner; payload has its due date.
-	RetainerFailed = "retainer.failed"
+	SettleWaiting   = "settlement.waiting" // at most one a day per user
+	WalletOutflow   = "wallet.outflow"     // money left with no send the owner approved
+	RetainerFailed  = "retainer.failed"
 )
 
-// MaxClientEmails caps a user's client emails (Sent, reminders, job changes, invites) in any 24 hours (R-116), so one
-// account can't mail strangers in bulk through Forwend or spend the shared Resend budget (D-65) for the money emails.
+// MaxClientEmails caps a user's client emails per 24 hours, so no one bulk-mails strangers through Forwend.
 const MaxClientEmails = 20
 
 const ClientEmailsSQL = `SELECT p.user_id, count(*) AS sent, min(e.created_at) AS oldest FROM outbox_events e
@@ -47,8 +40,7 @@ const ClientEmailsSQL = `SELECT p.user_id, count(*) AS sent, min(e.created_at) A
 	  AND e.created_at > now() - interval '24 hours'
 	GROUP BY p.user_id`
 
-// ClientEmailsLeft locks the profile's user row, so the user's client emails count one after the other, and says how
-// many more may be queued now and, when none, how long until the oldest counted one is a day old.
+// ClientEmailsLeft locks the user row so counts serialize; when none is left, wait is until one frees up.
 func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left int, wait time.Duration, err error) {
 	var user string
 	if err := tx.QueryRow(ctx, "SELECT u.id FROM users u JOIN profiles p ON p.user_id = u.id WHERE p.id = $1 FOR NO KEY UPDATE OF u",
@@ -64,25 +56,21 @@ func ClientEmailsLeft(ctx context.Context, tx pgx.Tx, profileID string) (left in
 	return max(MaxClientEmails-sent, 0), wait, nil
 }
 
+// Payload holds only strings, so json.Marshal of it can't fail.
 type Payload struct {
 	Option string        `json:"option"`
 	Amount string        `json:"amount,omitempty"`
 	Step   string        `json:"step,omitempty"`
 	Change string        `json:"change,omitempty"`
-	By     history.Actor `json:"by,omitempty"` // who asked for a Send to client, for its history row (R-126)
-	// An invite's link token (R-139): the only copy, until the worker drops it once the email is sent or given up.
-	Token string `json:"token,omitempty"`
-	// Why Forwend turned a webhook endpoint off: webhook.Gone or webhook.Failing.
-	Reason string `json:"reason,omitempty"`
-	Due    string `json:"due,omitempty"` // the retainer month's due date, YYYY-MM-DD
+	By     history.Actor `json:"by,omitempty"`
+	Token  string        `json:"token,omitempty"`  // the only copy; dropped once the email is done
+	Reason string        `json:"reason,omitempty"` // webhook.Gone or webhook.Failing
+	Due    string        `json:"due,omitempty"`    // YYYY-MM-DD
 }
 
-// QueueReceipt queues at most one receipt, and only once the payer gave an address (R-82).
+// QueueReceipt queues at most one receipt, and only once the payer gave an address.
 func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
-	payload, err := json.Marshal(Payload{Option: option})
-	if err != nil {
-		return fmt.Errorf("queue receipt for %s: %w", option, err)
-	}
+	payload, _ := json.Marshal(Payload{Option: option})
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
 		SELECT $1, m.id, $3 FROM invoices o JOIN invoices m ON m.id = coalesce(o.main_id, o.id)
 		WHERE o.id = $2 AND m.payer_email IS NOT NULL
@@ -92,12 +80,8 @@ func QueueReceipt(ctx context.Context, tx pgx.Tx, option string) error {
 	return nil
 }
 
-// QueueSend adds a Send to client for the invoice's main row, under the request's Idempotency-Key (R-94).
 func QueueSend(ctx context.Context, tx pgx.Tx, invoice, key string, by history.Actor) error {
-	payload, err := json.Marshal(Payload{Option: invoice, By: by})
-	if err != nil {
-		return fmt.Errorf("queue send for %s: %w", invoice, err)
-	}
+	payload, _ := json.Marshal(Payload{Option: invoice, By: by})
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload, idempotency_key) VALUES ($1, $2, $3, $4)`,
 		Sent, invoice, payload, key); err != nil {
 		return fmt.Errorf("queue send for %s: %w", invoice, err)
@@ -105,16 +89,13 @@ func QueueSend(ctx context.Context, tx pgx.Tx, invoice, key string, by history.A
 	return nil
 }
 
-// Queue adds an event for the invoice that option belongs to. amount may be nil.
+// Queue adds an event for option's invoice; amount may be nil.
 func Queue(ctx context.Context, tx pgx.Tx, kind, option string, amount *big.Int) error {
 	p := Payload{Option: option}
 	if amount != nil {
 		p.Amount = amount.String()
 	}
-	payload, err := json.Marshal(p)
-	if err != nil {
-		return fmt.Errorf("queue %s for %s: %w", kind, option, err)
-	}
+	payload, _ := json.Marshal(p)
 	if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, invoice_id, payload)
 		SELECT $1, coalesce(main_id, id), $3 FROM invoices WHERE id = $2`, kind, option, payload); err != nil {
 		return fmt.Errorf("queue %s for %s: %w", kind, option, err)
@@ -122,12 +103,8 @@ func Queue(ctx context.Context, tx pgx.Tx, kind, option string, amount *big.Int)
 	return nil
 }
 
-// QueueChange adds the email of the job's scope change under key (R-107).
 func QueueChange(ctx context.Context, tx pgx.Tx, job, key string) error {
-	payload, err := json.Marshal(Payload{Change: key})
-	if err != nil {
-		return fmt.Errorf("queue change for job %s: %w", job, err)
-	}
+	payload, _ := json.Marshal(Payload{Change: key})
 	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, job_id, payload) VALUES ($1, $2, $3)", Change, job,
 		payload); err != nil {
 		return fmt.Errorf("queue change for job %s: %w", job, err)
@@ -135,12 +112,8 @@ func QueueChange(ctx context.Context, tx pgx.Tx, job, key string) error {
 	return nil
 }
 
-// QueueInvite adds the email of the team invite, carrying its link token (R-139).
 func QueueInvite(ctx context.Context, tx pgx.Tx, invite, token string) error {
-	payload, err := json.Marshal(Payload{Token: token})
-	if err != nil {
-		return fmt.Errorf("queue invite %s: %w", invite, err)
-	}
+	payload, _ := json.Marshal(Payload{Token: token})
 	if _, err := tx.Exec(ctx, "INSERT INTO outbox_events (kind, invite_id, payload) VALUES ($1, $2, $3)", Invite, invite,
 		payload); err != nil {
 		return fmt.Errorf("queue invite %s: %w", invite, err)

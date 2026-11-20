@@ -7,7 +7,6 @@ import { apiTime, hash32, openEnum, pageOf } from "@/shared/schemas/api";
 
 const usdCents = z.string().regex(/^\d+\.\d{2}$/);
 
-/** R-100. invoiceId, number and status are null until its invoice is made; doneAt until done (R-103). */
 export const jobPaymentSchema = z.object({
   position: z.number().int().positive(),
   title: z.string(),
@@ -15,22 +14,18 @@ export const jobPaymentSchema = z.object({
   dueDays: z.number().int().nonnegative(),
   onAccept: z.boolean(),
   invoiceId: hash32.nullable(),
-  // Its pay link's token (D-86); null until the invoice is made.
   payToken: z.string().regex(PAY_TOKEN_PATTERN).nullable(),
   number: z.number().int().positive().nullable(),
   status: openEnum<JobPaymentStatus>().nullable(),
   doneAt: apiTime.nullable(),
   deliveryLink: z.string().nullable(),
-  // R-104.
   invoicedAt: apiTime.nullable(),
   paidAt: apiTime.nullable(),
-  // A scope change (R-105): proposedAt keeps its microseconds, and the accept sends it back as this exact string.
-  proposedAt: apiTime.nullable(),
+  proposedAt: apiTime.nullable(), // accept sends back this exact string
   acceptedName: z.string().nullable(),
   acceptedAt: apiTime.nullable(),
 });
 
-/** GET /v1/jobs/{token}. */
 export const publicJobSchema = z.object({
   title: z.string(),
   scope: z.string().nullable(),
@@ -75,10 +70,8 @@ export const jobSummarySchema = z.object({
   createdAt: apiTime,
 });
 
-/** GET /v1/profiles/{profileId}/jobs. */
 export const jobsPageSchema = pageOf(jobSummarySchema);
 
-/** POST /v1/profiles/{profileId}/jobs. */
 export const createJobBodySchema = z.object({
   title: z.string(),
   scope: z.string(),

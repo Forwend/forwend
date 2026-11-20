@@ -23,16 +23,14 @@ export type JobSummary = z.infer<typeof jobSummarySchema>;
 export type JobsPage = z.infer<typeof jobsPageSchema>;
 export type CreateJobBody = z.infer<typeof createJobBodySchema>;
 
-/** The API's invoice status filter values. */
 export type JobPaymentStatus = Extract<
   PaymentStatus,
   "open" | "paid" | "settled" | "expired" | "canceled"
 >;
 
 export type JobField = (typeof JOB_FIELDS)[keyof typeof JOB_FIELDS];
-export type RecordEventKind = (typeof RECORD_EVENTS)[keyof typeof RECORD_EVENTS];
+type RecordEventKind = (typeof RECORD_EVENTS)[keyof typeof RECORD_EVENTS];
 
-/** R-104; payment is set for the events of one payment. */
 export interface RecordEvent {
   kind: RecordEventKind;
   at: string;

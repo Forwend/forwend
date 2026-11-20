@@ -10,7 +10,6 @@ import {
 } from "@forwend/ui-web";
 import { Link2 } from "lucide-react";
 import Link from "next/link";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { useGetLinkQuery } from "@/features/links/api/links-api";
 import { LinkActions } from "@/features/links/components/link-actions";
 import { LINK_STATES } from "@/features/links/constants/links";
@@ -18,16 +17,23 @@ import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel, linkAddress, linkState } from "@/features/links/lib/links";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
+import { PAYMENT_PARAMS } from "@/features/payments/constants/payments";
+import { paymentsHref } from "@/features/payments/lib/payments";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 import { CopyValue } from "@/shared/components/copy-value";
-import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
+import {
+  DetailHeader,
+  DetailHeaderSkeleton,
+  RECORD_COLUMNS,
+} from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { dateTime, shortDate } from "@/shared/lib/dates";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { dateTime, formatDueDate, shortDate } from "@/shared/lib/dates";
 
 export interface LinkScreenProps {
   linkId: string;
@@ -62,7 +68,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
   }
   const state = linkState(link, Date.now());
   const filters = { linkId };
-  const purchases = `${APP_ROUTES.payments}?linkId=${linkId}`;
+  const purchases = paymentsHref(PAYMENT_PARAMS.linkId, linkId);
   const address = linkAddress(window.location.origin, link.slug);
   const reserved = link.reserved ?? 0;
   return (
@@ -100,9 +106,8 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
           {COPY.notReadyHint}
         </p>
       ) : null}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className={RECORD_COLUMNS}>
         <div className="flex min-w-0 flex-col gap-5">
-          {/* What the link did, at a glance: the counts the list's Activity cell reads in one line. */}
           <dl className="fw-panel grid grid-cols-3 divide-x divide-line">
             {[
               { term: COPY.stats.visits, value: link.visits },
@@ -143,10 +148,9 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
             />
           </section>
         </div>
-        {/* Sharing is what a link is for: on narrower screens it comes first. */}
         <aside className="flex min-w-0 flex-col gap-5 max-xl:-order-1 xl:sticky xl:top-20">
           <section aria-labelledby="link-share" className="fw-panel min-w-0">
-            <h2 id="link-share" className="fw-panel-head text-base font-semibold text-ink">
+            <h2 id="link-share" className={PANEL_TITLE}>
               {COPY.share}
             </h2>
             <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
@@ -157,7 +161,6 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
                 hint={COPY.shareHint}
                 open={{ label: COPY.open, name: COPY.openName }}
               />
-              {/* For a counter or a printed flyer: the phone camera opens the same page. */}
               <div className="flex items-center gap-4 rounded-md bg-surface-2 p-3">
                 <QrCode value={address} label={COPY.scan} className="w-24 p-1.5" />
                 <p className="text-sm text-muted">{COPY.scan}</p>
@@ -165,7 +168,7 @@ export function LinkScreen({ linkId }: LinkScreenProps) {
             </div>
           </section>
           <section aria-labelledby="link-details" className="fw-panel min-w-0">
-            <h2 id="link-details" className="fw-panel-head text-base font-semibold text-ink">
+            <h2 id="link-details" className={PANEL_TITLE}>
               {COPY.details}
             </h2>
             <DetailList>

@@ -15,12 +15,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/outbound"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
-// Retries are the waits before each attempt after the first: Svix's schedule, its last step repeated to about 3 days
-// (D-98).
+// Retries are the waits before each later attempt, about 3 days in all.
 var Retries = []time.Duration{5 * time.Second, 5 * time.Minute, 30 * time.Minute, 2 * time.Hour, 5 * time.Hour,
 	10 * time.Hour, 10 * time.Hour, 10 * time.Hour, 10 * time.Hour, 10 * time.Hour, 10 * time.Hour}
 
@@ -31,25 +31,20 @@ const (
 )
 
 const (
-	// Batch bounds the deliveries one round sends at once.
 	Batch = 16
-	// lease keeps a claimed delivery from the next round while its attempt runs; a process that stops mid-attempt
-	// leaves it to be sent again after this.
+	// A process that stops mid-attempt leaves its delivery to be sent again after the lease.
 	lease = time.Minute
 )
 
-// Body is an event's body. cmd/webhooks gives invoiceapi.EventBody with the invoice as its owner reads it.
 type Body func(ctx context.Context, e Event) ([]byte, error)
 
 type delivery struct {
 	endpointID, eventID, profileID, url, body string
 	attempts                                  int
 	leasedUntil                               time.Time
-	updatedAt                                 time.Time // as claimed: a resend since changes it
+	updatedAt                                 time.Time // as claimed; a resend changes it
 }
 
-// Deliver sends the due deliveries once, each signed by every working secret of its endpoint. Without
-// WEBHOOK_SECRET_KEY nothing can be signed, so nothing is sent.
 func (s *Service) Deliver(ctx context.Context, client *http.Client, body Body) error {
 	if s.key == nil {
 		return nil
@@ -71,10 +66,9 @@ func (s *Service) Deliver(ctx context.Context, client *http.Client, body Body) e
 	return errors.Join(errs...)
 }
 
-// attempt sends one delivery and records the answer.
 func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d delivery) error {
-	// An error before the request is a failed attempt too, so it follows the retry schedule and ends failed instead of
-	// holding its endpoint's queue for good. It is recorded past the attempt's own deadline.
+	// A failure before the request is an attempt too, so it can't hold the queue for good; it is recorded with the
+	// parent ctx, past this attempt's deadline.
 	parent := ctx
 	unsent := func(err error) error {
 		return errors.Join(err, s.record(parent, d, 0, notPrepared, 0))
@@ -82,7 +76,7 @@ func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d
 	// Body construction and network I/O must end before another sender can reclaim the lease.
 	ctx, cancel := context.WithDeadline(ctx, d.leasedUntil.Add(-AttemptTimeout))
 	defer cancel()
-	// Secrets first: the body is built when it can be sent (D-97).
+	// Secrets first: build the body only when it can be sent.
 	secrets, err := s.secrets(ctx, s.pool, d.profileID, d.endpointID)
 	if err != nil {
 		return unsent(fmt.Errorf("read endpoint %s secrets: %w", d.endpointID, err))
@@ -147,8 +141,8 @@ func (s *Service) attempt(ctx context.Context, client *http.Client, body Body, d
 func reason(err error) string {
 	var u *url.Error
 	switch {
-	case errors.Is(err, errNotPublic):
-		return errNotPublic.Error()
+	case errors.Is(err, outbound.ErrNotPublic):
+		return outbound.ErrNotPublic.Error()
 	case errors.As(err, &u) && u.Timeout():
 		return "timeout"
 	case errors.As(err, &u):
@@ -162,13 +156,10 @@ func reason(err error) string {
 	return text
 }
 
-// notPrepared is an attempt Forwend could not build: the delivery fails on the schedule, but the endpoint isn't to
-// blame, so it stays on.
+// notPrepared fails on the schedule but never turns the endpoint off: the endpoint isn't to blame.
 const notPrepared = "not sent: Forwend could not prepare the request"
 
-// record logs the attempt and moves the delivery on: done on a 2xx, again later on the schedule, or failed. A 410 or
-// a last failure the endpoint caused turns it off and emails its owner once. A delivery resent during the attempt keeps the
-// resend: the attempt is only logged.
+// record logs the attempt and, unless resent meanwhile, moves the delivery on or turns the endpoint off.
 func (s *Service) record(ctx context.Context, d delivery, code int, failure string, took time.Duration) error {
 	n := d.attempts + 1
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
@@ -208,7 +199,7 @@ func (s *Service) record(ctx context.Context, d delivery, code int, failure stri
 		if off == "" || tag.RowsAffected() == 0 {
 			return nil
 		}
-		payload, _ := json.Marshal(outbox.Payload{Reason: off}) // only strings: it can't fail
+		payload, _ := json.Marshal(outbox.Payload{Reason: off})
 		_, err = tx.Exec(ctx, `WITH w AS (UPDATE webhook_endpoints SET enabled = false, updated_at = now()
 			    WHERE id = $1 AND enabled RETURNING id)
 			INSERT INTO outbox_events (kind, endpoint_id, payload) SELECT $2, id, $3 FROM w`,

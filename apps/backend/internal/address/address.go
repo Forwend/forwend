@@ -1,5 +1,4 @@
 // Package address computes an invoice's receive address locally, exactly as InvoiceReceiverFactory.predict does.
-// It is tested against vectors written by packages/contracts/script/ReceiveAddressVectors.s.sol.
 package address
 
 import (
@@ -9,33 +8,32 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/sha3"
 )
 
-// Factory is the newest factory, at one address on every chain (packages/contracts/deployments.json), and
-// Implementation the receiver implementation it created. New invoices use them; a contract change means new values.
+// Factory and Implementation are the newest contracts (packages/contracts/deployments.json).
 var (
 	Factory        = mustHex20("e917cE63865f8Cf91a0038136E496B25eCE2A54e") // v2
 	Implementation = mustHex20("81CdA02E469083fD14A75583257d9b721Ca76132")
 )
 
-// Spec is a factory's receiver implementation, whether its terms carry the fees (v2 on, R-226), and the refund
-// authority a v2 settlement pays the platform fee. The authority is in the factory's CREATE2 init code, so a factory
-// address has the same one on every chain.
 type Spec struct {
 	Implementation  [20]byte
 	Fees            bool
 	RefundAuthority [20]byte
 }
 
-// Known maps every factory an invoice may still use to its spec. An invoice keeps the factory it was made with, so a
-// replaced factory stays here until none of its invoices can hold money.
+// Known lists every factory an invoice may still use; a replaced one stays while its invoices hold money.
 var Known = map[[20]byte]Spec{
 	Factory: {Implementation: Implementation, Fees: true, RefundAuthority: mustHex20("3E202009C02aBc635eE83fb5c9D1eE3F10FEEa00")},
 	mustHex20("f93da73F1308A9B34aAB78bF6D84F0BAcc600dd2"): {Implementation: mustHex20("26b7DB220aF2Da25B960E7e5bCcf80a708aE630f")}, // v1.1
 	mustHex20("ECe745390524e4d0B05D26F56AF7F1D38FDb7546"): {Implementation: mustHex20("322F6c8dAf0a8bd7cF16eb62D0a04700eEA4b639")}, // v1
 }
+
+// MaxHold is the contracts' MAX_HOLD: a receiver settles until min(settle deadline, deployedAt + MaxHold).
+const MaxHold = 30 * 24 * time.Hour
 
 var (
 	ErrAmount         = errors.New("amount and fees must be between 0 and 2^256-1")
@@ -43,8 +41,7 @@ var (
 	ErrFees           = errors.New("this factory's terms carry no fees")
 )
 
-// Terms mirrors InvoiceTerms in packages/contracts/src/InvoiceTypes.sol, in ABI field order. The fees are only in a
-// v2 factory's terms; nil is 0.
+// Terms mirrors InvoiceTerms in packages/contracts/src/InvoiceTypes.sol, in ABI order; nil fees are 0.
 type Terms struct {
 	InvoiceID       [32]byte
 	Recipient       [20]byte
@@ -62,8 +59,7 @@ func Receive(t Terms) ([20]byte, error) {
 	return ReceiveAt(Factory, t)
 }
 
-// ReceiveAt returns the receiver address a known factory deploys for t: a CREATE2 clone (OpenZeppelin
-// Clones.cloneDeterministicWithImmutableArgs) with args = abi.encode(t) and salt = keccak256(args).
+// ReceiveAt is a known factory's CREATE2 clone address for t: args abi.encode(t), salt keccak256(args).
 func ReceiveAt(factory [20]byte, t Terms) ([20]byte, error) {
 	spec, ok := Known[factory]
 	if !ok {
@@ -90,8 +86,7 @@ func ReceiveAt(factory [20]byte, t Terms) ([20]byte, error) {
 	return out, nil
 }
 
-// Encode is abi.encode(InvoiceTerms) for a known factory: the clone's immutable args, and the argument of
-// factory.deploy, predict and status.
+// Encode is abi.encode(InvoiceTerms): the clone's immutable args and the factory calls' argument.
 func Encode(factory [20]byte, t Terms) ([]byte, error) {
 	spec, ok := Known[factory]
 	if !ok {
@@ -100,7 +95,6 @@ func Encode(factory [20]byte, t Terms) ([]byte, error) {
 	return t.encode(spec.Fees)
 }
 
-// Call is the calldata of the factory's function fn (deploy, predict or status) with t.
 func Call(factory [20]byte, fn string, t Terms) ([]byte, error) {
 	signature, err := Signature(factory, fn)
 	if err != nil {
@@ -202,14 +196,12 @@ func mustHex20(s string) [20]byte {
 	return [20]byte(mustHex(s))
 }
 
-// InvoiceID is the on-chain id of the invoice whose pay link carries payToken (D-86): keccak256(payToken). The chain
-// shows the id, never the token, so an id read from chain opens no public route; the pay page recomputes it.
+// InvoiceID is keccak256(payToken): the chain shows the id, never the token, so it opens no public route.
 func InvoiceID(payToken [32]byte) [32]byte {
 	return [32]byte(keccak(payToken[:]))
 }
 
-// OptionID is the on-chain id of a payer-chooses invoice's further option (R-56). The pay page recomputes it, so an
-// option's address stays tied to the link's id as a fixed invoice's is.
+// OptionID is the on-chain id of a payer-chooses invoice's further option, tied to the link's id.
 func OptionID(invoiceID [32]byte, chainID uint64, token [20]byte) [32]byte {
 	words := make([]byte, 64)
 	binary.BigEndian.PutUint64(words[24:32], chainID)
@@ -217,7 +209,6 @@ func OptionID(invoiceID [32]byte, chainID uint64, token [20]byte) [32]byte {
 	return [32]byte(keccak(invoiceID[:], words))
 }
 
-// KnownFactory parses a stored factory address and reports whether an invoice may use it.
 func KnownFactory(hexAddress string) ([20]byte, bool) {
 	raw, err := hex.DecodeString(strings.TrimPrefix(strings.ToLower(hexAddress), "0x"))
 	if err != nil || len(raw) != 20 {

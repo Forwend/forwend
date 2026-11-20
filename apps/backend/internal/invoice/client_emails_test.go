@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 )
 
-// R-116. Send to client past the cap waits too.
 func TestRemindersFitTheUsersClientEmails(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -40,7 +39,6 @@ func TestRemindersFitTheUsersClientEmails(t *testing.T) {
 	if _, _, err := s.Send(ctx, profile, last.ID, "send-1", func() time.Duration { return 0 }); !errors.As(err, &soon) {
 		t.Fatalf("Send to client at the cap: %v, want TooSoonError", err)
 	}
-	// A day later there is room for the rest.
 	if _, err := pool.Exec(ctx, "UPDATE outbox_events SET created_at = now() - interval '25 hours'"); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +47,6 @@ func TestRemindersFitTheUsersClientEmails(t *testing.T) {
 	}
 }
 
-// R-116: the month is still made.
 func TestRetainerMonthPastTheCapSendsNoEmail(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)

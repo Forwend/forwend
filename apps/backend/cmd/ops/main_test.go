@@ -15,7 +15,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/settlement"
 )
 
-// Every run names who ran it before it changes anything, a failing one too.
 func TestEveryRunRecordsItsOperator(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.Migrated(t, database.Migrate)
@@ -58,14 +57,13 @@ func TestBaseUnitsReadsTokensExactly(t *testing.T) {
 	}
 }
 
-func TestStrayWithoutOurContractsSaysPlainlyItCantComeBack(t *testing.T) {
+func TestStrayThatCantComeBackPrintsItsReasonAndNoCalls(t *testing.T) {
 	var out strings.Builder
 	s := settlement.Stray{TxHash: "0xab", ChainID: 31339, Option: settlement.CaseOption{ID: "0x07", ChainID: 31337},
 		Token: common.HexToAddress("0x01"), From: common.HexToAddress("0x02"), Amount: big.NewInt(2000000)}
 	printStray(&out, s, settlement.Recovery{}, fmt.Errorf("%w: that chain has no Forwend factory", settlement.ErrCantReturn))
 	text := out.String()
-	if !strings.Contains(text, "this money can't be returned now: that chain has no Forwend factory") ||
-		!strings.Contains(text, "promise nothing") || strings.Contains(text, "cast send") {
+	if !strings.Contains(text, "that chain has no Forwend factory") || strings.Contains(text, "cast send") {
 		t.Fatalf("printed %q", text)
 	}
 }

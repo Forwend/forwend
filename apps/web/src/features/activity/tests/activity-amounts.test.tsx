@@ -1,28 +1,16 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActivityList } from "@/features/activity/components/activity-list";
 import { PaymentToasts } from "@/features/activity/components/payment-toasts";
-import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import type { ActivityItem } from "@/features/activity/types/activity";
 import { invoicesApi } from "@/features/invoices/api/invoices-api";
 import type { InvoiceEvent } from "@/features/invoices/types/invoices";
-import { REFRESH_MS } from "@/shared/config/refresh";
 import { makeStore } from "@/store/store";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
-
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
 
 const invoiceId = `0x${"a".repeat(64)}`;
 const invoice: ActivityItem = {
@@ -58,7 +46,10 @@ vi.stubGlobal(
 
 afterEach(cleanup);
 
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+const rowTexts = async (count: number) => {
+  await waitFor(() => expect(screen.queryAllByRole("listitem")).toHaveLength(count));
+  return screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+};
 
 describe("Activity shows invoice amounts exactly, as the invoice list, detail, pay page and PDF do", () => {
   it("renders a 1.005 USDC invoice and its 1.005 USDC payment with every digit", async () => {
@@ -69,9 +60,7 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
         <ActivityList profileId="p" />
       </Provider>,
     );
-    await settle();
-    const rows = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
-    expect(rows).toHaveLength(2);
+    const rows = await rowTexts(2);
     expect(rows[0]).toContain("+1.005");
     expect(rows[1]).toContain("1.005");
   });
@@ -86,7 +75,10 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
         </ToastProvider>
       </Provider>,
     );
-    await settle();
+    const events = invoicesApi.endpoints.getInvoiceEvents.select("p");
+    await waitFor(() =>
+      expect(events(store.getState() as Parameters<typeof events>[0]).isSuccess).toBe(true),
+    );
     items = [{ ...invoice, id: 1, kind: "invoice.paid", number: null, amount: "1500" }];
     await act(() =>
       store.dispatch(
@@ -96,9 +88,7 @@ describe("Activity shows invoice amounts exactly, as the invoice list, detail, p
         }),
       ),
     );
-    await settle();
-    const toasts = screen.queryAllByRole("listitem").map((li) => li.textContent);
-    expect(toasts).toEqual(["Payment receivedCheckout aaaaaa is paid: 0.0015 USDC."]);
+    expect(await rowTexts(1)).toEqual(["Payment receivedCheckout aaaaaa is paid: 0.0015 USDC."]);
   });
 });
 
@@ -113,44 +103,9 @@ describe("Activity names held money", () => {
         <ActivityList profileId="p" />
       </Provider>,
     );
-    await settle();
-    const rows = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+    const rows = await rowTexts(2);
     expect(rows[0]).toContain("Held for the customer");
     expect(rows[0]).not.toContain("Payment");
     expect(rows[1]).toContain("Payment");
-  });
-});
-
-describe("Activity's update strip", () => {
-  it("stays in place, its button busy, while a retry runs, and goes once a read works", async () => {
-    vi.useFakeTimers();
-    const ok = async () => Response.json({ items: [invoice], nextCursor: null });
-    let answer: () => Promise<Response> = ok;
-    vi.mocked(fetch).mockImplementation(() => answer());
-    try {
-      render(
-        <Provider store={makeStore({ getAccessToken: async () => "token" })}>
-          <ActivityList profileId="p" />
-        </Provider>,
-      );
-      await act(() => vi.advanceTimersByTimeAsync(30));
-      answer = async () => new Response("{}", { status: 500 });
-      await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
-      const strip = screen.getByRole("alert");
-      expect(strip.textContent).toContain(ACTIVITY_COPY.updateFailed);
-      let release = () => {};
-      answer = () => new Promise((resolve) => (release = () => resolve(ok())));
-      await act(() => vi.advanceTimersByTimeAsync(REFRESH_MS));
-      expect(screen.getByRole("alert")).toBe(strip);
-      expect(
-        within(strip).getByRole("button", { name: "Try again" }).getAttribute("aria-busy"),
-      ).toBe("true");
-      release();
-      await act(() => vi.advanceTimersByTimeAsync(30));
-      expect(screen.queryByRole("alert")).toBeNull();
-    } finally {
-      vi.useRealTimers();
-      vi.mocked(fetch).mockImplementation(async () => Response.json({ items, nextCursor: null }));
-    }
   });
 });

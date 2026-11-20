@@ -1,5 +1,4 @@
-// Package chaintest runs a real Anvil chain with the real contracts for tests (D-17). It needs Foundry (anvil, forge,
-// cast) on PATH, as CI and contract work already do.
+// Package chaintest runs a real Anvil chain with the real contracts for tests; it needs Foundry on PATH.
 package chaintest
 
 import (
@@ -30,7 +29,6 @@ const (
 	Sender = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 )
 
-// ChainID is Anvil's default chain id.
 const ChainID = 31337
 
 // Anvil is a running local chain whose finalized block is always 2 blocks behind the latest.
@@ -46,23 +44,18 @@ func Start(t *testing.T) *Anvil {
 	return StartChain(t, ChainID)
 }
 
-func StartArchive(t *testing.T) *Anvil {
-	t.Helper()
-	return startChain(t, ChainID, t.TempDir())
-}
-
 func StartChain(t *testing.T, chainID uint64) *Anvil {
 	t.Helper()
-	return startChain(t, chainID, "")
+	return startChain(t, chainID)
 }
 
 // StartFork runs Anvil on a fork of the chain at url, with that chain's id and contracts. It caches nothing on disk.
 func StartFork(t *testing.T, url string) *Anvil {
 	t.Helper()
-	return startChain(t, 0, "", "--fork-url", url, "--no-storage-caching")
+	return startChain(t, 0, "--fork-url", url, "--no-storage-caching")
 }
 
-func startChain(t *testing.T, chainID uint64, archive string, fork ...string) *Anvil {
+func startChain(t *testing.T, chainID uint64, fork ...string) *Anvil {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -72,17 +65,10 @@ func startChain(t *testing.T, chainID uint64, archive string, fork ...string) *A
 	l.Close()
 	// One slot per epoch: safe = latest - 1, finalized = latest - 2. No states on disk: Anvil otherwise writes them to
 	// ~/.foundry/anvil/tmp and never removes them, even on a clean exit (Anvil 1.5); tests read only recent blocks.
-	persisted := "0"
-	if archive != "" {
-		persisted = "20000"
-	}
 	cmd := exec.Command("anvil", append([]string{"--port", fmt.Sprint(port), "--slots-in-an-epoch", "1", "--silent",
-		"--max-persisted-states", persisted}, fork...)...)
+		"--max-persisted-states", "0"}, fork...)...)
 	if chainID != 0 {
 		cmd.Args = append(cmd.Args, "--chain-id", fmt.Sprint(chainID))
-	}
-	if archive != "" {
-		cmd.Args = append(cmd.Args, "--cache-path", archive)
 	}
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start anvil (install Foundry): %v", err)
@@ -126,9 +112,7 @@ var (
 	factorySalt     = crypto.Keccak256([]byte("forwend.invoice-receiver-factory.v1"))
 )
 
-// DeployFactory deploys the v1 factory as script/Deploy.s.sol does on the testnets, through the CREATE2 deployer with
-// the testnet arguments, so it lands at the address the Go code has compiled in. It makes Sender the executor so tests
-// sign with Anvil's key, and returns the factory address in lowercase.
+// DeployFactory deploys the v1 factory as script/Deploy.s.sol does, at the compiled-in address, executor Sender.
 func (a *Anvil) DeployFactory() string {
 	a.t.Helper()
 	raw, err := os.ReadFile(filepath.Join(contractsDir(), "deployments.json"))
@@ -148,7 +132,6 @@ func (a *Anvil) DeployFactory() string {
 	}
 	init := append(bytecode(a.t, "InvoiceReceiverFactory"), args...)
 	at := crypto.CreateAddress2(create2Deployer, [32]byte(factorySalt), crypto.Keccak256(init))
-	// Already there: the script deploys nothing then either.
 	if a.code(at) == 0 {
 		a.transact(Sender, create2Deployer.Hex(), append(append([]byte{}, factorySalt...), init...))
 		if a.code(at) == 0 {
@@ -201,7 +184,6 @@ func (a *Anvil) AsAuthorityData(to string, data []byte) {
 	a.transact(a.authority, to, data)
 }
 
-// Calldata is sig(args) encoded as cast send encodes it.
 func Calldata(sig string, args ...string) ([]byte, error) {
 	return calldata(sig, args...)
 }
@@ -216,8 +198,7 @@ func (a *Anvil) Transfer(token, to, amount string) string {
 	return a.Send(token, "transfer(address,uint256)", to, amount)
 }
 
-// TwoTransfers moves token out of the sender twice in one transaction, as a bundler or a Tempo fee does: a contract the
-// sender allowed calls transferFrom for each. It returns the transaction hash.
+// TwoTransfers moves token out of the sender twice in one transaction, as a bundler or Tempo fee does.
 func (a *Anvil) TwoTransfers(token, to1, amount1, to2, amount2 string) string {
 	a.t.Helper()
 	batcher := "0x00000000000000000000000000000000000000dd"
@@ -241,8 +222,7 @@ func (a *Anvil) TwoTransfers(token, to1, amount1, to2, amount2 string) string {
 	return a.transact(Sender, batcher, append(first, second...)).TransactionHash
 }
 
-// PriceFeed puts a Chainlink-style feed on the chain whose latestRoundData answers price, started and updated in the
-// block it is read at, and returns its address.
+// PriceFeed puts a Chainlink-style feed answering price, updated in the block it is read at; returns its address.
 func (a *Anvil) PriceFeed(price *big.Int) common.Address {
 	a.t.Helper()
 	feed := common.HexToAddress("0x00000000000000000000000000000000000000fd")
@@ -250,8 +230,7 @@ func (a *Anvil) PriceFeed(price *big.Int) common.Address {
 	return feed
 }
 
-// Feed puts a Chainlink-style feed at an address whose latestRoundData answers answer, started and updated at the
-// given Unix times; 0 is the time of the block it is read at.
+// Feed puts a Chainlink-style feed at an address with the given answer and Unix times; 0 is the read block's time.
 func (a *Anvil) Feed(at common.Address, answer *big.Int, started, updated int64) {
 	a.t.Helper()
 	// Five words: round, answer, started, updated, answered-in round. TIMESTAMP (42) stands for 0.
@@ -268,7 +247,6 @@ func (a *Anvil) Feed(at common.Address, answer *big.Int, started, updated int64)
 	}
 }
 
-// Send calls a contract from the sender, waits for the receipt and returns the transaction hash.
 func (a *Anvil) Send(to, sig string, args ...string) string {
 	a.t.Helper()
 	return a.call(Sender, to, sig, args...)
@@ -290,8 +268,7 @@ type receipt struct {
 	Status          string `json:"status"`
 }
 
-// transact sends a transaction from an account Anvil signs for and waits for its successful receipt; an empty to
-// creates a contract. A revert stops the test, as cast send and forge create did.
+// transact sends from an account Anvil signs for and waits for success; an empty to creates a contract.
 func (a *Anvil) transact(from, to string, data []byte) receipt {
 	a.t.Helper()
 	tx := map[string]any{"from": from, "data": hexutil.Bytes(data)}
@@ -394,8 +371,7 @@ var (
 	buildErr  error
 )
 
-// bytecode is a contract's creation code from Foundry's build. The contracts build once per test process; the build
-// takes a lock, as test packages run as parallel processes that would otherwise write the same output.
+// bytecode is a contract's creation code; the build runs once per test process, under a lock across packages.
 func bytecode(t *testing.T, contract string) []byte {
 	t.Helper()
 	buildOnce.Do(func() { buildErr = build() })

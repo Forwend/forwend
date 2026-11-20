@@ -17,8 +17,7 @@ export const apiDate = z.iso.date();
 
 export const count = z.number().int().nonnegative();
 
-/** A newer API may add a status, which the page shows as unknown rather than failing. The type keeps the known
- * values for autocomplete. */
+/** Accepts a status a newer API may add, shown as unknown; the type keeps known values for autocomplete. */
 export function openEnum<T extends string>() {
   return z.custom<T | (string & {})>((value) => typeof value === "string");
 }

@@ -4,24 +4,22 @@ import { useMemo } from "react";
 import { BalanceChart } from "@/features/balances/components/charts/balance-chart";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { runningTotal } from "@/features/balances/lib/balance-history";
-import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { formatUsd } from "@/shared/lib/money";
 
 export interface ReceivedChartProps {
   series: HistorySeries;
   label: string;
-  compact?: boolean;
   className?: string;
 }
 
-export function ReceivedChart({ series, label, compact, className }: ReceivedChartProps) {
+export function ReceivedChart({ series, label, className }: ReceivedChartProps) {
   const total = useMemo(() => runningTotal(series), [series]);
   return (
     <BalanceChart
       series={total}
       label={label}
-      compact={compact}
       className={className}
       readoutNote={(i) => {
         const day = series.values[i] ?? 0n;

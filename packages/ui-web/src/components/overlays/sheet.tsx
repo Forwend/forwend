@@ -9,13 +9,9 @@ export interface SheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  closeLabel?: string;
-  /** A step after the first: a Back button sits before the title. */
   onBack?: () => void;
   backLabel?: string;
-  /** Work that closing would not stop is running, such as a signature: Escape, the backdrop and Close do nothing. */
   locked?: boolean;
-  /** lg: a two-column picker from small screens up, such as chains beside their tokens; phones keep the full width. */
   size?: "md" | "lg";
   children: ReactNode;
 }
@@ -24,7 +20,6 @@ export function Sheet({
   open,
   onOpenChange,
   title,
-  closeLabel = "Close",
   onBack,
   backLabel = "Back",
   locked = false,
@@ -64,14 +59,11 @@ export function Sheet({
         if (event.target === ref.current && !locked) onOpenChange(false); // a click on the backdrop
       }}
       className={cx(
-        // A column: the body takes what the header leaves and is the one part that scrolls.
         "mx-0 mt-auto mb-0 max-h-[92dvh] overflow-hidden open:flex open:flex-col outline-none w-full max-w-none rounded-t-lg border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-[var(--fw-scrim)] sm:m-auto sm:rounded-lg",
         size === "lg" ? "sm:max-w-2xl" : "sm:max-w-md",
-        // Phones only: the bottom sheet slides up. Closing stays instant: an exit transition needs a discrete
-        // display/overlay transition, which only Chromium supports, so other browsers flash the closing sheet.
+        // Closing stays instant: an exit transition needs discrete display transitions, Chromium only.
         "max-sm:transition-[translate] max-sm:duration-[var(--fw-duration-base)] max-sm:ease-out max-sm:starting:open:translate-y-full",
         "max-sm:backdrop:transition-opacity max-sm:backdrop:duration-[var(--fw-duration-base)] max-sm:backdrop:ease-out max-sm:starting:open:backdrop:opacity-0",
-        // From small screens up it is a centered panel, which enters as a dialog does.
         "sm:transition-opacity sm:duration-[var(--fw-duration-base)] sm:ease-out sm:starting:open:opacity-0 sm:backdrop:transition-opacity sm:backdrop:duration-[var(--fw-duration-base)] sm:backdrop:ease-out sm:starting:open:backdrop:opacity-0",
       )}
     >
@@ -84,12 +76,7 @@ export function Sheet({
           ) : null}
           <h2 className="truncate text-lg font-medium">{title}</h2>
         </div>
-        <IconButton
-          label={closeLabel}
-          size="md"
-          disabled={locked}
-          onClick={() => onOpenChange(false)}
-        >
+        <IconButton label="Close" size="md" disabled={locked} onClick={() => onOpenChange(false)}>
           <X aria-hidden className="size-[var(--fw-icon-md)]" />
         </IconButton>
       </div>

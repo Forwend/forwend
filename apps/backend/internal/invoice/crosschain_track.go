@@ -14,43 +14,36 @@ import (
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/intents"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
-// How often the worker reads a quote's status (R-234): often while 1Click converts a deposit, less while it waits for
-// one, rarely after the price window, seldom once its deadline is an hour past, and not at all once it ended or its
-// address no longer takes deposits.
 const (
 	trackConverting = 10 * time.Second
 	trackWaiting    = 30 * time.Second
 	trackLate       = 2 * time.Minute
 	trackIdle       = 5 * time.Minute
-	trackAfter      = time.Hour // past the deadline, or past the conversion for a late refund of the extra
+	trackAfter      = time.Hour // past the deadline, or the conversion for a late refund
 	trackCold       = 30 * time.Minute
 	trackRetry      = time.Minute
-	// An unpaid quote 1Click can't be read about stops a week past its address deadline: by then 1Click has refunded
-	// any deposit, and an address it never knew (404) would otherwise be read for ever.
+	// By then 1Click refunded any deposit, and an address it never knew (404) would be read for ever.
 	trackGiveUp = 7 * 24 * time.Hour
-	// ponytail: one worker reads trackBatch a round, trackReaders at once, each answer within trackTimeout: about
-	// 25 reads a second. Deposits 1Click saw go first, so idle quotes only wait on each other. Shard rounds when more.
+	// ponytail: one worker, about 25 reads a second; seen deposits go first. Shard rounds when more.
 	trackBatch   = 64
 	trackReaders = 8
 	trackTimeout = 5 * time.Second
 )
 
-// ConvertingSQL is true while 1Click converts a deposit for invoice $1 or delivered it: the USDC is on its way to the
-// Base option, so the pick, an edit and a cancel wait as for money seen (R-233). A short deposit counts too: 1Click
-// holds it until the deadline, and the rest sent to its address may still convert it (Q-19).
-//   - A delivery stops counting once it came in on Base: the ledger holds it from then.
-//   - Any quote stops an hour past its deadline or seen deposit, when its alert fires: one 1Click never finishes would
-//     otherwise hold the invoice for good.
+// ConvertingSQL: 1Click holds a deposit for invoice $1 (even short); it lapses an hour on, so a stuck quote can't block.
 const ConvertingSQL = `EXISTS (SELECT 1 FROM crosschain_quotes c WHERE c.invoice_id = $1
 	AND c.status IN ('KNOWN_DEPOSIT_TX', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'SUCCESS')
 	AND greatest(c.deadline, c.deposit_seen_at) > now() - interval '1 hour'
 	AND NOT (c.status = 'SUCCESS' AND ` + DeliveredSQL + `))`
 
-// DeliveredSQL is true once quote c's delivery came in on its Base option: a deposit in a transaction 1Click names, or,
-// should it name it in another form, one of at least the amount delivered made after the quote.
+// moneySeenSQL is true once main invoice $1 has money seen: a deposit that chooses an option, or one 1Click converts.
+const moneySeenSQL = ledger.ChoosingSeenSQL + " OR " + ConvertingSQL
+
+// DeliveredSQL: a Base transfer in a tx 1Click names, or one of at least amount_out made after the quote.
 const DeliveredSQL = `EXISTS (SELECT 1 FROM chain_transfers t WHERE t.invoice_id = c.option_id AND t.status <> 'reorged'
 	AND (t.tx_hash IN (SELECT lower(d->>'hash') FROM jsonb_array_elements(c.destination_txs) d)
 	     OR t.amount >= c.amount_out AND t.created_at >= c.created_at))`
@@ -62,8 +55,7 @@ type trackedQuote struct {
 	refunded, amountOut                              *big.Int
 }
 
-// TrackCrossChain reads 1Click's status of the quotes due for a check and keeps what changed. It decides nothing
-// about money: paid comes only from the Base balance (R-119).
+// TrackCrossChain keeps 1Click's quote statuses; it decides nothing about money: paid comes only from Base.
 func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 	if s.crossChain == nil {
 		return nil
@@ -102,7 +94,6 @@ func (s *Service) TrackCrossChain(ctx context.Context, now time.Time) error {
 	return errors.Join(errs...)
 }
 
-// track reads q's status once and keeps it.
 func (s *Service) track(ctx context.Context, q trackedQuote, now time.Time) error {
 	read, cancel := context.WithTimeout(ctx, trackTimeout)
 	status, err := s.crossChain.Status(read, q.address)
@@ -139,7 +130,6 @@ func (s *Service) track(ctx context.Context, q trackedQuote, now time.Time) erro
 	return nil
 }
 
-// keepStatus writes 1Click's status of q and the history of what changed, in one transaction.
 func (s *Service) keepStatus(ctx context.Context, q trackedQuote, st intents.Status, now time.Time) error {
 	converted := q.convertedAt
 	if converted == nil && st.Status == intents.Success {
@@ -184,7 +174,7 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 		if err := add(history.CrossChainDeposit, history.Data{Asset: q.origin, Amount: st.Deposited}); err != nil {
 			return err
 		}
-		// The USDC is on its way to the Base option, so the pay link opens on it (R-233).
+		// The USDC is on its way to the Base option, so the pay link opens on it.
 		if err := s.pickTracked(ctx, tx, q); err != nil {
 			return err
 		}
@@ -199,8 +189,7 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 			return err
 		}
 	}
-	// A refund of a short deposit ends the swap; one of the unused slippage or an extra comes after it converted. A
-	// refund 1Click names no amount for still gets its row, once.
+	// A short deposit's refund ends the swap; a slippage or extra refund comes after conversion.
 	refunded, ok := new(big.Int).SetString(st.Refunded, 10)
 	if more := ok && refunded.Cmp(q.refunded) > 0; more || (q.status != intents.Refunded && st.Status == intents.Refunded) {
 		data := history.Data{Asset: q.origin, Reason: st.RefundReason}
@@ -219,9 +208,7 @@ func (s *Service) statusHistory(ctx context.Context, tx pgx.Tx, q trackedQuote, 
 	return nil
 }
 
-// nextCheck is when the worker reads the quote again, nil for never. A seen deposit is read until it ends, past its
-// deadline too: its alert then says it holds a payer's money (R-234). An unpaid quote is read until its address stops
-// taking deposits, days past the deadline asked for: a slow deposit still converts or is refunded.
+// nextCheck is nil for never; a seen deposit is read until it ends, an unpaid quote until its address closes.
 func nextCheck(q trackedQuote, status string, converted *time.Time, now time.Time) *time.Time {
 	at := func(d time.Duration) *time.Time { t := now.Add(d); return &t }
 	switch {
@@ -245,7 +232,6 @@ func nextCheck(q trackedQuote, status string, converted *time.Time, now time.Tim
 
 var baseTxHash = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 
-// pickTracked keeps the quote's option, the Base one, as the payer's pick once 1Click saw their deposit.
 func (s *Service) pickTracked(ctx context.Context, tx pgx.Tx, q trackedQuote) error {
 	tag, err := tx.Exec(ctx, `UPDATE invoices SET picked_id = $2 WHERE id = $1 AND picked_id IS DISTINCT FROM $2
 		AND (SELECT count(*) FROM invoices o WHERE o.main_id = $1) > 0`, q.invoiceID, q.optionID)

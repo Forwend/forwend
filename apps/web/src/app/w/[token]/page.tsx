@@ -4,12 +4,12 @@ import { JOB_TOKEN_PATTERN } from "@/features/jobs/constants/jobs";
 import { QUOTE_COPY } from "@/features/jobs/constants/jobs-copy";
 import { PublicStoreProvider } from "@/providers/public-store-provider";
 import { JobQuoteScreen } from "@/screens/job-quote/job-quote-screen";
+import { NO_INDEX } from "@/shared/config/site";
 
-// Outside the (app) group: the client opens it from the freelancer's message, with no account. The token is a secret
-// link, so search engines stay out.
+// Outside the (app) group: opened from a freelancer's message with no account; the token is a secret link.
 export const metadata: Metadata = {
   title: QUOTE_COPY.title,
-  robots: { index: false, follow: false },
+  robots: NO_INDEX,
 };
 
 export default async function JobQuotePage({ params }: PageProps<"/w/[token]">) {

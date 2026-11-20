@@ -1,25 +1,20 @@
 "use client";
 
-import { formatTokenAmount, SelectField, shortAddress, TONES, useToast } from "@forwend/ui-web";
+import { SelectField, shortAddress, TONES, useToast } from "@forwend/ui-web";
 import { useState } from "react";
-import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useLabelTransactionMutation } from "@/features/transactions/api/transactions-api";
 import {
   TRANSACTION_CLASSES,
   TRANSACTION_LABELS,
 } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
-import type {
-  Transaction,
-  TransactionClass,
-  TransactionLabel,
-} from "@/features/transactions/types/transactions";
+import { typeName } from "@/features/transactions/lib/transactions";
+import type { Transaction, TransactionLabel } from "@/features/transactions/types/transactions";
+import { errorStatus, HTTP_STATUS, notFound } from "@/shared/api/api-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 
-const CONFLICT = 409;
-const NOT_FOUND = 404;
 const CHOICES = [TRANSACTION_CLASSES.unclassified, ...TRANSACTION_LABELS].map((value) => ({
   value,
   label: COPY.classes[value],
@@ -30,43 +25,23 @@ export interface TransactionTypeProps {
   t: Transaction;
 }
 
-// R-109.
 export function TransactionType({ profileId, t }: TransactionTypeProps) {
   const [label] = useLabelTransactionMutation();
   const toast = useToast();
-  // The choice shows at once and the select keeps focus, until the list read after saving shows it.
   const [chosen, setChosen] = useState<string | null>(null);
   if (chosen !== null && chosen === t.classification) setChosen(null);
   const needsReview = !!t.payment?.policyException || !!t.payment?.unreconciled;
-  // Money that paid a payment opens it: the invoice number and client, or a checkout's payment.
-  if (t.invoice && !t.labelable)
-    return (
-      <RecordLink href={`${APP_ROUTES.payments}/${t.invoice.invoiceId}`}>
-        {COPY.invoicePaid(invoiceNumber(t.invoice.number), t.invoice.clientName)}
-      </RecordLink>
+  if (!t.labelable) {
+    const paid = t.invoice?.invoiceId ?? t.payment?.paymentId;
+    return paid ? (
+      <RecordLink href={`${APP_ROUTES.payments}/${paid}`}>{typeName(t)}</RecordLink>
+    ) : (
+      <span className="text-muted">{typeName(t)}</span>
     );
-  if (!t.labelable && t.payment)
-    return (
-      <RecordLink href={`${APP_ROUTES.payments}/${t.payment.paymentId}`}>
-        {COPY.classes[TRANSACTION_CLASSES.payment]}
-      </RecordLink>
-    );
-  if (!t.labelable)
-    return (
-      <span className="text-muted">
-        {COPY.classes[t.classification as TransactionClass] ?? t.classification}
-      </span>
-    );
+  }
   return (
     <SelectField
-      label={COPY.typeOf(
-        `${formatTokenAmount({
-          baseUnits: BigInt(t.amount),
-          decimals: t.decimals,
-          fractionDigits: exactDigits(BigInt(t.amount), t.decimals),
-        })} ${t.symbol}`,
-        shortAddress(t.counterparty),
-      )}
+      label={COPY.typeOf(amountText(BigInt(t.amount), t), shortAddress(t.counterparty))}
       hideLabel
       options={CHOICES}
       value={
@@ -87,11 +62,8 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
           }).unwrap();
         } catch (failure) {
           setChosen(null);
-          const status = (failure as { status?: unknown }).status;
-          toast({
-            tone: TONES.warning,
-            title: status === CONFLICT || status === NOT_FOUND ? COPY.typeRefused : COPY.typeFailed,
-          });
+          const refused = errorStatus(failure) === HTTP_STATUS.conflict || notFound(failure);
+          toast({ tone: TONES.warning, title: refused ? COPY.typeRefused : COPY.typeFailed });
         }
       }}
     />

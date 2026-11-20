@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -52,7 +53,6 @@ type env struct {
 	chain *Chain
 }
 
-// setup runs Anvil with a mock USDC and one invoice paid at receive, and scans once so the cursor exists.
 func setup(t *testing.T) env {
 	t.Helper()
 	return setupChain(t, chaintest.Start(t))
@@ -129,13 +129,11 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if err != nil || amount != "5000000" || from != chaintest.Sender || blockTime == 0 {
 		t.Fatalf("row: amount %s from %s time %d err %v", amount, from, blockTime, err)
 	}
-	// R-119.
 	var scannedTime int64
 	if err := e.pool.QueryRow(context.Background(), "SELECT last_scanned_time FROM chain_cursors").Scan(&scannedTime); err != nil ||
 		scannedTime != e.anvil.Now() {
 		t.Fatalf("scanned time %d (%v), want the latest block's %d", scannedTime, err, e.anvil.Now())
 	}
-	// The finalized block of the scan that saw it is kept: the deposit had 2 blocks to wait (R-73).
 	wait := func() (n int64) {
 		err := e.pool.QueryRow(context.Background(),
 			"SELECT block_number - detected_finalized_block FROM chain_transfers").Scan(&n)
@@ -147,7 +145,7 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if got := wait(); got != 2 {
 		t.Fatalf("blocks to wait when seen: %d", got)
 	}
-	e.anvil.Mine(1) // finalized is now one block short of the deposit
+	e.anvil.Mine(1)
 	e.scan(t)
 	if got, _ := e.rows(t); got[tx][0] != "detected" {
 		t.Fatalf("one block later: %v", got)
@@ -155,7 +153,7 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if got := wait(); got != 2 {
 		t.Fatalf("a later scan changed the blocks to wait: %d", got)
 	}
-	e.anvil.Mine(1) // the deposit's block is finalized
+	e.anvil.Mine(1)
 	e.scan(t)
 	if got, n := e.rows(t); n != 1 || got[tx][0] != "confirmed" {
 		t.Fatalf("once finalized: %v", got)
@@ -164,9 +162,8 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 
 func TestOnlyTheInvoiceTokenToAReceiveAddressCounts(t *testing.T) {
 	e := setup(t)
-	lookalike := e.anvil.DeployToken() // same name, symbol and Transfer event
+	lookalike := e.anvil.DeployToken()
 	e.anvil.Mint(lookalike, "100000000")
-	// The look-alike is also a listed token of another invoice, so the RPC filter returns its logs too.
 	_, err := e.pool.Exec(context.Background(), `
 		WITH tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES ($1, 'evm', $2, 'OTHER', 6, true))
@@ -187,7 +184,6 @@ func TestOnlyTheInvoiceTokenToAReceiveAddressCounts(t *testing.T) {
 	}
 }
 
-// Zero-value transfers, as address-poisoning spam sends, are no payment: nothing is recorded, so nothing confirms.
 func TestZeroValueTransferIsNoPayment(t *testing.T) {
 	e := setup(t)
 	e.anvil.Transfer(e.token, receive, "0")
@@ -204,20 +200,18 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 	raw := e.anvil.RawTx(tx)
 	e.scan(t)
 
-	e.anvil.Reorg(1) // the block with the transfer is replaced by an empty one
+	e.anvil.Reorg(1)
 	e.scan(t)
 	if got, n := e.rows(t); n != 1 || got[tx][0] != "reorged" {
 		t.Fatalf("after the reorg: %v", got)
 	}
 
-	// The same signed transaction is mined again in another block: same tx hash and log index, new row.
 	e.anvil.SendRaw(raw)
 	e.scan(t)
 	if got, n := e.rows(t); n != 2 || got[tx][0] != "reorged" || got[tx][1] != "detected" {
 		t.Fatalf("after the transaction is mined again: %v", got)
 	}
 
-	// A restarted worker resumes from the cursor; scanning again adds nothing.
 	restarted := env{anvil: e.anvil, pool: e.pool, token: e.token, chain: NewChain(e.pool, chaintest.ChainID, e.anvil.RPC)}
 	restarted.scan(t)
 	restarted.scan(t)
@@ -231,7 +225,7 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 	for name, c := range map[string]struct {
 		refuse    func(blocks uint64, earlier int) chaintest.Fault
-		wantSizes []uint64 // the first ranges asked for
+		wantSizes []uint64
 		wantErr   bool
 	}{
 		"too many results over 700 blocks": {refuse: func(blocks uint64, _ int) chaintest.Fault {
@@ -273,7 +267,7 @@ func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 			var sizes []uint64
 			var answered [][2]uint64
 			for _, call := range proxy.Calls() {
-				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), transferTopic.Hex()) {
+				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), chain.TransferTopic.Hex()) {
 					from, to := logRange(t, call)
 					sizes = append(sizes, to-from+1)
 					if call.Fault == chaintest.Forward {
@@ -436,7 +430,6 @@ func TestSlowSmallRangeProviderStillMovesTheCursorEveryScan(t *testing.T) {
 	}
 }
 
-// Rewriting block_hash makes the row look recorded under another final block.
 func TestDepositMinedAgainUnderAFinalBlockIsSkipped(t *testing.T) {
 	e := setup(t)
 	tx := e.anvil.Transfer(e.token, receive, "5000000")
@@ -483,13 +476,13 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 		t.Fatal(err)
 	}
 	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
-	watchedAfterDeadline = time.Since(time.Unix(86401, 0)) + time.Hour // still watched
+	watchedAfterDeadline = time.Since(time.Unix(86401, 0)) + time.Hour
 	late := e.anvil.Transfer(e.token, closing, "5000000")
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "detected" {
 		t.Fatalf("rows %v", got)
 	}
-	watchedAfterDeadline = 0 // the invoice leaves the window while its deposit is not final
+	watchedAfterDeadline = 0
 	e.anvil.Mine(2)
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "confirmed" {
@@ -497,8 +490,6 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 	}
 }
 
-// R-183, PLAN 11.10.3: an expired receiver past the watch window that holds late money stays watched while support's
-// return is queued, so the refund the Safe sends weeks later is still recorded.
 func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -525,7 +516,6 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	e.scan(t)
 	e.anvil.Mine(2)
 	e.scan(t)
-	// Booked as late money, held for the payer; then support queues its return.
 	if _, err := e.pool.Exec(ctx, `WITH t AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
 		SELECT invoice_id, 'deposit', id FROM chain_transfers WHERE tx_hash = $1 RETURNING id)
 		INSERT INTO ledger_entries (transaction_id, account, amount)
@@ -537,7 +527,7 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
-	watchedAfterDeadline = time.Since(time.Unix(int64(terms.SettleDeadline), 0)) - time.Hour // past the window
+	watchedAfterDeadline = time.Since(time.Unix(int64(terms.SettleDeadline), 0)) - time.Hour
 
 	e.anvil.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))",
 		fmt.Sprintf("(0x%s,0x1111111111111111111111111111111111111111,%s,5000000,%d,%d,%d,0,0)", strings.Repeat("05", 32),
@@ -553,8 +543,6 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	}
 }
 
-// The receivers past the window are read from the invoices_money_chain partial index: its predicate is
-// ledger.MayHoldMoneySQL, which holding uses as it is.
 func TestReceiversHoldingMoneyAreReadFromTheirIndex(t *testing.T) {
 	if mayHoldMoneySQL != ledger.MayHoldMoneySQL {
 		t.Fatalf("holding reads %q, the ledger %q", mayHoldMoneySQL, ledger.MayHoldMoneySQL)
@@ -570,7 +558,6 @@ func TestReceiversHoldingMoneyAreReadFromTheirIndex(t *testing.T) {
 	}
 }
 
-// Here every eth_getLogs answer with a log is refused, as Infura refuses more than 10,000.
 func TestLogSpamDoesNotStopTheChain(t *testing.T) {
 	ctx := context.Background()
 	e := setup(t)
@@ -636,7 +623,7 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	amount := common.LeftPadBytes(big.NewInt(5000000).Bytes(), 32)
 	settled := func(address common.Address, block uint64, hash common.Hash) types.Log {
 		return types.Log{Address: address, BlockNumber: block, BlockHash: hash, TxHash: common.HexToHash("0xfeed"), Index: 1, Data: amount,
-			Topics: []common.Hash{settledTopic, common.HexToHash(id), common.BytesToHash(common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes())}}
+			Topics: []common.Hash{SettledTopic, common.HexToHash(id), common.BytesToHash(common.HexToAddress("0x1111111111111111111111111111111111111111").Bytes())}}
 	}
 	final, other := common.HexToHash("0xf1"), common.HexToHash("0xf2")
 	headers := map[uint64]header{5: {Number: 5, Hash: final}, 6: {Number: 6, Hash: final}, 50: {Number: 50, Hash: final}}
@@ -645,9 +632,9 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	removed.Removed = true
 	logs := []types.Log{
 		settled(watched, 5, final),
-		settled(watched, 50, final),                     // above the finalized block
-		settled(watched, 6, other),                      // another block than the one the chain shows at that height
-		settled(common.HexToAddress("0xbad"), 5, final), // not a watched receiver
+		settled(watched, 50, final),
+		settled(watched, 6, other),
+		settled(common.HexToAddress("0xbad"), 5, final),
 		removed,
 	}
 	got, err := e.chain.outflows(ctx, logs, headers, invoices, 10)
@@ -657,14 +644,13 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, got) }); err != nil {
 		t.Fatal(err)
 	}
-	// No node showed its transfer, so it stays unbooked and is read again, until a read finds the transfer.
 	again, err := e.chain.outflows(ctx, logs, headers, invoices, 10)
 	if err != nil || len(again) != 1 {
 		t.Fatalf("an event recorded without its transfer was not read again: %+v (%v)", again, err)
 	}
 	again[0].Transfers = []types.Log{{Address: common.HexToAddress(invoices[watched].token), BlockNumber: 5,
 		BlockHash: final, TxHash: common.HexToHash("0xfeed"), Index: 0, Data: amount,
-		Topics: []common.Hash{transferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
+		Topics: []common.Hash{chain.TransferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
 	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, again) }); err != nil {
 		t.Fatal(err)
 	}
@@ -679,8 +665,6 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	}
 }
 
-// R-230: FeesPaid is an outflow per fee, each matched to settle's own transfer between its transfer to the recipient
-// and Settled. Missed transfers are found by a later read; a fee other than the terms' is refused.
 func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -697,17 +681,16 @@ func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 	authority := common.Address(address.Known[address.Factory].RefundAuthority)
 	word := func(n int64) []byte { return common.LeftPadBytes(big.NewInt(n).Bytes(), 32) }
 	topic := func(a common.Address) common.Hash { return common.BytesToHash(a.Bytes()) }
-	// settle's logs: its transfers to the recipient, the settler and the refund authority, then Settled and FeesPaid.
 	settle := func(block common.Hash, network int64) []Outflow {
 		log := func(index uint, address common.Address, data []byte, topics ...common.Hash) types.Log {
 			return types.Log{Address: address, BlockNumber: 5, BlockHash: block, TxHash: block, Index: index, Data: data, Topics: topics}
 		}
 		transfer := func(index uint, to common.Address, amount int64) types.Log {
-			return log(index, common.HexToAddress(e.token), word(amount), transferTopic, topic(at), topic(to))
+			return log(index, common.HexToAddress(e.token), word(amount), chain.TransferTopic, topic(at), topic(to))
 		}
 		transfers := []types.Log{transfer(0, recipient, 4950000), transfer(1, settler, network), transfer(2, authority, 20000)}
 		return []Outflow{
-			{InvoiceID: id, Log: log(3, at, word(4950000), settledTopic, common.HexToHash(id), topic(recipient)), Transfers: transfers, Verified: 5},
+			{InvoiceID: id, Log: log(3, at, word(4950000), SettledTopic, common.HexToHash(id), topic(recipient)), Transfers: transfers, Verified: 5},
 			{InvoiceID: id, Log: log(4, at, append(word(network), word(20000)...), feesPaidTopic, common.HexToHash(id), topic(settler)),
 				Transfers: transfers, Verified: 5},
 		}
@@ -733,7 +716,7 @@ func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 	block := common.HexToHash("0xb1")
 	missed := settle(block, 30000)
 	for i := range missed {
-		missed[i].Transfers = nil // a node answered without the transfers
+		missed[i].Transfers = nil
 	}
 	record(missed)
 	if got, want := rows(block), fmt.Sprintf("settlement 4950000 %s - transfer_evidence_missing, network_fee 30000 %s - "+

@@ -20,11 +20,9 @@ export interface BalanceHistoryCardProps {
   profileId: string;
 }
 
-/** The personal balance over a chosen range. */
 export function BalanceHistoryCard({ profileId }: BalanceHistoryCardProps) {
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
   const history = usePricedHistory(profileId, HISTORY_RANGES[range]);
-  // The chart keeps the last range's line, dimmed, while the next loads.
   const series = history.data
     ? historySeries(history.data, HISTORY_FIELDS.balances, history.prices)
     : null;
@@ -60,7 +58,6 @@ export function BalanceHistoryCard({ profileId }: BalanceHistoryCardProps) {
             <p className="m-auto text-sm text-muted">{BALANCES_COPY.historyUnavailable}</p>
           </EmptyChart>
         ) : (
-          // Phones get the compact plot: first and last dates only.
           [true, false].map((compact) => (
             <BalanceChart
               key={String(compact)}

@@ -12,8 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/intents/intentstest"
 )
 
-// R-235: a quote passes only when 1Click's own record of it, signed by 1Click's key, pays exactly the amount into the
-// address the factory predicts for the option.
 func TestCheckQuoteAgainst1ClicksOwnRecord(t *testing.T) {
 	fake := intentstest.New(t)
 	receive := "0x5e4b7c9a1f3d2e6b8a0c4d7f9e1b3a5c7d9e0f12"

@@ -1,7 +1,4 @@
-/**
- * An error answer from the API: its HTTP status and the API's error code, such as idempotency_conflict. The client
- * sets the code to unknown for an error answer that is not JSON, and invalid_response for such a success answer.
- */
+/** An API error answer; code is unknown, or invalid_response, when the body is not JSON. */
 export class ForwendError extends Error {
   readonly status: number;
   readonly code: string;

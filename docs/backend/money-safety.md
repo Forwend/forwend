@@ -55,8 +55,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
 - Recovery sweeps read every block again later, so a log one RPC answer missed is still found.
   - Some finalized blocks may be kept by no RPC any more (R-191).
-    - Arc's PublicNode and Blockdaemon nodes served logs 13 hours old but not 47 hours old (measured 2026-10-30).
-    - thirdweb on Arc (migration 94) served logs 170 hours old. Ranges skipped earlier can now be read again.
+    - Arc's PublicNode and Blockdaemon nodes served logs 13 hours old but not 47 hours old.
+    - thirdweb on Arc (migration 94) served logs 170 hours old.
   - Only when every endpoint serving the chain answers that it lacks them does the sweep move on, to the oldest kept block.
     - It logs an `ALERT` with the skipped range. An endpoint that failed or rests may hold them, so the sweep waits then.
   - The fast scan read those blocks once. To read them again, add an endpoint with full history.
@@ -86,7 +86,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Returns through support
 
-Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no key and sends nothing.
+Support returns held money by hand with `cmd/ops` (D-118). It holds no key and sends nothing.
+Self-serve returns are [deferred](../../PLAN.md#deferred-beyond-mvp).
 
 - Each run first writes the OS user and its arguments to `ops_runs`, a failing run too.
   - It names a person only when each operator logs in to the server as themselves.
@@ -252,7 +253,7 @@ D-123: NEAR Intents 1Click converts a payer's token on another chain into USDC o
   - It is an hour, or two hours for a slow chain (`intents.SlowChains`, Bitcoin-like), bounded by the close.
   - A slow chain's deposit can take an hour to mine. Its token is offered only while its deadline is 90 minutes away.
 - The deposit address can't be recomputed as a receive address can (R-45). Instead, a quote must pass D-124:
-  - its ed25519 signature verifies with `intents.ManagerKey`, the key the 1Click SDK pins;
+  - its ed25519 signature verifies with the key the 1Click SDK pins (`managerKey` in `internal/intents`);
   - its signed request names the Base option's receive address, Base USDC, `EXACT_OUTPUT`, the due amount and `refundTo`;
   - it delivers exactly that amount, has a deposit address and needs no memo.
   - every value is read with exact keys: Go's struct decoding would let a `DepositAddress` key replace `depositAddress`.

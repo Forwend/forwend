@@ -9,8 +9,7 @@ import (
 	"unicode"
 )
 
-// checkURL takes an https URL with a host and no credentials. A host that is an address must be public; a name is
-// left to the delivery, which checks its addresses after DNS (PLAN 11.5).
+// checkURL checks an address host here; a name's addresses are checked at delivery, after DNS.
 func checkURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || !strings.HasPrefix(raw, "https://") || u.Hostname() == "" || u.User != nil || u.Fragment != "" ||

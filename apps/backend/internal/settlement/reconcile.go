@@ -15,13 +15,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/watcher"
 	"github.com/jackc/pgx/v5"
 )
 
-// reconcile: our receipt (any version) with the Settled log decides first, whatever a lagging node says. A reverted
-// settle is recorded without our hash if settled at the finalized block, waits if only at latest, else is re-signed.
+// reconcile: our receipt's Settled log decides; else settled at finalized is recorded, at latest waits, else re-signed.
 func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in intent) error {
 	tx := new(types.Transaction)
 	hash := common.HexToHash(*in.txHash)
@@ -73,8 +73,7 @@ func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in int
 	return s.retry(ctx, in, fmt.Sprintf("settle %s mined with status %d but the receiver is not settled", r.TxHash.Hex(), r.Status))
 }
 
-// unmined decides for good at one finalized block: settled with our nonce unused there is another settler's work;
-// our nonce used there while unsettled means ours never mines. Otherwise it resends, or replaces after ReplaceAfter.
+// unmined decides at one finalized block whether another settler won or ours never mines; else resend or replace.
 func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in intent, tx *types.Transaction) (*types.Receipt, error) {
 	sender, receive := common.HexToAddress(*in.sender), common.HexToAddress(in.receive)
 	head, err := client.HeaderByNumber(ctx, finalized)
@@ -109,14 +108,14 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	if err != nil || settled || int64(mined) > *in.nonce {
 		return nil, err // settled, or the nonce used, after the finalized block: decided once that is final
 	}
-	// The bytes and terms come from the database: never send again, or re-sign with our key, a settle its sender didn't
-	// sign or one to an address the terms don't compute. Reading receipts and confirming above need neither.
+	// Bytes and terms come from the database: never resend or re-sign a settle we didn't sign or to another address.
 	if from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx); err != nil ||
 		from != common.HexToAddress(*in.sender) {
 		return nil, fmt.Errorf("saved transaction %s is not signed by its sender", *in.txHash)
 	}
-	if _, reason := receiverTerms(in); reason != "" {
-		return nil, fmt.Errorf("saved transaction %s: %s", *in.txHash, reason)
+	if _, _, err := termsOf(in.invoiceID, in.factory, in.recipient, in.token, in.receive, in.amount, in.fees, in.expires,
+		in.deadline, in.chainID); err != nil {
+		return nil, fmt.Errorf("saved transaction %s: %w", *in.txHash, err)
 	}
 	if sender == s.sender && int64(mined) < *in.nonce {
 		if err := s.fillGap(ctx, client, in.chainID, mined); err != nil {
@@ -133,8 +132,7 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 		}
 	}
 	if err := client.SendTransaction(ctx, tx); err != nil && !holds(err) {
-		// The nonce was used meanwhile, by a version of this settle (sent again above, it may mine first) or another
-		// transaction: the next round decides, as when it is found used before sending.
+		// The nonce was used meanwhile, by a version of this settle or another transaction: the next round decides.
 		if now, nerr := client.NonceAt(ctx, sender, nil); nerr == nil && int64(now) > *in.nonce {
 			return nil, nil
 		}
@@ -149,8 +147,7 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	return s.await(ctx, client, tx.Hash())
 }
 
-// "already known" on geth and reth, "AlreadyKnown" on Nethermind, "transaction already imported" on Anvil. Not just
-// "known": "unknown account" is a real error.
+// holds: "already known" (geth, reth), "AlreadyKnown" (Nethermind), "already imported" (Anvil); not "unknown".
 func holds(err error) bool {
 	msg := strings.ToLower(err.Error())
 	for _, known := range []string{"already known", "alreadyknown", "already imported"} {
@@ -161,20 +158,16 @@ func holds(err error) bool {
 	return false
 }
 
-// fillGap sends a zero-value self-transfer at nonce when nothing else will use it (a settle saved but never sent,
-// settled meanwhile by the refund authority): a nonce gap holds every later transaction on the chain.
+// fillGap sends a zero-value self-transfer at nonce when nothing else will: a nonce gap holds every later one.
 func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID uint64, nonce uint64) error {
 	pending, err := client.PendingNonceAt(ctx, s.sender)
 	if err != nil || pending > nonce {
 		return err
 	}
-	var saved bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
-		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
-		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved); err != nil || saved {
+	if saved, err := s.savedAt(ctx, chainID, nonce); err != nil || saved {
 		return err
 	}
-	tip, feeCap, err := Fees(ctx, client, chainID)
+	tip, feeCap, err := chain.Fees(ctx, client, chainID)
 	if err != nil {
 		return err
 	}
@@ -194,14 +187,13 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 // FinalWait bounds how long a mined settle waits before its block is read again for finality.
 const FinalWait = 10 * time.Minute
 
-// Records only once the receiver is settled at the finalized block (D-45) and r's block, if any, is final.
-// A reorg that drops our settle first leaves it without a receipt, handled like an unsent one.
+// confirmIfFinal records once the receiver is settled at the finalized block and r's block is final.
 func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent, r *types.Receipt) error {
 	head, err := client.HeaderByNumber(ctx, finalized)
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
 	}
-	var block uint64 // the receipt's block time
+	var minedAt uint64
 	if r != nil {
 		header, err := client.HeaderByHash(ctx, r.BlockHash)
 		if err != nil {
@@ -210,18 +202,18 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 		if header.Number.Cmp(r.BlockNumber) != 0 {
 			return fmt.Errorf("settlement receipt block number disagrees with header")
 		}
-		block = header.Time
+		minedAt = header.Time
 		// This observation is display-only; finality and the booked settlement decide settled.
 		if _, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET receipt_tx_hash = $2,
  receipt_block = $3, receipt_time = $4 WHERE id = $1
  AND (receipt_tx_hash, receipt_block, receipt_time) IS DISTINCT FROM ($2, $3, $4)`, in.id, r.TxHash.Hex(),
-			r.BlockNumber.Uint64(), block); err != nil {
+			r.BlockNumber.Uint64(), minedAt); err != nil {
 			return err
 		}
 	}
 	if r != nil && r.BlockNumber.Cmp(head.Number) > 0 {
 		// The finalized block keeps pace with the clock: it reaches r's block about as far ahead as it trails it now.
-		wait := min(time.Duration(block-min(head.Time, block))*time.Second, s.finalWait)
+		wait := min(time.Duration(minedAt-min(head.Time, minedAt))*time.Second, s.finalWait)
 		_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET next_attempt_at = now() + $2 * interval '1 second'
 			WHERE id = $1 AND status = 'sent'`, in.id, wait.Seconds())
 		return err
@@ -242,11 +234,10 @@ func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, i
 	if canonical.Hash != r.BlockHash {
 		return nil
 	}
-	return s.confirm(ctx, in, watcher.ReceiptOutflows(in.invoiceID, common.HexToAddress(in.receive), r, block, head.Number.Uint64()))
+	return s.confirm(ctx, in, watcher.ReceiptOutflows(in.invoiceID, common.HexToAddress(in.receive), r, minedAt, head.Number.Uint64()))
 }
 
-// confirm records our settle's events from its receipt, then books the invoice: the booked settlement confirms the
-// intent. A receiver settled by another settler waits for the chain's scan to record its event.
+// confirm records our settle's events from its receipt, then books the invoice; another settler's waits for the scan.
 func (s *Signer) confirm(ctx context.Context, in intent, outflows []watcher.Outflow) error {
 	client := s.clients[in.chainID]
 	if client == nil {
@@ -279,7 +270,7 @@ func (s *Signer) confirm(ctx context.Context, in intent, outflows []watcher.Outf
 
 const backoff = "now() + least(interval '1 minute' * power(2, least(attempts, 6)), interval '1 hour')"
 
-// Wait kinds stored with an intent for the invoice API (migration 00018); the reason text is for operators only.
+// Wait kinds stored with an intent for the invoice API; the reason text is for operators only.
 const (
 	waitRetry      = "retry"
 	waitCap        = "cap"
@@ -293,8 +284,7 @@ func (s *Signer) retry(ctx context.Context, in intent, reason string) error {
 
 func (s *Signer) postpone(ctx context.Context, in intent, wait, reason string) error {
 	slog.Warn("settlement waits", "invoice", in.invoiceID, "reason", reason)
-	// Only from the status this attempt loaded: a stale attempt never moves an intent that went on. A dropped settle's
-	// versions are kept in settlement_dropped: the executor signed them, and one may still have cost gas.
+	// Only from the status this attempt loaded; dropped versions stay in settlement_dropped, since one may have cost gas.
 	_, err := s.pool.Exec(ctx, `WITH old AS (SELECT sender, nonce, tx_hash, raw_tx, replaced_hashes FROM settlement_intents
 		    WHERE id = $1 AND status = $3 FOR UPDATE),
 		moved AS (UPDATE settlement_intents SET status = 'pending', sender = NULL, nonce = NULL,
@@ -315,8 +305,7 @@ func (s *Signer) stall(ctx context.Context, in intent, reason string) error {
 	return err
 }
 
-// refuse stops an intent for good without sending anything; an operator reads the reason. Only for terms that fail
-// the database checks, or a receive address the factory doesn't predict.
+// refuse stops an intent for good without sending: for terms that fail the database checks or an unpredicted address.
 func (s *Signer) refuse(ctx context.Context, in intent, reason string) error {
 	slog.Warn("settlement refused", "invoice", in.invoiceID, "reason", reason)
 	_, err := s.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'refused', reason = $2, wait = NULL,

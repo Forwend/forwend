@@ -7,7 +7,7 @@ import (
 
 var formulaAfterSemicolon = regexp.MustCompile(`;("*[=+\-@\t\r])`)
 
-// CSVText protects untrusted text, including spreadsheets configured with semicolon separators.
+// CSVText defuses spreadsheet formulas in untrusted text, semicolon-separated sheets included.
 func CSVText(value string) string {
 	if value != "" && strings.ContainsRune("=+-@\t\r", rune(value[0])) {
 		value = "'" + value

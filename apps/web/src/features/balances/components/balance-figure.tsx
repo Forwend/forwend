@@ -5,27 +5,26 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
+import { BALANCE_FIELDS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { formatUsd, marketUsd, notFinal } from "@/features/balances/lib/balances";
-import type { Balances, TokenBalance } from "@/features/balances/types/balances";
+import { fieldUnits, marketUsd } from "@/features/balances/lib/balances";
+import type { Balances } from "@/features/balances/types/balances";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { formatUsd } from "@/shared/lib/money";
 
 export interface BalanceFigureProps {
   balances: Balances | null;
-  /** Market prices (D-115); undefined until read or after a failed read, which shows no USD value. */
   prices: readonly TokenPrice[] | undefined;
   failed: boolean;
   onRetry: () => void;
-  /** The change over a range, right under the total. */
   change?: ReactNode;
-  /** Off where a card beside it already shows the money moving, not final and held. */
   pending?: boolean;
 }
 
-// Never a made-up 0 while loading or after a failed read. The parent is the size container.
+// Never a made-up 0 while loading or after a failed read.
 export function BalanceFigure({
   balances,
   prices,
@@ -35,14 +34,13 @@ export function BalanceFigure({
   pending = true,
 }: BalanceFigureProps) {
   const tokens = balances?.tokens ?? [];
-  const total = balances ? marketUsd(balances, "wallet", prices) : null;
+  const total = balances ? marketUsd(balances, BALANCE_FIELDS.wallet, prices) : null;
   const text = total === null ? "—" : formatUsd(total);
   const align = "items-center text-center sm:items-start sm:text-left";
 
   if (!balances && failed) {
     return <LoadError message={BALANCES_COPY.balancesFailed} onRetry={onRetry} />;
   }
-  // The change line keeps its place under the placeholder, as it sits under the figure.
   if (!balances)
     return (
       <div className={`flex w-full flex-col gap-2 ${align}`}>
@@ -55,7 +53,6 @@ export function BalanceFigure({
 
   return (
     <div className={`flex w-full flex-col gap-2 ${align}`}>
-      {/* The hint hangs after USD and takes no width, so the total itself sits on the center line. */}
       <p
         className="max-w-full px-7 sm:px-0"
         style={{ "--chars": text.length + MONEY_COPY.usd.length / 3 } as CSSProperties}
@@ -92,20 +89,14 @@ function PendingHeld({
   prices: readonly TokenPrice[] | undefined;
 }) {
   const summaries = [
-    { field: "settling", label: BALANCES_COPY.moving },
-    { field: "notFinal", label: BALANCES_COPY.notFinal },
-    { field: "held", label: BALANCES_COPY.held },
-  ] as const;
+    { field: BALANCE_FIELDS.settling, label: BALANCES_COPY.moving },
+    { field: BALANCE_FIELDS.notFinal, label: BALANCES_COPY.notFinal },
+    { field: BALANCE_FIELDS.held, label: BALANCES_COPY.held },
+  ];
   return (
     <div className="flex max-w-full flex-wrap justify-center gap-x-3 gap-y-1 empty:hidden lg:justify-start">
       {summaries.map(({ field, label }) => {
-        const part = (t: TokenBalance) =>
-          field === "notFinal"
-            ? notFinal(t)
-            : field === "settling"
-              ? (t.settling ?? t.pending)
-              : t[field];
-        if (!balances.tokens.some((t) => BigInt(part(t)) > 0n)) return null;
+        if (!balances.tokens.some((t) => BigInt(fieldUnits(t, field) ?? "0") > 0n)) return null;
         const total = marketUsd(balances, field, prices);
         if (total === null) return null;
         return (

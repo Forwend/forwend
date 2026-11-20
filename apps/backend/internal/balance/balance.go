@@ -1,5 +1,4 @@
-// Package balance shows a profile's money per chain and token (R-33): the wallet balance at the selected RPC's
-// finalized block (D-15, D-45), pending and held money apart from it, and the daily wallet balance (R-38).
+// Package balance shows a profile's money per chain and token: wallet balances, pending and held money.
 package balance
 
 import (
@@ -16,66 +15,56 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReadTimeout bounds each chain read; reads run in parallel, so one request waits about this long at most, under
-// the api's 30 s write timeout.
-var ReadTimeout = 10 * time.Second
-
+// Token is one token's wallet balance and the money our records still owe or hold.
 type Token struct {
 	chain.Asset
-	Livemode bool
-	// Sendable: Send offers it: Forwend pays the gas, or the token is the gas coin the wallet pays with (D-119, R-216).
-	Sendable bool
-	// Wallet is the wallet's balance at Block, the selected RPC's finalized block; nil when it could not be read or the
-	// profile has no wallet yet.
-	Wallet *big.Int
-	Block  uint64
-	// Pending: unbooked deposits plus booked money owed to the creator, which is Settling + Confirming + Partial.
-	// Held: booked money for payers, unless reopened (R-130); never the owner's (D-114).
-	// They come from our records at another moment than Wallet, so after a settlement an amount can show in both or neither.
-	Pending *big.Int
-	// Settling: owed to the creator on paid payments, waiting for the transfer to the wallet.
-	Settling *big.Int
-	// Confirming: deposits not booked yet, and money owed to the creator on a payment paid in full that waits for the
-	// finalized balance check.
+	Livemode   bool
+	Sendable   bool
+	Wallet     *big.Int // nil when unread
+	Block      uint64
+	Pending    *big.Int // Settling + Confirming + Partial
+	Settling   *big.Int
 	Confirming *big.Int
-	// Partial: owed to the creator on partly paid payments; it is held for the payer if the checkout closes first (D-26).
-	Partial *big.Int
-	Held    *big.Int
+	Partial    *big.Int
+	Held       *big.Int
 }
 
-// EstimatedUSD sums the wallet balances at 1 USD per token (all enabled tokens are USD stablecoins), with 2
-// decimals; "" when a wallet balance is missing.
 type Balances struct {
 	Tokens       []Token
-	EstimatedUSD string
+	EstimatedUSD string // 1 USD per token; "" if a balance is missing
 }
 
 type Service struct {
-	pool *pgxpool.Pool
-	read ledger.BalanceOf
+	pool        *pgxpool.Pool
+	read        ledger.BalanceOf
+	readTimeout time.Duration
 }
 
-// NewService reads wallet balances with read; give it each chain's RPC pool (D-15).
 func NewService(pool *pgxpool.Pool, read ledger.BalanceOf) *Service {
-	return &Service{pool: pool, read: read}
+	return &Service{pool: pool, read: read, readTimeout: 10 * time.Second}
 }
 
-// The caller has checked the user's access to the profile.
+// Of expects the caller to have checked the user's access to the profile.
 func (s *Service) Of(ctx context.Context, profileID string) (Balances, error) {
 	return s.of(ctx, profileID, true)
 }
 
-// of reads the wallet balances and, with records, pending and held from our records; without, those are 0. It lists
-// only the profile's mode, so the USD total never adds testnet tokens to real money (D-120).
+// tokenColumns and profileTokens list the enabled tokens of a profile's mode; Sendable is tokenColumns' last.
+const (
+	tokenColumns  = `t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, t.native_gas OR t.fee_asset IS NOT NULL`
+	profileTokens = `c.enabled AND t.enabled AND c.chain_family = 'evm'
+		AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY t.chain_id, t.contract`
+)
+
+// of lists only the profile's mode, so USD never adds testnet money; without records pending and held are 0.
 func (s *Service) of(ctx context.Context, profileID string, records bool) (Balances, error) {
 	var wallet string
 	if err := s.pool.QueryRow(ctx, `SELECT coalesce((SELECT address FROM profile_wallets
 		WHERE profile_id = $1 AND chain_family = 'evm'), '')`, profileID).Scan(&wallet); err != nil {
 		return Balances{}, fmt.Errorf("read profile wallet: %w", err)
 	}
-	// One pass over the profile's ledger: credits are negative, so minus the sum is what is owed. A partly paid
-	// option paid in full waits for the finalized balance check and never expires (ledger.status), so it is confirming.
-	// Settlement pays the option's fees out of what is owed, so the wallet gets the rest (R-228).
+	// Credits are negative, so minus the sum is what is owed. An option paid in full waits for the
+	// finalized balance check, so it is confirming; settlement pays its fees out of what is owed.
 	query, args := `
 		WITH options AS (
 		    SELECT i.chain_id, i.token_contract,
@@ -101,19 +90,16 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 		    WHERE i.profile_id = $1 AND (ct.status = 'detected' AND NOT ct.booked OR ct.status = 'confirmed' AND NOT ct.booked)
 		    GROUP BY ct.chain_id, ct.token_contract
 		)
-		SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, t.native_gas OR t.fee_asset IS NOT NULL, coalesce(b.settling, 0)::text,
+		SELECT `+tokenColumns+`, coalesce(b.settling, 0)::text,
 		    (coalesce(u.amount, 0) + coalesce(b.confirming, 0))::text, coalesce(b.partial, 0)::text,
 		    coalesce(b.held, 0)::text
 		FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
 		LEFT JOIN booked b ON b.chain_id = t.chain_id AND b.token_contract = t.contract
 		LEFT JOIN unbooked u ON u.chain_id = t.chain_id AND u.token_contract = t.contract
-		WHERE c.enabled AND t.enabled AND c.chain_family = 'evm' AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
-		ORDER BY t.chain_id, t.contract`, []any{profileID}
+		WHERE `+profileTokens, []any{profileID}
 	if !records {
-		query = `SELECT t.chain_id, t.contract, t.symbol, t.decimals, c.livemode, t.native_gas OR t.fee_asset IS NOT NULL, '0', '0', '0', '0'
-			FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
-			WHERE c.enabled AND t.enabled AND c.chain_family = 'evm' AND c.livemode = (SELECT livemode FROM profiles WHERE id = $1)
-			ORDER BY t.chain_id, t.contract`
+		query = `SELECT ` + tokenColumns + `, '0', '0', '0', '0' FROM tokens t JOIN chains c ON c.chain_id = t.chain_id
+			WHERE ` + profileTokens
 	}
 	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -141,7 +127,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 			wg.Add(1)
 			go func(t *Token) {
 				defer wg.Done()
-				ctx, cancel := context.WithTimeout(ctx, ReadTimeout)
+				ctx, cancel := context.WithTimeout(ctx, s.readTimeout)
 				defer cancel()
 				balance, block, err := s.read(ctx, t.ChainID, t.Token, wallet)
 				if err != nil {
@@ -168,8 +154,7 @@ func (s *Service) of(ctx context.Context, profileID string, records bool) (Balan
 	return out, nil
 }
 
-// usdString cuts a non-negative USD amount to cents; big.Rat.FloatString would round half up, showing money the
-// wallet does not hold.
+// usdString cuts to cents: FloatString would round half up and show money the wallet does not hold.
 func usdString(amount *big.Rat) string {
 	cents := new(big.Int).Quo(new(big.Int).Mul(amount.Num(), big.NewInt(100)), amount.Denom())
 	whole, rest := new(big.Int).QuoRem(cents, big.NewInt(100), new(big.Int))

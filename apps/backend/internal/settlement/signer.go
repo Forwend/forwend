@@ -1,6 +1,4 @@
-// Package settlement is the signer: it settles each paid invoice once with the executor key, after checking the terms
-// against the database and the chain (R-22). It signs only deploy, settle, a self-transfer that fills a nonce gap, and
-// the USDC approve and Uniswap swap that buy its own gas (R-229).
+// Package settlement settles each paid invoice once with the executor key, after checking its terms on the chain.
 package settlement
 
 import (
@@ -31,24 +29,20 @@ var errStopped = errors.New("signer stopped")
 
 // Run one Signer per executor key: two would race for nonces.
 type Signer struct {
-	pool    *pgxpool.Pool
-	key     *ecdsa.PrivateKey
-	sender  common.Address
-	clients map[uint64]*ethclient.Client
-	// stopAfter simulates a crash in tests: "save" stops after the signed settle is saved, "send" after it is sent.
-	stopAfter      string
+	pool           *pgxpool.Pool
+	key            *ecdsa.PrivateKey
+	sender         common.Address
+	clients        map[uint64]*ethclient.Client
+	stopAfter      string // test crash point: "save" or "send"
 	attemptTimeout time.Duration
 	codeWait       time.Duration
 	replaceAfter   time.Duration
 	finalWait      time.Duration
 	receiptPoll    time.Duration
 	codePoll       time.Duration
-	// held reports whether this signer still holds its lock (D-71): checked before each intent, since a round can
-	// outlast a dropped lock connection.
-	held  func(context.Context) error
-	users *userTurns
-	// gasCheckedAt paces the executor's gas check: a drain shows long before the signer can't pay a settle.
-	gasCheckedAt time.Time
+	held           func(context.Context) error // checked before each intent
+	users          *userTurns
+	gasCheckedAt   time.Time
 }
 
 func NewSigner(pool *pgxpool.Pool, key *ecdsa.PrivateKey, clients map[uint64]*ethclient.Client) *Signer {

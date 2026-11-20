@@ -1,48 +1,30 @@
 "use client";
 
-import { buttonClasses, EmptyState, Skeleton } from "@forwend/ui-web";
-import { IdCard } from "lucide-react";
-import Link from "next/link";
+import { Skeleton } from "@forwend/ui-web";
 import { useClientSearch } from "@/features/clients/hooks/use-client-search";
 import { JobForm } from "@/features/jobs/components/job-form";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { useGetBillingDetailsQuery } from "@/features/profiles/api/profiles-api";
+import { BillingNeeded } from "@/features/profiles/components/billing-needed";
 import { BILLING_THEN } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
-import { APP_ROUTES } from "@/shared/config/routes";
+import { PageTitle } from "@/shared/components/page-title";
 
-// R-101, R-92: billing details first; if they can't be read, the form shows and the API still checks.
+// Billing details first; if they can't be read, the form shows and the API still checks.
 export function NewJobScreen() {
   const { profile } = useAppSession();
   const billing = useGetBillingDetailsQuery(profile.profileId);
-  // Without the search the form still works: the picker just doesn't show.
   const clientSearch = useClientSearch(profile.profileId);
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex flex-col gap-2">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {COPY.newTitle}
-        </h1>
+        <PageTitle>{COPY.newTitle}</PageTitle>
         <p className="text-muted">{COPY.intro}</p>
       </div>
       {billing.currentData === undefined && !billing.isError ? (
         <Skeleton className="h-96" />
       ) : billing.currentData === null ? (
-        <EmptyState
-          page
-          icon={IdCard}
-          title={COPY.billingNeeded.title}
-          description={COPY.billingNeeded.text}
-          action={
-            <Link
-              href={`${APP_ROUTES.billingDetails}?${BILLING_THEN.param}=${BILLING_THEN.newJob}`}
-              className={buttonClasses({ size: "sm" })}
-            >
-              {COPY.billingNeeded.action}
-            </Link>
-          }
-        />
+        <BillingNeeded why={COPY.billingNeeded} then={BILLING_THEN.newJob} />
       ) : (
         <JobForm
           key={profile.profileId}

@@ -3,15 +3,12 @@
 import { useState } from "react";
 
 export interface StoredLogoProps {
-  /** A logo file the web ships, such as "/logos/tokens/aave.webp". */
   src: string;
-  /** Stands in when the image does not load: the first letter of what it marks. */
-  letter: string;
+  letter: string; // shown when the image fails
   className?: string;
 }
 
-/** A token or network logo from the files the web ships, so the page asks no other site for it. Decorative: the text
- * beside it names what it marks. An image that fails gives its place to the letter, never to a broken picture. */
+/** A decorative logo from our own files, so no other site is asked; a failed image shows the letter. */
 export function StoredLogo({ src, letter, className = "" }: StoredLogoProps) {
   // Remembered by file: another file's failure says nothing of this one.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -32,8 +29,7 @@ export function StoredLogo({ src, letter, className = "" }: StoredLogoProps) {
       loading="lazy"
       decoding="async"
       onError={() => setFailedSrc(src)}
-      // Many logos are a dark mark on nothing: in the dark theme a light disc keeps them readable. A logo that is not
-      // square shows whole, never cropped.
+      // A light disc keeps dark marks readable in the dark theme; a logo that is not square shows whole.
       className={`shrink-0 rounded-pill object-contain dark:bg-ink ${className}`}
     />
   );

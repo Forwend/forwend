@@ -6,11 +6,10 @@ export const SKELETON_ROWS = 5;
 
 export interface RowsSkeletonProps {
   count: number;
-  /** One row's parts, drawn with placeholders in the real row's text sizes, so each row keeps its height. */
   children: ReactNode;
 }
 
-/** An overview card's rows while they load (Latest payments, Unpaid): the list's frame around each card's row. */
+/** An overview card's rows while they load. */
 export function RowsSkeleton({ count, children }: RowsSkeletonProps) {
   return (
     <ul aria-hidden className="-mx-4 divide-y divide-line border-t border-line sm:-mx-5">

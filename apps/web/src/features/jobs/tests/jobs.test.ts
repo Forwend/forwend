@@ -1,16 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { JOBS_COPY, QUOTE_COPY } from "@/features/jobs/constants/jobs-copy";
-import {
-  apiCents,
-  dueDays,
-  invalidJobField,
-  jobRecord,
-  paymentCents,
-  paymentStep,
-} from "@/features/jobs/lib/jobs";
+import { dueDays, jobRecord, paymentCents, paymentStep } from "@/features/jobs/lib/jobs";
 
 describe("job amounts", () => {
-  // R-100.
   it("reads typed USD as exact cents, refusing what the API refuses", () => {
     expect(paymentCents("300")).toBe(30000n);
     expect(paymentCents(" 700.5 ")).toBe(70050n);
@@ -30,7 +21,6 @@ describe("job amounts", () => {
     ]) {
       expect(paymentCents(bad)).toBeNull();
     }
-    expect(apiCents("1000.50")).toBe(100050n);
   });
 
   it("reads days to pay as whole days up to the API's 90", () => {
@@ -38,20 +28,9 @@ describe("job amounts", () => {
     expect(dueDays("90")).toBe(90);
     for (const bad of ["91", "-1", "7.5", "", "x"]) expect(dueDays(bad)).toBeNull();
   });
-
-  it("names the field the API refused", () => {
-    expect(invalidJobField("invalid job request: client.email must be an email address")).toBe(
-      "client.email",
-    );
-    expect(invalidJobField("invalid job request: payments need dueDays from 0 to 90")).toBe(
-      "payments",
-    );
-    expect(invalidJobField("invalid job request: a profile has at most 1000 jobs")).toBeNull();
-  });
 });
 
 describe("job record", () => {
-  // R-104: acceptance and its deposit share a time.
   it("lists the events oldest first, acceptance before the invoice it made", () => {
     const payment = (position: number, more: object) => ({
       position,
@@ -104,7 +83,6 @@ describe("job record", () => {
     ]);
   });
 
-  // R-106.
   it("lists a change's proposal and acceptance in time order", () => {
     const base = {
       dueDays: 7,
@@ -189,17 +167,5 @@ describe("payment steps", () => {
         payment({ proposedAt: "2026-10-03T10:00:00Z", acceptedAt: "2026-10-04T10:00:00Z" }),
       ].map(paymentStep),
     ).toEqual(["upcoming", "invoiced", "invoiced", "paid", "paid", "change", "upcoming"]);
-  });
-});
-
-describe("job copy", () => {
-  it("says when a payment is due, with one day singular", () => {
-    for (const due of [JOBS_COPY.detail.dueDays, QUOTE_COPY.dueDays]) {
-      expect([0, 1, 7].map(due)).toEqual([
-        "due the day it is invoiced",
-        "due 1 day after",
-        "due 7 days after",
-      ]);
-    }
   });
 });

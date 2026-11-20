@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// R-56.
 func TestPayerChoosesInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO tokens (chain_id, chain_family, contract, symbol,
@@ -40,13 +39,11 @@ func TestPayerChoosesInvoice(t *testing.T) {
 		made.body["receiveAddress"] != first["receiveAddress"] || made.body["amount"] != "1250" {
 		t.Fatalf("the invoice shows %v, want its first option", made.body)
 	}
-	// Activity says the client chooses, so it reads in USD rather than the first option's token (R-70).
 	activity := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/activity", "did:privy:alice", "", "")
 	items, _ := activity.body["items"].([]any)
 	if len(items) != 1 || items[0].(map[string]any)["optionCount"] != float64(2) {
 		t.Fatalf("activity %d %v, want the invoice with optionCount 2", activity.status, activity.body)
 	}
-	// An option's id goes on chain when it settles, so it opens nothing public (D-86).
 	if byOption := e.get(t, second["optionId"].(string)); byOption.status != http.StatusNotFound {
 		t.Fatalf("get by option id: %d %v", byOption.status, byOption.body)
 	}
@@ -65,7 +62,6 @@ func TestPayerChoosesInvoice(t *testing.T) {
 	}
 }
 
-// R-58.
 func TestInvoiceReturnURL(t *testing.T) {
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"amountUsd": "5", "returnUrl": "https://shop.example/thanks?order=7"}`)

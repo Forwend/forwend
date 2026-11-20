@@ -1,21 +1,20 @@
 "use client";
 
-import { Button, formatTokenAmount, TextField } from "@forwend/ui-web";
+import { Button, TextField } from "@forwend/ui-web";
 import { Plus, Trash2, X } from "lucide-react";
 import { useRef } from "react";
 import { flushSync } from "react-dom";
 import { LINE_LIMITS } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { lineFigure } from "@/features/invoices/lib/invoices";
+import { lineFigure } from "@/features/invoices/lib/new-invoice";
 import type { LineDraft, LineField } from "@/features/invoices/types/invoices";
-import { exactDigits } from "@/shared/lib/money";
+import { exactAmount } from "@/shared/lib/money";
 
 const COPY = NEW_INVOICE_COPY.items;
 
 export type LineFieldErrors = Partial<Record<LineField, string>>;
 
 export interface LineItemsProps {
-  /** On the list's box, so the form can move focus into it. */
   id: string;
   items: readonly LineDraft[];
   onChange: (items: LineDraft[]) => void;
@@ -25,7 +24,6 @@ export interface LineItemsProps {
   error?: string;
 }
 
-// R-88: the items' total becomes the invoice's amount; the totals under the rows show it.
 export function LineItems({ id, items, onChange, decimals, unit, errors, error }: LineItemsProps) {
   const list = useRef<HTMLUListElement>(null);
   // Add and remove take away the focused button: focus moves to the new row, or the one in its place.
@@ -34,10 +32,8 @@ export function LineItems({ id, items, onChange, decimals, unit, errors, error }
   const set = (itemId: string, field: LineField, value: string) =>
     onChange(items.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
   const amounts = items.map((item) => lineFigure(item, decimals));
-  const figure = (units: bigint) =>
-    formatTokenAmount({ baseUnits: units, decimals, fractionDigits: exactDigits(units, decimals) });
-  // From small screens the rows read as the invoice's own table. A phone has no room for five columns: there each
-  // item is a block with its fields under their labels, and its amount and Remove on a line of their own.
+  const figure = (units: bigint) => exactAmount(units, decimals);
+  // Phones: each item is a block, its amount and Remove on a line of their own.
   const grid =
     "grid grid-cols-[4.75rem_minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_minmax(4.5rem,auto)_2.5rem] sm:items-start sm:gap-2";
   return (
@@ -94,7 +90,6 @@ export function LineItems({ id, items, onChange, decimals, unit, errors, error }
               <div className="col-span-full flex items-center justify-between gap-3 sm:contents">
                 <p className="flex items-baseline gap-2 text-sm sm:h-11 sm:items-center sm:justify-end">
                   <span className="text-muted sm:hidden">{COPY.amount}</span>
-                  {/* The column's header names the unit from small screens up. */}
                   <span className="font-medium text-ink tabular-nums">
                     {amount === undefined || typeof amount === "string" ? (
                       ""

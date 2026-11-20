@@ -14,18 +14,15 @@ type createProfileBody struct {
 }
 
 type profileJSON struct {
-	ProfileID     string  `json:"profileId"`
-	Kind          string  `json:"kind"`
-	Name          *string `json:"name"`
-	WalletAddress *string `json:"walletAddress"`
-	CreatedAt     string  `json:"createdAt"`
-	// R-138: owner, admin, developer or finance, and what that role may do, so the app shows only what it can use.
-	Role        string            `json:"role"`
-	Permissions []auth.Permission `json:"permissions"`
-	// D-120: false while the profile is in Developer mode, on the testnets.
-	Livemode bool `json:"livemode"`
-	// D-122: who pays new invoices' fees unless one says otherwise: owner (deducted) or client (on top).
-	FeesPaidBy string `json:"feesPaidBy"`
+	ProfileID     string            `json:"profileId"`
+	Kind          string            `json:"kind"`
+	Name          *string           `json:"name"`
+	WalletAddress *string           `json:"walletAddress"`
+	CreatedAt     string            `json:"createdAt"`
+	Role          string            `json:"role"`
+	Permissions   []auth.Permission `json:"permissions"`
+	Livemode      bool              `json:"livemode"`   // false in Developer mode
+	FeesPaidBy    string            `json:"feesPaidBy"` // owner (deducted) or client (on top)
 }
 
 type meJSON struct {
@@ -62,7 +59,6 @@ func toBillingDetailsJSON(d profile.BillingDetails) billingDetailsJSON {
 	}
 }
 
-// R-86: an empty field means none.
 type clientBody struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
@@ -92,7 +88,6 @@ func toClientJSON(c profile.Client) clientJSON {
 	}
 }
 
-// R-134.
 type storeBody struct {
 	Name             string      `json:"name"`
 	DefaultExpiresIn int64       `json:"defaultExpiresIn"`
@@ -101,7 +96,6 @@ type storeBody struct {
 	TokensOff        []tokenJSON `json:"tokensOff"`
 }
 
-// R-136: a token by its chain and contract.
 type tokenJSON struct {
 	ChainID uint64 `json:"chainId"`
 	Token   string `json:"token"`
@@ -139,7 +133,7 @@ type storeJSON struct {
 	DefaultExpiresIn int64       `json:"defaultExpiresIn"`
 	AllowedOrigins   []string    `json:"allowedOrigins"`
 	BrandColor       *string     `json:"brandColor"`
-	LogoAt           *string     `json:"logoAt"` // R-135: null without a logo
+	LogoAt           *string     `json:"logoAt"`
 	TokensOff        []tokenJSON `json:"tokensOff"`
 	UpdatedAt        string      `json:"updatedAt"`
 }
@@ -199,7 +193,7 @@ type notificationsBody struct {
 
 type notificationsJSON struct {
 	Email   bool    `json:"email"`
-	Address *string `json:"address"` // null: the account has no login email (or it was not read yet)
+	Address *string `json:"address"` // null: no login email, or not read yet
 }
 
 func toNotificationsJSON(n profile.Notifications) notificationsJSON {

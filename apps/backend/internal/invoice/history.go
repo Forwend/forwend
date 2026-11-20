@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// HistoryEvent is one row of the invoice's history (R-123).
 type HistoryEvent struct {
 	ID    int64
 	Kind  string

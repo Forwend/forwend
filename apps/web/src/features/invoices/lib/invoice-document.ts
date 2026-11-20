@@ -1,4 +1,4 @@
-/** The invoice PDF's page in mm (apps/backend/internal/document): the preview lays rows out the same way. */
+/** The PDF's page in mm, as apps/backend/internal/document draws it. */
 export const PAGE = {
   width: 210,
   height: 297,
@@ -6,7 +6,6 @@ export const PAGE = {
   rowLine: 4.6,
   rowPad: 2.2,
   testnet: 14,
-  /** The table's header row. */
   tableHead: 8,
   footer: 8,
 } as const;
@@ -14,18 +13,15 @@ export const PAGE = {
 // Noto Sans at 9.5 pt fits about this many characters on a line of the 87 mm description column.
 const DESCRIPTION_CHARS = 52;
 
-/** A line's height in the table: its description's wrapped lines, padded. */
 export function rowHeight(description: string): number {
   const lines = Math.max(1, Math.ceil(description.length / DESCRIPTION_CHARS));
   return lines * PAGE.rowLine + 2 * PAGE.rowPad;
 }
 
-/** Wrapped lines of text in a column about `chars` wide; each newline starts one. */
 const wrapped = (text: string, chars: number) =>
   text.split("\n").reduce((n, part) => n + Math.max(1, Math.ceil(part.length / chars)), 0);
 
-/** What stands above the item table on the first page, in mm, as the PDF draws it: the title block and rule (27),
- * the status box (26), the two parties, the dates row (16) and the table's title. */
+/** Above the item table, in mm: title block (27), status box (26), parties, dates row (16), title. */
 export function headHeight(parties: readonly (readonly string[])[], title: string): number {
   const lines = Math.max(
     0,
@@ -34,7 +30,7 @@ export function headHeight(parties: readonly (readonly string[])[], title: strin
   return 27 + 26 + (lines ? 11.5 + lines * PAGE.rowLine : 0) + 16 + (title ? 7 : 0);
 }
 
-/** The closing block in mm: totals, then the note and the pay box when they show. */
+/** In mm: totals, then the note and the pay box when they show. */
 export function tailHeight(totals: number, note: string, pay: number): number {
   return (
     4 +
@@ -44,8 +40,7 @@ export function tailHeight(totals: number, note: string, pay: number): number {
   );
 }
 
-/** Splits rows into pages as the PDF does: the header block on the first, the table's header again on each next,
- * and the closing block (totals, note, pay box) kept whole after the last row. */
+/** As the PDF breaks pages: the closing block stays whole after the last row. */
 export function documentPages(
   rows: readonly number[],
   head: number,
@@ -75,7 +70,7 @@ const DAY = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-/** A YYYY-MM-DD day as the PDF prints it, "29 Oct 2026": the day before the month, so no reader swaps them. */
+/** "29 Oct 2026": the day before the month, so no reader swaps them. */
 export function documentDate(day: string): string {
   return DAY.format(new Date(`${day}T00:00:00Z`));
 }

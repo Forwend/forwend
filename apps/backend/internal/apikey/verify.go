@@ -9,13 +9,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Caller is who a request's key acts for.
 type Caller struct {
 	KeyID, ProfileID string
 	Access           auth.Access
 }
 
-// Authenticate finds the working key whose text this is (R-144); its last use is kept to the minute.
+// Authenticate keeps the key's last use to the minute.
 func (s *Service) Authenticate(ctx context.Context, text string) (Caller, error) {
 	hash, ok := hashOf(text)
 	if !ok {
@@ -27,7 +26,7 @@ func (s *Service) Authenticate(ctx context.Context, text string) (Caller, error)
 	var live, stale bool
 	err := s.pool.QueryRow(ctx, `SELECT id::text, profile_id::text, coalesce(store_id::text, ''), scopes, livemode,
 		    last_used_at IS NULL OR last_used_at < now() - interval '1 minute'
-		FROM api_keys WHERE secret_hash = $1 AND `+working, hash).Scan(&c.KeyID, &c.ProfileID, &store, &scopes, &live,
+		FROM api_keys WHERE secret_hash = $1 AND `+WorkingSQL, hash).Scan(&c.KeyID, &c.ProfileID, &store, &scopes, &live,
 		&stale)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Caller{}, ErrUnknownKey

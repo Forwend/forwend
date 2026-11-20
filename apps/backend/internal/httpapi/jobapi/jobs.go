@@ -1,21 +1,17 @@
 package jobapi
 
 import (
-	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// R-100.
 func createJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -83,7 +79,6 @@ func getJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-101.
 func deleteJob(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := jobs.Delete(r.Context(), r.PathValue("profileId"), r.PathValue("jobId")); err != nil {
@@ -94,7 +89,6 @@ func deleteJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-103.
 func markDone(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -104,9 +98,9 @@ func markDone(jobs *job.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		position, err := strconv.Atoi(r.PathValue("position"))
+		position, err := paymentPosition(r)
 		if err != nil {
-			httpio.WriteError(w, r, job.ErrNotFound)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		j, err := jobs.MarkDone(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), position, body.DeliveryLink)
@@ -118,7 +112,6 @@ func markDone(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-105.
 func proposeChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)
@@ -149,12 +142,11 @@ func proposeChange(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-105.
 func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		position, err := strconv.Atoi(r.PathValue("position"))
+		position, err := paymentPosition(r)
 		if err != nil {
-			httpio.WriteError(w, r, job.ErrNotFound)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		if err := jobs.WithdrawChange(r.Context(), r.PathValue("profileId"), r.PathValue("jobId"), position); err != nil {
@@ -165,7 +157,6 @@ func withdrawChange(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-105.
 func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -182,9 +173,9 @@ func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 				job.ErrInvalid))
 			return
 		}
-		position, err := strconv.Atoi(r.PathValue("position"))
+		position, err := paymentPosition(r)
 		if err != nil {
-			httpio.WriteError(w, r, job.ErrNotFound)
+			httpio.WriteError(w, r, err)
 			return
 		}
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
@@ -204,7 +195,6 @@ func getPublicJob(jobs *job.Service) http.HandlerFunc {
 	}
 }
 
-// R-100.
 func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body acceptBody
@@ -219,15 +209,17 @@ func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 }
 
 func writeAccepted(w http.ResponseWriter, r *http.Request, j job.Job, err error) {
-	var soon *invoice.TooSoonError
-	if errors.As(err, &soon) {
-		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-		httpio.WriteError(w, r, httpio.ErrRateLimited)
-		return
-	}
 	if err != nil {
 		httpio.WriteError(w, r, err)
 		return
 	}
 	httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
+}
+
+func paymentPosition(r *http.Request) (int, error) {
+	n, err := strconv.Atoi(r.PathValue("position"))
+	if err != nil {
+		return 0, job.ErrNotFound
+	}
+	return n, nil
 }

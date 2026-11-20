@@ -31,7 +31,7 @@ export function ClientActions({ profileId, client, onDeleted }: ClientActionsPro
   const [remove, { isLoading, isError }] = useDeleteClientMutation();
   const toast = useToast();
   const router = useRouter();
-  // The dialog opens once the menu has closed, so the menu does not hand focus back to its trigger over the dialog.
+  // The dialog opens once the menu has closed, so the menu doesn't hand focus back over it.
   const chosen = useRef(false);
 
   const confirm = async () => {
@@ -67,7 +67,7 @@ export function ClientActions({ profileId, client, onDeleted }: ClientActionsPro
             }}
           >
             <MenuItem
-              className="text-danger data-[highlighted]:bg-danger-soft"
+              danger
               onSelect={() => {
                 chosen.current = true;
               }}

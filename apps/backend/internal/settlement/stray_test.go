@@ -38,8 +38,6 @@ func balanceOf(t *testing.T, c *ethclient.Client, token, holder string) int64 {
 	return new(big.Int).SetBytes(out).Int64()
 }
 
-// D-33, D-118: support returns another token, or money on another chain, with recover where our contracts are, and
-// says plainly where they aren't.
 func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
@@ -50,7 +48,6 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	without := chaintest.StartChain(t, 31339)
 	clients := map[uint64]*ethclient.Client{e.chainID: e.client, 31338: dial(t, withFactory), 31339: dial(t, without)}
 
-	// find makes the transfer final first: a recover is printed only for a final one.
 	find := func(a *chaintest.Anvil, hash string, chainID uint64) Stray {
 		t.Helper()
 		a.Mine(2)
@@ -82,7 +79,6 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 		return balanceOf(t, clients[s.ChainID], strings.ToLower(s.Token.Hex()), receive)
 	}
 
-	// Another token on the invoice's chain: the receiver isn't deployed, so the batch deploys it, then recovers.
 	other := e.anvil.DeployToken()
 	e.anvil.Mint(other, "5000000")
 	s := find(e.anvil, e.anvil.Transfer(other, receive, "2000000"), e.chainID)
@@ -96,11 +92,9 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	if len(r.Calls) != 2 || len(r.Warnings) != 1 || !strings.Contains(r.Warnings[0], "can still be paid") {
 		t.Fatalf("an early deploy: %+v", r)
 	}
-	// Printed once: a second run is refused until it is released.
 	if _, err := plan(s); !errors.Is(err, ErrRecoveryQueued) {
 		t.Fatalf("second run: %v", err)
 	}
-	// Never sent: no recover on chain, so it can be released.
 	if n, err := ReleaseRecovery(ctx, e.pool, clients, s.TxHash); err != nil || n != 1 {
 		t.Fatalf("release: %d, %v", n, err)
 	}
@@ -111,20 +105,17 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	if got := held(s); got != 0 {
 		t.Fatalf("receive address still holds %d", got)
 	}
-	// Sent: a rerun says it was printed, not that it can't come back, and the lock can't be released.
 	if _, err := plan(s); !errors.Is(err, ErrRecoveryQueued) {
 		t.Fatalf("rerun after sending: %v", err)
 	}
 	if _, err := ReleaseRecovery(ctx, e.pool, clients, s.TxHash); !errors.Is(err, ErrRecoverySent) {
 		t.Fatalf("release after sending: %v", err)
 	}
-	// Once deployed, the recover alone, dry-run against the receiver.
 	s = find(e.anvil, e.anvil.Transfer(other, receive, "2000000"), e.chainID)
 	if r, err = plan(s); err != nil || len(r.Calls) != 1 {
 		t.Fatalf("deployed: %+v, %v", r, err)
 	}
 	run(e.anvil, s, r)
-	// An RPC that answers with an error (rate limited) is an error, never "can't be returned".
 	limited := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var call struct {
 			ID     json.RawMessage `json:"id"`
@@ -147,13 +138,10 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	if _, err := PlanRecovery(ctx, e.pool, e.client, busy, s, nil); err == nil || errors.Is(err, ErrCantReturn) {
 		t.Fatalf("a rate-limited RPC: %v", err)
 	}
-	// The invoice's own token is its payment, never a stray.
 	if strays, err := FindStrays(ctx, e.pool, clients, e.anvil.Transfer(e.token, receive, "1000000")); err != nil || len(strays) != 0 {
 		t.Fatalf("a payment read as strays: %+v, %v", strays, err)
 	}
 
-	// The invoice's token on another chain with our factory: the same token and receive address there. The same
-	// payer sends twice; returning the first can't return it again out of the second's money.
 	usdc := withFactory.DeployToken()
 	if usdc != e.token {
 		t.Fatalf("the token there is %s, not the invoice's %s", usdc, e.token)
@@ -180,12 +168,9 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 		t.Fatal(err)
 	}
 	run(withFactory, second, r)
-	// Both sent: the second's release must count the first's recover, sent before the second transfer.
 	if _, err := ReleaseRecovery(ctx, e.pool, clients, second.TxHash); !errors.Is(err, ErrRecoverySent) {
 		t.Fatalf("release of a sent recover: %v", err)
 	}
-	// One transaction with two such transfers, one recover sent to the payer: neither is released, since either may be
-	// the sent one. Safe, though the other stays locked.
 	if _, err := e.pool.Exec(ctx, `INSERT INTO stray_recoveries (chain_id, tx_hash, log_index, block_number, invoice_id,
 		token_contract, destination, amount) SELECT chain_id, tx_hash, 99, block_number, invoice_id, token_contract,
 		destination, amount FROM stray_recoveries WHERE tx_hash = $1`, second.TxHash); err != nil {
@@ -194,8 +179,6 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	if n, err := ReleaseRecovery(ctx, e.pool, clients, second.TxHash); n != 0 || !errors.Is(err, ErrRecoverySent) {
 		t.Fatalf("release of one sent and one unsent: %d, %v", n, err)
 	}
-	// A mistaken release of a sent recover is refused: a recover to its destination is on chain since its transfer.
-	// So a later recover waiting in the Safe can't be paid out a second time.
 	withFactory.Mint(usdc, "6000000")
 	sentOne := find(withFactory, withFactory.Transfer(usdc, receive, "3000000"), 31338)
 	if r, err = plan(sentOne); err != nil {
@@ -209,8 +192,6 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 	if n, err := ReleaseRecovery(ctx, e.pool, clients, sentOne.TxHash); n != 0 || !errors.Is(err, ErrRecoverySent) {
 		t.Fatalf("the mistaken release: %d, %v", n, err)
 	}
-	// The count starts at the first transfer of the key ever locked, released or not: with the sent lock marked
-	// released by hand, the rejected one still can't look unsent.
 	if _, err := e.pool.Exec(ctx, "UPDATE stray_recoveries SET released_at = now() WHERE tx_hash = $1", sentOne.TxHash); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +199,6 @@ func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
 		t.Fatalf("release after a mistaken one: %d, %v", n, err)
 	}
 
-	// A chain without our factory, or with other code at its address: support says it can't be returned.
 	lost := without.DeployToken()
 	without.Mint(lost, "5000000")
 	s = find(without, without.Transfer(lost, receive, "2000000"), 31339)

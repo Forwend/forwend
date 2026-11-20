@@ -1,6 +1,6 @@
 import { expect, type Locator, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import { mockApi } from "./sample-api";
 import { session } from "./session";
 

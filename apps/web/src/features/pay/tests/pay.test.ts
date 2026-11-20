@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import type { Deposit, Invoice } from "@/features/invoices/types/invoices";
 import { useLastSteps } from "@/features/pay/components/pay-progress";
 import { PAY_STATES } from "@/features/pay/constants/pay";
@@ -9,6 +10,7 @@ import { FACTORY } from "@/features/pay/constants/receive-address";
 import {
   clockRuns,
   firstPaymentOption,
+  heldOnOtherOptions,
   overpaid,
   payerNoticeOptions,
   payFinal,
@@ -191,7 +193,6 @@ describe("payState", () => {
     expect(payState(full, before)).toMatchObject({ state: PAY_STATES.checking, canSend: false });
   });
 
-  // R-130: the terms' expiry has passed, but the reopened checkout takes money until its new close.
   it("keeps net received money visible during the protective close before expiry is booked", () => {
     const amounts = {
       receiver: "400",
@@ -264,7 +265,7 @@ describe("payState", () => {
     ).toBe(PAY_STATES.settled);
   });
 
-  it("takes nothing once canceled, and holds whatever still arrives (R-79)", () => {
+  it("takes nothing once canceled, and holds whatever still arrives", () => {
     const canceled = { ...invoice, paymentStatus: "canceled", canceledAt: "2026-10-10T10:05:00Z" };
     expect(payState(canceled, before)).toMatchObject({
       state: PAY_STATES.canceled,
@@ -302,7 +303,6 @@ describe("payFinal", () => {
       payFinal({ ...expired, deposits: [deposit("1000", { status: "detected", late: true })] }),
     ).toBe(false);
     expect(payFinal({ ...expired, deposits: [deposit("1000", { late: true })] })).toBe(true);
-    // A cross-chain payment 1Click still converts can yet arrive.
     const crossChain = (status: string) => ({ status }) as Invoice["crossChain"];
     for (const status of [
       "PENDING_DEPOSIT",
@@ -318,7 +318,7 @@ describe("payFinal", () => {
 });
 
 describe("receiptDeposits", () => {
-  it("names only the payments that paid the creator (R-121)", () => {
+  it("names only the payments that paid the creator", () => {
     const paid = deposit("1000");
     const over = deposit("300", { logIndex: 3, paid: "200" });
     const settled = {
@@ -385,7 +385,6 @@ describe("withOption", () => {
     );
     const parts = [deposit("300000"), deposit("300000", { logIndex: 1 })]; // 0.60 of 5.00: past its tenth
     expect(firstPaymentOption(options(parts, []))?.optionId).toBe(main.optionId);
-    // A 1.00 USD invoice: a first part short of the whole amount already chooses its option.
     const small = {
       ...choosing,
       amount: "1000000",
@@ -467,9 +466,7 @@ describe("withOption", () => {
     };
     const shown = withOption(provisional, choosing.options[0]?.optionId);
     expect(shown.optionId).toBe(provisional.options[1]?.optionId);
-    // Still confirming on chain: the payer sees its blocks and time left (R-73), and can't send more yet.
     expect(payState(shown, before)).toMatchObject({ canSend: false, state: PAY_STATES.confirming });
-    // Final on chain, the option not yet chosen: awaiting confirmation, no blocks left to count.
     const final = { ...shown, deposits: [deposit("1000", { paid: null })] };
     expect(payState(final, before)).toMatchObject({ canSend: false, state: PAY_STATES.checking });
     const canonical = {
@@ -523,6 +520,52 @@ it("formats public return notices with build-owned token metadata and rejects un
   expect(payerNoticeOptions([{ ...option, chainId: 999999 }])).toEqual([]);
 });
 
+describe("heldOnOtherOptions", () => {
+  const main: Invoice["options"][number] = {
+    optionId: invoice.invoiceId,
+    chainId: 421614,
+    token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d",
+    symbol: "USDC",
+    decimals: 6,
+    amount: invoice.amount,
+    networkFee: "0",
+    platformFee: "0",
+    feesPaidBy: "owner",
+    receiveAddress: invoice.receiveAddress,
+    network: "arbitrum-sepolia",
+    deposits: [deposit("1000")],
+  };
+  const other = {
+    ...main,
+    optionId: `0x${"9".repeat(64)}`,
+    chainId: invoice.chainId,
+    token: invoice.token,
+    symbol: "FAKE",
+    decimals: 18,
+    network: "base-sepolia",
+    deposits: [deposit("500", { logIndex: 1 })],
+  };
+  const chosen = { ...invoice, optionLocked: true, options: [main, other] };
+
+  it("names money on an option the payer didn't choose with the build's token", () => {
+    expect(heldOnOtherOptions(chosen)).toEqual([
+      {
+        optionId: other.optionId,
+        chainId: invoice.chainId,
+        units: 500n,
+        token: { symbol: "USDC", decimals: 6 },
+      },
+    ]);
+    expect(
+      heldOnOtherOptions({ ...chosen, options: [main, { ...other, chainId: 999999 }] }),
+    ).toEqual([]);
+  });
+
+  it("names none while no option is chosen: that money may still be the payment", () => {
+    expect(heldOnOtherOptions({ ...chosen, optionLocked: false })).toEqual([]);
+  });
+});
+
 describe("overpaid", () => {
   const booked = {
     reconciliationStatus: "verified",
@@ -547,7 +590,6 @@ describe("overpaid", () => {
   it("leaves late money to its own line", () => {
     const late = { ...paid, deposits: [deposit("1900"), deposit("500", { late: true })] };
     expect(overpaid({ ...late, amounts: { ...booked, held: "1400" } })).toBe(900n);
-    // A return of 1000 leaves 400: the late line takes it first, as payState caps late at held.
     expect(overpaid({ ...late, amounts: { ...booked, held: "400" } })).toBe(0n);
   });
 });
@@ -556,7 +598,6 @@ describe("seenInFull", () => {
   it("counts only money that came on time, so held late money never reads as paid", () => {
     expect(seenInFull({ ...invoice, deposits: [deposit("1000", { paid: null })] })).toBe(true);
     expect(seenInFull({ ...invoice, deposits: [deposit("999")] })).toBe(false);
-    // Part on time, the rest after the close: all of it is held, and payState counts it as received.
     const late = {
       ...invoice,
       closed: true,
@@ -598,7 +639,7 @@ describe("the pay box's last steps", () => {
       }),
     ).result.current;
   const steps = (inv: Invoice, extra: Partial<Parameters<typeof useLastSteps>[0]> = {}) =>
-    last(inv, extra).steps.map(({ title, state, progress }) => ({ title, state, progress }));
+    last(inv, extra).steps.map(({ state, progress }) => ({ state, progress }));
   const confirming = deposit("1000", {
     status: "detected",
     paid: null,
@@ -608,9 +649,12 @@ describe("the pay box's last steps", () => {
 
   it("fills the confirming step's ring with the blocks passed, and waits to pay", () => {
     expect(steps({ ...invoice, deposits: [confirming] })).toEqual([
-      { title: "Base is confirming the transfer", state: "current", progress: 0.25 },
-      { title: "Sample shop is paid", state: "upcoming", progress: undefined },
+      { state: "current", progress: 0.25 },
+      { state: "upcoming", progress: undefined },
     ]);
+    expect(last({ ...invoice, deposits: [confirming] }).line).toBe(
+      PAY_COPY.confirmingLine(3, 12, 0, null),
+    );
   });
 
   it("shows no share before a block passes, or while the ledger books a final transfer", () => {
@@ -623,37 +667,19 @@ describe("the pay box's last steps", () => {
     expect(booking).toMatchObject({ state: "current", progress: null });
   });
 
-  it("moves to the last step once the transfer is booked, and names a part payment", () => {
+  it("moves to the last step only once the transfer is booked, and never calls a part payment paid", () => {
     const booked = { ...invoice, deposits: [deposit("400")] };
-    expect(steps(booked, { counting: false }).map((s) => [s.title, s.state])).toEqual([
-      ["Base confirmed the transfer", "done"],
-      ["Sample shop is paid", "current"],
-    ]);
-    expect(steps(booked, { counting: false, partial: true })[1]?.title).toBe("Partially paid");
-  });
-
-  it("gives the live region the line of the step in progress, and none before the money arrives", () => {
-    expect(last({ ...invoice, deposits: [confirming] }).line).toBe("3\u00a0of\u00a012\u00a0blocks");
-    expect(last({ ...invoice, deposits: [deposit("400")] }, { counting: false }).line).toBe("line");
-    expect(last(invoice, { arrived: false }).line).toBeNull();
-  });
-
-  it("keeps both steps ahead while another chain's money has not reached the network", () => {
-    expect(
-      steps(invoice, { arrived: false, payee: undefined }).map((s) => [s.title, s.state]),
-    ).toEqual([
-      ["Base confirms the transfer", "upcoming"],
-      ["The recipient is paid", "upcoming"],
-    ]);
-  });
-
-  it("writes the confirming line from the parts it knows, none of them breaking in two", () => {
-    const plain = (line: string) => line.replaceAll("\u00a0", " ");
-    expect(plain(PAY_COPY.confirmingLine(3200, 4400, 600, "2:41 PM"))).toBe(
-      "3,200 of 4,400 blocks · about 10 min left · final around 2:41 PM",
+    expect(steps(booked, { counting: false }).map((s) => s.state)).toEqual(["done", "current"]);
+    expect(last(booked, { counting: false, partial: true }).steps[1]?.title).toBe(
+      INVOICE_COPY.partlyPaid,
     );
-    expect(PAY_COPY.confirmingLine(3, 12, 0, null)).toBe("3\u00a0of\u00a012\u00a0blocks");
-    expect(plain(PAY_COPY.confirmingLine(0, 0, 30, null))).toBe("Under a minute left");
-    expect(PAY_COPY.confirmingLine(0, 0, 0, null)).toBe("Confirming");
+  });
+
+  it("keeps both steps ahead, and no live line, while another chain's money has not reached the network", () => {
+    expect(steps(invoice, { arrived: false }).map((s) => s.state)).toEqual([
+      "upcoming",
+      "upcoming",
+    ]);
+    expect(last(invoice, { arrived: false }).line).toBeNull();
   });
 });

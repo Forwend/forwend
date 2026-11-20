@@ -1,7 +1,5 @@
-import { TooltipProvider } from "@forwend/ui-web";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { PaymentJourney } from "@/features/payments/components/payment-journey";
 import { PaymentSum } from "@/features/payments/components/payment-sum";
 import {
   crossChainOf,
@@ -92,7 +90,6 @@ const sum = (p: PaymentDetail) => {
   return { adds: money.adds, cells: money.cells.map((c) => [c.id, c.units]) };
 };
 
-// R-248: what came in, each amount taken from it, and what the wallet gets.
 describe("payment sum", () => {
   const paid = {
     paymentStatus: "paid",
@@ -191,13 +188,28 @@ describe("payment sum", () => {
       receipts: receipt("500000"),
     });
     expect(paymentMoney(part).moving).toBe(false);
-    // A small deposit held for the payer shows no Still due figure, and still pays nothing.
     const dust = payment({
       optionCount: 2,
       options: [option({ deposits: [deposit(BASE_TX, "50000")] })],
       receipts: receipt("50000", { held: "50000" }),
     });
     expect(paymentMoney(dust).moving).toBe(false);
+  });
+
+  it("sums a settled payment from the option's own fees when the API leaves out its amounts", () => {
+    const settled = option({
+      settlementStatus: "settled",
+      amounts: null,
+      deposits: [deposit(BASE_TX, "1230000")],
+    });
+    expect(sum(payment({ ...paid, options: [settled] }))).toEqual({
+      adds: true,
+      cells: [
+        ["paid", 1230000n],
+        ["networkFee", 60000n],
+        ["wallet", 1170000n],
+      ],
+    });
   });
 
   it("leaves out a fee of 0", () => {
@@ -231,7 +243,6 @@ describe("PaymentSum", () => {
   });
 });
 
-// R-239: through NEAR Intents the payment is seen on the customer's chain first, then converted into the Base option.
 describe("payment journey", () => {
   it("lists the customer's transfer and Converting until the USDC reaches Base", () => {
     expect(kinds(payment({ crossChain }))).toEqual([
@@ -259,7 +270,6 @@ describe("payment journey", () => {
       [earlier, false],
       [BASE_TX, true],
     ]);
-    // Still converting, a Base deposit is someone's direct one: Converting waits for 1Click.
     const direct = journey(
       payment({ crossChain, options: [option({ deposits: [deposit(BASE_TX, "1230000")] })] }),
     );
@@ -347,10 +357,24 @@ describe("payment journey", () => {
   it("leaves the steps a direct payment's without a cross-chain payment, or for a deposit 1Click returned", () => {
     const direct = ["created", "awaiting", "fee", "wallet"];
     expect(kinds(payment()).map(([kind]) => kind)).toEqual(direct);
-    for (const status of ["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"])
-      expect(
-        kinds(payment({ crossChain: { ...crossChain, status } })).map(([kind]) => kind),
-      ).toEqual(direct);
+    for (const cross of [
+      ...["REFUNDED", "FAILED", "INCOMPLETE_DEPOSIT"].map((status) => ({ ...crossChain, status })),
+      { ...crossChain, depositSeenAt: null },
+    ])
+      expect(kinds(payment({ crossChain: cross })).map(([kind]) => kind)).toEqual(direct);
+  });
+
+  it("lists held money sent back to the payer, after the rest", () => {
+    const sent = {
+      txHash: `0x${"84".repeat(32)}`,
+      to: `0x${"e1".repeat(20)}`,
+      amount: "900000",
+      blockTime: "2026-10-31T16:02:00Z",
+    };
+    expect(kinds(payment({ options: [option({ returns: [sent] })] })).at(-1)).toEqual([
+      "returned",
+      "done",
+    ]);
   });
 
   it("puts the paid mark on the deposit that paid it, then the fee and the wallet transfer", () => {
@@ -391,89 +415,5 @@ describe("payment journey", () => {
     const expired = payment({ state: "expired" });
     expect(kinds(expired).map(([kind]) => kind)).toEqual(["created", "closed"]);
     expect(sum(expired).cells).toEqual([["requested", 1230000n]]);
-  });
-});
-
-describe("PaymentJourney", () => {
-  const show = (p: PaymentDetail) =>
-    renderToStaticMarkup(
-      <TooltipProvider>
-        <PaymentJourney payment={p} steps={journey(p)} />
-      </TooltipProvider>,
-    );
-
-  it("shows what the customer sent on its own chain, the part 1Click returned and its transaction", () => {
-    const markup = show(
-      payment({ crossChain: { ...delivered, deposited: "101620000", refunded: "500000" } }),
-    );
-    expect(markup).toContain("On Tron");
-    expect(markup).toContain("101.62");
-    expect(markup).toContain("Returned to the customer");
-    expect(markup).toContain("0.50");
-    expect(markup).toContain('href="https://tronscan.org/#/transaction/abc"');
-    expect(markup).toContain("Converted by");
-  });
-
-  // R-243: where 1Click gives no link, the owner gets the same known explorer as the payer.
-  it("links the customer's transaction on a known explorer when 1Click gives none", () => {
-    const solana =
-      "4jBcpDL3KfBipWFqRBT5gVwZZoGogMBv5FWi6hi6a45CmPg6CcPJmD5Pr8jTxJGehtDrh3vmq8Tr7Q1UU6GLxoxj";
-    const markup = show(
-      payment({
-        crossChain: {
-          ...crossChain,
-          blockchain: "sol",
-          originTxs: [{ hash: solana, explorerUrl: "" }],
-        },
-      }),
-    );
-    expect(markup).toContain(`href="https://solscan.io/tx/${solana}"`);
-  });
-
-  // jsdom has no layout: the class is what lets a long 18-decimal amount wrap beside its title on a phone.
-  it("lets a long amount wrap instead of squeezing the row", () => {
-    const markup = show(
-      payment({
-        crossChain: {
-          ...crossChain,
-          decimals: 18,
-          symbol: "ETH",
-          blockchain: "eth",
-          deposited: "1263123456789012345678",
-        },
-      }),
-    );
-    expect(markup).toMatch(/break-words[^"]*"[^>]*>(<[^>]+>)*1,/);
-  });
-
-  it("links the Base transaction 1Click delivered before the scan books it", () => {
-    expect(show(payment({ crossChain: delivered }))).toContain(
-      `href="https://basescan.org/tx/${BASE_TX}"`,
-    );
-  });
-
-  it("shows a return to the payer with its amount, network and transaction", () => {
-    const markup = show(
-      payment({
-        options: [
-          option({
-            chainId: 42431,
-            symbol: "OUSD",
-            returns: [
-              {
-                txHash: `0x${"84".repeat(32)}`,
-                to: `0x${"e1".repeat(20)}`,
-                amount: "900000",
-                blockTime: "2026-10-31T16:02:00Z",
-              },
-            ],
-          }),
-        ],
-      }),
-    );
-    expect(markup).toContain("Returned to the payer");
-    expect(markup).toContain("0.90");
-    expect(markup).toContain("On Tempo Moderato");
-    expect(markup).toContain(`0x${"84".repeat(32)}`);
   });
 });

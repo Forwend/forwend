@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { expect, type Page, test } from "@playwright/test";
-import { blockingViolations } from "./axe";
+import { blockingViolations } from "../axe";
 import { freshCode, signIn } from "./session";
 
 // Sent comes from the worker's watcher (R-212), so this file runs one beside the api. Without the email key it sends
@@ -47,16 +47,25 @@ async function shot(page: Page, path: string, fullPage = false) {
   await page.screenshot({ path, fullPage });
 }
 
-/** The first network and token the wallet can send; with only one, the sheet skips the choice. */
-async function pickMoney(page: Page, screenshot?: string) {
+/** Stops at once when the wallet holds nothing: these tests move real testnet tokens. */
+async function requireFunds(page: Page) {
+  const empty = sheet(page).getByText("This wallet holds nothing to send yet.");
+  const choices = sheet(page).getByRole("region", { name: "What to send" }).getByRole("button");
+  await expect(choices.first().or(empty)).toBeVisible();
+  if (await empty.isVisible())
+    throw new Error(
+      "The test account's wallet holds no testnet tokens: send it Base Sepolia and Arc testnet USDC.",
+    );
+}
+
+/** The network named, or else the first the wallet can send; with only one, the sheet skips the choice. */
+async function pickMoney(page: Page, screenshot?: string, network?: RegExp) {
   await expect(sheet(page)).toHaveAccessibleName(/^(What to send|Amount)$/);
   if ((await sheet(page).getAttribute("aria-label")) === "What to send") {
+    await requireFunds(page);
     if (screenshot) await shot(page, screenshot);
-    await sheet(page)
-      .getByRole("region", { name: "What to send" })
-      .getByRole("button")
-      .first()
-      .click();
+    const choices = sheet(page).getByRole("region", { name: "What to send" }).getByRole("button");
+    await (network ? choices.filter({ hasText: network }) : choices).first().click();
   }
   await expect(sheet(page)).toHaveAccessibleName("Amount");
 }
@@ -231,8 +240,8 @@ test("Transfer opens from the command menu, and with reduced motion each step sh
   await context.close();
 });
 
-// R-216: on Arc the wallet pays its gas in the USDC it sends. The test account's business
-// profile holds Arc testnet USDC.
+// R-216: on Arc the wallet pays its gas in the USDC it sends. The test account's merchant
+// profile, E2E shop, holds Arc testnet USDC.
 test("On Arc the wallet pays its own fee in USDC, shown before the send, and the send reaches Sent", async ({
   browser,
 }) => {
@@ -243,7 +252,7 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   await page.keyboard.press("ControlOrMeta+k");
   const search = page.getByRole("dialog", { name: "Search" });
-  await search.getByRole("combobox").fill("Nmae");
+  await search.getByRole("combobox").fill("E2E shop");
   await search.getByRole("option", { name: /^Switch to Merchant/ }).click();
   await expect(
     page.getByRole("banner").getByRole("button", { name: "Send", exact: true }),
@@ -253,11 +262,7 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
     .getByRole("region", { name: "Your profiles" })
     .getByRole("button", { name: /^Personal/ })
     .click();
-  await expect(sheet(page)).toHaveAccessibleName("What to send");
-  await sheet(page)
-    .getByRole("button", { name: /Arc Testnet/ })
-    .click();
-  await expect(sheet(page)).toHaveAccessibleName("Amount");
+  await pickMoney(page, undefined, /Arc Testnet/);
   // The fee is the wallet's own, an estimate in USDC; the review adds the total.
   await expect(sheet(page).getByText(/^≈ \d+\.\d{4} USDC$/)).toBeVisible({ timeout: 20_000 });
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");

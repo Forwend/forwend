@@ -7,10 +7,6 @@ import { FEE_PAYERS } from "@/features/send/constants/send";
 import { matchesPrivyRequest, transferCalldata } from "@/features/send/lib/send";
 import type { Send, Signed } from "@/features/send/types/send";
 
-/** Signs a prepared send from the profile's own wallet with Privy (D-46). A wallet-paid send signs its transaction with
- * the gas caps the server set (R-216). A paymaster send signs the approve's Privy request with the user's key, for
- * the server to send (R-225). Privy shows no screen of its own, so the review is the one the owner reads.
- * canSign waits for Privy to list the wallet: signing before that fails at once (S-9). */
 export function useSignSend(from: string | null) {
   const { sendTransaction } = useSendTransaction();
   const { generateAuthorizationSignature } = useAuthorizationSignature();
@@ -24,7 +20,7 @@ export function useSignSend(from: string | null) {
       if (!PRIVY_CHAINS.some((c) => c.id === send.chainId))
         throw new Error("Privy can't sign on this network");
       if (send.networkFee.paidBy === FEE_PAYERS.paymaster) {
-        // The server built the request: it is signed only if it moves what the review showed.
+        // The server built the request: sign it only if it moves what the review showed.
         if (!privyRequest || !matchesPrivyRequest(send, privyRequest))
           throw new Error("The Privy request is not this send");
         const { signature } = await generateAuthorizationSignature({
@@ -36,7 +32,7 @@ export function useSignSend(from: string | null) {
         });
         return { signature };
       }
-      // A wallet-paid send (R-216) signs with the server's caps, so it never costs more than the review showed.
+      // The server's gas caps keep the cost within the fee the review showed.
       const gas = send.gas;
       const { hash } = await sendTransaction(
         {

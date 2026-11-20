@@ -83,14 +83,12 @@ func getTransactions(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// R-108.
 var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token", "Network", "Counterparty",
 	"Transaction", "Status", "USD value", "Classification", "Invoice", "Client"}
 
-// R-108, R-118.
 func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		from, to, err := dayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
+		from, to, err := httpio.DayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -114,7 +112,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 				invoice, client = document.Number(t.Invoice.Number), t.Invoice.ClientName
 			}
 			row := make([]string, 0, len(header))
-			row = append(row, t.At.Format(time.RFC3339), t.Direction, tokenAmount(t), t.Symbol,
+			row = append(row, t.At.Format(time.RFC3339), t.Direction, document.Decimal(t.Amount, t.Decimals), t.Symbol,
 				document.NetworkName(t.ChainID), t.Counterparty, t.TxHash, t.Status, t.USDValue().FloatString(t.Decimals),
 				t.Classification(), invoice, client)
 			if currency != "" {
@@ -129,7 +127,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			if t.Payment != nil {
 				paymentID = t.Payment.ID
 				if t.Payment.Fees != nil {
-					fees = units(t.Payment.Fees, t.Decimals)
+					fees = document.Decimal(t.Payment.Fees, t.Decimals)
 				}
 			}
 			row = append(row, paymentID, fees)
@@ -150,11 +148,6 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-func dayRange(from, to string) (time.Time, time.Time, error) {
-	return httpio.DayRange(from, to)
-}
-
-// R-108.
 func putTransactionLabel(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -192,7 +185,6 @@ type recordsCurrencyJSON struct {
 	Currency *string `json:"currency"`
 }
 
-// R-110.
 func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currency, err := activities.RecordsCurrency(r.Context(), r.PathValue("profileId"))
@@ -204,7 +196,6 @@ func getRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// R-110.
 func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body recordsCurrencyJSON
@@ -224,7 +215,6 @@ func putRecordsCurrency(activities *activity.Service) http.HandlerFunc {
 	}
 }
 
-// R-112, R-118.
 func getStatement(activities *activity.Service, profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q, id := r.URL.Query(), r.PathValue("profileId")
@@ -232,7 +222,7 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 			httpio.WriteError(w, r, fmt.Errorf("%w: from and to are both required", activity.ErrInvalid))
 			return
 		}
-		from, to, err := dayRange(q.Get("from"), q.Get("to"))
+		from, to, err := httpio.DayRange(q.Get("from"), q.Get("to"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

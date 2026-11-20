@@ -7,9 +7,9 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route except `/healthz`; change it before code.
   - `TestOpenAPINamesEveryRoute` fails on a route without its operation, or an operation without its route (R-150).
   - It reads each route from one literal `"METHOD /path"` on its `Handle` line, and fails on any other form.
-- Go request and response types are written by hand in each module's `model.go` (`internal/httpapi/invoiceapi/model.go`)
-  until a generator is added (oapi-codegen for Go); the web app's are Zod schemas in its features
-  (`apps/web/src/features/*/schemas/`, see docs/web/architecture.md). Keep them equal to the spec.
+- Go request and response types are written by hand in each module's `model.go` (`internal/httpapi/invoiceapi/model.go`).
+- The web app's types are Zod schemas in `apps/web/src/features/*/schemas/` ([web architecture](../web/architecture.md)).
+- Keep both equal to the spec.
 
 ## Routes
 
@@ -24,20 +24,25 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 
 - JSON fields in camelCase. Unknown fields are rejected. Bodies go through `http.MaxBytesReader` (1 MB).
 - The server sets `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout` and `IdleTimeout`.
-- Every answer carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`; the PDFs set their own cache
-  rule.
+- Every answer carries `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+  - The PDFs and the store logo set their own cache rule.
 - Money: decimal string in base units (`"5000000"`) next to `chainId` and `token` (contract address), as in R-19.
 - Times: RFC 3339 in UTC. IDs and addresses: strings.
 - Lists: `?limit=` (max 100) and `?cursor=`; response `{ "items": [...], "nextCursor": "…" }`.
-- Invoices and activity also take `?state=`, the Payments list's D-114 states (waiting | confirming | partially_paid |
-  paid | overpaid | expired | canceled); a deposit takes its payment's state. Another value is 422.
+- Invoices and activity also take `?state=`, the Payments list's D-114 states. Another value is 422.
+  - The states are waiting | confirming | partially_paid | paid | overpaid | expired | canceled.
+  - A deposit takes its payment's state.
   - The owner's invoice reads carry `state` and `wallet`, as payments do; the pay page's read has neither.
-- The owner's invoice, activity and transaction lists also take a filter (`?status=` open | confirming | paid | settled | expired |
-  canceled on invoices and activity, where a closed checkout (`closed`, R-77) counts as expired, `?direction=` in | out on transactions) and `?q=`, a search of 1–100 characters (blank or
-  longer: 422). Both narrow the list before paging, so `nextCursor` continues the filtered list. A field matches when
-  it contains `q` in any letter case. When `q` is a decimal number (digits and one point; thousands commas are
-  dropped) it also matches an amount equal to it in whole tokens: `amount = q × 10^decimals` in Postgres `numeric`,
-  exact, never a float. `internal/search` parses it; the fields per list are in openapi.yaml.
+- The owner's invoice, activity and transaction lists also take a filter and `?q=`.
+  - Invoices and activity take `?status=` open | confirming | paid | settled | expired | canceled.
+    A closed checkout (`closed`, R-77) counts as expired.
+  - Transactions take `?direction=` in | out.
+  - `?q=` is a search of 1–100 characters; blank or longer is 422.
+  - Both narrow the list before paging, so `nextCursor` continues the filtered list.
+  - A field matches when it contains `q` in any letter case. The fields per list are in openapi.yaml.
+  - When `q` is a decimal number it also matches an amount equal to it in whole tokens.
+    - A decimal is digits and one point; thousands commas are dropped.
+    - The match is `amount = q × 10^decimals` in Postgres `numeric`: exact, never a float. `internal/search` parses it.
 
 - Payment lists use the same status meanings and accept order reference, customer and requested-amount search.
 - Payment search also matches the invoice number (`INV-0004`) and the main option's receive address.
@@ -57,20 +62,22 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 
 ## First run
 
-R-50 and D-53; the full schema is in openapi.yaml. `POST` and `GET /v1/me` return `onboardedAt`: null until the user
-makes or skips the first-run choice, and the web app shows the choice while it is null. Users who signed up before the
-column existed were set to their signup time (migration 00013), so they never see it.
+R-50 and D-53; the full schema is in openapi.yaml.
 
-- `POST /v1/me/onboarding` with `{ "choices": [...] }`, any of `receive_and_send` (the personal profile every user
-  has), `get_paid_by_clients` (a freelancer profile), `accept_business_payments` and `build_integration` (one merchant
-  profile for either or both: an integration runs on a merchant profile). An empty list is Skip. A missing or unknown
-  choice is 422 `invalid_value`.
+- `POST` and `GET /v1/me` return `onboardedAt`: null until the user makes or skips the first-run choice.
+- The web app shows the choice while it is null.
+- `POST /v1/me/onboarding` takes `{ "choices": [...] }`. An empty list is Skip.
+  - `receive_and_send` is the personal profile every user has; `get_paid_by_clients` makes a freelancer profile.
+  - `accept_business_payments` and `build_integration` make one merchant profile for either or both.
+  - A missing or unknown choice is 422 `invalid_value`.
 - One transaction locks the user row, makes the profiles and sets `onboarded_at`, so concurrent calls make them once.
-  Then each new profile gets its wallet through the signup path (R-31, R-32). The first call answers 201; later calls,
-  with any choices, change nothing and answer 200 with the same `Me`. Later profiles come from `POST /v1/profiles`;
-  a user has at most 10 profiles, the personal one included (each makes a Privy wallet the watcher scans): 422 above.
-- Names, titles, notes, client and billing fields refuse control and invisible format characters (line breaks only in
-  notes and addresses, zero-width joiners allowed), and sender, profile and billing names that read as Forwend: 422.
+  - Then each new profile gets its wallet through the signup path (R-31, R-32).
+  - The first call answers 201. Later calls, with any choices, change nothing and answer 200 with the same `Me`.
+- Later profiles come from `POST /v1/profiles`.
+  - A user has at most 10 profiles, the personal one included: 422 above. Each makes a wallet the watcher scans.
+- Names, titles, notes, client and billing fields refuse control and invisible format characters: 422.
+  - Line breaks are allowed only in notes and addresses; zero-width joiners are allowed.
+  - Sender, profile and billing names that read as Forwend are 422 too.
   - "Reads as Forwend" folds accents, spaces and look-alike letters, also of upper-case letters (R-122).
   - The letters come from Unicode's confusables (`profile/lookalikes.go`, made by `lookalikes_gen.go`). A few it lacks,
     such as small capitals, are added by hand. A symbol that looks like a letter counts both ways: as that letter
@@ -111,8 +118,8 @@ R-227, D-122; the full schema is in openapi.yaml.
   - The api and the worker read every chain's quote at start and every 5 minutes (`settlement.QuoteRefresh`).
     - So that quote is there after a restart or a quiet hour, and a slow RPC doesn't stop a checkout.
   - A quote over 5.00 USD (`settlement.NetworkFeeMax`) is a lying RPC or feed and is refused.
-  - The platform fee is `PLATFORM_FEE_BPS` (0 to 500) of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`; 0 at launch.
-    - Unset, each is 0: no platform fee. The api and the worker read the same values.
+  - The platform fee is `PLATFORM_FEE_BPS` (0 to 500) of the price, within `PLATFORM_FEE_MIN_USD` and `PLATFORM_FEE_CAP_USD`.
+    - Unset, the rate is 0 and there is no cap. The api and the worker read the same values.
 - `feesPaidBy` is `owner` (deducted at settlement) or `client` (added on top of the price).
   - The profile's choice applies unless an invoice, checkout session or link says otherwise.
   - `PUT /v1/profiles/{profileId}/fees` takes `{"feesPaidBy": "owner"|"client"}`, with `billing.write`. `GET /v1/me` gives it.
@@ -133,34 +140,39 @@ R-227, D-122; the full schema is in openapi.yaml.
 
 R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notifications`, D-93).
 
-- `GET` and `PUT /v1/profiles/{profileId}/notifications`: `{email, address}`. `PUT` takes `{"email": true|false}`
-  only. The address is the account's verified login email (email account, else Google), read from Privy once on
-  `POST /v1/me` and kept in `users.login_email` (`''` when the account has none, so it is not read again); a request
-  can never set it, so nobody can point another person's notifications at an inbox.
-- The ledger and the signer queue `invoice.paid`, `invoice.held` (with the amount newly held) and `invoice.settled` (with the
-  amount that reached the wallet, less any fees) in
-  `outbox_events`, in the transaction that makes the change (`internal/outbox`). The worker sends them through Resend
-  (`internal/notify`) with `forwend-<invoiceId>-<eventId>-<hash of the address and the message>` as the Idempotency-Key, one at a time with `FOR UPDATE SKIP
-  LOCKED`; a failed send is retried after 1 min doubling to 1 h, given up after 10 tries.
-  - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad
-    address). Then the round goes on, so one bad address can't hold up the other emails (R-115).
+- `GET` and `PUT /v1/profiles/{profileId}/notifications`: `{email, address}`. `PUT` takes `{"email": true|false}` only.
+  - The address is the account's verified login email (email account, else Google).
+  - It is read from Privy once on `POST /v1/me` and kept in `users.login_email`.
+  - `''` means the account has none, so it is not read again.
+  - A request can never set it, so nobody can point another person's notifications at an inbox.
+- The ledger and the signer queue `invoice.paid`, `invoice.held` and `invoice.settled` in `outbox_events` (`internal/outbox`).
+  - They queue it in the transaction that makes the change.
+  - `invoice.held` carries the amount newly held; `invoice.settled` what reached the wallet, less any fees.
+- The worker sends them through Resend (`internal/notify`), one at a time with `FOR UPDATE SKIP LOCKED`, at most 20 a round.
+  - The Idempotency-Key is `forwend-<invoiceId>-<eventId>-<hash of the address and the message>`.
+  - A failed send is retried after 1 min doubling to 1 h, and given up after 10 tries.
+  - A failed send ends that round, except when Resend refused the message as sent (400 or 422, such as a bad address).
+    Then the round goes on, so one bad address can't hold up the other emails (R-115).
   - An event that can't be read or rendered counts as a failed try too, and the round goes on.
 - The watcher queues `wallet.outflow` when money leaves a profile wallet with no approved send (D-49).
   - It goes to the owner whatever the email setting: it may be a theft.
 - The signer queues `settlement.waiting` while the daily settle cap holds paid money back: one email a day per user.
-- Email off or no address: the event is marked done and nothing is sent. Without `RESEND_API_KEY` the worker sends
-  nothing and events wait; `scripts/with-env.sh` gives the key to the worker and the api (Confirm it's you codes).
-- `PUT /v1/invoices/{payToken}/payer-email` (R-82, D-68, public like the checkout): the payer's address for this
-  invoice's receipt only, kept on the main row, trimmed and lowercased, and checked like a client email (plain text,
-  exactly one address, else 422); it changes until the receipt is sent (then 409
-  `receipt_sent`). The ledger queues one `invoice.receipt` when the invoice becomes paid (a unique index keeps one per
-  invoice); an address given after that queues it at once. The worker sends it to that address whatever the owner's
-  setting: the amount, the payee, the transaction and the receipt PDF. Limited per invoice (3, then one per 10 s) and
-  for everyone together; per IP belongs to the edge (Q-8).
+- Email off or no address: the event is marked done and nothing is sent.
+- Without `RESEND_API_KEY` the worker sends nothing and events wait.
+  - `scripts/with-env.sh` gives the key to the worker and the api (Confirm it's you codes).
+- `PUT /v1/invoices/{payToken}/payer-email` (R-82, D-68, public like the checkout) sets the payer's address for this invoice's receipt.
+  - It is kept on the main row, trimmed and lowercased.
+  - It is checked like a client email: plain text, exactly one address, else 422.
+  - It changes until the receipt is sent, then 409 `receipt_sent`.
+  - The ledger queues one `invoice.receipt` when the invoice becomes paid; a unique index keeps one per invoice.
+  - An address given after that queues it at once.
+  - The worker sends it to that address whatever the owner's setting: the amount, payee, transaction and receipt PDF.
+  - Limited per invoice (3, then one per 10 s) and for everyone together (20, then 5 a second).
+  - Per IP belongs to the edge (Q-8).
   - The limit for everyone is spent only when the receipt goes out now (R-117).
   - A bad body or an unknown link answers before it, so junk can't block Send to client, which shares it.
-- `PUT /v1/invoices/{payToken}/pick` (R-57, public like the checkout): the option the payer showed the address for,
-  kept on the main row's `picked_id`, so the pay link opens on it again. The read returns it as `pickedOptionId`.
+- `PUT /v1/invoices/{payToken}/pick` (R-57, public like the checkout) keeps the option the payer showed the address for.
+  - It is kept on the main row's `picked_id`, so the pay link opens on it again. The read returns it as `pickedOptionId`.
   - It decides nothing: payments that add up to a tenth of the amount, at most 1.00 USD, still make an option the invoice's
     (R-56, R-119).
   - It is refused once an option is chosen, or a payment that can choose one is seen; dust doesn't stop it.
@@ -228,7 +240,7 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
       - Only for a quote on the option the money was booked on.
     - A movement of a Base transfer 1Click made carries `paidWith`; the CSV adds "Paid with" and "Paid with
       transaction".
-  - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{id}/tokens` (R-240); `GET` returns it.
+  - A profile turns it off with `crossChain: false` on `PUT /v1/profiles/{profileId}/tokens` (R-240); `GET` returns it.
     - Off, new quotes for its invoices, links and checkouts are 422 `crosschain_unavailable`; an open quote finishes.
     - The invoice read's `crossChainOn` tells the pay page whether to offer it.
   - The api's `CROSSCHAIN_OFF=1` turns new quotes off for every profile: 422 `crosschain_unavailable`, `crossChainOn` false.
@@ -268,42 +280,44 @@ R-80, D-65; the full schema is in openapi.yaml. The owner's alone (`notification
   - It counts `invoice.sent` (Send to client and retainer months), `invoice.reminder` and `job.change` rows.
   - `outbox.ClientEmailsLeft` counts them under a lock on the user's row, so two profiles can't both pass it.
   - It keeps one account from mailing strangers in bulk, and Resend's shared daily budget (D-65) for money emails.
-- The owner's Send to client (R-94) goes to the invoice's client email whatever the owner's setting. It names the
-  issuer, number, amount and due date, and links the pay page and `invoice.pdf`. A payer-chooses invoice shows USD.
-  Its Reply-To is the issuer's billing email, so a reply reaches the owner.
-- A new account's welcome (R-84): when `POST /v1/me` first stores a non-empty login email for an account made after
-  welcome emails existed (`users.welcome`), it queues one `account.welcome` row for the user in the same statement (a
-  unique index keeps one per user). The worker sends it whatever the profile setting, with
-  `forwend-user-<userId>-<eventId>-<address hash>` as the Idempotency-Key.
-- Every email (F200) has an HTML part from one layout (`internal/notify/layout.html.tmpl`, `html/template`, so typed names
-  are escaped) and a plain text part built from the same content, with the same links.
+- The owner's Send to client (R-94) goes to the invoice's client email whatever the owner's setting.
+  - It names the issuer, number, amount and due date, and links the pay page and `invoice.pdf`.
+  - A payer-chooses invoice shows USD.
+  - Its Reply-To is the issuer's billing email, so a reply reaches the owner.
+- A new account's welcome (R-84) is one `account.welcome` row for the user.
+  - `POST /v1/me` queues it in the statement that first stores a non-empty login email.
+  - Only accounts marked `users.welcome` get one; a unique index keeps one per user.
+  - The worker sends it whatever the profile setting.
+  - Its Idempotency-Key is `forwend-user-<userId>-<eventId>-<address hash>`.
+- Every email has an HTML part from one layout and a plain text part built from the same content, with the same links.
+  - The layout is `internal/notify/layout.html.tmpl`, run by `html/template`, so typed names are escaped.
   - The parts: the logo (`PUBLIC_WEB_URL/email/logo-mark.png`), a test-mode band, a status mark, the title, the amount.
   - Then one or two sentences, a details table, one button, and an optional link such as the invoice PDF.
   - The footer says why it was sent, links email settings on owner emails, and shows `SUPPORT_EMAIL` and `EMAIL_POSTAL_ADDRESS` when set.
   - Tables, inline styles and a dark-mode block; no scripts or tracking pixels.
   - The logo is the one remote file. Its `alt` is empty: the name beside it is text, so the email reads with images off.
   - A test checks that the logo file is in `apps/web/public`; the look is in [DESIGN.md](../web/DESIGN.md#emails).
-- `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first, with the
-  document number when present, the option's token and the amount (newly held for `invoice.held`; for `invoice.settled`, what
-  reached the wallet, less any fees).
+- `GET /v1/profiles/{profileId}/events?limit=` (R-81, at most 50): the same events for the bell, newest first.
+  - Each has the document number when present, the option's token and the amount.
+  - The amount is what was newly held for `invoice.held`, and what reached the wallet, less any fees, for `invoice.settled`.
 - Events include purpose, document kind and title; document-free checkout events have `number: null` and open payment details.
-- Existing invoice and request event numbers remain unchanged; no document number is invented for checkout.
-- Owner checkout emails open Payments; customer receipt links remain public.
+- Invoice and request events carry their document number.
+- An owner email about a checkout opens Payments; the payer's receipt links stay public.
 
 ## Billing details
 
 R-43; the full schema is in openapi.yaml. Members reach it with `billing.read` and `billing.write` (D-93).
 
-- `PUT /v1/profiles/{profileId}/billing-details` creates or replaces them and answers 200 with what was saved. Body:
-  `name` (≤ 200 characters), `address` (≤ 500), `country` (an assigned ISO 3166-1 alpha-2 code in upper case, like
-  `DE`), `email` (≤ 254, a plain address) and optional `taxId` (≤ 50). All but `taxId` are required, so an invoice or
-  PDF always has a full issuer block; a `taxId` left out or empty means none and is returned as null. Every field is
-  replaced. Characters, not bytes; no NUL. A missing or broken field is 422 `invalid_value`. No Idempotency-Key: the
-  same body sent twice saves the same details.
+- `PUT /v1/profiles/{profileId}/billing-details` creates or replaces them and answers 200 with what was saved.
+  - The fields and their limits are `BillingDetailsRequest` in [openapi.yaml](../../apps/backend/api/openapi.yaml).
+  - All but `taxId` are required, so an invoice or PDF always has a full issuer block.
+  - A `taxId` left out or empty means none and is returned as null. Every field is replaced.
+  - A missing or broken field is 422 `invalid_value`.
+  - No Idempotency-Key: the same body sent twice saves the same details.
 - `GET` returns the same fields plus `updatedAt`; 404 `billing_details_not_found` until the first `PUT`.
-- The invoice insert copies the details into the invoice as `issuer`, in the same statement that takes the number,
-  so the copy is the details at that moment. Editing them later changes no invoice. A profile without details gives
-  `issuer: null`.
+- The invoice insert copies the details into the invoice as `issuer`, in the statement that takes the number.
+  - So the copy is the details at that moment. Editing them later changes no invoice.
+  - A profile without details gives `issuer: null`.
 
 ## Clients
 
@@ -314,12 +328,13 @@ R-86; the full schema is in openapi.yaml. Members reach it with `clients.read` a
   - `q` searches the name, the email and the tax ID in any letter case, as the jobs search does.
   - A profile still holds at most 1000 clients.
 - `GET /v1/profiles/{profileId}/clients/{clientId}` reads one client; another profile's or an unknown id is 404 `client_not_found`.
-- `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one. The caller picks the id (a lowercase UUID),
-  so no Idempotency-Key is needed: the same body sent twice saves one client, 201 the first time and 200 after. Body:
-  `name` (required, ≤ 200 characters) and optional `email` (≤ 254, the billing email), `address` (≤ 500), `country` (an
-  assigned ISO 3166-1 alpha-2 code), `taxId` (≤ 50) and `reference` (≤ 100 on one line, the client's PO number or
-  reference that New invoice fills in, R-90); empty means none and comes back as null. The 1001st client is 422; an id
-  that belongs to another profile is 404 `client_not_found`.
+- `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one.
+  - The caller picks the id (a lowercase UUID), so no Idempotency-Key is needed.
+  - The same body sent twice saves one client: 201 the first time and 200 after.
+  - The fields and their limits are `ClientRequest` in [openapi.yaml](../../apps/backend/api/openapi.yaml). Only `name` is required.
+  - `reference` is the client's PO number or reference that New invoice fills in (R-90).
+  - Empty means none and comes back as null.
+  - The 1001st client is 422; an id that belongs to another profile is 404 `client_not_found`.
 - A saved client also takes `reminders` (R-97): New invoice starts with payment reminders on for it. False when left
   out.
 - `DELETE /v1/profiles/{profileId}/clients/{clientId}` answers 204, or 404 `client_not_found`.
@@ -376,7 +391,7 @@ R-134; the full schema is in openapi.yaml. Members reach it with `stores.read` a
   - An http origin on `localhost` or `127.0.0.1` is also taken, for test mode (R-168).
   - Return links stay https only, so a loopback origin never allows one.
   - A personal or freelancer profile is 409 `not_merchant`; another profile's store id is 404 `store_not_found`.
-- The store id is the project ID: public, with no authority (D-31). There is no delete yet: invoices point at stores.
+- The store id is the project ID: public, with no authority (D-31). Stores have no delete: invoices point at them.
 - Branding (R-135): `brandColor` is `#rrggbb` (kept in lower case) or empty for none; stores read back `logoAt`.
   - `PUT .../stores/{storeId}/logo` takes the image itself as the body: a PNG or JPEG.
   - It is at most 1 MB and 1024 pixels a side; anything else is 422.
@@ -444,7 +459,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - `GET /v1/profiles/{profileId}/payments` and `/{paymentId}` read every workflow, including unnumbered attempts.
 - Lists accept `limit`, opaque `cursor` and `storeId`; creation time and ID provide stable pagination.
 - Payment and checkout reads honor tenant, role, assigned stores, key scopes and key mode.
-- Invoice-only sending rejects document-free checkout; payment notifications currently open its working hosted page.
+- Send to client refuses a document-free checkout; payment notifications about it open its hosted page.
 - Public checkout shows item snapshots using the main option's trusted token decimals, independent of the chosen payment option.
 
 ### Payment operations
@@ -464,14 +479,14 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Payment reads include canonical symbol, decimals, option ID, option count and whether an option has been locked.
 - Token metadata follows the stored chain and contract, including tokens disabled after the payment was created.
 - Net amounts include `reconciliationStatus`: `verified`, `pending` booking, or `review` for evidence an operator must check.
-- The existing `unreconciled` flag continues blocking unsafe financial actions during either pending verification or manual review.
+- `unreconciled` blocks unsafe financial actions during pending verification or manual review.
 - Movements awaiting booking remain pending; unexplained balances, refused outflows and policy exceptions require review.
 - Other-asset recovery records remain distinct from accepted-token reconciliation.
 - The owner page groups option verification into one notice; token-specific returns remain separate.
 - Customer checkout and receipt PDFs distinguish pending verification from manual review without changing payment truth.
 - Sources are `invoice`, `request`, `payment_link` and direct `checkout`; source differs from the attached document kind.
 - List cursors use immutable creation time and payment ID, including unpaid attempts.
-- Payment detail preserves its existing root fields and adds customer, metadata, options, source coverage, settlement intent, deposits, deliveries and problems.
+- Payment detail has a payment read's fields plus customer, metadata, options, source coverage, settlement intent, deposits, deliveries and problems.
 - Detail includes each option's exact receiver, merchant payable, payer-held, settled and returned amounts.
 - Deposit and delivery details are bounded at 100; truncation flags and delivery count disclose omitted records.
 - `GET /v1/profiles/{profileId}/payments/attention` returns payment problems separately from financial truth.
@@ -486,7 +501,7 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
 - Delivery problems preserve payment status and expose safe attempt metadata without endpoint secrets, URLs, payloads or raw errors.
 - Owners and Admins also receive endpoint problem summaries, including test events without payments.
 - Endpoint summaries follow store and mode filters; payment source and status filters apply only to payment rows.
-- Endpoint summaries disclose truncation; the existing Developers page manages the full endpoint list.
+- Endpoint summaries disclose truncation; the Developers page manages the full endpoint list.
 - Members without webhook permission receive `ask_admin` actions and cannot manage endpoints.
 - `GET /v1/profiles/{profileId}/payments/movements` returns paged journals and separate unbooked source observations.
 - `GET /v1/profiles/{profileId}/payments/{paymentId}/movements` restricts the same movement read to one permitted payment.
@@ -513,6 +528,8 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - The report sums the ledger. It compares no chain balance itself.
 - `verifiedReceivers` counts receivers with nothing unbooked, no balance alert and no negative balance.
   - The others are `unreconciledReceivers`; the two add up to `receiverCount`.
+- `scanCurrent` is false while the chain's scan is over 45 minutes behind the clock.
+  - A deposit the scan has not read is in no count, so the report is not verified then.
 - `unprovedDeposits` counts receivers whose finalized balance holds more than every recorded deposit.
   - That is a deposit the scan missed, until `ops deposit` records it.
   - A payment's option `coverage.unprovedDeposits` is 1 in the same case.
@@ -570,7 +587,6 @@ R-140, R-163, D-54, D-94; openapi.yaml owns the schema. Members use `invoices.re
   - An open purchase with no deposit seen also releases its slot 15 minutes after creation; its checkout stays open.
   - Elapsed wall time alone does not release a purchase with a deposit seen.
 - Reopening a legacy partly paid purchase also reserves capacity; unavailable capacity returns 409 `link_full`.
-- Deploy backend and migration before frontend; old clients remain accepted without optional quote fields.
 - Legacy requests preserve hashes and documents; supplied amounts must match original terms.
 - Legacy storage cannot prove omitted fixed/open input or old offer versions; new request metadata provides that guarantee.
 
@@ -616,7 +632,7 @@ R-146, D-96; the full schema is in openapi.yaml. Owners and Admins manage them w
   - Its host must be public: no localhost, `.local` or `.internal` name, and no private, loopback, link-local or CGNAT address.
   - A name must be ASCII, in its punycode form, and can't end in a number: resolvers read `127.1` as 127.0.0.1.
   - IPv6 that carries an IPv4 address (IPv4-compatible, NAT64, 6to4) is refused too.
-  - A host name is not resolved here; deliveries check its addresses after DNS (PLAN 11.5).
+  - A host name is not resolved here; deliveries check its addresses after DNS ([delivery](#delivery)).
   - `events` are one or more of `invoice.detected`, `invoice.partially_paid`, `invoice.paid`, `invoice.settled`,
     `invoice.expired`, `invoice.canceled`, `invoice.held`, `invoice.open` and `invoice.reopened`.
   - `storeId` (optional) narrows a merchant's endpoint to one store; a freelancer's has none. `enabled` defaults to on.
@@ -705,41 +721,38 @@ R-149, D-99. These need the `webhooks` permission and no fresh sign-in: they sen
 
 ## Invoices
 
-- Reads include immutable `purpose` (`invoice`, `checkout`, `request`) and `documentKind` (`invoice`, `request`, `none`).
-- Owner reads include `linkId` when a reusable link created the attempt.
-- Existing link attempts retain invoice documents and delayed numbering, including unnumbered attempts made before migration.
-- Dedicated checkout operations create document-free attempts; deposits never assign them an invoice number.
-- `invoice.pdf` returns 404 for document-free checkout; paid receipts remain available.
-- Existing invoice creation and retry hashes remain compatible. Checkout purpose has a separate request fingerprint.
-
 R-19 and R-42; the full schema is in openapi.yaml.
 
+- Reads include immutable `purpose` (`invoice`, `checkout`, `request`) and `documentKind` (`invoice`, `request`, `none`).
+- Owner reads include `linkId` when a reusable link created the attempt.
+- Link attempts made as invoices keep their invoice documents and delayed numbering, unnumbered ones included.
+- Checkout operations create document-free attempts; deposits never assign them an invoice number.
+- `invoice.pdf` returns 404 for document-free checkout; paid receipts remain available.
+- A checkout's request hash is kept apart from invoice creates' hashes.
 - A new invoice or request asks for at least 1.00 USD (R-56): `amountUsd` at least `1.00`, or `amount` at least one
   whole token. Less is 422 `invalid_value`. Links, checkouts and job payments follow the same minimum.
-
 - `livemode` is the invoice's chain's mode (D-87, R-143): false on a testnet, whose tokens have no value.
   - Both PDFs of a test-mode invoice say "Test mode: testnet tokens have no value" under the header; every footer says Test mode.
-- `number` is an integer per profile: 1, 2, … in creation order (D-50). The API never formats it; the web shows
-  `INV-` and at least 4 digits (`INV-0001`). The insert takes it from the profile's counter row (`profiles.invoice_seq`)
-  in the invoice's own transaction, so a failed create uses no number and a repeated Idempotency-Key returns the
-  stored one.
+- `number` is an integer per profile: 1, 2, … in creation order (D-50).
+  - The API never formats it; the web shows `INV-` and at least 4 digits (`INV-0001`).
+  - The insert takes it from the profile's counter row (`profiles.invoice_seq`) in the invoice's own transaction.
+  - So a failed create uses no number, and a repeated Idempotency-Key returns the stored one.
 - A legacy payment-link invoice gets its `number` when the ledger books its first deposit, in that transaction (R-141).
   - Until then the pay page's read shows `number: null`, and the PDF has no number.
   - The owner's routes with an `{invoiceId}` answer 404 `invoice_not_found` for it, as does `replaces`.
   - The invoice list, search, Owed and Activity leave it out, with its deposits.
   - Transactions shows money from its address as not from an invoice. The balance's pending still counts its deposits.
   - Its history gets `invoice.numbered` by `system` when the number comes.
-- Optional create fields: `title` (≤ 200 characters), `note` (≤ 2000), `dueDate` (`YYYY-MM-DD`, shown only; payment
-  still closes at `expiresAt`, which the web form sets to the due date plus 60 days, at most 364 days from today, unless
-  the owner picks another, D-80), `supplyDate` (`YYYY-MM-DD`, the day the work was done or delivered, R-89; part of the
-  idempotency hash only when set), `reference` (≤ 100 on one line, the client's PO number or their reference, R-90; part
-  of the idempotency hash only when set, and the invoice list search finds it), `senderName` (≤ 100; the name the payer
-  sees on a request from a profile without billing details, D-52), `returnUrl` (an `https` link of ≤ 2000 characters
-  with a host and no user or password, which the pay page offers once paid, R-58; part of the idempotency hash only when
-  set, so older requests hash as before) and `client` `{ name ≤ 200, email ≤ 254, address ≤ 500, country, taxId ≤ 50 }`
-  (the rules of a saved client, R-86; `country` and `taxId` are part of the idempotency hash only when set). Empty means
-  none and is returned as null. Characters, not bytes; no NUL. `email` is a plain address (`name@example.com`). A broken
-  rule is 422 `invalid_value`; these fields are part of the idempotency hash.
+- The optional create fields and their limits are `CreateInvoiceRequest` in [openapi.yaml](../../apps/backend/api/openapi.yaml).
+  - Empty means none and is returned as null. A broken rule is 422 `invalid_value`.
+  - The fields are part of the idempotency hash; those below marked "when set" only when set.
+  - `dueDate` is shown only: payment still closes at `expiresAt`.
+    - The web form sets `expiresAt` to the due date plus 60 days, at most 364 days from today, unless the owner picks another (D-80).
+  - `supplyDate` is the day the work was done or delivered (R-89); when set.
+  - `reference` is the client's PO number or their reference (R-90); when set. The invoice list search finds it.
+  - `senderName` is the name the payer sees on a request from a profile without billing details (D-52).
+  - `returnUrl` is an `https` link with a host and no user or password; the pay page offers it once paid (R-58). When set.
+  - `client` follows a saved client's rules (R-86). Its `country` and `taxId` count only when set.
 - A `dueDate` with no `expiresIn` (R-152) closes the checkout at the end of the 60th UTC day after it (D-80).
   - The close stays 15 minutes to 365 days from now, and a store's `defaultExpiresIn` doesn't apply.
   - The idempotency hash takes the due date and 3600 for the missing `expiresIn`, so a later retry returns the same invoice.
@@ -759,27 +772,31 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - The store never changes (a trigger). The owner's reads return `store` `{storeId, name}`; others leave it out.
   - Edit checks a changed `returnUrl` against the store's origins; an unchanged link stays.
   - A retainer's later month keeps the first month's `returnUrl`, also after the store drops its origin.
-- Optional `reminders: true` (R-97) turns payment reminders on with the invoice, as the reminders route does. It needs
-  `dueDate` and `client.email`, otherwise 422 `invalid_value`. It is part of the idempotency hash only when true.
+- Optional `reminders: true` (R-97) turns payment reminders on with the invoice, as the reminders route does.
+  - It needs `dueDate` and `client.email`, otherwise 422 `invalid_value`.
+  - It is part of the idempotency hash only when true.
 - Optional `repeat` `{ endDate? }` (R-98, D-58) makes the invoice repeat every month: a retainer.
   - It needs `dueDate` and `client.email`; `endDate` is a date on or after `dueDate`. Otherwise 422 `invalid_value`.
   - The invoice and its `retainers` row are saved together. A profile has at most 50 running retainers, then 422.
   - It is part of the idempotency hash only when set.
-- A freelancer or merchant profile saves its billing details first: without them create is 409
-  `billing_details_required` and makes nothing, so every business invoice names who bills the client (R-92, D-83). A
-  personal profile's request needs none and names its sender (D-52).
-- Optional `agreedValue` `{ currency, amount, date }` (R-93): the price agreed with the client in fiat, which the owner
-  types (no exchange-rate API). `currency` is EUR or one the ECB publishes a daily reference rate for (D-82,
-  `invoice.AgreedCurrencies`); `amount` is above 0 with at most 12 whole digits and the currency's ISO 4217 decimals;
-  `date` is the day it was agreed. It is stored in minor units and read back as `{ currency, amount, decimals, date }`,
-  `amount` in minor units; part of the idempotency hash only when set. The PDFs print it under the total.
-- Optional `lines` (R-88, at most 50): `{ description ≤ 200, quantity, unitPrice }`, adding up exactly to `amount` or
-  `amountUsd`. `unitPrice` is in the amount's own unit (base units with `amount`, a USD decimal with `amountUsd`);
-  `quantity` is above 0 and at most 1,000,000 with up to 2 decimals, and each unit price and each quantity times it
-  must be a whole number of the token's smallest unit. A broken rule is 422 `invalid_value`. They are part of the
-  idempotency hash. Reads return them as `lines` in the base units of the option whose `optionId` is the `invoiceId`
-  (the invoice's first option), `quantity` with 2 decimals; Postgres refuses a changed, removed or later line and lines
-  that do not add up to the invoice's amount at commit.
+- A freelancer or merchant profile saves its billing details first (R-92, D-83).
+  - Without them create is 409 `billing_details_required` and makes nothing.
+  - So every business invoice names who bills the client.
+  - A personal profile's request needs none and names its sender (D-52).
+- Optional `agreedValue` `{ currency, amount, date }` (R-93): the price agreed with the client in fiat.
+  - The owner types it; there is no exchange-rate API.
+  - `currency` is EUR or one the ECB publishes a daily reference rate for (D-82, `invoice.AgreedCurrencies`).
+  - `amount` is above 0 with at most 12 whole digits and the currency's ISO 4217 decimals.
+  - `date` is the day it was agreed.
+  - It is stored in minor units and read back as `{ currency, amount, decimals, date }`, `amount` in minor units.
+  - It is part of the idempotency hash only when set. The PDFs print it under the total.
+- Optional `lines` (R-88, at most 100): `{ description, quantity, unitPrice }`, adding up exactly to `amount` or `amountUsd`.
+  - `unitPrice` is in the amount's own unit: base units with `amount`, a USD decimal with `amountUsd`.
+  - `quantity` is above 0 and at most 1,000,000, with up to 2 decimals.
+  - Each unit price, and each quantity times it, must be a whole number of the token's smallest unit.
+  - A broken rule is 422 `invalid_value`. They are part of the idempotency hash.
+  - Reads return them as `lines` in the base units of the invoice's first option, `quantity` with 2 decimals.
+  - Postgres refuses a changed, removed or later line, and lines that don't add up to the invoice's amount at commit.
 - The number, these fields and `issuer` never change, like the terms: a database trigger rejects any update.
 - `settlementTxHash` identifies the actual booked receiver settlement, including an authority settlement outside the signer.
   - Deposit activity preserves gross observed movements; net liabilities come from `amounts`.
@@ -838,8 +855,9 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - true only for an origin exactly as a browser writes it, on the list of the store the invoice records.
   - A live invoice takes https origins only; a test-mode invoice also takes the store's loopback http origins.
   - An invoice without a store is never framed. An unknown token is 404; the store's origins are never listed.
-- Cross-chain (D-123), per invoice in `invoiceapi/crosschain.go`: tokens 10 at once, then one every 2 s; prices 20
-  at once, then one a second; quotes 5 at once, then one every 10 s, apart from the 20 an hour kept in Postgres.
+- Cross-chain limits (D-123) per invoice are in `invoiceapi/crosschain.go`.
+  - Tokens 10 at once, then one every 2 s; prices 20 at once, then one a second.
+  - Quotes 5 at once, then one every 10 s, apart from the 20 an hour kept in Postgres.
   - Anyone can make pay tokens from a public link, so all invoices also share a budget of 1Click calls.
   - Prices 20 at once, then one a second; new quotes 10 at once, then one every 5 s.
   - It is spent only when 1Click is asked: a kept price or quote costs nothing.
@@ -860,22 +878,22 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - Only once, and a day or more before its receiver's settle deadline.
   - That deadline is the settle deadline, or 30 days after an early receiver deploy if sooner.
   - Confirmed refunds or settlements prevent reopening. Every movement of the option must be booked first.
-  - Missing evidence returns 409 `payment_reconciliation_pending`; eligibility failures return `invoice_not_reopenable`.
-  - Otherwise 409 `invoice_not_reopenable`.
+  - Missing evidence returns 409 `payment_reconciliation_pending`; any other refusal is 409 `invoice_not_reopenable`.
   - Its checkout opens again until a day before that deadline, at the same address and terms.
   - It locks the rows the ledger locks, in its order.
-  - `ledger.Reopen` books the reopen (see architecture.md).
+  - `ledger.Reopen` books the reopen ([invoice states](architecture.md#invoice-states)).
   - `closesAt` includes an earlier operational close after verified early deployment, leaving one day before settlement ends.
   - Signed terms and receive addresses remain unchanged.
   - Before a choice, the group stays open while any option remains open; each option retains its own deadline.
   - The owner's reads return `reopenUntil`: the close a reopen would give now, or null.
   - History gets `invoice.reopened`, its `until` the new close.
-- `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79): cancels the invoice and every option of
-  it, only while all are open, the checkout is open and no transfer was ever seen; otherwise 409
-  `invoice_not_cancelable`. It locks the rows the ledger locks. The watcher records transfers without that lock, so a
-  transfer seen in the same moment can land on a canceled invoice: it is held like any later deposit. Canceled is
-  final and sets `canceledAt`; the ledger holds any later deposit for the payer (D-26), and `invoice.pdf` drops the pay
-  link and code.
+- `POST /v1/profiles/{profileId}/invoices/{invoiceId}/cancel` (R-79, D-79) cancels the invoice and every option of it.
+  - Only while all are open, the checkout is open and no transfer was ever seen; otherwise 409 `invoice_not_cancelable`.
+  - It locks the rows the ledger locks.
+  - The watcher records transfers without that lock, so a transfer seen in the same moment can land on a canceled invoice.
+    It is held like any later deposit.
+  - Canceled is final and sets `canceledAt`. The ledger holds any later deposit for the payer (D-26).
+  - `invoice.pdf` then drops the pay link and code.
 - `POST /v1/profiles/{profileId}/invoices/{invoiceId}/send` (R-94) queues one `invoice.sent` email to the invoice's
   client email. It needs an Idempotency-Key; the same key again answers 200 and queues nothing.
   - Only while the payer can still pay it (the `open` status filter); otherwise 409 `invoice_closed`.
@@ -907,23 +925,28 @@ R-19 and R-42; the full schema is in openapi.yaml.
     - Balances show it as `held`, and each payment shows its own.
   - Order: overdue (most days late first), then partly paid.
   - `items` holds the first `limit` rows (1–100, default 50). `count` and per-token `totals` cover every row.
-  - The read adds up every row; the open filter keeps them within twice `MaxOpen` receive addresses (the owner's and its links').
-- `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet
-  yet, null when it is not paid or already settled (R-54): `{kind, until, secondsLeft}` with `kind` one of `signing`,
-  `finalizing` (`secondsLeft` estimates the chain time until the settle is final), `retrying` and `dailyLimit` (the
-  user's sponsored settlements for 24 hours are used up; both with `until`, the next try) and `refused`. It comes from
-  the intent's status and the wait kind the signer stores with it, never from log text.
+  - The read adds up every row. The open filter keeps them within three times `MaxOpen` receive addresses.
+    - Invoices, link payments and checkout sessions each have their own `MaxOpen` ([errors](#errors)).
+- `settlementWait` (owner reads and create only) says why a paid invoice's money has not reached the profile wallet (R-54).
+  - It is null when the invoice is not paid or already settled.
+  - It is `{kind, until, secondsLeft}`; `kind` is `signing`, `finalizing`, `retrying`, `dailyLimit` or `refused`.
+  - For `finalizing`, `secondsLeft` estimates the chain time until the settle is final.
+  - `retrying` and `dailyLimit` carry `until`, the next try. `dailyLimit`: the user's sponsored settlements for 24 hours are used up.
+  - It comes from the intent's status and the wait kind the signer stores with it, never from log text.
 - Payer chooses (R-56, D-75, D-76): create with `amountUsd` alone (a decimal like `"12.50"`) instead of `chainId`,
-  `token` and `amount`. The invoice accepts every enabled token on every enabled chain the worker already watches
-  (others would miss payments), of one mode (R-156), each at 1 USD per token: the amount in the token's decimals, 422 when they
-  can't hold it exactly. It leaves out the tokens the profile or its store has off (R-136). Each option is an `invoices` row of its own with its own on-chain id (the first random, the
-  others `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link), terms and
-  receive address, so the watcher, ledger and signer treat it as any invoice; the first row is the invoice (its token is the pay
-  link, its number and details are the invoice's). Each option counts toward the profile's open and daily limits.
-  Reads add `optionId` (the on-chain id in the shown terms), `optionLocked`, `optionCount` and, on a read alone, `options` (each
-  `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`; deposits on an option
-  other than the shown one are held for the payer). Until an option has money the
-  terms shown are the first option's.
+  `token` and `amount`.
+  - The invoice accepts every enabled token on every enabled chain the worker already watches; others would miss payments.
+  - All its tokens are of one mode (R-156). It leaves out the tokens the profile or its store has off (R-136).
+  - Each is at 1 USD per token: the amount in the token's decimals, 422 when they can't hold it exactly.
+  - Each option is an `invoices` row with its own on-chain id, terms and receive address.
+    - The first id is random; the others are `keccak256(abi.encode(first id, chain id, token))`, so the pay page can tie them to the link.
+    - So the watcher, ledger and signer treat each option as any invoice.
+  - The first row is the invoice: its token is the pay link, and its number and details are the invoice's.
+  - Each option counts toward the profile's open and daily limits.
+  - Reads add `optionId` (the on-chain id in the shown terms), `optionLocked`, `optionCount` and, on a read alone, `options`.
+  - Each of `options` is `{optionId, chainId, network, token, symbol, decimals, amount, receiveAddress, deposits}`.
+  - Deposits on an option other than the shown one are held for the payer.
+  - Until an option has money the terms shown are the first option's.
   - The first option whose final payments add up to a tenth of the amount, at most 1.00 USD, becomes the invoice's for
     good (`chosen_id`, R-119).
   - A smaller deposit before the choice is held for the payer. Once its option is chosen, it pays the creator too.
@@ -936,11 +959,12 @@ R-19 and R-42; the full schema is in openapi.yaml.
   (`invoices.pay_token`). The invoice's `invoiceId` is keccak256 of it.
   - The chain shows `invoiceId` and option ids (`ReceiverDeployed`, `Settled`, the deploy calldata), so no public route
     takes them: an id there is 404 `invoice_not_found`.
-  - Create, the owner's reads and a job's payments give `payToken`. An invoice made before D-86 has `null` and no
-    public route. Its Send to client, reminder and receipt emails are dropped: they would link nowhere.
-- The public `GET /v1/invoices/{payToken}` has no `client`: the token is a bearer link, so it returns only what the payer
-  needs (OWASP API Security Top 10 2023, API3). What it returns is listed once, in `getInvoice` in openapi.yaml. Create,
-  list and the profile's GET, which only the owner calls, include `client`.
+  - Create, the owner's reads and a job's payments give `payToken`.
+  - An invoice without one (`null`, made before D-86) has no public route.
+    - Its Send to client, reminder and receipt emails are dropped: they would link nowhere.
+- The public `GET /v1/invoices/{payToken}` has no `client`: the token is a bearer link (OWASP API Security Top 10 2023, API3).
+  - It returns only what the payer needs, listed once in `getInvoice` in [openapi.yaml](../../apps/backend/api/openapi.yaml).
+  - Create, list and the profile's GET, which only the owner calls, include `client`.
 
 ## Invoice and receipt PDFs
 
@@ -1072,10 +1096,10 @@ R-100, D-81; the full schema is in openapi.yaml. A job is a quote with a payment
 
 Both read the transfers the worker records for profile wallets (R-38); the full schema is in openapi.yaml.
 
-- `GET /v1/profiles/{profileId}/transactions?limit=&cursor=&direction=&q=`: the list format above, newest block
-  time first, reorged transfers left out. An item: `chainId`, `token`, `symbol`, `decimals`, `direction` (`in` | `out`), `amount`,
-  `counterparty` (sender for in, receiver for out), `txHash`, `logIndex`, `blockNumber`, `at` (block time), `status`
-  (`detected` | `confirmed`, as for deposits).
+- `GET /v1/profiles/{profileId}/transactions?limit=&cursor=&direction=&q=`: the list format above.
+  - Newest block time first; reorged transfers are left out.
+  - An item is `Transaction` in [openapi.yaml](../../apps/backend/api/openapi.yaml).
+  - `counterparty` is the sender for money in and the receiver for money out. `status` is as for deposits.
   - An incoming transfer under 0.10 USD is left out, unless it is a settlement or comes from another of the user's
     profiles (R-38). The CSV export keeps every transfer.
 - Records (R-108): each transaction adds `usdValue` and `classification`, and `invoice` for an invoice payment.
@@ -1120,14 +1144,17 @@ Both read the transfers the worker records for profile wallets (R-38); the full 
   - Until the ECB publishes a day's rates and the worker reads them, that day's transfers use the day before.
   - `amount` is the USD value / USD rate × the currency's rate, rounded half up to its decimals; EUR's rate is 1.
 - `GET /v1/profiles/{profileId}/balance-history?days=N`: N is 1–365, default 30 (not a number: 400; out of range: 422).
-  One point per UTC day, today included, oldest first: `points[i]` is `{ at, estimatedUsd, receivedUsd, sentUsd }`,
-  and `tokens[j]` is `{ chainId, token, symbol, decimals, balances, received, sent }`, where each array holds one
-  base-unit string per point. `at` is the end of the day (00:00 UTC of the next day); the last point is now, and its
-  balance is the wallet balance `/balances` reads at the selected RPC's finalized block. An earlier balance undoes the
-  final transfers after it (not reorged, at or below that block); `received` and `sent` sum them per day, today's
-  without an end. The database sums them per token and day, so dust doesn't make the read grow (R-118).
-  The USD fields count 1 USD per token; the app values the token arrays at market prices instead (R-178). A missing wallet balance makes that token's arrays and every USD total null. Money moved without a
-  token `Transfer` log (Arc native-coin sends, fees paid in the token) is not undone; a balance below 0 shows 0.
+  - The shape is `BalanceHistory` in [openapi.yaml](../../apps/backend/api/openapi.yaml): one point per UTC day, today included, oldest first.
+  - Each token array holds one base-unit string per point.
+  - `at` is the end of the day (00:00 UTC of the next day). The last point is now.
+  - The last balance is the wallet balance `/balances` reads at the selected RPC's finalized block.
+  - An earlier balance undoes the final transfers after it: not reorged, at or below that block.
+  - `received` and `sent` sum them per day, today's without an end.
+  - The database sums them per token and day, so dust doesn't make the read grow (R-118).
+  - The USD fields count 1 USD per token; the app values the token arrays at market prices instead (R-178).
+  - A missing wallet balance makes that token's arrays and every USD total null.
+  - Money moved without a token `Transfer` log is not undone: Arc native-coin sends, fees paid in the token.
+  - A balance below 0 shows 0.
 
 - `GET /v1/profiles/{profileId}/balances` splits each token's `pending` into exact parts (D-114).
   - `settling`: owed to the creator on paid payments, waiting for the wallet transfer.
@@ -1156,7 +1183,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `networkFee.paidBy` says how: `wallet` for a `native_gas` token, `paymaster` for a `fee_asset` token.
     - `forwend`, with 0, is a send Forwend sponsored before D-121.
   - A `native_gas` token is its chain's gas coin (Arc USDC, Tempo OUSD; R-216, R-223).
-    - The server estimates the gas and a fifth more, at the fee cap of `settlement.Fees` (R-189).
+    - The server estimates the gas and a fifth more, at the fee cap of `chain.Fees` (R-189).
     - Amount plus fee must fit the wallet's gas-coin balance; on Tempo, its token balance (its native balance is a placeholder).
     - On Tempo a wallet that chose another fee token in the fee manager can't send: its fee would leave in that token.
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.
@@ -1203,7 +1230,8 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - The money lists show them first, until the transfer's own row takes their place.
 - `POST .../sends/{sendId}/submit` takes `txHash`, the hash Privy returned, or `signature` for a paymaster send.
   - A paymaster send refuses a hash. With a signature the server sends the approve's request to Privy once.
-  - Privy answers a transaction id. The hash comes only from `GET /v1/transactions/{id}`: submit asks for 10 s, then each read.
+  - Privy answers a transaction id. The hash comes only from Privy's `GET /v1/transactions/{id}`.
+    - Submit asks for it for 10 s, then each read asks.
     - Privy's answer counts only when its wallet, `caip2` and `reference_id` are the send's.
     - A transfer on the chain never gives it: one with the same amount and recipient may be a theft's (D-49).
     - Until it has a hash, the send explains its own transfer to the outflow notice for 30 minutes, as an approved one does.
@@ -1242,9 +1270,10 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 - `POST /v1/jobs/{token}/accept` is public and takes no key: a job is accepted once, and its deposit has the key
   `job:<jobId>:1`.
 - First call: 201. Same key and body again: 200 with the same resource. Same key, other body: 409.
-- Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 bytes of UTF-8; a missing or longer key is 400. The server stores a SHA-256 of the
-  normalized values, never the body, so field order, spacing and address letter case don't matter. A request that
-  fails validation stores nothing. Two requests with one key at once get one resource.
+- Keys are unique per profile (per user for `POST /v1/profiles`), 1–255 bytes of UTF-8; a missing or longer key is 400.
+- The server stores a SHA-256 of the normalized values, never the body.
+  - So field order, spacing and address letter case don't matter.
+- A request that fails validation stores nothing. Two requests with one key at once get one resource.
 - A key starting `job:`, `link:` or `retainer:` is 400: Forwend makes invoices under those keys in the profile's key space.
 
 ## Auth
@@ -1257,6 +1286,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - Once the freeze worked, the cutoff is set even if the unfreeze failed. A disconnect stops neither.
 - `mid.RequireFreshSignIn` (the `FreshSignIn` guard) protects the changes D-63 names.
   - They are giving a role, making or rolling an API key, saving a webhook endpoint, and revealing or rotating its secret.
+  - The `SigningCheck` guard runs it for a send's approve; `FreshSignedIn` runs it for `PUT /v1/me/two-step`.
   - It passes when its Privy session (`sid`) confirmed Forwend's code in the last 15 minutes (D-49).
   - Or when it is at most 15 minutes old (`auth.FreshWindow`) and its `iat` equals the `latest_verified_at` of the
     user's email or passkey account, read from Privy then.
@@ -1282,7 +1312,8 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - It works only on its profile's routes whose permission is in its scopes, and only for its store's invoices.
   - It never passes a `FreshSignIn` route (403), and `/v1/me` and the other routes for a person answer 401.
   - An unknown, revoked or expired key is 401 `invalid_api_key`; each key has its own rate limit, as a user has.
-- Public routes (checkout reads) are marked `security: []` in the spec. `/healthz` is also public and uses its own status response. No other route is public by default.
+- Public routes (checkout reads) are marked `security: []` in the spec. No other route is public by default.
+  - `/healthz` is also public and uses its own status response.
 - Profile-scoped routes let in the profile's owner and its members (R-138), and give anyone else 403.
   - An unknown or malformed profile ID is 403 too, so callers can't probe which profiles exist.
   - Each route asks for one permission from the map in `internal/auth/access.go`, never a role name (D-93).
@@ -1295,48 +1326,63 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - A member without `tokens.write` who changes a store's `tokensOff` gets 403.
   - `GET /v1/me` lists the user's own profiles, then the ones they are a member of, each with `role`.
   - Each profile also lists its `permissions`, so the app shows only what the role can use.
-- `internal/auth` verifies the token locally: ES256 only, issuer `privy.io`, audience = app ID, `exp` required,
-  `sub` = the user's Privy DID, and a `sid` with no `linked_accounts`: Privy signs identity tokens for the app too,
-  and they must not work as bearer tokens. The key is the one named by the token's `kid` among those published at
-  `PRIVY_JWKS_URL` (Privy publishes more than one), loaded at startup (R-29). An unknown `kid` fetches the keys again at
-  most once a minute; a known one makes no network call while the list is younger than an hour. An older list is
-  fetched again first, so a key Privy withdrew stops verifying (R-30); if Privy is unreachable, the last list verifies for
-  10 more minutes (`KeyGrace`), then nothing does. `PRIVY_JWKS_URL` must be https. The Privy Go SDK (D-12) has no local token check, so this
-  uses `golang-jwt/jwt/v5` as in Privy's Go guide (https://docs.privy.io/authentication/user-authentication/access-tokens).
-- `mid.RequireUser` (or `mid.RequireKey` for a key) and `mid.RequireAccess` wrap the protected handlers, through `mid.Guards` (`SignedIn`,
-  `Can`, `FreshSignIn`) that each module's `routes.go` applies. `/v1/me` and `POST /v1/profiles` act
-  only for the token's user. Every `{profileId}` route is listed in `profileRoutes` in `internal/httpapi/tests/profiles_test.go`, which checks
-  that another user gets 403 on each.
+- `internal/auth` verifies the token locally.
+  - ES256 only, issuer `privy.io`, audience = app ID, `exp` required, `sub` = the user's Privy DID.
+  - It needs a `sid` with no `linked_accounts`: Privy signs identity tokens for the app too, and they must not work as bearer tokens.
+  - The key is the one the token's `kid` names among those at `PRIVY_JWKS_URL`, loaded at startup (R-29).
+  - Privy publishes more than one key. `PRIVY_JWKS_URL` must be https.
+  - An unknown `kid` fetches the keys again at most once a minute.
+  - A known one makes no network call while the list is younger than an hour.
+  - An older list is fetched again first, so a key Privy withdrew stops verifying (R-30).
+  - If Privy is unreachable, the last list verifies for 10 more minutes (`KeyGrace`), then nothing does.
+  - The Privy Go SDK (D-12) has no local token check, so this uses `golang-jwt/jwt/v5`, as in
+    [Privy's Go guide](https://docs.privy.io/authentication/user-authentication/access-tokens).
+- `mid.RequireUser` (or `mid.RequireKey` for a key) and `mid.RequireAccess` wrap the protected handlers.
+  - They run through the `mid.Guards` (`SignedIn`, `Can`, `FreshSignIn`, `SigningCheck`, `FreshSignedIn`) each module's `routes.go` applies.
+  - `/v1/me` and `POST /v1/profiles` act only for the token's user.
+  - `profileRoutes` in `internal/httpapi/tests/profiles_test.go` lists every `{profileId}` route.
+    It checks that another user gets 403 on each.
 
 ## Errors
 
 - One shape: `{ "error": { "code": "invoice_not_found", "message": "…" } }`. Codes are snake_case and listed in the spec.
   - `TestOpenAPIErrorCodesMatchTheAPI` keeps the spec's `Error.code` enum to the codes the API writes.
-- 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many
-  requests, 503 a network the worker has not scanned yet (`network_not_ready` on invoice create, `network_unavailable` when a recheck cannot read it), or a network fee that can't be priced (`network_fee_unavailable`), 500 anything else.
-  A profile has at most 1,000 invoices open for payment at once and creates at most 500 a day: 422 above.
-  Invoices payers make on its payment links, and its checkout sessions, have the same limits, each counted apart, so
-  that traffic never blocks the owner (R-188). A link checkout or session that expired unpaid leaves the day's count.
+- 400 malformed, 401 no or bad token, 403 not yours, 404 missing, 409 conflict, 422 invalid value, 429 too many requests.
+- 503: something the request needs is not ready or can't be reached now; the same request can try again.
+  - Examples: a network the worker has not scanned yet (`network_not_ready`), or a fee that can't be priced (`network_fee_unavailable`).
+- 500 anything else.
+- A profile's invoices have at most 1,000 receive addresses open at once and 500 made a day: 422 above (`invoice.MaxOpen`, `invoice.MaxPerDay`).
+  - Each option of a payer-chooses invoice counts.
+  - Its payment links' payments and its checkout sessions have the same limits, each counted apart (R-188).
+  - So that traffic never blocks the owner.
+  - A link payment or checkout session that expired unpaid leaves the day's count.
 - A 500 never shows internal details. `httpio.WriteError` maps sentinel errors to codes in one place.
 
 ## Rate limits
 
-`internal/httpapi/mid/ratelimit.go`, constants there (Check status's in `invoiceapi/routes.go`). Each caller has a token bucket: a request takes a token, tokens
-come back at a fixed rate up to the burst size. An empty bucket answers 429 `rate_limited` with `Retry-After` in whole
-seconds (when the next token is back) and runs nothing else.
+The buckets are in `internal/httpapi/mid/ratelimit.go`. Per-route limits are constants in their module's `routes.go`
+(cross-chain's in `invoiceapi/crosschain.go`).
 
+- Each caller has a token bucket: a request takes a token, and tokens come back at a fixed rate up to the burst size.
+- An empty bucket answers 429 `rate_limited` with `Retry-After` in whole seconds, when the next token is back.
+  It runs nothing else.
+- A domain's "too soon" error (`invoice.TooSoonError`) answers the same 429 through `httpio.WriteError`.
 - Routes that need a token: per Privy user or per API key, after it is checked; 2 requests a second, 60 at once.
   - `API_USER_BURST` raises the 60. Only the live e2e sets it (1000): all its tests sign in as one user (D-85).
-- `POST /v1/invoices/{payToken}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api: one
-  check per invoice every 5 minutes (the invoice read gives `nextCheckAt`, so a reloaded page still waits), kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`), and a
-  per-process bucket of 1 a second, 10 at once, for everyone together. Each owner's invoices (one user, all profiles)
-  take from the owner's own bucket first, 3 at once, then one every 5 s, so one account can't empty the shared one. Both answer 429 with `Retry-After`. A chain that
-  can't be read answers 503 `network_unavailable`. Until an option has money it checks every option's address (the
-  payer may have paid any); the answer is an option holding more than recorded, else the shown one. An option whose
-  network does not answer is listed in `unreadable` and the others are still checked. When the shown option can't be
-  read and no other holds unrecorded money, it is 503: another option's empty read never answers for it. A rescan is asked only when the address holds more than is
-  recorded and no rescan finished in the last 10 minutes, so money no log explains doesn't start a
-  full rescan on every press.
+- `POST /v1/invoices/{payToken}/recheck` (Check status, R-55) reads a chain RPC, so it is limited in the api.
+  - One check per invoice every 5 minutes, kept in Postgres so every replica agrees (`invoice_rechecks.checked_at`).
+  - The invoice read gives `nextCheckAt`, so a reloaded page still waits.
+  - A per-process bucket of 1 a second, 10 at once, serves everyone together.
+  - Each owner's invoices (one user, all profiles) take from the owner's own bucket first: 3 at once, then one every 5 s.
+    So one account can't empty the shared one.
+  - Both answer 429 with `Retry-After`. A chain that can't be read answers 503 `network_unavailable`.
+  - Until an option has money it checks every option's address: the payer may have paid any.
+  - The answer is an option holding more than recorded, else the shown one.
+  - An option whose network does not answer is listed in `unreadable`; the others are still checked.
+  - When the shown option can't be read and no other holds unrecorded money, it is 503.
+    Another option's empty read never answers for it.
+  - A rescan is asked only when the address holds more than is recorded and no rescan finished in the last 10 minutes.
+    So money no log explains doesn't start a full rescan on every press.
 - `POST /v1/invoices/{payToken}/views` (R-125): per link, 5 at once, then one every 5 s. It slows a run-up of one link's
   count; it can't stop one.
 - `POST /v1/links/{slug}/visits` (R-142): per link, 5 at once, then one every 5 s.
@@ -1351,16 +1397,17 @@ seconds (when the next token is back) and runs nothing else.
   - Per link: 3 at once, then one every 10 s.
   - For everyone together: 20 at once, then 5 a second, spent only by an accept that changes a job (R-117).
   - A bad body, an unknown link or a job already accepted answers before it.
-- The other public routes (`GET /v1/invoices/{payToken}`, its `/embed` check, `GET /v1/jobs/{token}`, `GET /v1/links/{slug}`, both PDFs and `POST /v1/reminders/{token}/stop`) have no limit in the api. Next's `/api` rewrite adds
-  no `X-Forwarded-For` of its own and passes a client's header through unchanged (measured 2026-10-15 with a stub
-  behind `next start`: no header without one, a sent `1.2.3.4` arrived as is), so the api sees one address for every
-  payer and cannot trust the header. Limit them
-  per IP at the load balancer or edge once hosting is chosen (Q-8), and keep the api reachable only through it.
-  `/healthz` has no limit.
-- The buckets live in each api process (D-72): with N replicas behind a load balancer a caller gets up to N times the
-  rate.
-- A key over 128 characters, or a new one once 100,000 buckets are held, shares one overflow bucket: a public route's
-  key comes from its path, which anyone can make up. Redis can hold the counts once more than a few replicas run.
+- The other public routes have no limit in the api.
+  - They are `GET /v1/invoices/{payToken}`, its `/embed` check, `GET /v1/jobs/{token}`, `GET /v1/links/{slug}`,
+    both PDFs, `GET /v1/stores/{storeId}/logo.png` and `POST /v1/reminders/{token}/stop`.
+  - Next's `/api` rewrite adds no `X-Forwarded-For` of its own and passes a client's header through unchanged.
+  - So the api sees one address for every payer and cannot trust the header.
+  - Limit them per IP at the load balancer or edge (Q-8), and keep the api reachable only through it.
+  - `/healthz` has no limit.
+- The buckets live in each api process (D-72): with N replicas behind a load balancer a caller gets up to N times the rate.
+  - [Scaling](architecture.md#scaling) covers moving them to a shared store.
+- A key over 128 characters, or a new one once 100,000 buckets are held, shares one overflow bucket.
+  - A public route's key comes from its path, which anyone can make up.
 - How the web handles 429: [web architecture](../web/architecture.md).
 
 ## Handlers and tests

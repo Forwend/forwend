@@ -5,9 +5,7 @@ import { cx } from "../../lib/cx";
 
 export interface CheckboxProps extends Omit<ComponentPropsWithoutRef<"input">, "type"> {
   label: string;
-  /** The label for screen readers only, where the row around the box already says what it is. */
   hideLabel?: boolean;
-  /** Some of what it stands for is checked: drawn as a dash, read as "mixed". */
   mixed?: boolean;
 }
 

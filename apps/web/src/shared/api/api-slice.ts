@@ -3,11 +3,14 @@ import { type AskFreshSignIn, withFreshSignIn } from "@/shared/api/fresh-sign-in
 import { withRateLimit } from "@/shared/api/rate-limit";
 import { API_BASE } from "@/shared/config/api";
 
-/** What the store gives each request: a fresh Privy access token, or null when signed out. freshSignIn asks the
- * signed-in user to sign in again (R-137); public pages have none. */
+/** Store extras for each request; public pages have no freshSignIn. */
 export interface ApiExtra {
-  getAccessToken: () => Promise<string | null>;
+  getAccessToken: () => Promise<string | null>; // null when signed out
   freshSignIn?: AskFreshSignIn;
+}
+
+export function profilePath(profileId: string, path = ""): string {
+  return `/v1/profiles/${encodeURIComponent(profileId)}${path && `/${path}`}`;
 }
 
 // One slice for our backend; each feature adds its endpoints with injectEndpoints.
@@ -28,8 +31,8 @@ export const apiSlice = createApi({
     ),
     (extra) => (extra as ApiExtra).freshSignIn,
   ),
-  // A response that breaks its schema is a failed request, shown like any other failure: the page never draws money
-  // from a value it cannot trust. The log names the endpoint and the fields, never the values.
+  // A response that breaks its schema fails the request, so the page never draws money from an untrusted value.
+  // The log names the endpoint and the fields, never the values.
   catchSchemaFailure: (error) => ({
     status: "CUSTOM_ERROR" as const,
     error: `${error.schemaName} failed validation`,
@@ -42,7 +45,6 @@ export const apiSlice = createApi({
     );
     console.error(`${info.endpoint}: ${error.schemaName} failed at ${fields.join(", ")}`);
   },
-  // Only cache entries a mutation elsewhere must refresh carry a tag.
   tagTypes: ["PendingSends"],
   endpoints: () => ({}),
 });

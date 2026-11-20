@@ -1,11 +1,13 @@
-// Package httpio holds the JSON and the error shape of docs/backend/api.md that every API module shares.
+// Package httpio holds the JSON and error shape every API module shares.
 package httpio
 
 import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/forwend/forwend/apps/backend/internal/activity"
 	"github.com/forwend/forwend/apps/backend/internal/apikey"
@@ -29,8 +31,13 @@ var ErrMalformed = errors.New("malformed request")
 
 var ErrRateLimited = errors.New("rate limited")
 
-// WriteError uses the error shape of docs/backend/api.md. Only 400 and 422 show err's text, which says what to fix.
+// WriteError answers in the API error shape; only 400 and 422 show err's text.
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
+	var soon *invoice.TooSoonError
+	if errors.As(err, &soon) {
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
+		err = ErrRateLimited
+	}
 	status, code, message := http.StatusInternalServerError, "internal", "internal error"
 	switch {
 	case errors.Is(err, ErrInvalidQuery):
@@ -206,7 +213,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, invoice.ErrTooManyQuotes):
 		status, code, message = http.StatusTooManyRequests, "too_many_quotes",
 			"too many quotes for this invoice in the last hour: try again later"
-	case errors.Is(err, invoice.ErrProvider): // logged where it happened
+	case errors.Is(err, invoice.ErrProvider):
 		status, code, message = http.StatusServiceUnavailable, "provider_unavailable",
 			"could not get a quote from NEAR Intents: try again shortly"
 	case errors.Is(err, invoice.ErrFeeQuote):

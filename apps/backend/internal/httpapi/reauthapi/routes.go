@@ -1,4 +1,4 @@
-// Package reauthapi serves Confirm it's you (R-137) of docs/backend/api.md: Forwend's own emailed code.
+// Package reauthapi serves Confirm it's you: Forwend's own emailed code.
 package reauthapi
 
 import (
@@ -13,12 +13,10 @@ import (
 func Routes(mux *http.ServeMux, g mid.Guards, codes *reauth.Service, users *privy.Client) {
 	mux.Handle("POST /v1/me/fresh-sign-in", g.SignedIn(sendCode(codes)))
 	mux.Handle("POST /v1/me/fresh-sign-in/verify", g.SignedIn(verifyCode(codes)))
-	// Privy changes the account in the browser (a passkey, R-217): Forwend's screens ask here first, so a stale session
-	// confirms it's you there. Privy's own API isn't bound by it: a stolen session could still call Privy (Q-13).
+	// Forwend's screens ask here before Privy changes the account; Privy's own API isn't bound by it.
 	mux.Handle("GET /v1/me/fresh-sign-in", g.FreshSignedIn(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})))
-	// R-219: the MFA methods the user has at Privy, recorded behind a fresh sign-in. From then on they stand in for the
-	// emailed code on a send (D-49); one set up at Privy without this, or set up again, doesn't.
+	// Recorded MFA methods stand in for the emailed code on a send; one set up at Privy without this doesn't.
 	mux.Handle("PUT /v1/me/two-step", g.FreshSignedIn(recordTwoStep(codes, users)))
 }

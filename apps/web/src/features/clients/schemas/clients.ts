@@ -1,23 +1,20 @@
 import { z } from "zod";
 import { apiTime, pageOf } from "@/shared/schemas/api";
 
-/** R-86: "" means none. A saved client needs a name; an invoice's client block may be all empty. */
+/** "" means none; an invoice's client block may be all empty. */
 export const clientBodySchema = z.object({
   name: z.string(),
   email: z.string(),
   address: z.string(),
-  // ISO 3166-1 alpha-2, upper case.
-  country: z.string().regex(/^([A-Z]{2})?$/),
+  country: z.string().regex(/^([A-Z]{2})?$/), // ISO 3166-1 alpha-2
   taxId: z.string(),
 });
 
-/** The PUT body (R-90, R-97). */
 export const savedClientBodySchema = clientBodySchema.extend({
   reference: z.string(),
   reminders: z.boolean(),
 });
 
-/** One saved client (apps/backend/api/openapi.yaml, Client). */
 export const clientSchema = z.object({
   clientId: z.guid(),
   name: z.string(),
@@ -30,5 +27,4 @@ export const clientSchema = z.object({
   updatedAt: apiTime,
 });
 
-/** GET /v1/profiles/{profileId}/clients. */
 export const clientsPageSchema = pageOf(clientSchema);

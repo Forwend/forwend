@@ -12,31 +12,21 @@ import {
 } from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Notifications } from "@/features/profiles/types/notifications";
-import type { FeesPaidBy, Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
+import type { FeesPaidBy, Me, NewProfileKind, Profile } from "@/features/profiles/types/profile";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
-import { apiSlice } from "@/shared/api/api-slice";
-
-const NOT_FOUND = 404;
-
-const billingDetailsUrl = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/billing-details`;
-const notificationsUrl = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/notifications`;
-const tokensUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/tokens`;
-const modeUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/mode`;
-const feesUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/fees`;
+import { HTTP_STATUS } from "@/shared/api/api-error";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    /** POST /v1/me: signs the user up on the first call, then returns their profiles (oldest first). */
+    /** Signs the user up on the first call. */
     signUp: build.query<Me, void>({
       query: () => ({ url: "/v1/me", method: "POST" }),
       responseSchema: meSchema,
     }),
-    /** POST /v1/profiles: one profile per idempotency key, so a retried request never makes two. */
     createProfile: build.mutation<
       Profile,
-      { idempotencyKey: string; body: { kind: ProfileKind; name: string } }
+      { idempotencyKey: string; body: { kind: NewProfileKind; name: string } }
     >({
       query: ({ idempotencyKey, body }) => ({
         url: "/v1/profiles",
@@ -46,7 +36,6 @@ export const profilesApi = apiSlice.injectEndpoints({
       }),
       argSchema: z.object({ idempotencyKey: z.string().min(1), body: createProfileBodySchema }),
       responseSchema: profileSchema,
-      // The new profile joins the list at once, without asking for the list again.
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -56,25 +45,29 @@ export const profilesApi = apiSlice.injectEndpoints({
             }),
           );
         } catch {
-          // The form shows the error.
+          // Shown by the form.
         }
       },
     }),
-    /** null until the profile saves them (404 billing_details_not_found). */
+    /** null until saved (404 billing_details_not_found). */
     getBillingDetails: build.query<BillingDetails | null, string>({
       query: (profileId) => ({
-        url: billingDetailsUrl(profileId),
-        validateStatus: (response) => response.ok || response.status === NOT_FOUND,
+        url: profilePath(profileId, "billing-details"),
+        validateStatus: (response) => response.ok || response.status === HTTP_STATUS.notFound,
       }),
       transformResponse: (data: BillingDetails, meta) =>
-        meta?.response?.status === NOT_FOUND ? null : data,
+        meta?.response?.status === HTTP_STATUS.notFound ? null : data,
       responseSchema: billingDetailsSchema.nullable(),
     }),
     saveBillingDetails: build.mutation<
       BillingDetails,
       { profileId: string; body: BillingDetailsBody }
     >({
-      query: ({ profileId, body }) => ({ url: billingDetailsUrl(profileId), method: "PUT", body }),
+      query: ({ profileId, body }) => ({
+        url: profilePath(profileId, "billing-details"),
+        method: "PUT",
+        body,
+      }),
       argSchema: z.object({ profileId: z.guid(), body: billingDetailsBodySchema }),
       responseSchema: billingDetailsSchema,
       async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
@@ -82,18 +75,17 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getBillingDetails", profileId, data));
         } catch {
-          // The form shows the error.
+          // Shown by the form.
         }
       },
     }),
-    /** The profile's owner email (R-80). */
     getNotifications: build.query<Notifications, string>({
-      query: (profileId) => notificationsUrl(profileId),
+      query: (profileId) => profilePath(profileId, "notifications"),
       responseSchema: notificationsSchema,
     }),
     saveNotifications: build.mutation<Notifications, { profileId: string; email: boolean }>({
       query: ({ profileId, email }) => ({
-        url: notificationsUrl(profileId),
+        url: profilePath(profileId, "notifications"),
         method: "PUT",
         body: { email },
       }),
@@ -103,18 +95,17 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getNotifications", profileId, data));
         } catch {
-          // The page shows the error.
+          // Shown by the page.
         }
       },
     }),
-    /** R-221: Developer mode, false livemode. Every other cached read was of the old mode, so each reads again; the
-     *  profile list only changes the mode, so the app shell stays as it is. */
+    /** Every other cached read was of the old mode, so each reads again. */
     saveProfileMode: build.mutation<
       { livemode: boolean },
       { profileId: string; livemode: boolean }
     >({
       query: ({ profileId, livemode }) => ({
-        url: modeUrl(profileId),
+        url: profilePath(profileId, "mode"),
         method: "PUT",
         body: { livemode },
       }),
@@ -137,17 +128,16 @@ export const profilesApi = apiSlice.injectEndpoints({
               );
           }
         } catch {
-          // The page shows the error.
+          // Shown by the page.
         }
       },
     }),
-    /** D-122: who pays the profile's new invoices' fees; the profile list keeps it. */
     saveProfileFees: build.mutation<
       { feesPaidBy: FeesPaidBy },
       { profileId: string; feesPaidBy: FeesPaidBy }
     >({
       query: ({ profileId, feesPaidBy }) => ({
-        url: feesUrl(profileId),
+        url: profilePath(profileId, "fees"),
         method: "PUT",
         body: { feesPaidBy },
       }),
@@ -162,34 +152,30 @@ export const profilesApi = apiSlice.injectEndpoints({
             }),
           );
         } catch {
-          // The page shows the error.
+          // Shown by the page.
         }
       },
     }),
-    /** R-136: every enabled token, on until the profile turns it off. */
-    // The schema checks the list itself, as upsertQueryData below runs the endpoint's schemas on it.
+    // upsertQueryData runs this schema on the list, so it checks the list itself.
     getProfileTokens: build.query<TokenSwitch[], string>({
-      query: (profileId) => tokensUrl(profileId),
+      query: (profileId) => profilePath(profileId, "tokens"),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
     }),
-    /** R-240: whether payers may pay from other chains through NEAR Intents; on by default. */
     getCrossChainSwitch: build.query<boolean, string>({
-      query: (profileId) => tokensUrl(profileId),
+      query: (profileId) => profilePath(profileId, "tokens"),
       transformResponse: (data: { crossChain: boolean }) => data.crossChain,
       responseSchema: z.boolean(),
     }),
-    /** Saves only the switch: the tokens off stay as the API has them. */
     saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
       query: ({ profileId, on }) => ({
-        url: tokensUrl(profileId),
+        url: profilePath(profileId, "tokens"),
         method: "PUT",
         body: { crossChain: on },
       }),
       argSchema: z.object({ profileId: z.guid(), on: z.boolean() }),
       transformResponse: (data: { crossChain: boolean }) => data.crossChain,
       responseSchema: z.boolean(),
-      // The switch moves at once, as the token boxes do; a refusal puts it back.
       async onQueryStarted({ profileId, on }, { dispatch, queryFulfilled }) {
         const guess = dispatch(
           profilesApi.util.updateQueryData("getCrossChainSwitch", profileId, () => on),
@@ -198,16 +184,19 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getCrossChainSwitch", profileId, data));
         } catch {
-          // The page shows the error.
+          // Shown by the page.
           guess.undo();
         }
       },
     }),
     saveProfileTokens: build.mutation<TokenSwitch[], { profileId: string; off: TokenRef[] }>({
-      query: ({ profileId, off }) => ({ url: tokensUrl(profileId), method: "PUT", body: { off } }),
+      query: ({ profileId, off }) => ({
+        url: profilePath(profileId, "tokens"),
+        method: "PUT",
+        body: { off },
+      }),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
-      // The boxes move at once; the API's answer then replaces the guess, and a refusal puts the old ones back.
       async onQueryStarted({ profileId, off }, { dispatch, queryFulfilled }) {
         const guess = dispatch(
           profilesApi.util.updateQueryData("getProfileTokens", profileId, (tokens) => {
@@ -219,7 +208,7 @@ export const profilesApi = apiSlice.injectEndpoints({
           const { data } = await queryFulfilled;
           dispatch(profilesApi.util.upsertQueryData("getProfileTokens", profileId, data));
         } catch {
-          // The page shows the error.
+          // Shown by the page.
           guess.undo();
         }
       },

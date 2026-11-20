@@ -11,14 +11,13 @@ import (
 	"strings"
 )
 
-// ManagerKey is the ed25519 key 1Click signs its quotes with (D-124), as the 1Click SDK pins it.
-const ManagerKey = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"
+// managerKey is the ed25519 key 1Click signs its quotes with, as the 1Click SDK pins it.
+const managerKey = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"
 
 // ErrSignature: the answer is not a quote 1Click signed, or a field changed after it signed it.
 var ErrSignature = errors.New("1Click signature does not verify")
 
-// The fields 1Click signs, in the SDK's verifyQuoteSignature. Each optional one counts only when JavaScript would call
-// it true, as the SDK drops it otherwise.
+// The fields 1Click signs, as in the SDK's verifyQuoteSignature; an optional one counts only when JS-truthy.
 var (
 	signedRequest   = []string{"dry", "swapType", "slippageTolerance", "originAsset", "depositType", "destinationAsset", "amount", "refundTo", "refundType", "recipient", "recipientType", "deadline"}
 	optionalRequest = []string{"quoteWaitingTimeMs", "referral", "virtualChainRecipient", "virtualChainRefundRecipient", "customRecipientMsg"}
@@ -26,8 +25,7 @@ var (
 	optionalQuote   = []string{"depositAddress", "depositMemo", "deadline", "timeWhenInactive", "timeEstimate", "refundFee", "withdrawFee"}
 )
 
-// answer is a quote answer read with exact keys. Go's struct decoding matches keys in any case, so a "DepositAddress"
-// beside 1Click's "depositAddress" would win; every value checked comes from these maps, as the signature covers them.
+// answer is a quote read with exact keys: Go's struct decoding ignores case, so a "DepositAddress" key could win.
 type answer struct {
 	top, request, quote map[string]json.RawMessage
 }
@@ -46,7 +44,6 @@ func parseAnswer(b []byte) (answer, error) {
 	return a, nil
 }
 
-// text is the string at key in m, "" when it is missing or not a string.
 func text(m map[string]json.RawMessage, key string) string {
 	var s string
 	_ = json.Unmarshal(m[key], &s)
@@ -77,8 +74,7 @@ func verified(signed []byte, key string) (answer, error) {
 	return a, nil
 }
 
-// SignedMessage is the text 1Click signs for a quote answer: the base58 SHA-256 of the signed fields as sorted-key
-// JSON, the way json-stable-stringify writes it. A test's fake 1Click signs it with its own key.
+// SignedMessage is the text 1Click signs: base58 SHA-256 of the signed fields as json-stable-stringify writes them.
 func SignedMessage(b []byte) (string, error) {
 	a, err := parseAnswer(b)
 	if err != nil {

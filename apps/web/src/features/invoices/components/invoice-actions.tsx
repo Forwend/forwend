@@ -18,17 +18,16 @@ import {
 } from "@forwend/ui-web";
 import { Ban, CopyPlus, Ellipsis, FilePen, Pencil, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCancelInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { EditInvoice, type EditInvoiceProps } from "@/features/invoices/components/edit-invoice";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { CheckStatusState } from "@/features/invoices/hooks/use-check-status";
 import { invoiceCopyHref, invoiceReviseHref } from "@/features/invoices/lib/invoices";
-import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
+import { useDesktop } from "@/shared/hooks/use-desktop";
 
-const CONFLICT = 409;
 const ICON = "size-[var(--fw-icon-md)] shrink-0 text-muted";
-// A link row looks like the sheet's RowButton rows.
 const ROW = rowButtonClasses();
 
 export interface InvoiceActionsProps {
@@ -36,18 +35,13 @@ export interface InvoiceActionsProps {
   invoiceId: string;
   number: string;
   noun: string;
-  /** Check status (R-55), while the checkout can take money; what it found shows in the amount panel. */
   recheck: CheckStatusState | null;
-  /** Nothing paid yet, on any option (R-79). */
   cancelable: boolean;
-  // The page moves keyboard focus: the dialog and its trigger go away with the status.
   onCanceled: () => void;
-  /** What Edit shows (R-127); null until the owner's read is in, so Edit never starts from another invoice's values. */
-  editable: Omit<EditInvoiceProps, "profileId" | "invoiceId" | "number"> | null;
+  editable: Omit<EditInvoiceProps, "profileId" | "invoiceId" | "number"> | null; // null until the owner's read is in
 }
 
-// Edit (R-127) as its own button on desktop; Check status (R-55), revise (R-129) and cancel (R-79, D-79) before any
-// money, and duplicate (R-91) in a menu. On phones every one of them waits in a sheet, within thumb reach.
+// Desktop: Edit as its own button, the rest in a menu. Phones: all of them in a sheet.
 export function InvoiceActions({
   profileId,
   invoiceId,
@@ -62,8 +56,8 @@ export function InvoiceActions({
   const [sheet, setSheet] = useState(false);
   const [cancel, { isLoading, error }] = useCancelInvoiceMutation();
   const toast = useToast();
-  const status = (error as { status?: unknown } | undefined)?.status;
-  // A dialog opens once the menu or sheet has closed, so neither hands focus back to its trigger over the dialog.
+  const status = errorStatus(error);
+  // A dialog opens once the menu or sheet has closed, so neither hands focus back over it.
   const chosen = useRef<(() => void) | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -82,7 +76,7 @@ export function InvoiceActions({
       onCanceled();
     } catch (failure) {
       // Too late: the refetch that follows can end the cancel, and the dialog with it; the toast stays.
-      if ((failure as { status?: unknown }).status === CONFLICT) {
+      if (errorStatus(failure) === HTTP_STATUS.conflict) {
         toast({ tone: TONES.warning, title: COPY.cancel.tooLate });
       }
     }
@@ -128,7 +122,7 @@ export function InvoiceActions({
                 <MenuSeparator />
               </>
             ) : null}
-            {/* R-129: in the same window as cancel, which it does. */}
+            {/* Revising cancels this one, so it shows only while cancel does. */}
             {cancelable ? (
               <MenuItem asChild>
                 <Link href={invoiceReviseHref(invoiceId)}>
@@ -147,7 +141,7 @@ export function InvoiceActions({
               <>
                 <MenuSeparator />
                 <MenuItem
-                  className="text-danger data-[highlighted]:bg-danger-soft"
+                  danger
                   onSelect={() => {
                     chosen.current = openCancel ?? null;
                   }}
@@ -237,7 +231,7 @@ export function InvoiceActions({
       <p>{COPY.cancel.body}</p>
       {error ? (
         <p role="alert" className="mt-3 text-sm text-danger">
-          {status === CONFLICT ? COPY.cancel.tooLate : COPY.cancel.failed}
+          {status === HTTP_STATUS.conflict ? COPY.cancel.tooLate : COPY.cancel.failed}
         </p>
       ) : null}
       <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
@@ -268,18 +262,5 @@ export function InvoiceActions({
     cancelDialog()
   ) : (
     more()
-  );
-}
-
-// Turning a tablet past the desktop width swaps the sheet for the menu, which also closes an open sheet.
-function useDesktop(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const query = window.matchMedia(DESKTOP_QUERY);
-      query.addEventListener("change", onChange);
-      return () => query.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(DESKTOP_QUERY).matches,
-    () => true,
   );
 }

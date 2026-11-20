@@ -13,20 +13,12 @@ import (
 
 // Modules take Guards from the router, so every module shares one rate limit per user.
 type Guards struct {
-	SignedIn func(http.Handler) http.Handler
-	// Can guards a {profileId} route: the owner, a member whose role has the permission (R-138), or the profile's
-	// secret API key with it in its scopes (R-144).
-	Can func(auth.Permission) func(http.Handler) http.Handler
-	// FreshSignIn is Can for money actions and the other changes D-63 names (R-137); a key never passes it.
-	FreshSignIn func(auth.Permission) func(http.Handler) http.Handler
-	// SigningCheck is FreshSignIn for what Privy signs, a send: a user with Privy's MFA set up passes without
-	// Forwend's code, since Privy asks for MFA before it signs (D-49).
-	SigningCheck func(auth.Permission) func(http.Handler) http.Handler
-	// FreshSignedIn is SignedIn with a fresh sign-in, for a change to the account rather than a profile (R-217).
+	SignedIn      func(http.Handler) http.Handler
+	Can           func(auth.Permission) func(http.Handler) http.Handler
+	FreshSignIn   func(auth.Permission) func(http.Handler) http.Handler // a key never passes
+	SigningCheck  func(auth.Permission) func(http.Handler) http.Handler // FreshSignIn, or Privy MFA set up
 	FreshSignedIn func(http.Handler) http.Handler
-	// Payer is a public caller's address for rate limits, from a trusted proxy's X-Forwarded-For; "" when the api
-	// can't tell callers apart.
-	Payer func(*http.Request) string
+	Payer         func(*http.Request) string // "": callers can't be told apart
 }
 
 func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Service, users *privy.Client,
@@ -38,7 +30,6 @@ func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Servi
 	signedIn := func(h http.Handler) http.Handler {
 		return RequireUser(verifier, owners, Limit(buckets, SignedInUser, h))
 	}
-	// A key has its own bucket, as a user does.
 	byKey := func(h http.Handler) http.Handler {
 		return RequireKey(keys, Limit(buckets, func(r *http.Request) string { return "key:" + RequestKey(r) }, h))
 	}
@@ -74,8 +65,7 @@ func NewGuards(verifier *auth.Verifier, owners *auth.Service, keys *apikey.Servi
 	}
 }
 
-// ForwardedFor is the last address in X-Forwarded-For: the one the proxy in front of the api saw. Earlier ones are
-// whatever the client sent. An IPv6 address is its /64, which one network gets whole. "" when it isn't an IP address.
+// ForwardedFor is the last X-Forwarded-For address, the one our proxy saw; an IPv6 address is its /64.
 func ForwardedFor(r *http.Request) string {
 	values := r.Header.Values("X-Forwarded-For")
 	if len(values) == 0 {

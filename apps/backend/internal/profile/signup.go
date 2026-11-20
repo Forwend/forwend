@@ -6,16 +6,15 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/jackc/pgx/v5"
 )
 
-// RepairBudget bounds, together, the retries of missing wallets on profiles other than the personal one during
-// signup, so a slow Privy delays the app's load by at most this much (the api's write timeout is 30 s).
+// RepairBudget bounds all non-personal wallet retries in one signup, so a slow Privy can't stall the app's load.
 var RepairBudget = 5 * time.Second
 
-// SignUp changes nothing when repeated, except that it retries wallets Privy failed to make. Only the personal
-// profile's wallet must succeed; another's failure is logged and retried. created reports a new personal profile.
+// SignUp is idempotent except for retrying failed wallets; only the personal profile's wallet must succeed.
 func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Profile, created bool, err error) {
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "INSERT INTO users (privy_user_id, welcome) VALUES ($1, true) ON CONFLICT DO NOTHING",
@@ -41,8 +40,8 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	repairCtx, cancel := context.WithTimeout(ctx, RepairBudget)
 	defer cancel()
 	for _, p := range profiles {
-		// A team's profile is its owner's: its wallet is made for them alone (D-61).
-		if p.WalletAddress != "" || p.Role != Owner {
+		// Only the owner makes a profile's wallet.
+		if p.WalletAddress != "" || p.Role != string(auth.Owner) {
 			continue
 		}
 		walletCtx := repairCtx
@@ -65,8 +64,7 @@ func (s *Service) SignUp(ctx context.Context, privyUserID string) (profiles []Pr
 	return profiles, created, err
 }
 
-// storeLoginEmail stores the verified login email from Privy, never an address a request names, so nobody can
-// point notifications at another inbox (R-80). The welcome email is queued with it, so it goes out once (R-84).
+// Only Privy's verified login email, never one a request names, so nobody can point notifications elsewhere.
 func (s *Service) storeLoginEmail(ctx context.Context, privyUserID string) {
 	var unread bool
 	if err := s.pool.QueryRow(ctx, "SELECT login_email IS NULL FROM users WHERE privy_user_id = $1",

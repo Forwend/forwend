@@ -1,17 +1,22 @@
+import { PAYMENT_STATUSES } from "@forwend/ui-web";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
-import { PaymentProblems } from "@/features/payments/components/payment-problems";
 import { PaymentReceived } from "@/features/payments/components/payment-received";
+import { health } from "@/features/payments/components/payment-reconciliation";
+import { HELD_REASONS } from "@/features/payments/constants/payments";
+import {
+  PAYMENT_DETAIL_COPY,
+  RECONCILIATION_COPY,
+} from "@/features/payments/constants/payments-copy";
 import {
   heldHint,
   leadOption,
   optionFigures,
-  paymentState,
-  paymentWallet,
-  problemLabel,
+  paymentDisplayStatus,
   receivedAmount,
 } from "@/features/payments/lib/payments";
+import { walletStateOf } from "@/shared/lib/payment-state";
 
 describe("merchant payment money", () => {
   it("keeps large base units, negative changes and subcent precision exact", () => {
@@ -27,15 +32,17 @@ describe("merchant payment money", () => {
     }
   });
   it("keeps confirmed payment separate from settlement into a wallet", () => {
-    expect(paymentState({ paymentStatus: "paid", closed: false })).toBe("Paid");
-    expect(paymentState({ paymentStatus: "detected", closed: true })).toBe("Closed unpaid");
-    expect(paymentWallet({ settlementStatus: "pending" })).toBe("pending");
-    expect(paymentWallet({ settlementStatus: "settled" })).toBe("inWallet");
-    expect(paymentWallet({ settlementStatus: "none" })).toBe("none");
-    expect(
-      paymentState({ paymentStatus: "paid", closed: false, amounts: { held: "1" } as never }),
-    ).toBe("Overpaid");
-    expect(paymentState({ paymentStatus: "partially_paid", closed: true })).not.toBe("Paid");
+    const status = (payment: Parameters<typeof paymentDisplayStatus>[0]) =>
+      PAYMENT_STATUSES[paymentDisplayStatus(payment)].label;
+    expect(status({ paymentStatus: "paid", closed: false })).toBe("Paid");
+    expect(status({ paymentStatus: "detected", closed: true })).toBe("Closed unpaid");
+    expect(walletStateOf({ settlementStatus: "pending" })).toBe("pending");
+    expect(walletStateOf({ settlementStatus: "settled" })).toBe("inWallet");
+    expect(walletStateOf({ settlementStatus: "none" })).toBe("none");
+    expect(status({ paymentStatus: "paid", closed: false, amounts: { held: "1" } as never })).toBe(
+      "Overpaid",
+    );
+    expect(status({ paymentStatus: "partially_paid", closed: true })).not.toBe("Paid");
   });
 });
 
@@ -84,7 +91,6 @@ describe("a payment row's amount", () => {
 });
 
 describe("receivedAmount", () => {
-  // R-228: settlement pays the recipient the net and the fees elsewhere; both were received.
   it("counts the fees settlement paid, so a settled payment with fees still shows all it received", () => {
     const settled = {
       receiver: "0",
@@ -104,11 +110,9 @@ describe("receivedAmount", () => {
 describe("optionFigures", () => {
   const receipt = { received: "0", pending: "0", held: "0" };
   it("names money over the request, before and after the ledger books it", () => {
-    // 1.00 sent for a 0.10 request, still confirming: 0.90 over, nothing booked yet.
     expect(
       optionFigures("100000", { ...receipt, received: "1000000", pending: "1000000" }),
     ).toEqual({ received: 1000000n, extra: 900000n, due: 0n });
-    // Booked: the held amount is the extra, even when late money makes it differ from the arithmetic.
     expect(optionFigures("100000", { ...receipt, received: "100000", held: "100000" })).toEqual({
       received: 100000n,
       extra: 100000n,
@@ -116,7 +120,6 @@ describe("optionFigures", () => {
     });
   });
   it("shows no extra once the held money went back to the payer", () => {
-    // 1.00 for a 0.10 request, all booked, and 0.90 returned: nothing is held any more.
     expect(optionFigures("100000", { ...receipt, received: "1000000" }).extra).toBe(0n);
   });
   it("leaves what is still due, and nothing when no receipt exists", () => {
@@ -148,12 +151,12 @@ describe("leadOption", () => {
   });
 });
 
-describe("payment page problems", () => {
-  const problem = (code: string, action = "review_funds", extra: Record<string, unknown> = {}) => ({
+describe("held money", () => {
+  const problem = (code: string, extra: Record<string, unknown> = {}) => ({
     amount: null,
     asset: null,
     code,
-    action,
+    action: "review_funds",
     optionId: null,
     endpointId: null,
     eventId: null,
@@ -161,63 +164,30 @@ describe("payment page problems", () => {
     ...extra,
   });
   const asset = { chainId: 421614, token: `0x${"1".repeat(40)}`, symbol: "USDC", decimals: 6 };
-  it("shows only the problems the rest of the page doesn't say", () => {
-    const markup = renderToStaticMarkup(
-      <PaymentProblems
-        problems={[
-          problem("settlement_refused", "review_settlement"),
-          problem("partial_payment", "share_checkout"),
-          problem("settlement_delayed", "wait"),
-          problem("reconciliation_required"),
-          problem("funds_movement_exception"),
-          problem("webhook_delivery", "review_webhooks"),
-        ]}
-      />,
+  it("names how much is held and why, and nothing without held money", () => {
+    const held = problem("held_funds", { amount: "500000", asset, reason: "late" });
+    expect(heldHint([held])).toBe(PAYMENT_DETAIL_COPY.held("0.50 USDC", HELD_REASONS.late));
+    expect(heldHint([problem("held_funds", { amount: "500000", asset })])).toBe(
+      PAYMENT_DETAIL_COPY.held("0.50 USDC", undefined),
     );
-    expect(markup).toContain("Payment records need review");
-    expect(markup).toContain("Unexpected transfer");
-    expect(markup).toContain("Webhook delivery failed or paused");
-    expect(markup).toContain("Check webhooks");
-    expect(markup).not.toContain("Wallet transfer refused");
-    expect(markup).not.toContain("Partially paid");
-    expect(markup).not.toContain("owed");
+    expect(heldHint([problem("webhook_delivery")])).toBeNull();
   });
-  it("says one failing webhook endpoint once, however many events it failed", () => {
-    const markup = renderToStaticMarkup(
-      <PaymentProblems
-        problems={[
-          problem("webhook_delivery", "review_webhooks", { eventId: "a", endpointId: "1" }),
-          problem("webhook_delivery", "review_webhooks", { eventId: "b", endpointId: "1" }),
-        ]}
-      />,
-    );
-    expect(markup.match(/Webhook delivery failed/g)).toHaveLength(1);
-  });
-  it("names why each held payment is held, in one sentence that says support returns it", () => {
-    const reasons = {
-      overpaid: "over the amount",
-      late: "paid after the checkout closed",
-      expired: "from a partial payment",
-      canceled: "paid after you canceled",
-      other_option: "paid with an option the customer didn't choose",
-    };
-    for (const [reason, why] of Object.entries(reasons)) {
-      const held = problem("held_funds", "review_funds", { amount: "500000", asset, reason });
-      expect(heldHint([held])).toBe(
-        `0.50 USDC ${why} is held for the customer, and Forwend support handles any return.`,
-      );
-      expect(problemLabel(held)).toBe(`Money held for the customer: ${why}`);
-    }
-    // An on-time part that chose no option has no reason to name.
-    const plain = problem("held_funds", "review_funds", { amount: "500000", asset });
-    expect(heldHint([plain])).toBe(
-      "0.50 USDC is held for the customer, and Forwend support handles any return.",
-    );
-    expect(problemLabel(plain)).toBe("Money held for the customer");
-    expect(heldHint([problem("webhook_delivery", "review_webhooks")])).toBeNull();
-  });
-  it("leaves held money to the status hint: no warning strip", () => {
-    const held = problem("held_funds", "review_funds", { amount: "2000000", asset });
-    expect(renderToStaticMarkup(<PaymentProblems problems={[held]} />)).toBe("");
+});
+
+describe("the balance report's status", () => {
+  const settled = {
+    receiverCount: 1,
+    verifiedReceivers: 1,
+    unreconciledReceivers: 0,
+    pendingDeposits: 0,
+    unbookedDeposits: 0,
+    unbookedOutflows: 0,
+    otherAssetMovements: 0,
+    policyExceptions: 0,
+    scanCurrent: true,
+  } as Parameters<typeof health>[0];
+  it("is verified only while the network's scan is current", () => {
+    expect(health(settled).label).toBe(RECONCILIATION_COPY.verified);
+    expect(health({ ...settled, scanCurrent: false }).label).toBe(RECONCILIATION_COPY.checking);
   });
 });

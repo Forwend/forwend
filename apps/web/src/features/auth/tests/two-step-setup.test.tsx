@@ -29,17 +29,16 @@ vi.mock("@privy-io/react-auth", () => ({
     submitEnrollmentWithTotp: privy.submitEnrollmentWithTotp,
     submitEnrollmentWithPasskey: privy.submitEnrollmentWithPasskey,
   }),
-  // Privy gives a wrong code the same error type as a missing two-step answer.
   errorIndicatesMfaVerificationFailed: () => true,
 }));
 vi.mock("@/features/auth/api/auth-api", () => ({
   useCheckFreshSignInMutation: () => [() => ({ unwrap: async () => ({}) })],
   useRecordTwoStepMutation: () => [vi.fn()],
 }));
-vi.mock("@/features/auth/components/fresh-sign-in", () => ({
+vi.mock("@/features/auth/hooks/use-fresh-sign-in", () => ({
   useFreshSignIn: () => ({ run: (f: () => unknown) => f(), step: null, cancelled: () => false }),
 }));
-vi.mock("@/features/auth/components/mfa-step", () => ({
+vi.mock("@/features/auth/hooks/use-mfa-step", () => ({
   useMfaStep: () => ({ run: (a: () => unknown) => a(), step: null }),
 }));
 vi.mock("@/features/auth/hooks/use-add-passkey", () => ({ useAddPasskey: () => privy.addPasskey }));
@@ -61,7 +60,7 @@ afterEach(() => {
   privy.passkeys = [];
 });
 
-describe("Setting up two-step (R-219)", () => {
+describe("Setting up two-step", () => {
   it("shows a wrong app code on the code boxes, without asking for the passkey", async () => {
     setup("totp");
     const input = await screen.findByLabelText(TWO_STEP_COPY.enterSetupCode);
@@ -72,7 +71,6 @@ describe("Setting up two-step (R-219)", () => {
     expect(privy.promptMfa).not.toHaveBeenCalled();
   });
 
-  // D-49: Privy turns on any linked passkey by its ID with no tap, so one a stolen session linked must never ride along.
   it("turns on only the passkey the owner taps on this device", async () => {
     privy.methods = [];
     privy.passkeys = ["mine", "theirs"];

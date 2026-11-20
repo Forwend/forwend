@@ -1,9 +1,9 @@
-import { CTA } from "@/features/waitlist/constants/waitlist";
+import { CTA } from "@/screens/kit/constants/sample-cta";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
-import { COMP_UI, NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
+import { COMP_UI } from "@/screens/kit-directions/constants/comp";
+import { DawnLandscape } from "@/screens/kit-directions/dawn-landscape";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";
 import { compVars } from "@/screens/kit-directions/lib/comp";
-import { DawnLandscape } from "@/shared/components/art/dawn-landscape";
 
 export function DawnPathComp() {
   return (
@@ -12,7 +12,7 @@ export function DawnPathComp() {
       className="relative isolate flex min-h-[46rem] flex-col overflow-hidden rounded-[1.75rem] px-4 pt-5 pb-8 text-[var(--ink)] sm:px-8"
     >
       <DawnLandscape className="absolute inset-0 -z-10 h-full w-full" />
-      <CompNav variant={NAV_VARIANTS.pill} />
+      <CompNav pill />
       <div className="mx-auto mt-16 flex max-w-3xl flex-col items-center text-center sm:mt-20">
         <h3 className="font-[family-name:var(--font-caslon)] text-[clamp(2.6rem,6vw,4.75rem)] leading-[1.02] tracking-[-0.02em] text-balance">
           Get paid in stablecoins. See every step.

@@ -7,9 +7,7 @@ export const BUTTON_VARIANTS = {
   secondary: "secondary",
   ghost: "ghost",
   link: "link",
-  /** A feature that keeps its place until it is built: dashed and quiet; pair it with aria-disabled. */
-  soon: "soon",
-  /** Confirms an action that can't be undone, such as canceling an invoice. */
+  soon: "soon", // pair with aria-disabled
   danger: "danger",
 } as const;
 
@@ -32,12 +30,10 @@ export interface ButtonProps extends ComponentPropsWithoutRef<"button">, ButtonS
   loading?: boolean;
 }
 
-// On touch screens the pseudo element stretches the hit area to 44px without changing the look.
 const BASE =
   "relative inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,scale] duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] before:absolute before:inset-x-0 active:scale-[0.98] aria-disabled:active:scale-100 motion-reduce:active:scale-100 disabled:border-line disabled:bg-surface-2 disabled:text-subtle disabled:shadow-none disabled:active:scale-100";
 
-// Primary is the lime fill, kept for a view's main action; its inset edge holds the shape on white. The rest stay
-// neutral and flat, so one lime action per view leads.
+// Primary (lime) is for a view's one main action; the rest stay neutral and flat.
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
     "bg-brand font-semibold text-on-brand shadow-[inset_0_0_0_1px_var(--fw-brand-edge)] hover:bg-brand-hover",
@@ -49,12 +45,11 @@ const VARIANTS: Record<ButtonVariant, string> = {
   danger: "border border-danger bg-surface text-danger hover:bg-danger-soft",
 };
 
-// The touch area is a 44px band centered on the button, not an inset: an inset counts from inside the border, so a
-// bordered button would fall 2px short.
+// A centered 44px touch band, not an inset: an inset counts from inside the border and falls short.
 const TOUCH =
   "pointer-coarse:before:top-1/2 pointer-coarse:before:h-11 pointer-coarse:before:-translate-y-1/2";
 
-// One height scale for every control: 32px in dense rows, 40px by default and in toolbars, 48px for a main action.
+// One height scale for every control: 32px dense, 40px default, 48px for a main action.
 const SIZES: Record<ButtonSize, string> = {
   sm: `h-8 px-3 text-sm ${TOUCH}`,
   md: `h-10 px-4 text-sm ${TOUCH}`,

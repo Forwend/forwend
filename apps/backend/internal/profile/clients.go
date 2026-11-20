@@ -16,32 +16,28 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Longest client details, in characters (R-86), the same as an invoice's client block.
+// Longest client details, in characters, the same as an invoice's client block.
 const (
-	MaxClientName    = 200
-	MaxClientEmail   = 254 // the longest address SMTP carries (RFC 5321)
-	MaxClientAddress = 500
-	MaxClientTaxID   = 50
-	// An invoice's reference has the same limit, so a client's default always fits (R-90).
-	MaxClientReference = 100
+	MaxClientName      = 200
+	MaxClientEmail     = 254 // the longest address SMTP carries (RFC 5321)
+	MaxClientAddress   = 500
+	MaxClientTaxID     = 50
+	MaxClientReference = 100 // an invoice's reference limit
 )
 
-// MaxClients is per profile; the list reads one page at a time (R-177).
 const MaxClients = 1000
 
 var ErrClientNotFound = errors.New("client not found")
 
-// ClientDetails are what a saved client holds and an invoice copies. Only Name is required; "" means none.
+// ClientDetails are what a saved client holds and an invoice copies. Only Name is required.
 type ClientDetails struct {
-	Name    string
-	Email   string // the billing email: where invoices go, often the client's finance team
-	Address string
-	Country string // ISO 3166-1 alpha-2, upper case
-	TaxID   string
-	// The client's PO number or reference that New invoice fills in (R-90); an invoice keeps its own copy.
-	Reference string
-	// New invoice starts with payment reminders on for this client (R-97); each invoice keeps its own setting.
-	Reminders bool
+	Name      string
+	Email     string // where invoices go
+	Address   string
+	Country   string // ISO 3166-1 alpha-2, upper case
+	TaxID     string
+	Reference string // PO number New invoice fills in
+	Reminders bool   // New invoice's default
 }
 
 type Client struct {
@@ -50,8 +46,7 @@ type Client struct {
 	UpdatedAt time.Time
 }
 
-// Problem names the first field given that breaks R-86's rules, or returns "". An invoice's client block uses the
-// same rules with the prefix "client.", each owner wrapping the text in its own invalid-request error.
+// Problem names the first field that breaks the rules, or returns "". Invoices use it with prefix "client.".
 func (d ClientDetails) Problem(prefix string) string {
 	for _, f := range []struct {
 		name, value string
@@ -62,8 +57,7 @@ func (d ClientDetails) Problem(prefix string) string {
 		{"address", d.Address, MaxClientAddress, true}, {"taxId", d.TaxID, MaxClientTaxID, false},
 		{"reference", d.Reference, MaxClientReference, false},
 	} {
-		// Postgres text can't hold a NUL byte.
-		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !PlainText(f.value, f.lines) {
+		if !ValidText(f.value, f.max, f.lines) {
 			return fmt.Sprintf("%s%s must be at most %d characters of plain text", prefix, f.name, f.max)
 		}
 	}
@@ -87,7 +81,6 @@ func scanClient(row pgx.CollectableRow) (Client, error) {
 	return c, err
 }
 
-// checkSaved adds what a saved client needs: a name to pick it by.
 func (d ClientDetails) checkSaved() error {
 	if d.Name == "" {
 		return fmt.Errorf("%w: name is required", ErrInvalid)
@@ -98,13 +91,11 @@ func (d ClientDetails) checkSaved() error {
 	return nil
 }
 
-// lowercaseUUID matches a client's or a store's id, so a malformed one is not found rather than a database error.
+// A malformed id is then not found rather than a database error.
 var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// The callers below have checked the user's access to the profile; every query also names the profile, so a client id
-// from another profile is not found.
+// Callers below have checked access; every query also names the profile, so another profile's client is not found.
 
-// A page of the clients list (R-177): DefaultClientLimit when the caller names none, at most MaxClientLimit.
 const (
 	DefaultClientLimit = 50
 	MaxClientLimit     = 100
@@ -115,8 +106,7 @@ type ClientPage struct {
 	NextCursor string // "" on the last page
 }
 
-// Clients lists one page by name, then id, so a page boundary never repeats or skips a client. q matches the name,
-// the email or the tax ID in any letter case; the zero Query matches every client.
+// Clients sorts by name, then id, so a page boundary never repeats or skips one; q matches name, email or tax ID.
 func (s *Service) Clients(ctx context.Context, profileID, cursor string, limit int, q search.Query) (ClientPage, error) {
 	if limit < 1 || limit > MaxClientLimit {
 		return ClientPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxClientLimit)
@@ -150,11 +140,11 @@ func (s *Service) Clients(ctx context.Context, profileID, cursor string, limit i
 	return ClientPage{Clients: clients, NextCursor: next}, nil
 }
 
-// A cursor is the last client's id and name; Postgres lowers the name as it sorts, so Go never has to. The id has no "|".
+// A cursor is the last client's id and name; the id has no "|".
 func decodeClientCursor(cursor string) (name, id string, err error) {
 	raw, decodeErr := base64.RawURLEncoding.DecodeString(cursor)
 	id, name, ok := strings.Cut(string(raw), "|")
-	// Postgres text holds no invalid UTF-8 or NUL, so a cursor this API didn't return can't reach it as one.
+	// Postgres text refuses invalid UTF-8 and NUL, so a forged cursor must not reach it.
 	if decodeErr != nil || !ok || !lowercaseUUID.MatchString(id) || !utf8.ValidString(name) || strings.ContainsRune(name, 0) {
 		return "", "", fmt.Errorf("%w: cursor is not one this API returned", ErrInvalid)
 	}
@@ -179,8 +169,7 @@ func (s *Service) Client(ctx context.Context, profileID, id string) (Client, err
 	return c, nil
 }
 
-// SaveClient upserts by the id the caller chose, so sending the same request twice saves one client. Invoices
-// made earlier keep their own copy.
+// SaveClient upserts by the caller's id, so a repeat saves one client. Invoices made earlier keep their copy.
 func (s *Service) SaveClient(ctx context.Context, profileID, id string, d ClientDetails) (Client, bool, error) {
 	if err := d.checkSaved(); err != nil {
 		return Client{}, false, err
@@ -193,11 +182,11 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 		return Client{}, false, fmt.Errorf("save client: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	// The profile row lock makes concurrent saves count one after another, so none passes the cap on a stale count.
+	// The profile row lock serializes saves, so none passes the cap on a stale count.
 	if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR UPDATE", profileID); err != nil {
 		return Client{}, false, fmt.Errorf("lock profile: %w", err)
 	}
-	// An id that belongs to another profile neither inserts (the conflict) nor updates (the WHERE), so no row comes back.
+	// Another profile's id neither inserts (the conflict) nor updates (the WHERE): no row comes back.
 	var c Client
 	var created bool
 	err = tx.QueryRow(ctx, `
@@ -231,7 +220,6 @@ func (s *Service) SaveClient(ctx context.Context, profileID, id string, d Client
 	return c, created, nil
 }
 
-// Invoices made earlier keep their own copy.
 func (s *Service) DeleteClient(ctx context.Context, profileID, id string) error {
 	if !lowercaseUUID.MatchString(id) {
 		return ErrClientNotFound

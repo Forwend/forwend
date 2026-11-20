@@ -1,4 +1,4 @@
-/** What a customer sends for the example invoice. Samples, not quotes: the real pay page shows 1Click's price. */
+/** Sample amounts a customer sends for the example invoice, not live quotes. */
 export const ROUTE_TOKENS = [
   {
     symbol: "ETH",
@@ -11,7 +11,6 @@ export const ROUTE_TOKENS = [
   { symbol: "SOL", blockchain: "sol", baseUnits: 7856200000n, decimals: 9, fractionDigits: 4 },
 ] as const;
 
-/** The route's phases: waiting, the token on its way, converting, USDC on its way, paid. */
 export const ROUTE_PHASES = {
   waiting: 0,
   sent: 1,
@@ -20,10 +19,10 @@ export const ROUTE_PHASES = {
   paid: 4,
 } as const;
 
-/** When each phase after waiting starts, in ms from the start of one token's run, and when the run ends. */
+/** When each phase after waiting starts, in ms from the start of one token's run. */
 export const ROUTE_TIMES = [900, 2300, 3700, 4900] as const;
 export const ROUTE_CYCLE_MS = 7800;
-/** How long the received amount counts up once the payment is paid. */
+/** How long the received amount counts up once paid. */
 export const ROUTE_COUNT_MS = 900;
 export const ROUTE_TICK_MS = 50;
 

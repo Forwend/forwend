@@ -2,29 +2,30 @@
 
 import { BUTTON_VARIANTS, Button, Dialog, TextField, TONES, useToast } from "@forwend/ui-web";
 import { useRef, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { useSendInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useMarkPaymentDoneMutation } from "@/features/jobs/api/jobs-api";
 import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents, namedField } from "@/features/jobs/lib/jobs";
 import type { Job, JobPayment } from "@/features/jobs/types/jobs";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import {
+  apiError,
+  errorStatus,
+  HTTP_STATUS,
+  invalidValue,
+  namedField,
+} from "@/shared/api/api-error";
+import { usdCents, usdText } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.detail;
-const CONFLICT = 409;
-const INVALID_VALUE = 422;
 
 export interface MarkDoneProps {
   profileId: string;
   job: Job;
   payment: JobPayment;
-  /** Called once its invoice is made: the button goes, so the page moves focus to that invoice. */
   onDone: (position: number) => void;
 }
 
-// R-103: marking it done makes its invoice; Send to client then emails it within its limits (R-94).
 export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
   const [markDone, { isLoading }] = useMarkPaymentDoneMutation();
   const [send] = useSendInvoiceMutation();
@@ -46,19 +47,17 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
         deliveryLink: link.trim(),
       }).unwrap();
     } catch (failure) {
-      const { status, data } = failure as {
-        status?: unknown;
-        data?: { error?: { code?: string; message?: string } };
-      };
-      // A 422 names the link only when the link is wrong; the profile's limits on new invoices are 422 too.
-      if (status === INVALID_VALUE && namedField(data?.error?.message ?? "", ["deliveryLink"]))
+      // Invoice limits also answer 422: only a message naming the link is a link error.
+      if (invalidValue(failure) && namedField(failure, ["deliveryLink"]))
         setLinkError(COPY.markDoneLinkError);
-      else if (data?.error?.code === CHANGE_ERRORS.pending) {
-        // The job is read again, which takes this step's button and dialog away: the reason goes in a toast.
+      else if (apiError(failure).code === CHANGE_ERRORS.pending) {
         actions.current?.closest("dialog")?.close();
         document.getElementById("job-payments")?.focus();
         toast({ tone: TONES.warning, title: COPY.markDoneChangeWaits });
-      } else setError(status === CONFLICT ? COPY.markDoneOrder : COPY.markDoneFailed);
+      } else
+        setError(
+          errorStatus(failure) === HTTP_STATUS.conflict ? COPY.markDoneOrder : COPY.markDoneFailed,
+        );
       return;
     }
     const invoice = made.payments[payment.position - 1];
@@ -89,8 +88,8 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
     >
       <p>
         {COPY.markDoneBody(
-          `${formatUsd(apiCents(payment.amountUsd))} ${MONEY_COPY.usd}`,
-          JOBS_COPY.detail.dueDays(payment.dueDays),
+          usdText(usdCents(payment.amountUsd)),
+          COPY.dueDays(payment.dueDays),
           job.client.email,
         )}
       </p>

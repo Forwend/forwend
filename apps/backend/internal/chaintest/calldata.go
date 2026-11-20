@@ -11,9 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// calldata encodes a call from a signature and its arguments written as cast takes them, such as
-// calldata("refund(address,uint256)", "0xab…", "1000000"). It covers the static types tests send (address, bool,
-// uintN, bytesN and tuples of them); a dynamic type is an error, so it gets added here on purpose.
+// calldata encodes sig(args) as cast does, for static types only (address, bool, uintN, bytesN, tuples of them).
 func calldata(sig string, args ...string) ([]byte, error) {
 	open := strings.IndexByte(sig, '(')
 	if open < 1 || !strings.HasSuffix(sig, ")") {

@@ -48,6 +48,5 @@ export const BALANCES_COPY = {
     "Still confirming, or part of a partial payment. Some may turn out to be the payer's.",
   heldLabel: "On hold",
   heldHint: "Sent late or over the amount. Not part of your balance.",
-  readAt: "Read at block",
   receive: "Receive",
 } as const;

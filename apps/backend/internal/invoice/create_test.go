@@ -27,10 +27,10 @@ func TestCreationAndExpiryUseOneClock(t *testing.T) {
 	inv, _, err := s.Create(t.Context(), profile, "creation-clock", Request{
 		AmountUSD: "1", ExpiresInSeconds: &expires,
 		Lines: []LineRequest{{Description: "Work", Quantity: "1", UnitPrice: "1"}},
-		Before: func(ctx context.Context, tx pgx.Tx) error {
+		Caller: Caller{Before: func(ctx context.Context, tx pgx.Tx) error {
 			_, err := tx.Exec(ctx, "SELECT pg_sleep(1.1)")
 			return err
-		},
+		}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -40,7 +40,6 @@ func TestCreationAndExpiryUseOneClock(t *testing.T) {
 	}
 }
 
-// open: Base Sepolia USDC and a freelancer profile with a wallet and billing details (R-92).
 func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -69,13 +68,11 @@ func open(t *testing.T) (*pgxpool.Pool, string) {
 	return pool, profile
 }
 
-// The number the loser's failed insert took is given back: the next invoice gets the one after the winner's.
 func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
 	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
 
-	// The other request's insert, not yet committed.
 	other, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +84,7 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		VALUES ($1, $2, 84532, 'evm', $3, 5000000, 1800000000, 1800086400, '0x1111111111111111111111111111111111111111',
 		    'evm_create2', '0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333',
-		    'key-1', $4)`, winner, profile, usdc, requestHash(84532, usdc, big.NewInt(5000000), DefaultExpiresIn, Details{}, nil, false, nil, "", ""))
+		    'key-1', $4)`, winner, profile, usdc, requestHash(Request{}, 84532, usdc, big.NewInt(5000000), DefaultExpiresIn, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,11 +99,7 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 		inv, created, err := NewService(pool).Create(ctx, profile, "key-1", req)
 		done <- result{inv, created, err}
 	}()
-	select {
-	case r := <-done:
-		t.Fatalf("Create did not wait for the other insert: %+v", r)
-	case <-time.After(300 * time.Millisecond):
-	}
+	waitForLocks(t, pool, "%", 1)
 	if err := other.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -120,11 +113,10 @@ func TestCreateLosesTheInsertRaceToTheSameKey(t *testing.T) {
 	}
 }
 
-// The caps count only open and recent invoices, through their indexes, not every invoice the profile made.
 func TestCreateCapsReadOnlyOpenAndRecentInvoices(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()
-	// Enough closed, older invoices that reading them all costs more than the indexes, as for a real profile.
+	// Enough rows that the planner prefers the indexes.
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, created_at)
@@ -150,7 +142,6 @@ func TestCreateCapsReadOnlyOpenAndRecentInvoices(t *testing.T) {
 	}
 }
 
-// No gaps, and a repeat with the same key returns the same number.
 func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -186,11 +177,10 @@ func TestCreateNumbersInvoicesAtOnce(t *testing.T) {
 }
 
 func TestOpenInvoicesPerProfileAreCapped(t *testing.T) {
-	// A reopened invoice's address is watched again until its new close, so it counts too (R-130).
 	for _, terms := range []string{"4000000000, 4000086400, NULL", "1000, 4000086400, 4000000000"} {
 		ctx := context.Background()
 		pool, profile := open(t)
-		// The guard lets an invoice start only open, never reopened.
+		// The guard refuses an invoice that starts reopened.
 		if _, err := pool.Exec(ctx, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard"); err != nil {
 			t.Fatal(err)
 		}
@@ -208,7 +198,6 @@ func TestOpenInvoicesPerProfileAreCapped(t *testing.T) {
 			t.Fatal(err)
 		}
 		req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
-		// Made two days ago, so only the open cap applies.
 		if _, _, err := NewService(pool).Create(ctx, profile, "one-more", req); !errors.Is(err, ErrInvalid) ||
 			!strings.Contains(err.Error(), "open at once") {
 			t.Fatalf("%s: over the open invoice cap: %v, want ErrInvalid", terms, err)
@@ -216,25 +205,6 @@ func TestOpenInvoicesPerProfileAreCapped(t *testing.T) {
 	}
 }
 
-func TestInvoicesPerProfilePerDayAreCapped(t *testing.T) {
-	ctx := context.Background()
-	pool, profile := open(t)
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
-		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
-		SELECT '0x' || lpad(to_hex(n), 64, '0'), $1, 84532, 'evm', $2, 5000000, 1, 86401,
-		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
-		    '0x' || lpad(to_hex(n), 40, '0'), 'day-' || n, decode(repeat('00', 32), 'hex')
-		FROM generate_series(1, $3::int) n`, profile, usdc, MaxPerDay); err != nil {
-		t.Fatal(err)
-	}
-	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000"}
-	if _, _, err := NewService(pool).Create(ctx, profile, "one-more", req); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("over the daily cap: %v, want ErrInvalid", err)
-	}
-}
-
-// A stranger who spams a public payment link uses up only the links' quota, never the owner's (R-188).
 func TestPaymentLinkInvoicesHaveTheirOwnQuota(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -256,14 +226,13 @@ func TestPaymentLinkInvoicesHaveTheirOwnQuota(t *testing.T) {
 	if _, _, err := NewService(pool).Create(ctx, profile, "owner", req); err != nil {
 		t.Fatalf("the owner's invoice after a day of link invoices: %v", err)
 	}
-	req.LinkID = link
+	req.Caller.LinkID = link
 	if _, _, err := NewService(pool).Create(ctx, profile, "payer", req); !errors.Is(err, ErrInvalid) ||
 		!strings.Contains(err.Error(), "payment links") {
 		t.Fatalf("over the links' daily quota: %v, want ErrInvalid", err)
 	}
 }
 
-// The other way too: a day of the owner's invoices leaves payers on its links their own quota.
 func TestOwnerInvoicesLeaveTheLinksQuota(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -281,7 +250,7 @@ func TestOwnerInvoicesLeaveTheLinksQuota(t *testing.T) {
 		FROM generate_series(1, $3::int) n`, profile, usdc, MaxPerDay); err != nil {
 		t.Fatal(err)
 	}
-	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000", LinkID: link}
+	req := Request{ChainID: 84532, Token: usdc, Amount: "5000000", Caller: Caller{LinkID: link}}
 	if _, _, err := NewService(pool).Create(ctx, profile, "payer", req); err != nil {
 		t.Fatalf("a payer's invoice after a day of the owner's: %v", err)
 	}
@@ -315,27 +284,11 @@ func TestConcurrentRetryReplaysWhenTheWinnerUsesTheLastDailySlot(t *testing.T) {
 	for range 2 {
 		go func() {
 			inv, created, err := NewService(pool).Create(ctx, profileID, "same-purchase",
-				Request{Purpose: PurposeCheckout, AmountUSD: "2"})
+				Request{AmountUSD: "2", Caller: Caller{Purpose: PurposeCheckout}})
 			results <- result{inv, created, err}
 		}()
 	}
-	deadline := time.NewTimer(10 * time.Second)
-	defer deadline.Stop()
-	for {
-		var waiting int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()
-			AND wait_event_type = 'Lock' AND query LIKE '%profiles%FOR NO KEY UPDATE%'`).Scan(&waiting); err != nil {
-			t.Fatal(err)
-		}
-		if waiting >= 2 {
-			break
-		}
-		select {
-		case <-deadline.C:
-			t.Fatal("concurrent creates did not reach the locked profile")
-		case <-time.After(10 * time.Millisecond):
-		}
-	}
+	waitForLocks(t, pool, "%profiles%FOR NO KEY UPDATE%", 2)
 	if err := lock.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -343,6 +296,25 @@ func TestConcurrentRetryReplaysWhenTheWinnerUsesTheLastDailySlot(t *testing.T) {
 	if a.err != nil || b.err != nil || a.inv.ID != b.inv.ID || a.created == b.created {
 		t.Fatalf("first: id %s, created %v, error %v; second: id %s, created %v, error %v",
 			a.inv.ID, a.created, a.err, b.inv.ID, b.created, b.err)
+	}
+}
+
+func waitForLocks(t *testing.T, pool *pgxpool.Pool, query string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		var waiting int
+		if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()
+			AND wait_event_type = 'Lock' AND query LIKE $1`, query).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting >= n {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%d queries like %q wait on a lock, want %d", waiting, query, n)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

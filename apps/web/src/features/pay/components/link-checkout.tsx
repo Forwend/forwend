@@ -1,7 +1,6 @@
 "use client";
 
-import { Button, EmptyState, Form, Money, Skeleton, TextField } from "@forwend/ui-web";
-import { WifiOff } from "lucide-react";
+import { Button, Form, Money, Skeleton, TextField } from "@forwend/ui-web";
 import { notFound, useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -16,23 +15,20 @@ import {
   LINK_CLOSED_CODES,
   LINK_NOT_READY_CODE,
   LINK_STATES,
-  USD_PATTERN,
 } from "@/features/links/constants/links";
 import { amountLabel } from "@/features/links/lib/links";
 import type { PublicLink } from "@/features/links/types/links";
 import { Backdrop } from "@/features/pay/components/backdrop";
-import { Payee } from "@/features/pay/components/payee";
+import { LoadFailed } from "@/features/pay/components/load-failed";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
 import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
-import { LINK_PAY_COPY as COPY, PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { purchaseSearch, readPurchase } from "@/features/pay/lib/link-pay";
+import { LINK_PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
+import { checkLinkAmount, purchaseSearch, readPurchase } from "@/features/pay/lib/link-pay";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
+import { Payee } from "@/features/stores/components/payee";
+import { apiError, errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { usdCents, usdFromCents } from "@/shared/lib/money";
 
-const NOT_FOUND = 404;
-const TOO_MANY = 429;
-
-/** R-142: a payment link's page. Opening it counts a visit and makes nothing (D-54); Pay creates checkout. */
 export function LinkCheckout({ slug }: { slug: string }) {
   const link = useGetPublicLinkQuery(slug);
   const [countVisit] = useCountLinkVisitMutation();
@@ -43,29 +39,9 @@ export function LinkCheckout({ slug }: { slug: string }) {
     counted.current = true;
     countVisit(slug);
   }, [countVisit, slug]);
-  const failure = link.error as { status?: unknown } | undefined;
   if (link.data) return <Loaded key={link.data.slug} link={link.data} onClosed={link.refetch} />;
-  if (failure?.status === NOT_FOUND) notFound();
-  if (link.isError) {
-    return (
-      <div
-        role="alert"
-        data-load-error
-        className="mx-auto w-full max-w-lg lg:col-span-2 lg:self-center lg:justify-self-center"
-      >
-        <EmptyState
-          icon={WifiOff}
-          title={PAY_COPY.failedTitle}
-          description={PAY_COPY.failed}
-          action={
-            <Button variant="secondary" onClick={link.refetch}>
-              {PAY_COPY.retry}
-            </Button>
-          }
-        />
-      </div>
-    );
-  }
+  if (errorStatus(link.error) === HTTP_STATUS.notFound) notFound();
+  if (link.isError) return <LoadFailed onRetry={link.refetch} />;
   return (
     <div aria-busy="true" className={`flex flex-col gap-4 lg:col-span-2 lg:pt-8 ${LEFT_PAD}`}>
       <span role="status" className="sr-only">
@@ -86,7 +62,6 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const section = useRef<HTMLElement>(null);
-  // A Pay refused because the link closed meanwhile: the reason takes the focus Pay had.
   const [refused, setRefused] = useState(false);
   const reason = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -96,7 +71,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
   const limits = amountLabel(link);
   const hint = COPY.amountHint(link.minUsd, link.maxUsd);
 
-  // The purchase is in the address from the moment Pay is pressed, so a reload or a retry reuses its idempotency key.
+  // In the URL from the moment Pay is pressed, so a reload or retry reuses its idempotency key.
   const savePurchase = (next: LinkPurchase | null) => {
     const url = new URL(window.location.href);
     url.search = purchaseSearch(url.search, next);
@@ -124,7 +99,6 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
       setBusy(true);
       setFormError("");
     });
-    // From the pending purchase, focus waits on its heading; from the form it stays on Pay.
     if (purchase) section.current?.querySelector<HTMLElement>("#link-amount")?.focus();
     try {
       const { payToken } = await pay({
@@ -134,13 +108,12 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         expectedAmountUsd: usdFromCents(BigInt(request.cents)),
         expectedVersion: request.offerVersion ?? undefined,
       }).unwrap();
-      // The checkout shares this page's store (app/(checkout)/layout.tsx): read its invoice first, so it opens whole.
+      // The checkout shares this page's store: read its invoice first, so it opens whole.
       router.prefetch(`/pay/${payToken}`);
       await readInvoice(payToken);
       router.push(`/pay/${payToken}`);
     } catch (err) {
-      const failure = err as { status?: unknown; data?: { error?: { code?: string } } };
-      const code = failure.data?.error?.code ?? "";
+      const code = apiError(err).code ?? "";
       if (LINK_CLOSED_CODES.includes(code)) {
         keepPurchase(null);
         setRefused(true);
@@ -154,7 +127,12 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         if (code === LINK_CHANGED_CODE) {
           setFormError(COPY.errors.changed);
           onClosed();
-        } else setFormError(failure.status === TOO_MANY ? COPY.errors.busy : COPY.errors.failed);
+        } else
+          setFormError(
+            errorStatus(err) === HTTP_STATUS.tooManyRequests
+              ? COPY.errors.busy
+              : COPY.errors.failed,
+          );
       }
       setBusy(false);
     }
@@ -164,17 +142,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
     event.preventDefault();
     const form = event.currentTarget;
     const typed = fixed ? null : String(new FormData(form).get("amountUsd") ?? "").trim();
-    const amount = link.amountUsd ?? typed ?? "";
-    const cents = USD_PATTERN.test(amount) ? usdCents(amount) : 0n;
-    const shown =
-      cents === 0n
-        ? COPY.errors.amount
-        : cents < 100n // R-56: at least 1.00 USD
-          ? COPY.errors.limits(hint)
-          : (link.minUsd && cents < usdCents(link.minUsd)) ||
-              (link.maxUsd && cents > usdCents(link.maxUsd))
-            ? COPY.errors.limits(hint)
-            : "";
+    const { cents, error: shown } = checkLinkAmount(link, typed);
     flushSync(() => {
       setError(shown);
       setFormError("");
@@ -193,7 +161,6 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
     await startPurchase(next);
   };
 
-  // Before Pay the summary shows what the payer pays: the fixed amount, or the range they may enter.
   const amountSummary = fixed ? (
     <div className="flex flex-col gap-1.5">
       <h2 id="link-amount" tabIndex={-1} className="text-sm text-muted outline-none">
@@ -213,7 +180,6 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
     </div>
   );
 
-  // From large screens the summary is the left half and the action the right, as on the invoice checkout.
   return (
     <section
       ref={section}
@@ -232,7 +198,6 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         {!purchase && link.state === LINK_STATES.on ? amountSummary : null}
       </div>
       <div className={`flex min-w-0 flex-col lg:self-stretch lg:py-8 lg:pl-16 ${RIGHT_PAD}`}>
-        {/* The action in a card, as the invoice checkout's pay panel. */}
         <div className="fw-panel flex flex-col gap-4 p-4 sm:p-5 lg:my-auto">
           {purchase ? (
             <div className="flex flex-col gap-4">

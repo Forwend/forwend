@@ -1,3 +1,4 @@
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
 export const AUTH_COPY = {
   notConfigured: "Sign-in is not set up here: NEXT_PUBLIC_PRIVY_APP_ID is missing.",
   checkingSignIn: "Checking your sign-in",
@@ -11,7 +12,6 @@ export const AUTH_COPY = {
     "You already have a passkey for this account here: your device or password manager has it.",
 } as const;
 
-/** R-137: confirming it's you, in place, before a change that needs a sign-in from the last 15 minutes (D-63). */
 export const FRESH_SIGN_IN_COPY = {
   title: "Confirm it's you",
   checkEmail: "Check your email",
@@ -24,7 +24,6 @@ export const FRESH_SIGN_IN_COPY = {
   resendIn: (seconds: number) => `Resend in ${seconds}s`,
   sendFailed: "We couldn't send the code.",
   tooMany: (wait: string) => `Too many codes for now. Try again in ${wait}.`,
-  /** A wait as the countdown reads it: seconds under a minute, else whole minutes rounded up. */
   wait: (seconds: number) => (seconds < 60 ? `${seconds}s` : `${Math.ceil(seconds / 60)} min`),
   tryAgain: "Try again",
   cancel: "Cancel",
@@ -34,8 +33,6 @@ export const FRESH_SIGN_IN_COPY = {
   close: "Close",
 } as const;
 
-/** D-49: two-step verification with a passkey and an authenticator app, which Privy checks before it signs or
- * exports. */
 export const TWO_STEP_COPY = {
   methods: { passkey: "Passkey", totp: "Authenticator app" },
   setUp: "Set up two-step verification",
@@ -87,12 +84,36 @@ export const TWO_STEP_COPY = {
   cancel: "Cancel",
 } as const;
 
-/** R-137. */
 export const SIGN_OUT_EVERYWHERE_COPY = {
-  item: "Sign out everywhere",
   title: "Sign out everywhere?",
   body: "This signs you out on every device and browser, this one too. You sign in again with your email.",
   keep: "Keep me signed in",
   confirm: "Sign out everywhere",
   failed: "We could not sign you out everywhere. Try again.",
+} as const;
+
+export const SIGN_IN_COPY = {
+  title: "Sign in to Forwend",
+  intro: "New here? Signing in creates your account and wallet.",
+  emailLabel: "Email",
+  emailPlaceholder: "you@example.com",
+  sendCode: "Email me a code",
+  or: "or",
+  google: "Continue with Google",
+  passkey: "Sign in with passkey",
+  codeTitle: "Check your email",
+  codeSentTo: "Enter the 6-digit code we sent to",
+  codeLabel: "Code",
+  signIn: "Sign in",
+  resend: "Send a new code",
+  resent: "We sent a new code.",
+  otherEmail: "Use another email",
+  errors: {
+    email: EMAIL_COPY.invalid,
+    sendFailed: "We could not send the code. Try again.",
+    code: "Enter all 6 digits.",
+    codeFailed: "Wrong or expired code. Try again.",
+    google: "Google sign-in did not finish. Try again.",
+    passkey: "Passkey sign-in did not finish. Try again.",
+  },
 } as const;

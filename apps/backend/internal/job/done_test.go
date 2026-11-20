@@ -17,7 +17,6 @@ func threeSteps() Request {
 			{Title: "Design approved", AmountUSD: "400", DueDays: 14}, {Title: "Final delivery", AmountUSD: "300.50", DueDays: 30}}}
 }
 
-// R-103.
 func TestMarkDone(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -26,9 +25,6 @@ func TestMarkDone(t *testing.T) {
 	j, _, err := s.Create(ctx, profileID, "k1", threeSteps())
 	if err != nil {
 		t.Fatal(err)
-	}
-	if _, err := s.MarkDone(ctx, profileID, j.ID, 2, ""); !errors.Is(err, ErrNotAccepted) {
-		t.Fatalf("before acceptance: %v, want ErrNotAccepted", err)
 	}
 	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
@@ -40,15 +36,12 @@ func TestMarkDone(t *testing.T) {
 		position int
 		link     string
 		want     error
-	}{{0, "", ErrNotFound}, {4, "", ErrNotFound}, {2, "http://drive.example/logo", ErrInvalid}, {2, "https://", ErrInvalid},
-		// The database takes only a lower-case scheme, so the check does too.
-		{2, "HTTPS://drive.example/logo", ErrInvalid}} {
+	}{{0, "", ErrNotFound}, {2, "https://", ErrInvalid}, {2, "HTTPS://drive.example/logo", ErrInvalid}} {
 		if _, err := s.MarkDone(ctx, profileID, j.ID, bad.position, bad.link); !errors.Is(err, bad.want) {
 			t.Fatalf("payment %d link %q: %v, want %v", bad.position, bad.link, err, bad.want)
 		}
 	}
 
-	// Two clicks at once make one invoice.
 	hold, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)

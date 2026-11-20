@@ -120,7 +120,6 @@ func getBillingDetails(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// R-80.
 func getNotifications(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		n, err := profiles.Notifications(r.Context(), r.PathValue("profileId"))
@@ -153,7 +152,7 @@ func putNotifications(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// R-221: Developer mode. The mode decides what the dashboard reaches; an API key keeps its own.
+// The mode decides what the dashboard reaches; an API key keeps its own.
 func putMode(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body modeBody
@@ -173,7 +172,6 @@ func putMode(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// R-227: who pays the fees of the profile's new invoices.
 func putFees(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body feesBody
@@ -189,7 +187,7 @@ func putFees(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// R-137: every session ends, this one too; the web signs out.
+// Every session ends, this one too.
 func signOutEverywhere(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := profiles.SignOutEverywhere(r.Context(), mid.SignedInUser(r)); err != nil {

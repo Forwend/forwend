@@ -26,15 +26,12 @@ export interface BalanceCardProps {
   prices: readonly TokenPrice[] | undefined;
   failed: boolean;
   onRetry: () => void;
-  /** Checkout belongs to merchants; a freelancer bills with invoices and links. */
   merchant: boolean;
   canBill: boolean;
   onReceive: () => void;
-  /** Null where the role can't move money. Phones have no header Send, so this is their way to it. */
-  onSend: (() => void) | null;
+  onSend: (() => void) | null; // null: the role can't move money
 }
 
-/** The overview's lead: what is in the wallet, its change over the past month, and the actions that bring more in. */
 export function BalanceCard({
   profileId,
   balances,
@@ -47,7 +44,6 @@ export function BalanceCard({
   onSend,
 }: BalanceCardProps) {
   const router = useRouter();
-  // The Received card's default range, so the read comes from its cache.
   const history = usePricedHistory(profileId, HISTORY_RANGES[DEFAULT_RANGE]);
   const series = history.currentData
     ? historySeries(history.currentData, HISTORY_FIELDS.balances, prices)
@@ -67,7 +63,6 @@ export function BalanceCard({
   ];
   return (
     <Card id="balance-title" className="isolate flex min-h-64 flex-col overflow-hidden xl:min-h-72">
-      {/* The figures sit on the surface; the art shows only on the right and fades out under them. */}
       <Image
         src={HERO_IMAGE.src}
         alt=""
@@ -86,7 +81,6 @@ export function BalanceCard({
           prices={prices}
           failed={failed}
           onRetry={onRetry}
-          // Pending payments, beside this card, shows what is moving, not final and held.
           pending={false}
           change={
             series ? (
@@ -99,7 +93,6 @@ export function BalanceCard({
       </div>
       <fieldset className="m-0 mt-auto border-0 p-0 pt-6">
         <legend className="sr-only">{COPY.actions}</legend>
-        {/* Phones keep every action on one row in equal columns, as a phone app's quick actions do. */}
         <div className="grid auto-cols-fr grid-flow-col gap-1 sm:flex sm:flex-wrap sm:justify-start sm:gap-5">
           {actions.map((action) => (
             <ActionButton

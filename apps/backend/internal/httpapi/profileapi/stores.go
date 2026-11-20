@@ -13,7 +13,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// R-134.
 func listStores(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := profiles.Stores(r.Context(), r.PathValue("profileId"))
@@ -68,7 +67,7 @@ func putStore(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// R-135: the body is the image itself, a PNG or JPEG.
+// The body is the image itself, a PNG or JPEG.
 func putStoreLogo(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// One byte over the limit is enough for SaveStoreLogo to refuse it.
@@ -97,7 +96,7 @@ func deleteStoreLogo(profiles *profile.Service) http.HandlerFunc {
 	}
 }
 
-// Public: pay pages show it. The API encoded the PNG itself, and the policy keeps a browser from running anything in it.
+// Public: the API encoded the PNG itself, and the policy keeps a browser from running anything in it.
 func getStoreLogo(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logo, at, err := profiles.StoreLogo(r.Context(), r.PathValue("storeId"))

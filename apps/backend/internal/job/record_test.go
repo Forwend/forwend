@@ -11,7 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// R-104: record times come from the server; PaidAt is the completing deposit's block time.
 func TestRecordTimes(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)

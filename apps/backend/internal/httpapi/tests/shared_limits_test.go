@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// R-117.
 func TestJunkSpendsNoSharedLimit(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

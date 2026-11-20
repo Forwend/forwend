@@ -7,14 +7,12 @@ import (
 	"strings"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
 var ErrNotCancelable = errors.New("invoice can't be canceled")
 
-// Cancel (R-79, D-79) locks the rows the ledger locks, so the two never decide at once. A transfer recorded
-// after the cancel is held for the payer: the ledger treats canceled as final (D-26).
+// Cancel locks the rows the ledger locks, so the two never decide at once; later transfers are held for the payer.
 func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
@@ -26,8 +24,6 @@ func (s *Service) Cancel(ctx context.Context, profileID, id string) (Invoice, er
 	return s.GetOfProfile(ctx, profileID, id)
 }
 
-// cancel cancels the main invoice id and its options with Cancel's checks, and writes kind to its history. A Revise
-// (R-129) passes the invoice replacing it.
 func (s *Service) cancel(ctx context.Context, tx pgx.Tx, profileID, id, replacedBy, kind string, data history.Data) error {
 	// Options first, main row last, in the ledger's lock order, so the two can't deadlock.
 	rows, err := tx.Query(ctx, `SELECT payment_status, expires_at FROM invoices
@@ -52,9 +48,8 @@ func (s *Service) cancel(ctx context.Context, tx pgx.Tx, profileID, id, replaced
 		}
 	}
 	var seen bool
-	// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner canceling. A deposit
-	// 1Click converts is on its way, as money seen is (R-233).
-	if err := tx.QueryRow(ctx, "SELECT "+ledger.ChoosingSeenSQL+" OR "+ConvertingSQL, id).Scan(&seen); err != nil {
+	// Dust is the payer's, so a stranger's 0.01 can't stop a cancel; a 1Click deposit counts as seen.
+	if err := tx.QueryRow(ctx, "SELECT "+moneySeenSQL, id).Scan(&seen); err != nil {
 		return fmt.Errorf("read invoice %s transfers: %w", id, err)
 	}
 	if seen {

@@ -15,7 +15,7 @@ import {
   useListDeliveriesQuery,
   useListEndpointsQuery,
 } from "@/features/webhooks/api/webhooks-api";
-import { DeliveryStatusBadge } from "@/features/webhooks/components/deliveries";
+import { DeliveryStatusBadge } from "@/features/webhooks/components/delivery-status-badge";
 import { EndpointActions } from "@/features/webhooks/components/endpoint-actions";
 import { EndpointDialog } from "@/features/webhooks/components/endpoint-dialog";
 import { WEBHOOKS_COPY as COPY } from "@/features/webhooks/constants/webhooks-copy";
@@ -26,23 +26,18 @@ import { dateTime, shortDate } from "@/shared/lib/dates";
 
 export interface WebhooksProps {
   profileId: string;
-  /** A merchant's endpoint may take one store; a freelancer has none. */
   merchant: boolean;
 }
 
-// The panel's width decides, not the screen's: below it a row keeps only the endpoint cell, which then lists the rest.
 const WIDE = "hidden @3xl:table-cell";
 const NARROW = "block text-xs text-muted @3xl:hidden";
 const ROW = cx(TABLE_ROW_CLASSES, "max-sm:[&>td:first-child]:pl-4 max-sm:[&>td:last-child]:pr-3");
 
-// R-149: the profile's webhook endpoints, newest first, each with where it sends, what, whether it is on and how its
-// newest delivery went.
 export function Webhooks({ profileId, merchant }: WebhooksProps) {
   const endpoints = useListEndpointsQuery(profileId);
   const stores = useListStoresQuery(profileId, { skip: !merchant });
   const names = new Map((stores.currentData ?? []).map((s) => [s.storeId, s.name]));
 
-  // A merchant's rows wait for the store names, so a failed stores load needs the same way out.
   const storesFailed = merchant && stores.isError && !stores.currentData;
   if ((endpoints.isError && !endpoints.currentData) || storesFailed) {
     return (
@@ -59,7 +54,6 @@ export function Webhooks({ profileId, merchant }: WebhooksProps) {
   const list = endpoints.currentData;
   const loading = !list || (merchant && !stores.currentData);
   const storeList = merchant ? (stores.currentData ?? []) : null;
-  // As on API keys: one badge for the panel while every endpoint is a test one.
   const allTest = !!list?.length && list.every((e) => !e.livemode);
   const store = (endpoint: WebhookEndpoint) =>
     endpoint.storeId ? (names.get(endpoint.storeId) ?? endpoint.storeId) : COPY.allStores;
@@ -114,7 +108,6 @@ export function Webhooks({ profileId, merchant }: WebhooksProps) {
                 <tr key={endpoint.endpointId} className={ROW}>
                   <td>
                     <span className="flex min-w-0 items-center gap-2">
-                      {/* Without a description the host and path lead the row, once. */}
                       {endpoint.description ? (
                         <span className="truncate font-medium text-ink">
                           {endpoint.description}
@@ -178,7 +171,6 @@ function OnBadge({ enabled }: { enabled: boolean }) {
   );
 }
 
-/** The endpoint's health at a glance: how its newest delivery went. The Deliveries sheet has the rest. */
 function LastDelivery({ profileId, endpointId }: { profileId: string; endpointId: string }) {
   const deliveries = useListDeliveriesQuery({ profileId, endpointId });
   const newest = deliveries.currentData?.[0];

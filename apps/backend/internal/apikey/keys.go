@@ -8,24 +8,20 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxName is the longest name a key takes.
 const MaxName = 100
 
 var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// A key works until it is revoked or its overlap after a roll ends.
-const (
-	keyColumns = `id::text, coalesce(store_id::text, ''), name, livemode, last4, scopes, created_at, last_used_at,
-		expires_at`
-	working = `revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`
-)
+const keyColumns = `id::text, coalesce(store_id::text, ''), name, livemode, last4, scopes, created_at, last_used_at,
+	expires_at`
+
+const WorkingSQL = `revoked_at IS NULL AND (expires_at IS NULL OR expires_at > now())`
 
 func scanKey(row pgx.CollectableRow) (Key, error) {
 	var k Key
@@ -38,13 +34,11 @@ func scanKey(row pgx.CollectableRow) (Key, error) {
 	return k, err
 }
 
-// Create makes a key in the profile's mode (D-120) and answers its text, the one time it is shown. A merchant's key is
-// for one of its stores; a freelancer's has none.
-// The caller has checked the user's access to the profile and the fresh sign-in (D-63).
+// Create answers the key's text, the one time it is shown; the caller has checked access and fresh sign-in.
 func (s *Service) Create(ctx context.Context, profileID, user, name, storeID string, scopes []auth.Permission) (Key,
 	string, error) {
 	name = strings.TrimSpace(name)
-	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxName || !profile.PlainText(name, false) {
+	if name == "" || !profile.ValidText(name, MaxName, false) {
 		return Key{}, "", fmt.Errorf("%w: name must be 1 to %d characters of plain text", ErrInvalid, MaxName)
 	}
 	invalid := len(scopes) == 0
@@ -54,7 +48,6 @@ func (s *Service) Create(ctx context.Context, profileID, user, name, storeID str
 	if invalid {
 		return Key{}, "", fmt.Errorf("%w: scopes must be one or more of %v", ErrInvalid, Scopes)
 	}
-	// Each once, in Scopes' order.
 	scopes = slices.DeleteFunc(slices.Clone(Scopes), func(p auth.Permission) bool { return !slices.Contains(scopes, p) })
 	storeID = strings.ToLower(storeID)
 	var kind string
@@ -98,13 +91,11 @@ func (s *Service) insert(ctx context.Context, tx pgx.Tx, profileID, user string,
 	return k, text, nil
 }
 
-// ofProfileMode keeps a key, by id with its profile as $2, to the profile's mode: the dashboard reaches one mode at a
-// time (R-221), and only signed-in owners and Admins manage keys.
+// ofProfileMode: the dashboard reaches one mode at a time.
 const ofProfileMode = "livemode = (SELECT livemode FROM profiles WHERE id = $2)"
 
-// List is the profile's working keys of its mode (R-221), newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Key, error) {
-	rows, err := s.pool.Query(ctx, `SELECT `+keyColumns+` FROM api_keys WHERE profile_id = $1 AND `+working+`
+	rows, err := s.pool.Query(ctx, `SELECT `+keyColumns+` FROM api_keys WHERE profile_id = $1 AND `+WorkingSQL+`
 		AND livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY created_at DESC, id`, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("list API keys: %w", err)
@@ -116,8 +107,7 @@ func (s *Service) List(ctx context.Context, profileID string) ([]Key, error) {
 	return keys, nil
 }
 
-// Roll makes a new key like the profile's key id, whose text the caller gets once, and keeps the old one working for
-// overlap, so a developer can swap it without downtime. A key rolls once; its new one rolls next.
+// Roll keeps the old key working for overlap. A key rolls once; its new one rolls next.
 func (s *Service) Roll(ctx context.Context, profileID, id, user string, overlap time.Duration) (Key, string, error) {
 	if overlap < 0 || overlap > MaxOverlap {
 		return Key{}, "", fmt.Errorf("%w: overlap must be 0 to %s", ErrInvalid, MaxOverlap)
@@ -147,13 +137,12 @@ func (s *Service) Roll(ctx context.Context, profileID, id, user string, overlap 
 	return k, text, err
 }
 
-// Revoke stops the profile's key id at once.
 func (s *Service) Revoke(ctx context.Context, profileID, id string) error {
 	if !lowercaseUUID.MatchString(id) {
 		return ErrNotFound
 	}
-	tag, err := s.pool.Exec(ctx, `UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND profile_id = $2 AND `+working+
-		` AND `+ofProfileMode, id, profileID)
+	tag, err := s.pool.Exec(ctx, `UPDATE api_keys SET revoked_at = now()
+		WHERE id = $1 AND profile_id = $2 AND `+WorkingSQL+` AND `+ofProfileMode, id, profileID)
 	if err != nil {
 		return fmt.Errorf("revoke API key: %w", err)
 	}

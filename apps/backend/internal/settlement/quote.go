@@ -12,24 +12,20 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
-// NetworkFeeMargin: an invoice's network fee is quoted when it is made and paid at settlement, which can be days later,
-// so gas may cost this many times more before the executor pays more than it is paid (R-227).
+// NetworkFeeMargin: the fee is quoted at creation and paid at settlement, days later, when gas may cost more.
 const NetworkFeeMargin = 2
 
-// QuoteAge is how long one chain's quote serves its new invoices. A read that fails then falls back on the last good
-// quote while it is younger than QuoteStale, so one slow RPC doesn't stop invoices. Keep reads every QuoteRefresh, so
-// that quote is there after a restart or a quiet hour too.
+// QuoteAge is how long a chain's quote serves new invoices; a failed read falls back on one younger than QuoteStale.
 const (
 	QuoteAge     = time.Minute
 	QuoteStale   = time.Hour
 	QuoteRefresh = 5 * time.Minute
 )
 
-// NetworkFeeMax bounds a quote: real ones are cents, and a gas spike stays well under it, so more is a lying RPC or
-// price feed, never put in terms (D-122). Each invoice's fees stay within a tenth of its amount anyway.
+// NetworkFeeMax bounds a quote: real ones are cents, so more is a lying RPC or price feed, never put in terms.
 var NetworkFeeMax = big.NewRat(5, 1)
 
-// Quotes prices one receiver deploy and settle on each chain in USD, for the network fee in an invoice's terms (D-122).
+// Quotes prices one receiver deploy and settle on each chain in USD, for the network fee in an invoice's terms.
 type Quotes struct {
 	client func(chainID uint64) (*ethclient.Client, error)
 	mu     sync.Mutex
@@ -45,8 +41,7 @@ func NewQuotes(client func(chainID uint64) (*ethclient.Client, error)) *Quotes {
 	return &Quotes{client: client, kept: map[uint64]quote{}}
 }
 
-// NetworkFee is what a deploy and a settle cost at the chain's current fee cap, times NetworkFeeMargin, rounded up to
-// 0.01 USD. Tempo prices gas in attodollars and Arc in its 18-decimal native USDC; ETH/USD prices ether elsewhere.
+// NetworkFee is a deploy and a settle at the current fee cap times NetworkFeeMargin, rounded up to 0.01 USD.
 func (q *Quotes) NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, error) {
 	q.mu.Lock()
 	kept, ok := q.kept[chainID]
@@ -65,9 +60,7 @@ func (q *Quotes) NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, erro
 	return usd, nil
 }
 
-// Keep reads each chain's quote now and every QuoteRefresh until ctx ends, with a whole RPC request's time rather than
-// an invoice's few seconds.
-// ponytail: chains are read one after another, so a hung one delays the others' refresh by up to chain.RequestTimeout.
+// Keep reads each chain's quote now and every QuoteRefresh until ctx ends.
 func (q *Quotes) Keep(ctx context.Context, chainIDs []uint64) {
 	for {
 		for _, id := range chainIDs {
@@ -101,11 +94,11 @@ func (q *Quotes) read(ctx context.Context, chainID uint64) (*big.Rat, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, feeCap, err := Fees(ctx, client, chainID)
+	_, feeCap, err := chain.Fees(ctx, client, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("quote chain %d network fee: %w", chainID, err)
 	}
-	code, err := client.CodeAt(ctx, tempoFeeManager, nil)
+	code, err := client.CodeAt(ctx, chain.TempoFeeManager, nil)
 	if err != nil {
 		return nil, fmt.Errorf("quote chain %d network fee: read the fee manager's code: %w", chainID, err)
 	}

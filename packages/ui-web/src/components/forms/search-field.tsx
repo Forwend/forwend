@@ -6,12 +6,10 @@ import { cx } from "../../lib/cx";
 import { IconButton } from "../buttons/icon-button";
 
 export interface SearchFieldProps {
-  /** The accessible name; the placeholder shows what it searches. */
   label: string;
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
-  clearLabel?: string;
   className?: string;
 }
 
@@ -20,12 +18,10 @@ export function SearchField({
   value,
   onValueChange,
   placeholder,
-  clearLabel = "Clear search",
   className,
 }: SearchFieldProps) {
   const input = useRef<HTMLInputElement>(null);
-  // The clear button sits outside the label, so it never joins the field's accessible name. The browser's own clear
-  // control is hidden: it ignores the theme.
+  // The clear button sits outside the label, so it stays out of the field's accessible name.
   return (
     <div
       className={cx(
@@ -47,7 +43,7 @@ export function SearchField({
       </label>
       {value ? (
         <IconButton
-          label={clearLabel}
+          label="Clear search"
           onClick={() => {
             onValueChange("");
             input.current?.focus();

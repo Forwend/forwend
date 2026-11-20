@@ -26,7 +26,7 @@ type PaymentOption struct {
 	HeldHistory       heldHistory
 }
 
-// PaymentReturn is held money the refund authority sent back to a payer, once the ledger booked it (PLAN 11.10.3).
+// PaymentReturn is held money sent back to a payer, once the ledger booked it.
 type PaymentReturn struct {
 	TxHash, To string
 	Amount     *big.Int
@@ -46,14 +46,12 @@ type PaymentSettlement struct {
 	Progress      *finality.Progress
 }
 
-type PaymentDelivery = webhook.PaymentDelivery
-
 type PaymentDetails struct {
 	DeliveryCount int64
 	Invoice       Invoice
 	SnapshotAt    time.Time
 	Options       []PaymentOption
-	Deliveries    []PaymentDelivery
+	Deliveries    []webhook.PaymentDelivery
 	Problems      []PaymentProblem
 }
 
@@ -173,13 +171,12 @@ func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string)
 	return result, rows.Err()
 }
 
-// heldHistory is what the ledger wrote to the history about an option's held money since the last reopen (R-130).
+// heldHistory is the ledger's history of an option's held money since the last reopen.
 type heldHistory struct {
-	Reason string   // its one reason; "" when the holds have several
-	Amount *big.Int // the sum of those holds
+	Reason string // its one reason; "" when the holds have several
+	Amount *big.Int
 }
 
-// readHeldReasons reads each option's heldHistory (D-26), by option id.
 func readHeldReasons(ctx context.Context, db paymentReader, mains []string) (map[string]heldHistory, error) {
 	rows, err := db.Query(ctx, `SELECT coalesce(nullif(h.data->>'option', ''), h.invoice_id) AS option,
 		       CASE WHEN count(DISTINCT h.data->>'reason') = 1 THEN min(h.data->>'reason') ELSE '' END,
@@ -198,7 +195,7 @@ func readHeldReasons(ctx context.Context, db paymentReader, mains []string) (map
 		if err := rows.Scan(&option, &reason, &sum); err != nil {
 			return nil, err
 		}
-		amount, _ := new(big.Int).SetString(sum, 10) // a sum of base-unit integers
+		amount, _ := new(big.Int).SetString(sum, 10)
 		result[option] = heldHistory{Reason: reason, Amount: amount}
 	}
 	return result, rows.Err()

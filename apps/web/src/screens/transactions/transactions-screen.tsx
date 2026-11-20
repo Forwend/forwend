@@ -19,7 +19,6 @@ export function TransactionsScreen() {
           ? TRANSACTIONS_COPY.intro
           : TRANSACTIONS_COPY.introBusiness
       }
-      pageHeading
       emptyAction={
         <Button variant="secondary" onClick={openReceive}>
           <QrCode aria-hidden className="size-[var(--fw-icon-sm)]" />

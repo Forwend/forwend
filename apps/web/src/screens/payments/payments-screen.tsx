@@ -2,13 +2,14 @@
 import { Button, buttonClasses, SearchField, SegmentedControl } from "@forwend/ui-web";
 import { ArrowLeftRight, Link2, Store } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { NewInvoiceLink } from "@/features/invoices/components/new-invoice-link";
 import { LINKS_COPY } from "@/features/links/constants/links-copy";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
 import { PaymentReconciliation } from "@/features/payments/components/payment-reconciliation";
 import {
+  PAYMENT_PARAMS,
   PAYMENT_SOURCES,
   PAYMENT_VIEWS,
   SOURCE_ICONS,
@@ -23,11 +24,13 @@ import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { ListFilters } from "@/shared/components/list-filters";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { API_SETTLEMENT_STATUSES, PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
-import { useListFilters, withParam } from "@/shared/hooks/use-list-filters";
+import { useListFilters } from "@/shared/hooks/use-list-filters";
 import { narrowedBy } from "@/shared/lib/payment-state";
 import { paymentStateGroup } from "@/shared/lib/payment-state-filter";
+import { setParam } from "@/shared/lib/url-params";
 
 const ALL = "all";
 const STATES = Object.values(PAYMENT_STATE_FILTERS);
@@ -35,17 +38,16 @@ const STATES = Object.values(PAYMENT_STATE_FILTERS);
 export function PaymentsScreen() {
   const { profile, openRequest } = useAppSession();
   const params = useSearchParams();
-  const pathname = usePathname();
   const merchant = profile.kind === PROFILE_KINDS.merchant;
   const stores = useListStoresQuery(profile.profileId, { skip: !merchant });
-  const list = useListFilters("state", STATES, PAYMENT_STATE_FILTERS.all);
+  const list = useListFilters(PAYMENT_PARAMS.state, STATES, PAYMENT_STATE_FILTERS.all);
   const view =
-    Object.values(PAYMENT_VIEWS).find((value) => value === params.get("view")) ?? PAYMENT_VIEWS.all;
-  const source = PAYMENT_SOURCES.find((value) => value === params.get("source"));
-  const storeId = params.get("storeId") || undefined;
-  const linkId = params.get("linkId") || undefined;
-  // Pending payments on the overview opens this for the money it shows as moving to the wallet.
-  const moving = params.get("settlementStatus") === API_SETTLEMENT_STATUSES.pending;
+    Object.values(PAYMENT_VIEWS).find((value) => value === params.get(PAYMENT_PARAMS.view)) ??
+    PAYMENT_VIEWS.all;
+  const source = PAYMENT_SOURCES.find((value) => value === params.get(PAYMENT_PARAMS.source));
+  const storeId = params.get(PAYMENT_PARAMS.storeId) || undefined;
+  const linkId = params.get(PAYMENT_PARAMS.linkId) || undefined;
+  const moving = params.get(PAYMENT_PARAMS.settlementStatus) === API_SETTLEMENT_STATUSES.pending;
   const filters: PaymentFilters = {
     q: list.apiQuery,
     state: list.apiFilter,
@@ -54,25 +56,23 @@ export function PaymentsScreen() {
     linkId,
     settlementStatus: moving ? API_SETTLEMENT_STATUSES.pending : undefined,
   };
-  const set = (name: string, value: string) => {
-    const { search, hash } = window.location;
-    window.history.replaceState(
-      null,
-      "",
-      `${pathname}${withParam(search, name, value === ALL ? "" : value)}${hash}`,
-    );
-  };
-  // Both filter lines say Show all payments, so either clears both.
+  const set = (name: string, value: string) => setParam(name, value === ALL ? "" : value);
   const showAll = () => {
-    set("linkId", "");
-    set("settlementStatus", "");
+    set(PAYMENT_PARAMS.linkId, "");
+    set(PAYMENT_PARAMS.settlementStatus, "");
   };
   const clear = () => {
     list.clear();
-    for (const name of ["source", "storeId", "linkId", "settlementStatus"]) set(name, "");
+    for (const name of [
+      PAYMENT_PARAMS.source,
+      PAYMENT_PARAMS.storeId,
+      PAYMENT_PARAMS.linkId,
+      PAYMENT_PARAMS.settlementStatus,
+    ])
+      set(name, "");
   };
-  const unknownSource = Boolean(params.get("source") && !source);
-  const unknownSettlement = Boolean(params.get("settlementStatus") && !moving);
+  const unknownSource = Boolean(params.get(PAYMENT_PARAMS.source) && !source);
+  const unknownSettlement = Boolean(params.get(PAYMENT_PARAMS.settlementStatus) && !moving);
   const storeList = stores.currentData ?? [];
   const unknownStore = Boolean(
     storeId && stores.currentData && !storeList.some((s) => s.storeId === storeId),
@@ -100,7 +100,9 @@ export function PaymentsScreen() {
           className="max-sm:w-full"
           label={COPY.views.label}
           value={view}
-          onValueChange={(value) => set("view", value === PAYMENT_VIEWS.all ? "" : value)}
+          onValueChange={(value) =>
+            set(PAYMENT_PARAMS.view, value === PAYMENT_VIEWS.all ? "" : value)
+          }
           options={[
             { value: PAYMENT_VIEWS.all, label: COPY.views.all },
             { value: PAYMENT_VIEWS.attention, label: COPY.views.attention },
@@ -127,7 +129,7 @@ export function PaymentsScreen() {
                 {
                   label: COPY.source,
                   value: source ?? ALL,
-                  onValueChange: (value) => set("source", value),
+                  onValueChange: (value) => set(PAYMENT_PARAMS.source, value),
                   options: [
                     { value: ALL, label: COPY.allSources, icon: ArrowLeftRight },
                     ...PAYMENT_SOURCES.filter((value) => merchant || value !== "checkout").map(
@@ -144,7 +146,7 @@ export function PaymentsScreen() {
                       {
                         label: COPY.store,
                         value: storeId ?? ALL,
-                        onValueChange: (value: string) => set("storeId", value),
+                        onValueChange: (value: string) => set(PAYMENT_PARAMS.storeId, value),
                         options: [
                           { value: ALL, label: COPY.allStores, icon: Store },
                           ...storeList.map((store) => ({
@@ -194,19 +196,15 @@ export function PaymentsScreen() {
   );
 
   return (
-    // A profile with no payments has nothing to export: the empty state hides the title row's Export too.
+    // No payments, nothing to export: the empty state hides the phone's Export too.
     <div className="flex flex-col gap-4 [&:has([data-page-empty])_[data-phone-export]]:hidden">
       <div className="flex flex-col gap-1">
-        {/* On a phone the title row carries Export, as an app's top bar carries its action. */}
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-            {COPY.title}
-          </h1>
+          <PageTitle>{COPY.title}</PageTitle>
           <div data-phone-export className="sm:hidden">
             {exportButton}
           </div>
         </div>
-        {/* Payments, Activity and Transactions overlap; one line says which this is. */}
         <p className="text-sm text-muted">{COPY.intro}</p>
       </div>
       {unknownSource || unknownSettlement || unknownStore ? (

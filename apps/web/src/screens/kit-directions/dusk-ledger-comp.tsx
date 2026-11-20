@@ -1,9 +1,9 @@
-import { CTA } from "@/features/waitlist/constants/waitlist";
+import { CTA } from "@/screens/kit/constants/sample-cta";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
-import { COMP_UI, NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
+import { COMP_UI } from "@/screens/kit-directions/constants/comp";
+import { DuskLandscape } from "@/screens/kit-directions/dusk-landscape";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";
 import { compVars } from "@/screens/kit-directions/lib/comp";
-import { DuskLandscape } from "@/shared/components/art/dusk-landscape";
 
 export function DuskLedgerComp() {
   return (
@@ -13,7 +13,7 @@ export function DuskLedgerComp() {
     >
       <DuskLandscape className="absolute inset-0 -z-10 h-full w-full" />
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,transparent_8%,var(--scrim)_42%)]" />
-      <CompNav variant={NAV_VARIANTS.bar} />
+      <CompNav />
       <div className="mt-20 grid flex-1 items-end gap-10 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="max-w-xl">
           <h3 className="font-[family-name:var(--font-gloock)] text-[clamp(2.5rem,5.5vw,4.5rem)] leading-[1.04] tracking-[-0.01em] text-balance">

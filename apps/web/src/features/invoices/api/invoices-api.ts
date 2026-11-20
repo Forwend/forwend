@@ -21,13 +21,12 @@ import type {
   StoppedReminders,
 } from "@/features/invoices/types/invoices";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 export const INVOICES_TAG = "Invoices";
 
-const profileInvoices = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/invoices`;
+const profileInvoices = (profileId: string) => profilePath(profileId, "invoices");
 
 export const invoicesApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [INVOICES_TAG] })
@@ -35,7 +34,6 @@ export const invoicesApi = apiSlice
     endpoints: (build) => ({
       getInvoices: build.infiniteQuery<
         InvoicesPage,
-        // The Payments list's states (D-114), so both lists filter alike.
         { profileId: string; state?: ApiPaymentState; q?: string },
         string | null
       >({
@@ -60,7 +58,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         providesTags: [INVOICES_TAG],
       }),
-      /** The owner's read: the public one plus the client; 404 for another profile's invoice. */
+      /** With the client; 404 for another profile's invoice. */
       getProfileInvoice: build.query<
         Invoice,
         { profileId: string; invoiceId: string; summary?: boolean }
@@ -72,16 +70,15 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         providesTags: [INVOICES_TAG],
       }),
-      /** The bell's events (R-81), newest first. */
+      /** Newest first. */
       getInvoiceEvents: build.query<InvoiceEvent[], string>({
         query: (profileId) => ({
-          url: `/v1/profiles/${encodeURIComponent(profileId)}/events`,
+          url: profilePath(profileId, "events"),
           params: { limit: 20 },
         }),
         rawResponseSchema: invoiceEventsSchema,
         transformResponse: (data: { items: InvoiceEvent[] }) => data.items,
       }),
-      /** R-227: the fees each option of a price would carry, so a form shows them before it saves. */
       getFees: build.query<
         FeeQuote,
         { profileId: string; storeId?: string; feesPaidBy: FeesPaidBy } & (
@@ -90,18 +87,17 @@ export const invoicesApi = apiSlice
         )
       >({
         query: ({ profileId, ...price }) => ({
-          url: `/v1/profiles/${encodeURIComponent(profileId)}/fees`,
+          url: profilePath(profileId, "fees"),
           params: price,
         }),
         responseSchema: feeQuoteSchema,
       }),
-      /** Owed to you (R-95). */
       getOwed: build.query<OwedList, string>({
-        query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/owed`,
+        query: (profileId) => profilePath(profileId, "owed"),
         responseSchema: owedListSchema,
         providesTags: [INVOICES_TAG],
       }),
-      /** Cancel before any money (R-79): 409 once money was seen or the checkout closed. */
+      /** 409 once money was seen or the checkout closed. */
       cancelInvoice: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/cancel`,
@@ -110,7 +106,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** R-130: once, while reopenUntil is set; 409 otherwise. */
+      /** Once, while reopenUntil is set; 409 otherwise. */
       reopenInvoice: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/reopen`,
@@ -119,7 +115,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** R-94: one email per idempotency key; 409 when it can't be sent, 429 past a send limit. */
+      /** One email per idempotency key; 409 when it can't be sent, 429 past a send limit. */
       sendInvoice: build.mutation<
         Invoice,
         { profileId: string; invoiceId: string; idempotencyKey: string }
@@ -134,7 +130,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** R-96: on is 409 once unpayable, without a due date or client email, or after the client stopped them. */
+      /** on is 409 once unpayable, without a due date or client email, or once the client stopped them. */
       setReminders: build.mutation<Invoice, { profileId: string; invoiceId: string; on: boolean }>({
         query: ({ profileId, invoiceId, on }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/reminders`,
@@ -144,7 +140,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** R-127, R-128: the whole editable set; null clears a field. 409 when a locked one changes. */
+      /** The whole editable set; null clears a field. 409 when a locked one changes. */
       editInvoice: build.mutation<
         Invoice,
         {
@@ -168,7 +164,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** Stops the invoice's retainer (R-98); the same answer twice, also for an invoice that doesn't repeat. */
+      /** The same answer twice, also for an invoice that doesn't repeat. */
       stopRepeat: build.mutation<Invoice, { profileId: string; invoiceId: string }>({
         query: ({ profileId, invoiceId }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/repeat/stop`,
@@ -177,7 +173,7 @@ export const invoicesApi = apiSlice
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
       }),
-      /** The client's stop link (R-96): public, the same answer twice; 404 for a link that is not one. */
+      /** Public; the same answer twice; 404 for a link that is not one. */
       stopReminders: build.mutation<StoppedReminders, string>({
         query: (token) => ({
           url: `/v1/reminders/${encodeURIComponent(token)}/stop`,
@@ -185,9 +181,9 @@ export const invoicesApi = apiSlice
         }),
         responseSchema: stoppedRemindersSchema,
       }),
-      /** Check status: public, like the checkout read; the api allows one per invoice every 5 minutes. */
+      /** Public; the API allows one per invoice every 5 minutes. */
       recheckInvoice: build.mutation<Recheck, string>({
-        // Asked too soon is the answer: the page rests until the next check, it does not wait and ask again.
+        // Asked too soon is the answer: the page rests until the next check.
         extraOptions: { answerFirst: true },
         query: (payToken) => ({
           url: `/v1/invoices/${encodeURIComponent(payToken)}/recheck`,
@@ -195,7 +191,7 @@ export const invoicesApi = apiSlice
         }),
         responseSchema: recheckSchema,
       }),
-      /** One pay page load (R-125): public; a refused count is not sent again. */
+      /** Public; a refused count is not sent again. */
       countView: build.mutation<void, string>({
         extraOptions: { answerFirst: true },
         query: (payToken) => ({
@@ -203,7 +199,7 @@ export const invoicesApi = apiSlice
           method: "POST",
         }),
       }),
-      /** Email me the receipt (R-82): public, like the checkout; 409 once the receipt went out. */
+      /** Public; 409 once the receipt went out. */
       setPayerEmail: build.mutation<{ email: string }, { payToken: string; email: string }>({
         query: ({ payToken, email }) => ({
           url: `/v1/invoices/${encodeURIComponent(payToken)}/payer-email`,
@@ -212,7 +208,7 @@ export const invoicesApi = apiSlice
         }),
         responseSchema: z.object({ email: z.string() }),
       }),
-      /** Keeps the payer's pick for the next visit (R-57): public; 409 once money is seen, which the next read shows. */
+      /** Public; 409 once money is seen, which the next read shows. */
       pickOption: build.mutation<void, { payToken: string; optionId: string }>({
         query: ({ payToken, optionId }) => ({
           url: `/v1/invoices/${encodeURIComponent(payToken)}/pick`,

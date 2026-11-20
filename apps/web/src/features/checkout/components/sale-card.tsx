@@ -2,31 +2,20 @@
 
 import { cx } from "@forwend/ui-web";
 import { type ReactNode, useRef } from "react";
+import { STEP_IN } from "@/shared/constants/motion";
 
-/** What a new step puts on screen fades in place from a slight blur: the content changes, nothing slides. */
-export const FADE_IN =
-  "motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]";
-
-// One size from the amount to Paid, so a step never moves the page. On a phone it is the whole first screen, edge to
-// edge, so Paid colors all of it.
 const CARD =
   "flex min-w-0 flex-col transition-colors duration-[var(--fw-duration-base)] max-sm:-mx-4 max-sm:min-h-dvh sm:min-h-[41.5rem] sm:rounded-lg sm:border sm:border-line";
 
 export interface SaleCardProps {
-  /** The top row: the way back, the store and Recent, or Cancel sale and the sale's name. */
   bar: ReactNode;
-  /** A new value fades the new step in. */
   step: string;
-  /** The keys and the actions, at the bottom: within a thumb's reach on a phone. */
   foot: ReactNode;
   paid?: boolean;
   children: ReactNode;
 }
 
-/** The sale as one screen the customer can look at. On a phone the shell's header and tab bar step aside for
- * `data-phone-flow`, so nothing else on it can be tapped. */
 export function SaleCard({ bar, step, foot, paid = false, children }: SaleCardProps) {
-  // The first step shows at once: the card itself fades in when it replaces another.
   const first = useRef(step);
   return (
     <div data-phone-flow className={cx(CARD, paid ? "bg-success-soft" : "bg-surface")}>
@@ -35,7 +24,7 @@ export function SaleCard({ bar, step, foot, paid = false, children }: SaleCardPr
       </div>
       <div
         key={step}
-        className={cx("flex flex-1 flex-col", step === first.current ? undefined : FADE_IN)}
+        className={cx("flex flex-1 flex-col", step === first.current ? undefined : STEP_IN)}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-5 pt-2 pb-4 text-center">
           {children}

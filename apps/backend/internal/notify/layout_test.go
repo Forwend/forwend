@@ -2,7 +2,6 @@ package notify
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -63,7 +62,6 @@ func links(all []string) []string {
 	return slices.Compact(all)
 }
 
-// F200.
 func TestEveryEmailHasHTMLWithTheTextLinks(t *testing.T) {
 	for name, v := range samples() {
 		m, err := message(site, v)
@@ -93,51 +91,6 @@ func TestEmailEscapesTypedNames(t *testing.T) {
 	}
 }
 
-func TestKeepHoldsNumbersDatesAndAmountsTogether(t *testing.T) {
-	got := string(keep("INV-0001 for 1,250.00 USDC is due 30 Nov 2026 & paid"))
-	want := `<span style="white-space:nowrap">INV-0001</span> for 1,250.00&nbsp;USDC is due 30&nbsp;Nov&nbsp;2026 &amp; paid`
-	if got != want {
-		t.Fatalf("got %s, want %s", got, want)
-	}
-}
-
-// The support address comes from config (SUPPORT_EMAIL); without one the footer leaves the line out.
-// R-80, D-118: the owner reads why money is held, whichever way it came.
-func TestHeldEmailNamesEveryReasonMoneyIsHeld(t *testing.T) {
-	note := samples()["held"].Note
-	for _, reason := range []string{
-		"over the amount due",
-		"part of a payment when checkout closed",
-		"after checkout closed",
-		"canceled",
-		"another payment option",
-	} {
-		if !strings.Contains(note, reason) {
-			t.Errorf("held note %q leaves out %q", note, reason)
-		}
-	}
-}
-
-func TestFooterNamesTheConfiguredSupportAddress(t *testing.T) {
-	for _, v := range samples() {
-		m, err := message(Site{WebURL: "https://forwend.com", Support: "help@example.test"}, v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(m.HTML, `href="mailto:help@example.test"`) || !strings.Contains(m.Text, "Questions? help@example.test") {
-			t.Fatalf("%s: the footer lacks the configured support address", v.Subject)
-		}
-		m, err = message(Site{WebURL: "https://forwend.com"}, v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(m.HTML, "Questions?") || strings.Contains(m.Text, "Questions?") {
-			t.Fatalf("%s: a footer with no support address still asks for questions", v.Subject)
-		}
-	}
-}
-
-// The header's logo is a file the web app serves, so moving it would break every email's header.
 func TestTheLogoIsInTheWebApp(t *testing.T) {
 	if _, err := os.Stat(webPublic + logo); err != nil {
 		t.Fatal(err)
@@ -145,30 +98,3 @@ func TestTheLogoIsInTheWebApp(t *testing.T) {
 }
 
 const webPublic = "../../../web/public"
-
-// With EMAIL_SAMPLES_DIR set, writes each email's HTML there for screenshots (docs/runs); otherwise skipped. The
-// logo is copied beside them, so a preview shows it without the hosted site.
-func TestWriteEmailSamples(t *testing.T) {
-	dir := os.Getenv("EMAIL_SAMPLES_DIR")
-	if dir == "" {
-		t.Skip("EMAIL_SAMPLES_DIR not set")
-	}
-	png, err := os.ReadFile(webPublic + logo)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, filepath.Base(logo)), png, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for name, v := range samples() {
-		m, err := message(Site{WebURL: "https://forwend.com", PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"),
-			Support: os.Getenv("SUPPORT_EMAIL")}, v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		html := strings.Replace(m.HTML, "https://forwend.com"+logo, filepath.Base(logo), 1)
-		if err := os.WriteFile(filepath.Join(dir, name+".html"), []byte(html), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-}

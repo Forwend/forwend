@@ -13,10 +13,10 @@ import { useExportWallet } from "@privy-io/react-auth";
 import { ChevronRight, KeyRound, WalletMinimal } from "lucide-react";
 import { useRef, useState } from "react";
 import { useCheckFreshSignInMutation } from "@/features/auth/api/auth-api";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
-import { useMfaStep } from "@/features/auth/components/mfa-step";
 import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
 import { TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 import { useWalletMfa } from "@/features/auth/hooks/use-wallet-mfa";
 import { mfaCancelled } from "@/features/auth/lib/two-step";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -27,10 +27,7 @@ const COPY = SETTINGS_COPY.wallet;
 // Privy rejects with only this message, no code, when the owner closes its window while it still connects.
 const CLOSED_WHILE_CONNECTING = "User exited before wallet could be connected";
 
-// R-218: the owner exports this profile's wallet key. A short warning comes first, then Privy's own export page for this
-// wallet: the key loads on Privy's domain, so Forwend never sees it. With two-step set up, Privy asks for it first, in
-// this dialog (D-49). Without it, Confirm it's you comes first for a stale session; that binds this page only, as a
-// stolen session could call Privy's export itself (Q-13).
+// The key loads on Privy's domain: Forwend never sees it. Confirm it's you guards this page only.
 export function WalletScreen() {
   const { profile } = useAppSession();
   const address = profile.walletAddress;
@@ -55,15 +52,13 @@ export function WalletScreen() {
 
   const show = async () => {
     if (!address) return;
-    // R-219: until two-step is set up, the warning sets it up in place, then offers Show the key.
     if (mfa.needed) {
       setSettingUp(true);
       return;
     }
     setError("");
     setOpening(true);
-    // Privy asks for two-step before it shows the key: the ask takes the place of these buttons. Privy may not settle
-    // its promise when its window closes, so nothing waits on it here.
+    // Privy may not settle its promise when its window closes, so nothing waits on it here.
     if (mfa.enrolled) {
       void mfaStep
         .run(() => exportWallet({ address }))
@@ -73,7 +68,6 @@ export function WalletScreen() {
         .finally(() => setOpening(false));
       return;
     }
-    // Without two-step, Confirm it's you comes first for a stale session.
     try {
       await fresh.run(() => check().unwrap());
     } catch (e) {
@@ -81,9 +75,8 @@ export function WalletScreen() {
       setOpening(false);
       return;
     }
-    // Privy's window opens over the app: the warning closes first, so no dialog sits under it, and an error from
-    // Privy shows as a toast, where it can be seen. Privy may not settle its promise when its window is closed, so the
-    // button stops loading here, not after it.
+    // Privy's window opens over the app, so the dialog closes first and errors go to a toast.
+    // Privy may not settle its promise when its window closes, so loading stops before the call.
     body.current?.closest("dialog")?.close();
     setOpening(false);
     try {
@@ -141,8 +134,6 @@ export function WalletScreen() {
                   {mfa.needed && !settingUp ? (
                     <p className="mt-3 text-sm">{COPY.setUpMfa}</p>
                   ) : null}
-                  {/* Each ask takes the place of the dialog's buttons, as in other protected dialogs: the setup,
-                      two-step, or Confirm it's you. */}
                   <div className="mt-5">
                     {settingUp ? (
                       <TwoStepSetup

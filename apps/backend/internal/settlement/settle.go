@@ -1,7 +1,6 @@
 package settlement
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,32 +27,28 @@ const ReceiptWait = time.Minute
 // CodeWait is how long one run waits for the RPC to show a receiver's code before it estimates settle gas.
 const CodeWait = 10 * time.Second
 
-// ReceiptPoll is the first pause between receipt reads; it doubles up to 4 s, so an unmined transaction doesn't hammer
-// the provider. CodePoll is the pause between reads of a receiver's code.
+// ReceiptPoll is the first pause between receipt reads, doubling up to 4 s; CodePoll is between code reads.
 const (
 	ReceiptPoll = time.Second
 	CodePoll    = 500 * time.Millisecond
 )
 
-// A node that hasn't seen the receiver's deploy estimates settle at 21,064 gas, which runs out. Real USDC used up to
-// 135,632; the floor plus a fifth covers it. On Arbitrum the estimate at the deploy's block adds the L1 data cost.
+// SettleGasFloor: a node that hasn't seen the deploy estimates 21,064 gas, which runs out; real USDC used 135,632.
 const SettleGasFloor = 125_000
 
-// TempoSettleGasFloor: Tempo prices storage far higher, and its v1 testnet settle used 572,845 gas (deployments.json,
-// superseded).
+// TempoSettleGasFloor: Tempo prices storage far higher; its testnet settle used 572,845 gas.
 const TempoSettleGasFloor = 580_000
 
 // An unmined settle is re-signed after this with a higher fee, so later settles on the chain aren't held up.
 const ReplaceAfter = 3 * time.Minute
 
-// Per user in 24 hours: tiny invoices paid back and forth would otherwise drain the executor's gas (SEC-03).
+// Per user in 24 hours: tiny invoices paid back and forth would otherwise drain the executor's gas.
 const SponsoredPerDay = 50
 
 // Caps a replacement's fee cap at this many times a new settle's, so repeated bumps can't grow without end.
 const MaxFeeFactor = 2
 
-// MaxSettleGas caps a replacement's gas limit: about four Tempo settles (TempoSettleGasFloor plus a fifth), with room
-// for Arbitrum's L1 data gas.
+// MaxSettleGas caps a replacement's gas limit: about four Tempo settles, with room for Arbitrum's L1 data gas.
 const MaxSettleGas = 3_000_000
 
 func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
@@ -101,28 +96,21 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	case !st.Settleable:
 		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
-	var funded bool
-	if err := s.pool.QueryRow(ctx, `SELECT
-  coalesce((SELECT -sum(e.amount) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
-            WHERE t.invoice_id = $1 AND e.account = 'recipient_payable'), 0) >= $2
-  AND NOT EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.invoice_id = $1 AND o.kind = 'refund'
-                  AND o.ledger_transaction_id IS NULL)
-  AND NOT (`+ledger.SettleWaitsSQL("$1")+`)`, in.invoiceID, in.amount.String()).Scan(&funded); err != nil {
+	// Waits first: a refund booked between the two reads then shows in the amounts, never the other way round.
+	var waits bool
+	if err := s.pool.QueryRow(ctx, `SELECT `+ledger.SettleWaitsSQL("$1"), in.invoiceID).Scan(&waits); err != nil {
 		return err
 	}
-	if !funded {
+	amounts, err := ledger.ReadAmounts(ctx, s.pool, in.invoiceID)
+	if err != nil {
+		return err
+	}
+	if waits || amounts.Payable.Cmp(in.amount) < 0 {
 		return s.postpone(ctx, in, waitUnresolved, "merchant payable was returned or a movement is not booked")
 	}
-	// Less than the ledger booked means money left the receiver unbooked: settling could take what is held for payers.
-	// The balance is read where the scan finalized, never past it: what the ledger booked covers exactly that, so a
-	// deposit or refund the scan hasn't reached can't read as missed.
-	var bookedText string
-	if err := s.pool.QueryRow(ctx, `SELECT coalesce(sum(e.amount), 0)::text FROM ledger_entries e
-		JOIN ledger_transactions t ON t.id = e.transaction_id WHERE t.invoice_id = $1 AND e.account = 'receiver'`,
-		in.invoiceID).Scan(&bookedText); err != nil {
-		return err
-	}
-	booked, _ := new(big.Int).SetString(bookedText, 10)
+	// Less than booked means money left unbooked: settling could take what is held for payers. Read at the scan's
+	// finalized block, which is exactly what the ledger booked.
+	booked := amounts.Receiver
 	head, err := client.HeaderByNumber(ctx, finalized)
 	if err != nil {
 		return fmt.Errorf("read finalized block: %w", err)
@@ -147,8 +135,7 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	}); err != nil {
 		return err
 	}
-	// The cap guards the executor's gas: an invoice with a network fee pays its own (R-226), so it neither waits nor
-	// counts. The count starts from the day's settles: a user's whole history can be 100,000 invoices.
+	// The cap guards the executor's gas: an invoice with a network fee pays its own, so it neither waits nor counts.
 	var used int
 	if in.fees[0].Sign() == 0 {
 		if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
@@ -242,31 +229,15 @@ func check(in intent) (address.Terms, string) {
 	case in.wallet == nil || !strings.EqualFold(*in.wallet, in.recipient):
 		return address.Terms{}, "recipient is not the profile wallet"
 	}
-	return receiverTerms(in)
-}
-
-// receiverTerms are the invoice's terms when they compute its stored receive address with a Forwend factory.
-func receiverTerms(in intent) (address.Terms, string) {
-	factory, known := address.KnownFactory(in.factory)
-	if !known {
-		return address.Terms{}, "invoice factory is not a Forwend factory"
-	}
-	terms := address.Terms{
-		InvoiceID: [32]byte(common.FromHex(in.invoiceID)), Recipient: common.HexToAddress(in.recipient),
-		Token: common.HexToAddress(in.token), Amount: in.amount, ExpiresAt: in.expires,
-		SettleDeadline: in.deadline, IntendedChainID: in.chainID, NetworkFee: in.fees[0], PlatformFee: in.fees[1],
-	}
-	receive, err := address.ReceiveAt(factory, terms)
-	if err != nil || !bytes.Equal(receive[:], common.HexToAddress(in.receive).Bytes()) {
-		return address.Terms{}, "terms do not compute the stored receive address"
+	_, terms, err := termsOf(in.invoiceID, in.factory, in.recipient, in.token, in.receive, in.amount, in.fees, in.expires,
+		in.deadline, in.chainID)
+	if err != nil {
+		return address.Terms{}, err.Error()
 	}
 	return terms, ""
 }
 
-// sign trusts the chain's own gas estimate (Tempo prices storage differently, S-5/S-6), with minGas as a floor.
-// The nonce is never below after or the nonce after the last sent settle: a lagging node may miss our latest ones.
-// A confirmed settle sets no floor: its own transaction is final, or another settler settled and ours may never mine.
-// If ours still mines, it takes its nonce and reverts; a deploy given the same nonce fails and is signed again.
+// sign trusts the gas estimate above minGas; the nonce is at least after and the last sent settle's, as nodes lag.
 func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
 	after, minGas uint64, block *big.Int) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)
@@ -286,8 +257,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	msg := ethereum.CallMsg{From: s.sender, To: &to, Data: data}
 	var gas uint64
 	if block != nil {
-		// At the deploy's block a node that answers has seen the receiver's code; on Arbitrum the estimate also counts
-		// the L1 data gas, which the floor does not.
+		// At the deploy's block a node that answers has seen the receiver's code; on Arbitrum it adds L1 data gas.
 		gas, err = client.EstimateGasAtBlock(ctx, msg, block)
 		if rpcErr := rpc.Error(nil); errors.As(err, &rpcErr) && rpcErr.ErrorCode() == 3 { // a revert fails at latest too
 			return nil, fmt.Errorf("estimate gas at block %s: %w", block, err)
@@ -302,7 +272,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 		}
 	}
 	gas = max(gas, minGas)
-	tip, feeCap, err := Fees(ctx, client, chainID)
+	tip, feeCap, err := chain.Fees(ctx, client, chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -313,15 +283,13 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
 }
 
-// replace raises tip and fee cap by at least an eighth (geth wants a tenth) and to at least today's fees, saved before
-// it is sent with old's hash kept, since either may be mined. Over MaxFeeFactor or MaxSettleGas it returns old, to be
-// sent again as is.
+// replace raises tip and fee cap by at least an eighth, saved before sending; past MaxFeeFactor or MaxSettleGas, old.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
-	tip, feeCap, err := Fees(ctx, client, in.chainID)
+	tip, feeCap, err := chain.Fees(ctx, client, in.chainID)
 	if err != nil {
 		return nil, err
 	}
-	limit := minBig(new(big.Int).Mul(feeCap, big.NewInt(MaxFeeFactor)), maxFeePerGas[in.chainID])
+	limit := minBig(new(big.Int).Mul(feeCap, big.NewInt(MaxFeeFactor)), chain.FeeCeiling(in.chainID))
 	bump := func(x *big.Int) *big.Int {
 		return new(big.Int).Div(new(big.Int).Add(new(big.Int).Mul(x, big.NewInt(9)), big.NewInt(7)), big.NewInt(8))
 	}
@@ -366,8 +334,7 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 	return tx, nil
 }
 
-// overStuck: an unsaved transaction stuck at the next mined nonce (an earlier deploy) holds every later one.
-// Deploy is idempotent, so this deploy takes its place at twice today's fee.
+// overStuck replaces an unsaved deploy stuck at the next mined nonce at twice today's fee: it holds every later one.
 func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainID uint64, tx *types.Transaction) (*types.Transaction, error) {
 	mined, err := client.NonceAt(ctx, s.sender, nil)
 	if err != nil {
@@ -377,16 +344,12 @@ func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainI
 	if err != nil || pending <= mined {
 		return tx, err
 	}
-	var saved bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
-		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
-		int64(chainID), strings.ToLower(s.sender.Hex()), int64(mined)).Scan(&saved); err != nil || saved {
+	if saved, err := s.savedAt(ctx, chainID, mined); err != nil || saved {
 		return tx, err
 	}
-	two, ceiling := big.NewInt(2), maxFeePerGas[chainID]
+	two, ceiling := big.NewInt(2), chain.FeeCeiling(chainID)
 	tip, feeCap := minBig(new(big.Int).Mul(tx.GasTipCap(), two), ceiling), minBig(new(big.Int).Mul(tx.GasFeeCap(), two), ceiling)
-	// The stuck transaction may be this receiver's deploy: a node that estimates at its pending state (Anvil) then
-	// prices only the "already deployed" path. At latest it hasn't run, so the estimate covers the whole deploy.
+	// The stuck transaction may be this receiver's deploy: Anvil estimates at pending, so estimate at latest instead.
 	gas := tx.Gas()
 	if est, err := client.EstimateGasAtBlock(ctx, ethereum.CallMsg{From: s.sender, To: tx.To(), Data: tx.Data()}, nil); err == nil {
 		gas = max(gas, est+est/5)
@@ -397,41 +360,20 @@ func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainI
 		Gas: gas, To: tx.To(), Data: tx.Data()}), types.LatestSignerForChainID(tx.ChainId()), s.key)
 }
 
+// savedAt: a saved settle of this executor holds the nonce on the chain.
+func (s *Signer) savedAt(ctx context.Context, chainID, nonce uint64) (bool, error) {
+	var saved bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM settlement_intents si JOIN invoices i ON i.id = si.invoice_id
+		WHERE i.chain_id = $1 AND si.sender = $2 AND si.nonce = $3 AND si.status = 'sent')`,
+		int64(chainID), strings.ToLower(s.sender.Hex()), int64(nonce)).Scan(&saved)
+	return saved, err
+}
+
 func bigMax(a, b *big.Int) *big.Int {
 	if a.Cmp(b) >= 0 {
 		return a
 	}
 	return b
-}
-
-// Fees are a transaction's tip and fee cap on the chain: twice the base fee plus the tip, never above the chain's
-// ceiling in maxFeePerGas (R-189).
-func Fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
-	tip, err = client.SuggestGasTipCap(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read gas tip: %w", err)
-	}
-	head, err := client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read base fee: %w", err)
-	}
-	if head.BaseFee == nil {
-		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
-	}
-	ceiling, ok := maxFeePerGas[chainID]
-	if !ok {
-		return nil, nil, fmt.Errorf("chain %d has no fee ceiling (settlement.maxFeePerGas)", chainID)
-	}
-	feeCap = minBig(new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), ceiling)
-	return minBig(tip, feeCap), feeCap, nil
-}
-
-// minBig returns a copy, so a ceiling in maxFeePerGas is never handed out to be changed.
-func minBig(a, b *big.Int) *big.Int {
-	if a.Cmp(b) <= 0 {
-		return new(big.Int).Set(a)
-	}
-	return new(big.Int).Set(b)
 }
 
 // awaitCode: a node that hasn't seen the deploy estimates settle far too low.

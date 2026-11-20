@@ -9,7 +9,8 @@ import { FIRST_RUN_COPY } from "@/features/onboarding/constants/onboarding-copy"
 import type { ProfileDetails } from "@/features/onboarding/types/onboarding";
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { PROFILE_KINDS, PROFILE_NAME_MAX } from "@/features/profiles/constants/profile";
-import { countryOptions } from "@/features/profiles/lib/billing-details";
+import type { NewProfileKind } from "@/features/profiles/types/profile";
+import { countryOptions } from "@/shared/lib/countries";
 
 const COPY = FIRST_RUN_COPY.details;
 const PREVIEW = NEW_INVOICE_COPY.preview;
@@ -17,15 +18,13 @@ const PREVIEW = NEW_INVOICE_COPY.preview;
 export type DetailsField = keyof ProfileDetails | "website";
 
 export interface DetailsStepProps {
-  kind: typeof PROFILE_KINDS.freelancer | typeof PROFILE_KINDS.merchant;
+  kind: NewProfileKind;
   value: ProfileDetails;
   onChange: (field: keyof ProfileDetails, value: string) => void;
-  /** Only when the user builds with the API: the store's first allowed origin. */
   website?: { value: string; onChange: (value: string) => void };
   errors: Partial<Record<DetailsField, string>>;
 }
 
-/** Who gets paid: the profile's name and the billing details its invoices print (billing details need all four). */
 export function DetailsStep({ kind, value, onChange, website, errors }: DetailsStepProps) {
   const text = COPY[kind];
   const countries = useMemo(countryOptions, []);
@@ -87,7 +86,6 @@ export function DetailsStep({ kind, value, onChange, website, errors }: DetailsS
   );
 }
 
-/** The invoice these details make, drawn as the PDF draws it; the client and items are an example. */
 export function DetailsPreview({
   kind,
   value,

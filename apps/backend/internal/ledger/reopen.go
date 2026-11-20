@@ -11,8 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Reopen (R-130): each deposit's given-back part names its transfer, so readers see which deposits paid the
-// creator. The caller holds the invoice's rows, as Process does.
+// Reopen gives held money back to the creator, each part naming its transfer; the caller holds the invoice's rows.
 func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 	ready, err := ReopenReady(ctx, tx, option)
 	if err != nil {
@@ -29,7 +28,7 @@ func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 		return fmt.Errorf("read invoice %s amount: %w", option, err)
 	}
 	left, _ := new(big.Int).SetString(amountText, 10)
-	// A deposit's held part is net of what a choice already gave the creator (chosen, D-76).
+	// A deposit's held part is net of what a choice already gave the creator (chosen).
 	rows, err := tx.Query(ctx, `SELECT x.chain_transfer_id, (-sum(e.amount))::text
 		FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'payer_held'
 		LEFT JOIN chain_transfers t ON t.id = x.chain_transfer_id
@@ -55,7 +54,7 @@ func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 		if move.Sign() <= 0 {
 			break
 		}
-		if err := book(ctx, tx, option, "reopen", p.Transfer, new(big.Int), move, new(big.Int).Neg(move)); err != nil {
+		if _, err := book(ctx, tx, option, "reopen", p.Transfer, new(big.Int), move, new(big.Int).Neg(move)); err != nil {
 			return err
 		}
 		left.Sub(left, move)
@@ -75,8 +74,7 @@ func Reopen(ctx context.Context, tx pgx.Tx, option string, until int64) error {
 
 var ErrReconciliationPending = errors.New("payment evidence is still being reconciled")
 
-// ReopenReady: every movement of the option is booked and the ledger explains its balance, so the held money a reopen
-// gives the creator is all there is.
+// ReopenReady: every movement is booked and the ledger explains the balance, so the held money is all there is.
 func ReopenReady(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, invoiceID string) (bool, error) {
@@ -84,4 +82,16 @@ func ReopenReady(ctx context.Context, db interface {
 	err := db.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = $1 AND d.status = 'detected')
   AND NOT (`+UnreconciledSQL("$1")+`)`, invoiceID).Scan(&ready)
 	return ready, err
+}
+
+func ensureNoReturnedFunds(ctx context.Context, tx pgx.Tx, invoiceID string) error {
+	var returned bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = $1 AND kind IN ('refund','settlement'))`, invoiceID).Scan(&returned)
+	if err != nil {
+		return err
+	}
+	if returned {
+		return errors.New("confirmed return prevents reopening")
+	}
+	return nil
 }

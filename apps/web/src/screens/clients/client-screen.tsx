@@ -7,18 +7,23 @@ import { useState } from "react";
 import { useGetClientQuery } from "@/features/clients/api/clients-api";
 import { ClientActions } from "@/features/clients/components/client-actions";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
-import { countryName } from "@/features/clients/lib/clients";
 import { RESTART_PARAMS } from "@/features/invoices/constants/invoices";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { ClientInvoices } from "@/screens/clients/client-invoices";
-import { notFound } from "@/shared/api/server-reach";
-import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
+import { notFound } from "@/shared/api/api-error";
+import {
+  DetailHeader,
+  DetailHeaderSkeleton,
+  RECORD_COLUMNS,
+} from "@/shared/components/detail-header";
 import { initials } from "@/shared/components/initials-avatar";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { countryName } from "@/shared/lib/countries";
 import { shortDate } from "@/shared/lib/dates";
 
 export interface ClientScreenProps {
@@ -49,7 +54,7 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
           back={{ href: APP_ROUTES.clients, label: COPY.title }}
           icon={<UserRound aria-hidden />}
         />
-        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className={RECORD_COLUMNS}>
           <Skeleton className="h-72" />
           <Skeleton className="h-56" />
         </div>
@@ -63,7 +68,6 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
     <div className="flex flex-col gap-6">
       <DetailHeader
         back={{ href: APP_ROUTES.clients, label: COPY.title }}
-        // The list's avatar, as a record tile: the name follows it, so it says nothing to a screen reader.
         icon={
           letters ? (
             <span aria-hidden className="text-sm font-medium">
@@ -101,10 +105,10 @@ export function ClientScreen({ clientId }: ClientScreenProps) {
           </>
         }
       />
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className={RECORD_COLUMNS}>
         <ClientInvoices profileId={profile.profileId} client={client} />
         <section aria-labelledby="client-details" className="fw-panel min-w-0 xl:sticky xl:top-20">
-          <h2 id="client-details" className="fw-panel-head text-base font-semibold text-ink">
+          <h2 id="client-details" className={PANEL_TITLE}>
             {COPY.details}
           </h2>
           <DetailList>

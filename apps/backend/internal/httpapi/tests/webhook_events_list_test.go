@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// R-153, D-102: the last 30 days of a profile's invoice events, newest first, each with the body a webhook carries.
 func TestWebhookEventsList(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -40,7 +39,7 @@ func TestWebhookEventsList(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// Nor another profile's: Alice's freelancer profile has one too.
+	// Another profile's event, which the list leaves out.
 	other := e.post(t, alice, e.aliceProfile, "key-other", basicBody).body["invoiceId"].(string)
 	if r := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices/"+other+"/cancel", alice, "", ""); r.status !=
 		http.StatusOK {
@@ -79,7 +78,6 @@ func TestWebhookEventsList(t *testing.T) {
 	if !reflect.DeepEqual(what(items), want) || next != nil {
 		t.Fatalf("every event, newest first: %v (next %v), want %v", what(items), next, want)
 	}
-	// The invoice as its owner reads it: its history rows come only with the owner's read.
 	invoice := items[0]["data"].(map[string]any)["invoice"].(map[string]any)
 	if rows, _ := invoice["history"].([]any); len(rows) == 0 {
 		t.Errorf("the body's invoice is not the owner's read: history %v", invoice["history"])
@@ -90,7 +88,6 @@ func TestWebhookEventsList(t *testing.T) {
 		t.Errorf("the held event's body: %v", held)
 	}
 
-	// Pages: the cursor carries on from the last one without repeating an event.
 	page, next := list(alice, "?limit=2")
 	if !reflect.DeepEqual(what(page), want[:2]) || next == nil {
 		t.Fatalf("the first page: %v, next %v", what(page), next)
@@ -105,7 +102,6 @@ func TestWebhookEventsList(t *testing.T) {
 	if items, _ := list(alice, "?type=invoice.canceled"); !reflect.DeepEqual(what(items), want[1:]) {
 		t.Errorf("only canceled: %v", what(items))
 	}
-	// A member of one store sees only its events.
 	if items, _ := list(dev, ""); !reflect.DeepEqual(what(items), want[:2]) {
 		t.Errorf("the second store's Developer: %v", what(items))
 	}

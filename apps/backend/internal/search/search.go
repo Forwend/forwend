@@ -9,18 +9,14 @@ import (
 	"unicode/utf8"
 )
 
-// MaxLength is the longest search in characters.
-const MaxLength = 100
+const MaxLength = 100 // characters
 
 var ErrInvalid = errors.New("invalid search")
 
 // The zero Query matches every row.
 type Query struct {
-	// Like is the trimmed text between two %, LIKE's wildcards escaped, for ILIKE (contains, any letter case).
-	Like *string
-	// Amount is the text as a decimal number in whole tokens, thousands commas dropped ("1,250.5" is "1250.5"), or nil.
-	// An amount matches when amount = Amount * 10^decimals exactly, in Postgres numeric: never a float.
-	Amount *string
+	Like   *string // ILIKE pattern, wildcards escaped
+	Amount *string // whole tokens; compare in numeric, never float
 }
 
 var decimal = regexp.MustCompile(`^([0-9]+\.?[0-9]*|\.[0-9]+)$`)

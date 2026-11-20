@@ -15,7 +15,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 export function BillingDetailsScreen() {
   const { profile } = useAppSession();
   const details = useGetBillingDetailsQuery(profile.profileId);
-  // R-92, R-101, R-113. Only known places, never a URL from the query.
+  // Only known places, never a URL from the query.
   const then = useSearchParams().get(BILLING_THEN.param);
   const next =
     then === BILLING_THEN.newInvoice
@@ -51,7 +51,6 @@ export function BillingDetailsScreen() {
   );
 }
 
-/** The two field groups as they will stand, so the page does not jump when the details arrive. */
 function FormSkeleton() {
   return (
     <div aria-hidden className="flex flex-col gap-6">
@@ -65,7 +64,6 @@ function FormSkeleton() {
           </div>
           <div className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
             {fields.map((field) => (
-              // The address takes the whole row, as in the form.
               <span
                 key={field}
                 className={`flex flex-col gap-2 ${field === "address" ? "sm:col-span-2" : ""}`}

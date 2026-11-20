@@ -4,10 +4,10 @@ const create = vi.fn(async (_body: object) => ({
   sessionId: "0xa",
   payment: { payToken: "a".repeat(64) },
 }));
-vi.mock("@/lib/forwend", () => ({
+vi.mock("@/lib/forwend", async (original) => ({
+  ...(await original<typeof import("@/lib/forwend")>()),
   forwend: () => ({ checkoutSessions: { create } }),
   storeId: () => "store",
-  trustedIpHeader: () => process.env.TRUST_PROXY_HEADER || undefined,
 }));
 vi.mock("@/lib/orders", () => ({ orders: () => ({ create: () => {}, attach: () => {} }) }));
 
@@ -43,10 +43,8 @@ describe("POST /api/orders", () => {
     for (let i = 0; i < 5; i++) expect((await order("1.1.1.1")).status).toBe(201);
     expect((await order("1.1.1.1")).status).toBe(429);
     for (let i = 0; i < 15; i++) expect((await order(`2.2.2.${i}`)).status).toBe(201);
-    // The shop is full; this visitor is refused by it, not by their own count.
     vi.setSystemTime(9 * 60_000);
     for (let i = 0; i < 5; i++) expect((await order("3.3.3.3")).status).toBe(429);
-    // The shop's window ends first: the visitor still has all five.
     vi.setSystemTime(10 * 60_000 + 1);
     for (let i = 0; i < 5; i++) expect((await order("3.3.3.3")).status).toBe(201);
     vi.useRealTimers();

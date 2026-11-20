@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
-// A strict policy: scripts and requests only from this shop, frames only from Forwend's checkout. FORWEND_URL is read
-// when the shop is built; without it no frame loads.
+// FORWEND_URL is read at build time; without it no frame loads.
 const forwend = process.env.FORWEND_URL ? new URL(process.env.FORWEND_URL).origin : "'none'";
 const CSP = [
   "default-src 'self'",

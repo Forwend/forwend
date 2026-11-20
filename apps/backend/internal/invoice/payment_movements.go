@@ -45,11 +45,9 @@ type PaymentMovement struct {
 	From, To, Status                                                   string
 	Verified                                                           bool
 	PolicyException, ReconciliationError                               string
-	// PaidWith is what the payer sent through NEAR Intents for this Base transfer (R-235); nil for any other row.
-	PaidWith *MovementPaidWith
+	PaidWith                                                           *MovementPaidWith // nil unless a cross-chain Base transfer
 }
 
-// MovementPaidWith is the payer's side of a cross-chain payment: Amount of Symbol on Blockchain, in TxHash.
 type MovementPaidWith struct {
 	Symbol, Blockchain, TxHash string
 	Amount                     *big.Int
@@ -261,10 +259,6 @@ func decodeMovementCursor(cursor string) (time.Time, string, error) {
 		return time.Time{}, "", fmt.Errorf("%w: invalid movement cursor", ErrInvalid)
 	}
 	return parsed, id, nil
-}
-
-func PaymentUSDValue(units *big.Int, decimals int) string {
-	return new(big.Rat).SetFrac(units, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
 }
 
 func (s *Service) ExportPaymentMovements(ctx context.Context, profileID string, q MovementQuery, write func(PaymentMovement) error) (time.Time, error) {

@@ -11,8 +11,6 @@ vi.mock("@privy-io/react-auth", () => ({
 
 afterEach(() => vi.unstubAllEnvs());
 
-// R-219: money moves once both a passkey and an authenticator app are on, so one lost still confirms and removes the
-// other; one alone isn't enough.
 it("needs both methods before money moves, where two-step is required", () => {
   vi.stubEnv("NEXT_PUBLIC_WALLET_MFA", "1");
   privy.methods = ["passkey"];

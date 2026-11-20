@@ -13,12 +13,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Per job in 24 hours (R-107), so proposing and withdrawing again and again can't flood the client.
-// outbox.MaxClientEmails caps all the user's client emails (R-116): the owner can accept their own link.
+// MaxChangeEmails is per job in 24 hours, so repeated propose and withdraw can't flood the client.
 const MaxChangeEmails = 5
 
-// ProposeChange (R-105) is idempotent per (job, key), even after a withdrawal: a repeat has created false, another
-// request under the key is ErrConflict.
+// ProposeChange is idempotent per (job, key), even after a withdrawal.
 func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, r PaymentRequest) (Job, bool, error) {
 	if !jobID.MatchString(id) {
 		return Job{}, false, ErrNotFound
@@ -69,7 +67,6 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 		if pending {
 			return ErrChangePending
 		}
-		// No change waits, so the last payment is the final one the client agreed to.
 		var (
 			last     int
 			finished bool
@@ -107,8 +104,7 @@ func (s *Service) ProposeChange(ctx context.Context, profileID, id, key string, 
 	return j, created, err
 }
 
-// AcceptChange (R-105) matches proposedAt to the microsecond, so consent never lands on a change withdrawn and
-// replaced at that position. allow is asked only when this accept would change the job (R-117).
+// AcceptChange matches proposedAt to the microsecond, so consent never lands on a replaced change.
 func (s *Service) AcceptChange(ctx context.Context, token string, position int, proposedAt time.Time, name,
 	email string, allow func() time.Duration) (Job, error) {
 	if err := checkTyped(name, email); err != nil {
@@ -118,7 +114,7 @@ func (s *Service) AcceptChange(ctx context.Context, token string, position int, 
 	if err != nil {
 		return Job{}, err
 	}
-	// A quote payment has a zero ProposedAt: it is no change, whatever proposedAt says.
+	// A quote payment has zero ProposedAt: it is never a change, whatever proposedAt says.
 	if position < 1 || position > len(j.Payments) || j.Payments[position-1].ProposedAt.IsZero() ||
 		!j.Payments[position-1].ProposedAt.Equal(proposedAt) {
 		return Job{}, ErrNotFound
@@ -141,7 +137,7 @@ func (s *Service) AcceptChange(ctx context.Context, token string, position int, 
 	return j, err
 }
 
-// WithdrawChange (R-105): only the last payment can go, so the schedule stays in order with no gap.
+// WithdrawChange removes only the last payment, so the schedule keeps no gap.
 func (s *Service) WithdrawChange(ctx context.Context, profileID, id string, position int) error {
 	if !jobID.MatchString(id) {
 		return ErrNotFound
@@ -154,7 +150,7 @@ func (s *Service) WithdrawChange(ctx context.Context, profileID, id string, posi
 		} else if err != nil {
 			return fmt.Errorf("lock job %s: %w", id, err)
 		}
-		// The change's key stays used, so a late retry of its proposal replays instead of adding it again.
+		// The key stays used, so a late retry of the proposal replays instead of adding it again.
 		tag, err := tx.Exec(ctx, `WITH gone AS (DELETE FROM job_payments WHERE job_id = $1 AND position = $2
 			AND proposed_at IS NOT NULL AND accepted_at IS NULL AND invoice_id IS NULL
 			AND position = (SELECT max(position) FROM job_payments WHERE job_id = $1)

@@ -8,36 +8,33 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/jackc/pgx/v5"
 )
 
-// ErrNoEvent: no webhook event has this id.
 var ErrNoEvent = errors.New("webhook event not found")
 
-// Event is a change to an invoice that endpoints may take (R-147). history.Add writes it in the transaction that
-// makes the change, with a delivery for each endpoint that takes it then.
+// Event is an invoice change; history.Add writes it, with its deliveries, in the change's transaction.
 type Event struct {
 	ID        string
 	Type      string
 	ProfileID string
-	InvoiceID string // "" for a test event (R-149)
+	InvoiceID string // "" for a test event
 	Livemode  bool
-	Sequence  int64 // the invoice's events in order, from 1; 0 for a test event
+	Sequence  int64 // from 1 per invoice; 0 for a test event
 	CreatedAt time.Time
 	Held      *Held // invoice.held only
 }
 
-// Held is the money an invoice.held event holds for the payer (D-26).
 type Held struct {
-	Amount   string // base units of the invoice token
-	Reason   string // one of the ledger's Held reasons
-	OptionID string // the option it is held on, when the invoice has several
+	Amount   string // base units
+	Reason   string
+	OptionID string
 }
 
 const eventColumns = `e.id, e.type, e.profile_id::text, coalesce(e.invoice_id, ''), e.livemode, coalesce(e.sequence, 0),
 	e.created_at, coalesce(h.data->>'amount', ''), coalesce(h.data->>'reason', ''), coalesce(h.data->>'option', '')`
 
-// scanEvent reads eventColumns, then any columns after them into extra.
 func scanEvent(row pgx.Row, extra ...any) (Event, error) {
 	var e Event
 	var held Held
@@ -45,13 +42,12 @@ func scanEvent(row pgx.Row, extra ...any) (Event, error) {
 		&held.Amount, &held.Reason, &held.OptionID}, extra...)...); err != nil {
 		return Event{}, err
 	}
-	if e.Type == InvoiceHeld {
+	if e.Type == history.Held {
 		e.Held = &held
 	}
 	return e, nil
 }
 
-// Event reads one event.
 func (s *Service) Event(ctx context.Context, id string) (Event, error) {
 	e, err := scanEvent(s.pool.QueryRow(ctx, `SELECT `+eventColumns+`
 		FROM webhook_events e LEFT JOIN history_events h ON h.id = e.history_id WHERE e.id = $1`, id))
@@ -63,32 +59,28 @@ func (s *Service) Event(ctx context.Context, id string) (Event, error) {
 	return e, nil
 }
 
-// The events list (R-153, D-102): pages of 50 by default, up to 100, reaching back EventsKept.
 const (
 	DefaultEventsPage = 50
 	MaxEventsPage     = 100
 	EventsKept        = 30 * 24 * time.Hour
 )
 
-// EventsPage is one page of events, newest first; NextCursor is "" on the last one.
 type EventsPage struct {
 	Events     []Event
-	NextCursor string
+	NextCursor string // "" on the last page
 }
 
-// Events lists the profile's invoice events of the last EventsKept, newest first; test events are not listed.
-// stores, when not nil, keeps only those stores' invoices; live, when not nil, only that mode's (D-87); kind, when
-// set, one event type.
+// Events lists invoice events (no test events) of the last EventsKept; nil stores or live means all.
 func (s *Service) Events(ctx context.Context, profileID string, stores []string, live *bool, kind, cursor string,
 	limit int) (EventsPage, error) {
 	if limit < 1 || limit > MaxEventsPage {
 		return EventsPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxEventsPage)
 	}
-	if kind != "" && !slices.Contains(EventTypes, kind) {
-		return EventsPage{}, fmt.Errorf("%w: type must be one of %v", ErrInvalid, EventTypes)
+	if kind != "" && !slices.Contains(history.WebhookEvents, kind) {
+		return EventsPage{}, fmt.Errorf("%w: type must be one of %v", ErrInvalid, history.WebhookEvents)
 	}
-	// The cursor is the last event's history row, so a page never repeats one. An id is taken at insert, not at
-	// commit: an event that commits while a client pages, with a lower id than one it saw, is not on a later page.
+	// The cursor is the last history id. Ids are taken at insert, not commit, so an event that commits mid-paging
+	// with a lower id than one already seen is skipped.
 	var after *int64
 	if cursor != "" {
 		n, err := strconv.ParseInt(cursor, 10, 64)
@@ -109,13 +101,13 @@ func (s *Service) Events(ctx context.Context, profileID string, stores []string,
 	var page EventsPage
 	var last []int64
 	for rows.Next() {
-		var history int64
-		e, err := scanEvent(rows, &history)
+		var historyID int64
+		e, err := scanEvent(rows, &historyID)
 		if err != nil {
 			rows.Close()
 			return EventsPage{}, fmt.Errorf("list webhook events: %w", err)
 		}
-		page.Events, last = append(page.Events, e), append(last, history)
+		page.Events, last = append(page.Events, e), append(last, historyID)
 	}
 	if err := rows.Err(); err != nil {
 		return EventsPage{}, fmt.Errorf("list webhook events: %w", err)

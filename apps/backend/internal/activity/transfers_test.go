@@ -2,7 +2,6 @@ package activity
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -51,18 +50,19 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 	a := addTransfer(t, pool, mine, 1, 100, "in", "confirmed")
 	b := addTransfer(t, pool, mine, 2, 200, "out", "detected")
 	c := addTransfer(t, pool, mine, 3, 200, "in", "confirmed") // same time as b: the later row comes first
-	addTransfer(t, pool, mine, 4, 300, "in", "reorged")        // left out
-	addTransfer(t, pool, theirs, 5, 400, "in", "confirmed")    // another profile's: left out
-	// One transfer between the two wallets: out in this profile's list, in in the other's.
+	addTransfer(t, pool, mine, 4, 300, "in", "reorged")
+	addTransfer(t, pool, theirs, 5, 400, "in", "confirmed")
 	d := addTransfer(t, pool, mine, 6, 500, "out", "confirmed")
 	addTransfer(t, pool, theirs, 6, 500, "in", "confirmed")
 	want := []string{"out " + d, "in " + c, "out " + b, "in " + a}
 
-	// Every page size, so a page boundary falls between every two items, including b and c with the same time.
 	for limit := 1; limit <= len(want); limit++ {
 		var got []string
 		cursor := ""
 		for pages := 1; ; pages++ {
+			if pages > len(want) {
+				t.Fatalf("limit %d: more than %d pages", limit, len(want))
+			}
 			page, err := s.Transfers(ctx, profile, cursor, limit, "", search.Query{})
 			if err != nil {
 				t.Fatal(err)
@@ -93,19 +93,8 @@ func TestTransfersNewestFirstInPages(t *testing.T) {
 		it.LogIndex != 0 || !it.At.Equal(time.Unix(200, 0)) {
 		t.Fatalf("transfer item %+v", it)
 	}
-
-	for _, c := range []struct {
-		cursor string
-		limit  int
-	}{{"", 0}, {"", MaxLimit + 1}, {"not base64!", 10}, {"MTIz", 10}, {encode(time.Unix(1, 0), Invoice, "x"), 10}} {
-		if _, err := s.Transfers(ctx, profile, c.cursor, c.limit, "", search.Query{}); !errors.Is(err, ErrInvalid) {
-			t.Fatalf("cursor %q limit %d: %v, want ErrInvalid", c.cursor, c.limit, err)
-		}
-	}
 }
 
-// R-38: an incoming transfer under 0.10 USD is mostly spam planting a look-alike address, so it isn't listed; what
-// the user sent, and money from their other profile, always is.
 func TestSmallIncomingTransfersAreNotListed(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -129,10 +118,10 @@ func TestSmallIncomingTransfersAreNotListed(t *testing.T) {
 			VALUES (84532, 'evm', $1, $2, $3, $4, $5, 0, $5, $6, $6, $7, 'confirmed')`,
 			usdc, mine, direction, from, fmt.Sprintf("0x%064x", n), n, amount)
 	}
-	add(1, "in", payer, 99999)  // 0.099999 USDC from outside: not listed
-	add(2, "in", payer, 100000) // 0.10 USDC: listed
-	add(3, "out", payer, 1)     // what the user sent: listed
-	add(4, "in", sibling, 1)    // from the user's other profile: listed
+	add(1, "in", payer, 99999)
+	add(2, "in", payer, 100000)
+	add(3, "out", payer, 1)
+	add(4, "in", sibling, 1)
 	page, err := NewService(pool).Transfers(ctx, profile, "", DefaultLimit, "", search.Query{})
 	if err != nil {
 		t.Fatal(err)

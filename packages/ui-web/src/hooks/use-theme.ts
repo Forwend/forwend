@@ -21,8 +21,7 @@ function saved(): Theme | null {
   }
 }
 
-// Without this, every element with a color transition fades on its own timing and the page changes in pieces. The
-// forced style recalc applies the new theme while transitions are off, so removing the style starts none.
+// Transitions are off while the theme flips, so the page changes at once, not in pieces.
 function applyTheme(theme: Theme) {
   const style = document.createElement("style");
   style.textContent = "*,*::before,*::after{transition:none!important}";
@@ -32,8 +31,7 @@ function applyTheme(theme: Theme) {
   style.remove();
 }
 
-// One source of truth: the data-theme attribute on <html>. Every user of the hook reads it and re-renders when it
-// changes, so two switches on one page always agree. With no saved choice the attribute follows the system.
+// data-theme on <html> is the one source, so every switch on a page agrees.
 function subscribe(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, {

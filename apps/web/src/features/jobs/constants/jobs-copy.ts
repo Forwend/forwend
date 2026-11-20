@@ -1,4 +1,7 @@
-import { JOB_LIMITS } from "@/features/jobs/constants/jobs";
+import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
+import { JOB_FIELDS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
+import type { JobField } from "@/features/jobs/types/jobs";
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
 
 const dueAfter = (days: number) =>
   days === 0
@@ -7,7 +10,6 @@ const dueAfter = (days: number) =>
       ? "due 1 day after"
       : `due ${days} days after`;
 
-/** R-101. */
 export const JOBS_COPY = {
   title: "Jobs",
   add: "New job",
@@ -27,11 +29,8 @@ export const JOBS_COPY = {
   updateFailed: "We could not update the jobs.",
   gone: "This job is not in your list anymore.",
   backToList: "Back to jobs",
-  billingNeeded: {
-    title: "Add your billing details first",
-    text: "A quote names who bills the client, and each payment becomes an invoice from you.",
-    action: "Add billing details",
-  },
+  billingNeeded:
+    "A quote names who bills the client, and each payment becomes an invoice from you.",
   form: {
     workGroup: "Work",
     jobTitle: "Title",
@@ -82,21 +81,22 @@ export const JOBS_COPY = {
     },
     errors: {
       required: "Fill in this field.",
-      email: "Enter an email like name@example.com.",
+      email: EMAIL_COPY.invalid,
       amount: "Enter at least 1.00 with at most 2 decimals, like 300.00.",
       dueDays: `Enter whole days from 0 to ${JOB_LIMITS.dueDays}.`,
       failed: "We could not create the job. Try again.",
       invalid: "We could not create the job with these values. Check them and try again.",
       invalidField: {
-        title: `Use at most ${JOB_LIMITS.title} characters on one line, with no hidden characters.`,
-        scope: `Use at most ${JOB_LIMITS.scope} characters, with no hidden characters.`,
-        "client.name": "Use at most 200 characters, with no hidden characters.",
-        "client.email": "Enter an email like name@example.com.",
-        "client.address": "Use at most 500 characters, with no hidden characters.",
-        "client.country": "Choose a country.",
-        "client.taxId": "Use at most 50 characters, with no hidden characters.",
-        payments: "We could not save these payments. Check each title, amount and days to pay.",
-      },
+        [JOB_FIELDS.title]: `Use at most ${JOB_LIMITS.title} characters on one line, with no hidden characters.`,
+        [JOB_FIELDS.scope]: `Use at most ${JOB_LIMITS.scope} characters, with no hidden characters.`,
+        [JOB_FIELDS.clientName]: `Use at most ${CLIENT_LIMITS.name} characters, with no hidden characters.`,
+        [JOB_FIELDS.clientEmail]: EMAIL_COPY.invalid,
+        [JOB_FIELDS.clientAddress]: `Use at most ${CLIENT_LIMITS.address} characters, with no hidden characters.`,
+        [JOB_FIELDS.clientCountry]: "Choose a country.",
+        [JOB_FIELDS.clientTaxId]: `Use at most ${CLIENT_LIMITS.taxId} characters, with no hidden characters.`,
+        [JOB_FIELDS.payments]:
+          "We could not save these payments. Check each title, amount and days to pay.",
+      } satisfies Record<JobField, string>,
     },
   },
   detail: {
@@ -174,7 +174,6 @@ export const JOBS_COPY = {
   },
 } as const;
 
-/** R-102. */
 export const QUOTE_COPY = {
   title: "Quote",
   issuer: "From",
@@ -216,17 +215,16 @@ export const QUOTE_COPY = {
   failed: "We could not load this quote.",
   errors: {
     required: "Fill in this field.",
-    email: "Enter an email like name@example.com.",
+    email: EMAIL_COPY.invalid,
     failed: "We could not accept it. Try again.",
     tooMany: "Too many tries. Wait a minute and try again.",
     invalid: {
       name: "Use at most 200 characters on one line, with no hidden characters.",
-      email: "Enter an email like name@example.com.",
+      email: EMAIL_COPY.invalid,
     },
   },
 } as const;
 
-/** R-104. */
 export const RECORD_COPY = {
   title: "Record",
   created: "Quote made",

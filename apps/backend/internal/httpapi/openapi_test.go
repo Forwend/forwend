@@ -11,9 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// R-150, D-100: openapi.yaml is written by hand, so this keeps it to the routes: each route has its operation, and
-// each operation its route. Path parameters match by place, not name. A route must be written so this test can read
-// it: one literal "METHOD /path" on its Handle line.
 func TestOpenAPINamesEveryRoute(t *testing.T) {
 	param := regexp.MustCompile(`\{\w+\}`)
 	call := regexp.MustCompile(`\.Handle(?:Func)?\(`)
@@ -50,7 +47,7 @@ func TestOpenAPINamesEveryRoute(t *testing.T) {
 	if len(routes) == 0 {
 		t.Fatal("no routes read")
 	}
-	delete(routes, "GET /healthz") // the load balancer's, not the API's (docs/backend/api.md)
+	delete(routes, "GET /healthz") // not part of the documented API
 
 	spec, err := os.ReadFile("../../api/openapi.yaml")
 	if err != nil {
@@ -94,7 +91,6 @@ func TestOpenAPINamesEveryRoute(t *testing.T) {
 	}
 }
 
-// The spec's Error.code enum is the codes the API writes: through httpio.WriteError, or a module's own error body.
 func TestOpenAPIErrorCodesMatchTheAPI(t *testing.T) {
 	files, err := filepath.Glob("*/*.go")
 	if err != nil {
@@ -142,7 +138,6 @@ func TestOpenAPIErrorCodesMatchTheAPI(t *testing.T) {
 	}
 }
 
-// D-114: the spec's state and wallet enums, on the filters, Payment and InvoiceSummary, are the values the API filters and returns.
 func TestOpenAPIPaymentStatesMatchTheAPI(t *testing.T) {
 	spec, err := os.ReadFile("../../api/openapi.yaml")
 	if err != nil {

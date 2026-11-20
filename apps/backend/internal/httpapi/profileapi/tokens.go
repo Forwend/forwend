@@ -9,12 +9,10 @@ import (
 )
 
 type tokensJSON struct {
-	Tokens []tokenSwitchJSON `json:"tokens"`
-	// R-240: payers may pay from other chains through NEAR Intents.
-	CrossChain bool `json:"crossChain"`
+	Tokens     []tokenSwitchJSON `json:"tokens"`
+	CrossChain bool              `json:"crossChain"`
 }
 
-// R-136.
 func getTokens(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		list, err := profiles.Tokens(r.Context(), r.PathValue("profileId"))
@@ -37,7 +35,7 @@ func writeTokens(w http.ResponseWriter, r *http.Request, profiles *profile.Servi
 
 func putTokens(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// A part left out stays as it is, so saving one never puts back another tab's change to the other (R-240).
+		// A part left out stays as it is, so saving one never puts back another tab's change to the other.
 		var body struct {
 			Off        *[]tokenJSON `json:"off"`
 			CrossChain *bool        `json:"crossChain"`

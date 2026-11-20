@@ -4,7 +4,6 @@ export interface PaymentAmountProps {
   amount: string;
   decimals: number;
   symbol: string;
-  /** Keeps the figures and the token on one line, as a table cell needs. */
   nowrap?: boolean;
   className?: string;
 }

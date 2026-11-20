@@ -8,7 +8,6 @@ export interface NewInvoiceLinkProps {
   className?: string;
   size?: ButtonSize;
   variant?: ButtonVariant;
-  /** A personal profile's invoices are requests: New request opens the request page. */
   onRequest?: () => void;
 }
 

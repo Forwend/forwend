@@ -1,5 +1,4 @@
-/* Forwend design tokens (D-113, Signal). Light is the default; data-theme="dark" on <html> or any section switches.
-   test/contrast.test.ts reads the color values from this file. */
+/* Light by default; data-theme="dark" on any element switches. test/contrast.test.ts reads these colors. */
 
 :root,
 [data-theme="light"] {
@@ -113,7 +112,7 @@
   --fw-font-sans: var(--fw-font-sans-loaded, ui-sans-serif), system-ui, sans-serif;
   --fw-font-mono: var(--fw-font-mono-loaded, ui-monospace), "SFMono-Regular", monospace;
 
-  /* Controls take md, panels lg, sheets and the landing's large cards xl. Pills are for avatars, dots and round actions. */
+  /* Controls md, panels lg, sheets and large landing cards xl; pills for avatars, dots and round actions. */
   --fw-radius-sm: 0.375rem;
   --fw-radius-md: 0.625rem;
   --fw-radius-lg: 1rem;
@@ -127,6 +126,7 @@
   /* Glass blur, only where a panel sits on imagery */
   --fw-blur-glass: 14px;
 
+  /* DURATION_MS (constants/motion.ts) copies these for JavaScript timers. */
   --fw-duration-fast: 140ms;
   --fw-duration-base: 200ms;
   --fw-duration-slow: 400ms;

@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	_ "image/jpeg" // JPEG logos (R-135)
+	_ "image/jpeg"
 	"image/png"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
-// A logo upload is at most MaxLogoBytes, and each side at most MaxLogoSide pixels (R-135).
 const (
 	MaxLogoBytes = 1 << 20
 	MaxLogoSide  = 1024
@@ -31,7 +30,6 @@ func (s *Service) SaveStoreLogo(ctx context.Context, profileID, storeID string, 
 	return s.setLogo(ctx, profileID, storeID, logo)
 }
 
-// DeleteStoreLogo answers the store, also when it had no logo.
 func (s *Service) DeleteStoreLogo(ctx context.Context, profileID, storeID string) (Store, error) {
 	return s.setLogo(ctx, profileID, storeID, nil)
 }
@@ -55,7 +53,7 @@ func (s *Service) setLogo(ctx context.Context, profileID, storeID string, logo [
 	return st, nil
 }
 
-// StoreLogo is public: the store id is the project ID (D-31), and the logo shows on every pay page of the store.
+// StoreLogo is public: the store id is the public project ID.
 func (s *Service) StoreLogo(ctx context.Context, storeID string) ([]byte, time.Time, error) {
 	if !lowercaseUUID.MatchString(storeID) {
 		return nil, time.Time{}, ErrNoLogo
@@ -79,7 +77,7 @@ func logoPNG(upload []byte) ([]byte, error) {
 	if len(upload) > MaxLogoBytes {
 		return nil, invalid
 	}
-	// The size first, so a small file that claims a huge image is refused before it is decoded.
+	// The size first, so a small file claiming a huge image is refused before it is decoded.
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(upload))
 	if err != nil || (format != "png" && format != "jpeg") || cfg.Width < 1 || cfg.Height < 1 ||
 		cfg.Width > MaxLogoSide || cfg.Height > MaxLogoSide {
@@ -89,10 +87,10 @@ func logoPNG(upload []byte) ([]byte, error) {
 	if err != nil {
 		return nil, invalid
 	}
-	// 8-bit RGBA, which the PDF writer reads: it refuses 16-bit and interlaced PNGs.
+	// 8-bit RGBA: the PDF writer refuses 16-bit and interlaced PNGs.
 	rgba := image.NewNRGBA(img.Bounds())
 	draw.Draw(rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src)
-	// It can be larger than the upload: a 1024 px photo makes a PNG of up to about 4.2 MB (migration 00059's limit).
+	// It can be larger than the upload: a 1024 px photo makes a PNG of up to about 4.2 MB.
 	var out bytes.Buffer
 	if err := png.Encode(&out, rgba); err != nil {
 		return nil, fmt.Errorf("encode store logo: %w", err)

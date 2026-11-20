@@ -33,14 +33,14 @@ func TestWrongChainRPCIsNeverUsed(t *testing.T) {
 	if asked.Load() != 1 {
 		t.Fatalf("the wrong-chain RPC was asked %d times, want once", asked.Load())
 	}
-	if _, err := NewRPCs(testSpec(chaintest.ChainID, a.URL, a.URL), 10); err == nil {
+	if _, err := NewRPCs(testSpec(chaintest.ChainID, a.URL, a.URL), 10, nil); err == nil {
 		t.Fatal("one host was accepted for both roles")
 	}
 }
 
 func newRPCs(t *testing.T, urls ...string) RPCs {
 	t.Helper()
-	r, err := NewRPCs(testSpec(chaintest.ChainID, urls...), 1000)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, urls...), 1000, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,6 @@ func newRPCs(t *testing.T, urls ...string) RPCs {
 	return r
 }
 
-// localhost is the same Anvil under another host name.
 func localhost(u string) string { return strings.Replace(u, "127.0.0.1", "localhost", 1) }
 
 func number(t *testing.T, ctx context.Context, c *rpc.Client) uint64 {

@@ -34,7 +34,7 @@ func (s *Service) Get(ctx context.Context, profileID, id string) (Job, error) {
 	return s.read(ctx, "j.id = $1 AND j.profile_id = $2", id, profileID)
 }
 
-// ByToken reads the job its client's link names: public, for /w/<token>.
+// ByToken is public: the token is the client's link /w/<token>.
 func (s *Service) ByToken(ctx context.Context, token string) (Job, error) {
 	if !jobToken.MatchString(token) {
 		return Job{}, ErrNotFound
@@ -101,20 +101,17 @@ func (s *Service) read(ctx context.Context, where string, args ...any) (Job, err
 	return j, nil
 }
 
-// DefaultLimit and MaxLimit bound a page of jobs.
 const (
 	DefaultLimit = 50
 	MaxLimit     = 100
 )
 
-// Page is one page of jobs; NextCursor is "" on the last one.
 type Page struct {
 	Jobs       []Summary
-	NextCursor string
+	NextCursor string // "" on the last page
 }
 
-// List is the profile's jobs of its mode (D-120), newest first, limit after cursor; q matches the title or the
-// client's name.
+// List is newest first, in the profile's current mode; q matches the title or the client's name.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, q search.Query) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
@@ -129,8 +126,7 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 		args = append(args, at, id)
 		after = " AND (created_at < $4 OR created_at = $4 AND id > $5)"
 	}
-	// The page is cut before the join, so a read sums only its own jobs' payments. A change counts once the client
-	// accepted it (R-105).
+	// The page is cut before the join, so the sums read only this page's payments.
 	rows, err := s.pool.Query(ctx, `SELECT j.id::text, j.title, j.client_name, sum(p.amount_cents)::bigint, count(*),
 		    count(*) FILTER (WHERE invoices.id IS NOT NULL AND `+invoice.StatusFilterSQL+` IN ('paid', 'settled')),
 		    j.accepted_at, j.created_at

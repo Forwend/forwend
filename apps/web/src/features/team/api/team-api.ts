@@ -19,14 +19,11 @@ import type {
   Team,
   ToRoll,
 } from "@/features/team/types/team";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const TEAM_TAG = "Team";
 
-const profileUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}`;
-
-// An Admin may change or remove themselves: the user's profiles and permissions are read again, so the app shows
-// only what is left (D-93).
+// An Admin may change or remove themselves, so the profiles and permissions read again.
 async function readMeAgain(
   dispatch: (action: unknown) => unknown,
   queryFulfilled: Promise<unknown>,
@@ -37,21 +34,20 @@ async function readMeAgain(
       profilesApi.endpoints.signUp.initiate(undefined, { forceRefetch: true, subscribe: false }),
     );
   } catch {
-    // The dialog shows the error.
+    // Shown by the dialog.
   }
 }
 
 export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).injectEndpoints({
   endpoints: (build) => ({
     getTeam: build.query<Team, string>({
-      query: (profileId) => `${profileUrl(profileId)}/members`,
+      query: (profileId) => profilePath(profileId, "members"),
       responseSchema: teamSchema,
       providesTags: [TEAM_TAG],
     }),
-    /** D-63: giving a role needs a fresh sign-in, which the request asks for when the API answers 401. */
     invite: build.mutation<Invite, { profileId: string; body: InviteBody }>({
       query: ({ profileId, body }) => ({
-        url: `${profileUrl(profileId)}/invites`,
+        url: profilePath(profileId, "invites"),
         method: "POST",
         body,
       }),
@@ -61,15 +57,14 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
     }),
     revokeInvite: build.mutation<void, { profileId: string; inviteId: string }>({
       query: ({ profileId, inviteId }) => ({
-        url: `${profileUrl(profileId)}/invites/${encodeURIComponent(inviteId)}`,
+        url: profilePath(profileId, `invites/${encodeURIComponent(inviteId)}`),
         method: "DELETE",
       }),
       invalidatesTags: [TEAM_TAG],
     }),
-    /** D-63, as an invite. */
     setMember: build.mutation<Member, { profileId: string; memberId: string; body: GrantBody }>({
       query: ({ profileId, memberId, body }) => ({
-        url: `${profileUrl(profileId)}/members/${encodeURIComponent(memberId)}`,
+        url: profilePath(profileId, `members/${encodeURIComponent(memberId)}`),
         method: "PUT",
         body,
       }),
@@ -78,10 +73,9 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
       invalidatesTags: [TEAM_TAG],
       onQueryStarted: (_, { dispatch, queryFulfilled }) => readMeAgain(dispatch, queryFulfilled),
     }),
-    /** Answers what the member could still use, for the owner to roll. */
     removeMember: build.mutation<ToRoll, { profileId: string; memberId: string }>({
       query: ({ profileId, memberId }) => ({
-        url: `${profileUrl(profileId)}/members/${encodeURIComponent(memberId)}`,
+        url: profilePath(profileId, `members/${encodeURIComponent(memberId)}`),
         method: "DELETE",
       }),
       rawResponseSchema: z.object({ toRoll: toRollSchema }),
@@ -89,9 +83,8 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
       invalidatesTags: [TEAM_TAG],
       onQueryStarted: (_, { dispatch, queryFulfilled }) => readMeAgain(dispatch, queryFulfilled),
     }),
-    /** The profile leaves the user's list at once, so the app moves to another. */
     leaveTeam: build.mutation<void, string>({
-      query: (profileId) => ({ url: `${profileUrl(profileId)}/leave`, method: "POST" }),
+      query: (profileId) => ({ url: profilePath(profileId, "leave"), method: "POST" }),
       async onQueryStarted(profileId, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
@@ -101,7 +94,7 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
             }),
           );
         } catch {
-          // The dialog shows the error.
+          // Shown by the dialog.
         }
       },
     }),

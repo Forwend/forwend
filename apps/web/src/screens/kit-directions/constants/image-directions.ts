@@ -1,20 +1,9 @@
-import type { Direction, ImageCompSpec } from "@/screens/kit-directions/types/directions";
+import type { ImageDirection } from "@/screens/kit-directions/types/directions";
 
 // Palettes are comp-only colors, like COMP_UI.
-export const IMAGE_DIRECTION_IDS = {
-  coastalLedger: "coastal-ledger",
-  paperAtlas: "paper-atlas",
-  auroraNight: "aurora-night",
-  terracottaMesa: "terracotta-mesa",
-  glassGarden: "glass-garden",
-} as const;
-
-export const IMAGE_DIRECTIONS: readonly (Omit<Direction, "id"> & {
-  id: (typeof IMAGE_DIRECTION_IDS)[keyof typeof IMAGE_DIRECTION_IDS];
-  comp: ImageCompSpec;
-})[] = [
+export const IMAGE_DIRECTIONS: readonly ImageDirection[] = [
   {
-    id: IMAGE_DIRECTION_IDS.coastalLedger,
+    id: "coastal-ledger",
     letter: "D",
     name: "Coastal Ledger",
     summary:
@@ -38,7 +27,7 @@ export const IMAGE_DIRECTIONS: readonly (Omit<Direction, "id"> & {
     },
   },
   {
-    id: IMAGE_DIRECTION_IDS.paperAtlas,
+    id: "paper-atlas",
     letter: "E",
     name: "Paper Atlas",
     summary: "A topographic map with one cobalt route; ink green on paper, editorial and exact.",
@@ -60,7 +49,7 @@ export const IMAGE_DIRECTIONS: readonly (Omit<Direction, "id"> & {
     },
   },
   {
-    id: IMAGE_DIRECTION_IDS.auroraNight,
+    id: "aurora-night",
     letter: "F",
     name: "Aurora Night",
     summary:
@@ -84,7 +73,7 @@ export const IMAGE_DIRECTIONS: readonly (Omit<Direction, "id"> & {
     },
   },
   {
-    id: IMAGE_DIRECTION_IDS.terracottaMesa,
+    id: "terracotta-mesa",
     letter: "G",
     name: "Terracotta Mesa",
     summary:
@@ -108,7 +97,7 @@ export const IMAGE_DIRECTIONS: readonly (Omit<Direction, "id"> & {
     },
   },
   {
-    id: IMAGE_DIRECTION_IDS.glassGarden,
+    id: "glass-garden",
     letter: "H",
     name: "Glass Garden",
     summary: "Soft frosted glass in mint and lilac with one glowing line; light, modern and calm.",

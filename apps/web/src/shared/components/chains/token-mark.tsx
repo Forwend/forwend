@@ -27,14 +27,10 @@ export function TokenMark({ chainId, symbol }: TokenMarkProps) {
 export interface MarkIconProps {
   token: BrandIconName | undefined;
   chain: BrandIconName | undefined;
-  /** Stands in for a token Forwend draws no logo for. */
   letter: string;
-  /** A logo file the web ships, for a token Forwend draws none for itself. */
   logo?: string | null;
-  /** The same for the network on the corner. */
   chainLogo?: string | null;
-  /** 24px, to sit in a line of text. */
-  small?: boolean;
+  small?: boolean; // 24px, to sit in a line of text
 }
 
 /** A token's 36px logo with its network's on the corner. Decorative: the text beside it names both. */

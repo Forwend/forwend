@@ -1,5 +1,4 @@
-/** The RPC the browser reaches itself, for a send whose wallet pays its own gas (R-216): Privy reads the nonce and
- * broadcasts through it. Kept here, not with the chains, as next.config loads this file on its own. */
+/** RPCs Privy uses from the browser when the wallet pays its own gas; next.config loads this file alone. */
 export const WALLET_PAID_RPCS: Readonly<Record<number, string>> = {
   4217: "https://rpc.mainnet.tempo.xyz",
   5042: "https://arc-rpc.publicnode.com",
@@ -7,9 +6,8 @@ export const WALLET_PAID_RPCS: Readonly<Record<number, string>> = {
   42431: "https://rpc.moderato.tempo.xyz",
 };
 
-// Privy's recommended policy (docs.privy.io/security/implementation-guide/content-security-policy). Scripts allow
-// 'unsafe-inline' because Next inlines its own scripts; nonces would make every page dynamic.
-/** Every page's policy. frameAncestors is 'none' on all but /embed, where src/proxy.ts names one origin (R-168). */
+// Scripts allow 'unsafe-inline' because Next inlines its own; nonces would make every page dynamic.
+/** Privy's recommended policy; frameAncestors is 'none' on all but /embed, where src/proxy.ts names one origin. */
 export function contentSecurityPolicy(frameAncestors: string): string {
   return [
     "default-src 'self'",

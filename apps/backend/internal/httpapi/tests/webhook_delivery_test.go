@@ -22,7 +22,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
 
-// receiver is an endpoint's server: it answers each request with the next code it is given.
 type receiver struct {
 	*httptest.Server
 	mu     sync.Mutex
@@ -56,7 +55,7 @@ func (r *receiver) answer(code int) { r.mu.Lock(); r.code = code; r.mu.Unlock() 
 
 func (r *receiver) requests() int { r.mu.Lock(); defer r.mu.Unlock(); return len(r.got) }
 
-// hookEnv has a merchant whose endpoint points at a local receiver: the API refuses such a URL, so the test sets it.
+// hookEnv's endpoint points at a local receiver, a URL the API refuses, so the test sets it.
 type hookEnv struct {
 	invoiceEnv
 	shop, endpoint string
@@ -72,8 +71,7 @@ func newHookEnv(t *testing.T) hookEnv {
 	h := hookEnv{invoiceEnv: e, shop: e.merchant(t), endpoint: "dddddddd-0000-4000-8000-000000000001",
 		recv: newReceiver(t), hooks: webhook.NewService(e.pool, webhookKey), built: new(atomic.Int32)}
 	h.addEndpoint(t, h.endpoint, h.recv.URL+"/hooks?token=receiver-secret")
-	// The delivery client's rules with a transport that trusts the test server: webhook.Client's own address
-	// filter refuses this machine (TestClientRefusesPrivateAddressesAfterDNS).
+	// webhook.Client's rules, but trusting the test server, which its address filter refuses.
 	h.client = webhook.Client()
 	h.client.Transport = h.recv.Client().Transport
 	invoices := invoice.NewService(e.pool)
@@ -97,7 +95,7 @@ func (h hookEnv) addEndpoint(t *testing.T, id, url string) {
 	h.exec(t, "UPDATE webhook_endpoints SET url = $2 WHERE id = $1", id, url)
 }
 
-// canceled makes an invoice and cancels it: one invoice.canceled event, and its id.
+// canceled makes and cancels an invoice and returns its invoice.canceled event id.
 func (h hookEnv) canceled(t *testing.T, key string) string {
 	t.Helper()
 	id := h.post(t, "did:privy:alice", h.shop, key, basicBody).body["invoiceId"].(string)
@@ -145,12 +143,9 @@ func TestWebhookBodyBuildEndsBeforeItsLeaseExpires(t *testing.T) {
 	}
 }
 
-// One endpoint sends one delivery at a time: a delivery whose body can't be built must still move on the retry
-// schedule, or every later delivery to its endpoint waits behind it for good.
 func TestADeliveryThatCantBeBuiltFailsOnTheSchedule(t *testing.T) {
 	h := newHookEnv(t)
 	broken := h.canceled(t, "unbuildable")
-	time.Sleep(10 * time.Millisecond)
 	healthy := h.canceled(t, "healthy")
 	body := func(ctx context.Context, ev webhook.Event) ([]byte, error) {
 		if ev.ID == broken {
@@ -254,7 +249,7 @@ func (h hookEnv) attempts(t *testing.T, endpoint string) []string {
 	return out
 }
 
-// signedBy checks a Standard Webhooks signature the way a receiver does: one v1 entry per secret it may hold.
+// signedBy checks a Standard Webhooks signature as a receiver does.
 func signedBy(secret string, req *http.Request, body []byte) bool {
 	key, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(secret, "whsec_"))
 	mac := hmac.New(sha256.New, key)
@@ -264,7 +259,6 @@ func signedBy(secret string, req *http.Request, body []byte) bool {
 	return slices.Contains(strings.Split(req.Header.Get("webhook-signature"), " "), want)
 }
 
-// R-148, D-42: signed by every working secret, retried on the schedule with the first body, and no redirect followed.
 func TestWebhookDeliveriesAreSignedAndRetried(t *testing.T) {
 	h := newHookEnv(t)
 	event := h.canceled(t, "key-1")
@@ -291,7 +285,6 @@ func TestWebhookDeliveriesAreSignedAndRetried(t *testing.T) {
 		t.Fatalf("after a 500: %s, next in %v; want pending 1, next in 5s", state, next)
 	}
 
-	// The retry sends the same body, signed now by the new secret and the old one it replaces.
 	if r := h.call(t, "POST", "/v1/profiles/"+h.shop+"/webhooks/"+h.endpoint+"/secret/rotate", "did:privy:alice", "",
 		""); r.status != http.StatusCreated {
 		t.Fatalf("rotate: %d %v", r.status, r.body)
@@ -323,7 +316,6 @@ func TestWebhookDeliveriesAreSignedAndRetried(t *testing.T) {
 	}
 }
 
-// R-221: Developer mode is the dashboard's; deliveries to an endpoint of the profile's other mode stay signed.
 func TestDeliveriesStaySignedWhateverTheProfilesMode(t *testing.T) {
 	h := newHookEnv(t)
 	h.canceled(t, "key-1")
@@ -336,7 +328,6 @@ func TestDeliveriesStaySignedWhateverTheProfilesMode(t *testing.T) {
 	}
 }
 
-// R-148: a 410, or a delivery's last failure, turns the endpoint off and emails its owner once.
 func TestWebhookEndpointsTurnOff(t *testing.T) {
 	h := newHookEnv(t)
 	other, edge := "dddddddd-0000-4000-8000-000000000002", "dddddddd-0000-4000-8000-000000000003"
@@ -348,7 +339,6 @@ func TestWebhookEndpointsTurnOff(t *testing.T) {
 	h.exec(t, "UPDATE webhook_deliveries SET next_attempt_at = now() + interval '1 hour' WHERE event_id = $1", waiting)
 	h.exec(t, "UPDATE webhook_deliveries SET attempts = $2 WHERE endpoint_id = $1", other, len(webhook.Retries))
 
-	// Without WEBHOOK_SECRET_KEY nothing is signed, so nothing goes.
 	if err := webhook.NewService(h.pool, nil).Deliver(context.Background(), h.client, h.body); err != nil ||
 		h.recv.requests() != 0 {
 		t.Fatalf("with no key: %v, %d requests", err, h.recv.requests())
@@ -383,8 +373,6 @@ func TestWebhookEndpointsTurnOff(t *testing.T) {
 		t.Fatalf("endpoints %q, want %q", got, want)
 	}
 
-	// The last failure without a 410 says so, one attempt before it waits 10 hours more, and a turned-off
-	// endpoint's waiting delivery is not sent.
 	h.exec(t, "DELETE FROM outbox_events WHERE kind = 'webhook.disabled'")
 	h.exec(t, "UPDATE webhook_endpoints SET enabled = id IN ($1, $2)", other, edge)
 	h.exec(t, "UPDATE webhook_deliveries SET next_attempt_at = now() WHERE event_id = $1", waiting)
@@ -412,7 +400,6 @@ func TestWebhookEndpointsTurnOff(t *testing.T) {
 	}
 }
 
-// A delivery whose attempt is running is not claimed again by another round.
 func TestAClaimedDeliveryIsSentOnce(t *testing.T) {
 	h := newHookEnv(t)
 	h.canceled(t, "key-1")
@@ -441,7 +428,6 @@ func TestAClaimedDeliveryIsSentOnce(t *testing.T) {
 	}
 }
 
-// A receiver's long non-ASCII status line is logged and counted like any failure, not resent after every lease.
 func TestAHostileAnswerIsLogged(t *testing.T) {
 	h := newHookEnv(t)
 	event := h.canceled(t, "key-1")
@@ -460,8 +446,6 @@ func TestAHostileAnswerIsLogged(t *testing.T) {
 	}
 }
 
-// R-149: the owner reads an endpoint's deliveries with their attempts, resends one, sends a test event, and resends
-// every failed one since a time.
 func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 	h := newHookEnv(t)
 	const alice = "did:privy:alice"
@@ -484,7 +468,6 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 		t.Fatalf("the failed delivery: %v", d)
 	}
 
-	// A resend starts again from a first attempt; it waits while the endpoint is off, as its last failure left it.
 	if r := h.call(t, "POST", hook+"/deliveries/"+event+"/resend", alice, "", ""); r.status != http.StatusNoContent {
 		t.Fatalf("resend: %d %v", r.status, r.body)
 	}
@@ -519,7 +502,7 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 		t.Fatalf("deliveries, newest first: %v", list)
 	}
 
-	// Only the ones that failed since the time go again, however old: one made long ago failed just now.
+	// before failed 2 hours ago; after was made 3 days ago but failed just now.
 	before, after := h.canceled(t, "key-2"), h.canceled(t, "key-3")
 	h.exec(t, "UPDATE webhook_deliveries SET status = 'failed', updated_at = now() - interval '2 hours' WHERE event_id = $1",
 		before)
@@ -543,7 +526,6 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 		{"POST", "/v1/profiles/" + h.shop + "/webhooks/dddddddd-0000-4000-8000-00000000000f/test", "", "endpoint_not_found"},
 		{"POST", hook + "/deliveries/evt_" + strings.Repeat("0", 32) + "/resend", "", "delivery_not_found"},
 		{"POST", hook + "/deliveries/resend-failed", `{"since": "yesterday"}`, "invalid_value"},
-		// Another profile's endpoint is not found from this one.
 		{"POST", "/v1/profiles/" + h.aliceProfile + "/webhooks/" + h.endpoint + "/deliveries/" + event + "/resend", "",
 			"delivery_not_found"},
 		{"GET", "/v1/profiles/" + h.aliceProfile + "/webhooks/" + h.endpoint + "/deliveries", "", "endpoint_not_found"},
@@ -557,7 +539,6 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 	}
 }
 
-// R-149: an attempt in flight when the owner resends its delivery is logged, but its answer doesn't undo the resend.
 func TestAnAttemptInFlightKeepsAResend(t *testing.T) {
 	h := newHookEnv(t)
 	event := h.canceled(t, "key-1")

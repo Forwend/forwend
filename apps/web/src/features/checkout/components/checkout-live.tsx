@@ -16,7 +16,6 @@ import {
 import { Check, Clock, Copy, ReceiptText, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { CheckoutActions } from "@/features/checkout/components/checkout-actions";
 import { SaleCard } from "@/features/checkout/components/sale-card";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
@@ -29,8 +28,8 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_DEPOSIT_STATUSES } from "@/shared/constants/payment-state";
 import { chainName } from "@/shared/lib/chains";
+import { formatUsd, usdCents } from "@/shared/lib/money";
 
-// The customer is standing there: check often, and stop once the sale is decided.
 const POLL_MS = 3_000;
 const DONE = new Set<string>([
   PAYMENT_STATUS.paid,
@@ -39,10 +38,8 @@ const DONE = new Set<string>([
   PAYMENT_STATUS.expiredPartiallyPaid,
   PAYMENT_STATUS.canceled,
 ]);
-// The only statuses that show the QR code: the sale can take money and none is on its way. Every other one, unknown
-// ones too, may have money arriving, and a second scan would make the customer pay twice.
+// Only these show the QR: any other status may have money arriving, and a second scan pays twice.
 const SCAN = new Set<string>([PAYMENT_STATUS.open, PAYMENT_STATUS.partiallyPaid]);
-// A terminal's main button: taller than a form's.
 const MAIN = "h-14! w-full";
 
 export interface CheckoutLiveProps {
@@ -52,7 +49,6 @@ export interface CheckoutLiveProps {
   onNewSale: () => void;
 }
 
-/** The screen the customer sees: the amount and one QR code, then the payment seen, then Paid. */
 export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: CheckoutLiveProps) {
   const [done, setDone] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -68,14 +64,12 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
   const paid = status === PAYMENT_STATUS.paid || status === PAYMENT_STATUS.overpaid;
   const partial = status === PAYMENT_STATUS.partiallyPaid;
   const scan = SCAN.has(status);
-  const usd = formatUsd(usdToCents(amountUsd));
-  // Until the customer has picked among several tokens, the network the money comes on isn't known.
+  const usd = formatUsd(usdCents(amountUsd));
   const via =
     payment.optionLocked || payment.optionCount === 1
       ? COPY.via(payment.symbol, chainName(payment.chainId))
       : null;
 
-  // The form that started the sale, or a button a new step took away, is gone: focus moves to the sale's name.
   const step = useRef<string | null>(null);
   useEffect(() => {
     if (step.current === status) return;
@@ -207,7 +201,6 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
         paid={paid}
         bar={
           <>
-            {/* Cancel sale, while it shows, sits at the bar's start; the sale's name at its end. */}
             <h2
               id="checkout-scan"
               ref={heading}
@@ -237,16 +230,15 @@ export function CheckoutLive({ profileId, session, amountUsd, onNewSale }: Check
           : done
             ? COPY.status.closed
             : partial
-              ? COPY.status.partial
+              ? COPY.partial
               : scan
-                ? COPY.status.waiting
+                ? COPY.waiting
                 : COPY.status.seen}
       </p>
     </section>
   );
 }
 
-/** The sale's amount at one size, cents included, so 12.50 can't be read as 12. Long amounts step down to fit. */
 function Usd({
   value,
   small = false,
@@ -254,7 +246,6 @@ function Usd({
 }: {
   value: string;
   small?: boolean;
-  /** A closed sale's amount: nothing more will come of it. */
   muted?: boolean;
 }) {
   const size = small
@@ -281,7 +272,6 @@ function Usd({
   );
 }
 
-/** One line for the merchant under the customer's part: what the sale waits for, and when it closes. */
 function Strip({
   warning = false,
   sub,
@@ -318,7 +308,6 @@ function Strip({
   );
 }
 
-/** The seen transfer with the most blocks to go: the payment is final when it is. */
 function slowestDeposit(payment: PaymentDetail | undefined): PaymentDeposit | undefined {
   return payment?.options
     .flatMap((option) => option.deposits)
@@ -327,10 +316,4 @@ function slowestDeposit(payment: PaymentDetail | undefined): PaymentDeposit | un
       (most, d) => (most && most.blocksLeft >= d.blocksLeft ? most : d),
       undefined,
     );
-}
-
-/** "12.5" → 1250n: the form checked the amount, so it has at most two decimals. */
-function usdToCents(usd: string): bigint {
-  const [whole = "0", fraction = ""] = usd.split(".");
-  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
 }

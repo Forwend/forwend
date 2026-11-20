@@ -6,9 +6,8 @@ import { HISTORY_FIELDS } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { usePricedHistory } from "@/features/balances/hooks/use-priced-balances";
 import { historySeries, seriesTotal } from "@/features/balances/lib/balance-history";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { LoadError } from "@/shared/components/load-error";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { usdText } from "@/shared/lib/money";
 
 const DAYS = 30;
 
@@ -46,7 +45,6 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
           <Skeleton className="h-14" />
         )
       ) : (
-        // Beside the balance chart the two figures stack and share its height.
         <dl className="grid flex-1 grid-cols-2 divide-x divide-line xl:grid-cols-1 xl:grid-rows-2 xl:divide-x-0 xl:divide-y">
           {flows.map(([label, series, Icon]) => (
             <div
@@ -58,7 +56,7 @@ export function MoneyFlowCard({ profileId }: MoneyFlowCardProps) {
                 {label}
               </dt>
               <dd className="text-lg font-medium tracking-tight text-ink tabular-nums">
-                {series ? `${formatUsd(seriesTotal(series))} ${MONEY_COPY.usd}` : "—"}
+                {series ? usdText(seriesTotal(series)) : "—"}
               </dd>
             </div>
           ))}

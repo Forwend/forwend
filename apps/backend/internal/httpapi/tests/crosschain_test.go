@@ -31,8 +31,6 @@ const (
 	crossPath = "/v1/invoices/"
 )
 
-// crossChainEnv is the invoice API with Base and Arbitrum mainnet on, Alice in live mode and a fake 1Click whose token
-// list the worker has read.
 func crossChainEnv(t *testing.T) (invoiceEnv, *intentstest.Fake) {
 	t.Helper()
 	fake := intentstest.New(t)
@@ -47,8 +45,6 @@ func crossChainEnv(t *testing.T) (invoiceEnv, *intentstest.Fake) {
 	return e, fake
 }
 
-// liveInvoice is a 100 USD invoice the payer may pay on Base or Arbitrum, closing in expiresIn seconds; it returns the
-// pay token and both options.
 func liveInvoice(t *testing.T, e invoiceEnv, key string, expiresIn int) (string, map[uint64]map[string]any) {
 	t.Helper()
 	made := e.post(t, "did:privy:alice", e.aliceProfile, key, `{"amountUsd": "100", "expiresIn": `+strconv.Itoa(expiresIn)+`}`)
@@ -80,23 +76,16 @@ func TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens(t *testing.T) {
 		assets = append(assets, token["assetId"].(string))
 		estimates[token["assetId"].(string)] = token["estimate"].(string)
 	}
-	// Tron USDT is a stablecoin and comes before ETH; Base and Arbitrum USDC are taken directly; Stellar needs a memo;
-	// SOL has no price.
+	// Base and Arbitrum USDC are direct, Stellar needs a memo, SOL has no price; stablecoins first.
 	if !slices.Equal(assets, []string{tronUSDT, ethAsset}) {
 		t.Fatalf("assets %v", assets)
 	}
-	// 100 USD at 2143.49 USD an ETH with 1Click's 1% slippage on top, rounded up to a wei: 100e18 * 1.01 / 2143.49.
-	want := new(big.Int).Mul(big.NewInt(100*101), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
-	q, m := new(big.Int).QuoRem(want, big.NewInt(214349), new(big.Int))
-	if m.Sign() > 0 {
-		q.Add(q, big.NewInt(1))
-	}
-	if estimates[ethAsset] != q.String() {
-		t.Fatalf("ETH estimate %s, want %s", estimates[ethAsset], q)
+	// 100 USD at 2143.49 USD an ETH, plus 1Click's 1% slippage, rounded up to a wei.
+	if estimates[ethAsset] != "47119417398728243" {
+		t.Fatalf("ETH estimate %s", estimates[ethAsset])
 	}
 }
 
-// R-245: a token 1Click has no liquidity for leaves the list until a later dry quote is answered.
 func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
 	e, fake := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
@@ -120,7 +109,6 @@ func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
 	if got := listed(start); !slices.Equal(got, []string{tronUSDT}) {
 		t.Fatalf("listed without ETH's liquidity %v", got)
 	}
-	// A price or quote refused for want of liquidity is the token's, never the refund address's.
 	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(ethAsset), "", "", "")
 	made := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "",
 		`{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`)
@@ -135,8 +123,6 @@ func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
 	}
 }
 
-// R-245: a pair 1Click can't quote now leaves the list at the payer's refused price, not the worker's next check.
-// D-127: Bitcoin is never offered, priced or quoted.
 func TestCrossChainTokensLeaveOutAnUnquotablePairAndBitcoin(t *testing.T) {
 	e, fake := crossChainEnv(t)
 	const btc = "nep141:btc.omft.near"
@@ -183,7 +169,6 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	pay, options := liveInvoice(t, e, "key-1", 86400)
 	base := options[intents.BaseChainID]
 
-	// What the payer sends, the cost and the time, with no address.
 	price := e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
 	if price.status != http.StatusOK || price.body["amountIn"] != "101120000" || price.body["amountOut"] != "100000000" ||
 		price.body["amountInUsd"] != "101120000" || price.body["amountOutUsd"] != "100000000" || price.body["refundFee"] != "5300" ||
@@ -191,7 +176,6 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 		price.body["quoteId"] != nil {
 		t.Fatalf("price: %d %v", price.status, price.body)
 	}
-	// A second pick of the same token is the kept dry quote, not another call to 1Click.
 	before := fake.QuoteCount()
 	e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
 	if fake.QuoteCount() != before {
@@ -225,25 +209,20 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 	if d := shown.Sub(start); d < 14*time.Minute || d > 16*time.Minute {
 		t.Fatalf("price shown for %s, want 15 minutes", d)
 	}
-	// The pay link opens on the Base option again (R-57).
 	if got := e.get(t, pay).body["pickedOptionId"]; got != base["optionId"] {
 		t.Fatalf("picked %v, want the Base option %v", got, base["optionId"])
 	}
 
-	// The same token and refund address get the same quote back.
 	made := fake.QuoteCount()
 	again := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
 	if again.status != http.StatusCreated || again.body["quoteId"] != r.body["quoteId"] ||
 		again.body["depositAddress"] != r.body["depositAddress"] || fake.QuoteCount() != made {
 		t.Fatalf("again: %d %v", again.status, again.body)
 	}
-	// Another refund address waits until this quote's deadline: each address delivers all that is due, so both paid
-	// would pay the invoice twice.
 	other := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "TOther"}`)
 	if other.status != http.StatusCreated || other.body["quoteId"] == r.body["quoteId"] {
 		t.Fatalf("other refund address: %d %v", other.status, other.body)
 	}
-	// A quote is given again while 5 minutes of its window are left, and not once fewer are.
 	e.exec(t, `UPDATE crosschain_quotes SET shown_until = now() + interval '6 minutes'`)
 	if kept := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); kept.status != http.StatusCreated ||
 		kept.body["quoteId"] != r.body["quoteId"] {
@@ -254,7 +233,6 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 		late.body["quoteId"] == r.body["quoteId"] {
 		t.Fatalf("late: %d %v", late.status, late.body)
 	}
-	// Past its deadline another refund address gets its own.
 	next, _ := liveInvoice(t, e, "key-2", 86400)
 	if r := e.call(t, "POST", crossPath+next+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`); r.status != http.StatusCreated {
 		t.Fatalf("first: %d %v", r.status, r.body)
@@ -277,8 +255,6 @@ func TestCrossChainQuoteFromTheOwnersPreviewKeepsNoPick(t *testing.T) {
 	}
 }
 
-// A slow chain's deposit can take an hour to mine, and 1Click refunds what isn't done by the deadline: its quote gets a
-// longer deadline, and isn't offered when the close leaves too little time.
 func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
 	e, fake := crossChainEnv(t)
 	ltc := "nep141:ltc.omft.near"
@@ -312,8 +288,6 @@ func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
 	}
 }
 
-// Anyone can make pay tokens from a public link, so 1Click calls made with Forwend's key share one budget across
-// invoices, prices apart from quotes. A kept price or quote spends none.
 func TestCrossChainCallsShareOneBudgetAcrossInvoices(t *testing.T) {
 	// No refill while the test runs, so a slow machine can't earn a token back between calls.
 	dryRate, quoteRate := invoiceapi.DryQuoteAllRate, invoiceapi.QuoteAllRate
@@ -385,19 +359,17 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		"refused refund":   {tronUSDT, "refused", "invalid_value", 422},
 		"spaces in refund": {tronUSDT, "T a", "invalid_value", 422},
 	} {
-		// Each case has its own invoice: refused requests spend the invoice's request budget too.
+		// Own invoice per case: refused requests spend the invoice's budget too.
 		own, _ := liveInvoice(t, e, "key-"+name, 86400)
 		if r := quote(own, c.asset, c.refund); r.status != c.status || errorCode(r) != c.code {
 			t.Fatalf("%s: %d %v", name, r.status, r.body)
 		}
 	}
 
-	// A checkout closing in under 20 minutes takes no quote: the conversion must land before the close.
 	closing, _ := liveInvoice(t, e, "key-2", 900)
 	if r := quote(closing, tronUSDT, refundTo); r.status != 422 || errorCode(r) != "crosschain_unavailable" {
 		t.Fatalf("closing: %d %v", r.status, r.body)
 	}
-	// Test mode has no 1Click (D-123).
 	e.exec(t, `UPDATE profiles SET livemode = false WHERE id = $1`, e.aliceProfile)
 	test := e.post(t, "did:privy:alice", e.aliceProfile, "key-3", basicBody)
 	if r := quote(e.link(t, test.body["invoiceId"].(string)), tronUSDT, refundTo); r.status != 422 || errorCode(r) != "crosschain_unavailable" ||
@@ -406,13 +378,11 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 	}
 	e.exec(t, `UPDATE profiles SET livemode = true WHERE id = $1`, e.aliceProfile)
 
-	// A route whose minimum is above the amount says how much it needs.
 	fake.Minimum = big.NewInt(200_000_000)
 	if r := quote(pay, ethAsset, "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"); r.status != 422 || errorCode(r) != "below_minimum" ||
 		r.body["error"].(map[string]any)["minimum"] != "200000000" {
 		t.Fatalf("below minimum: %d %v", r.status, r.body)
 	}
-	// The refused quote alone teaches it: the next payer's list names it (D-126).
 	if got := listedMinimums(t, e, pay)[ethAsset]; got != "200000000" {
 		t.Fatalf("listed minimum after a refused quote: %v", got)
 	}
@@ -421,20 +391,18 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		t.Fatalf("price below minimum: %d %v", price.status, price.body)
 	}
 	fake.Minimum = big.NewInt(5301)
-	// A temporary limit 1Click names in dollars is a minimum too, in Base USDC units (D-126).
+	// 1Click's limit in dollars is a minimum in Base USDC units.
 	fake.Limits = map[string]int64{tronUSDT: 1000}
 	price = e.call(t, "GET", crossPath+pay+"/crosschain/price?originAsset="+url.QueryEscape(tronUSDT), "", "", "")
 	if price.status != 422 || errorCode(price) != "below_minimum" || price.body["error"].(map[string]any)["minimum"] != "1000000000" {
 		t.Fatalf("price below a temporary limit: %d %v", price.status, price.body)
 	}
 	fake.Limits = nil
-	// The next payer's list already names both minimums.
 	if minimums := listedMinimums(t, e, pay); minimums[tronUSDT] != "1000000000" || minimums[ethAsset] != "200000000" {
 		t.Fatalf("listed minimums %v", minimums)
 	}
 
-	// Twenty quotes an hour, then none: nineteen kept already, the twentieth made, the next refused. Quotes older than
-	// an hour don't count.
+	// Quotes older than an hour don't count: 19 recent ones leave room for a twentieth.
 	kept := func(n int, age string) {
 		e.exec(t, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to, deposit_address, amount_in,
 			    min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, created_at)
@@ -450,7 +418,6 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 		t.Fatalf("over the limit: %d %v", r.status, r.body)
 	}
 
-	// Once 1Click saw a deposit, no new quote: another would pay the invoice twice.
 	other, _ := liveInvoice(t, e, "key-4", 86400)
 	if r := quote(other, tronUSDT, refundTo); r.status != http.StatusCreated {
 		t.Fatalf("first: %d %v", r.status, r.body)
@@ -483,7 +450,6 @@ func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
 	}
 }
 
-// listedMinimums is each token's minimum in the pay page's list, by asset id.
 func listedMinimums(t *testing.T, e invoiceEnv, pay string) map[string]any {
 	t.Helper()
 	minimums := map[string]any{}
@@ -493,19 +459,16 @@ func listedMinimums(t *testing.T, e invoiceEnv, pay string) map[string]any {
 	return minimums
 }
 
-// baseDeposit books a confirmed transfer of amount to an invoice's Base option, as the watcher and the ledger would.
 func baseDeposit(t *testing.T, e invoiceEnv, option, amount string) {
 	t.Helper()
 	baseTransfer(t, e, option, option, amount)
 }
 
-// baseTransfer is baseDeposit in the transaction txHash.
 func baseTransfer(t *testing.T, e invoiceEnv, option, txHash, amount string) {
 	t.Helper()
 	chainTransfer(t, e, intents.BaseChainID, option, txHash, amount)
 }
 
-// chainTransfer books amount sent to option on chainID in the transaction txHash.
 func chainTransfer(t *testing.T, e invoiceEnv, chainID uint64, option, txHash, amount string) {
 	t.Helper()
 	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
@@ -530,7 +493,6 @@ func TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose(t *testing.T) {
 	quote := func(pay string) reply {
 		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
 	}
-	// 40 USDC paid on Base leaves 60 to convert.
 	pay, options := liveInvoice(t, e, "key-1", 86400)
 	baseDeposit(t, e, options[intents.BaseChainID]["optionId"].(string), "40000000")
 	if r := quote(pay); r.status != http.StatusCreated || r.body["amountOut"] != "60000000" {
@@ -540,7 +502,7 @@ func TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose(t *testing.T) {
 		t.Fatalf("tokens due: %v", r.body)
 	}
 
-	// Closing in 25 minutes: refunds start 10 minutes before the close, and the price shows until 5 minutes before that.
+	// Refunds start 10 minutes before the close; the price shows until 5 minutes before that.
 	start := time.Now()
 	soon, _ := liveInvoice(t, e, "key-2", 1500)
 	r := quote(soon)
@@ -603,11 +565,9 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 		},
 		"less out": func(a map[string]any) { a["quote"].(map[string]any)["minAmountOut"] = "99000000" },
 		"memo":     func(a map[string]any) { a["quote"].(map[string]any)["depositMemo"] = "7" },
-		// Signed when set, but never asked for: another recipient on a virtual chain.
 		"virtual recipient": func(a map[string]any) {
 			a["quoteRequest"].(map[string]any)["virtualChainRecipient"] = "0x0000000000000000000000000000000000000bad"
 		},
-		// Another asset to the same address would pay the receiver in a token the invoice doesn't take.
 		"destination": func(a map[string]any) {
 			a["quoteRequest"].(map[string]any)["destinationAsset"] = "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
 		},
@@ -631,7 +591,6 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 	}
 	fake.Tamper = nil
 
-	// A kept quote is checked again before it is given: a changed row never reaches a payer.
 	pay, _ := liveInvoice(t, e, "key-kept", 86400)
 	first := quote(pay, refundTo)
 	if first.status != http.StatusCreated {
@@ -642,7 +601,6 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 		t.Fatalf("changed row: %d %v", r.status, r.body)
 	}
 
-	// 1Click down: the payer is told to try again.
 	fake.Down = true
 	down, _ := liveInvoice(t, e, "key-down", 86400)
 	if r := quote(down, refundTo); r.status != http.StatusServiceUnavailable || errorCode(r) != "provider_unavailable" {
@@ -653,8 +611,6 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 	}
 }
 
-// An old signed quote replayed, or one whose address soon stops taking deposits, could take money to an address
-// 1Click no longer serves: it is refused.
 func TestCrossChainQuoteThatIsNotFreshIsRefused(t *testing.T) {
 	e, fake := crossChainEnv(t)
 	for name, tamper := range map[string]func(map[string]any){
@@ -675,8 +631,6 @@ func TestCrossChainQuoteThatIsNotFreshIsRefused(t *testing.T) {
 	}
 }
 
-// A refusal that doesn't name the refund address is NEAR Intents' own: the payer isn't told to check their address,
-// and the log keeps 1Click's words, so a reworded answer shows.
 func TestCrossChainQuoteRefusedForAnotherReasonDoesNotBlameTheRefundAddress(t *testing.T) {
 	e, fake := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
@@ -694,7 +648,6 @@ func TestCrossChainQuoteRefusedForAnotherReasonDoesNotBlameTheRefundAddress(t *t
 	}
 }
 
-// R-250: a token carries the CoinGecko id 1Click names for it, by which the web finds a logo file it ships.
 func TestCrossChainTokensCarryTheirCoingeckoID(t *testing.T) {
 	e, _ := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)

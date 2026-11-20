@@ -5,16 +5,17 @@ import { Plus, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { useListClientsInfiniteQuery } from "@/features/clients/api/clients-api";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
-import { countryName } from "@/features/clients/lib/clients";
 import type { Client } from "@/features/clients/types/clients";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { InitialsAvatar } from "@/shared/components/initials-avatar";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
+import { PageTitle } from "@/shared/components/page-title";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { useListSearch } from "@/shared/hooks/use-list-filters";
+import { useListSearch } from "@/shared/hooks/use-list-search";
+import { countryName } from "@/shared/lib/countries";
 
 const clientHref = (client: Client) => `${APP_ROUTES.clients}/${client.clientId}`;
 
@@ -31,7 +32,7 @@ export interface ClientsTableProps {
   profileId: string;
 }
 
-// R-86, R-177: one page at a time, and the search goes to the API, kept in ?q.
+// One page at a time; the search goes to the API and stays in ?q.
 export function ClientsTable({ profileId }: ClientsTableProps) {
   const search = useListSearch();
   const list = useListClientsInfiniteQuery({ profileId, q: search.apiQuery });
@@ -46,15 +47,8 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
       aria-busy={(!list.currentData && !list.isError) || undefined}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
-        <h1
-          id="clients-title"
-          className="text-2xl font-semibold tracking-tight text-ink lg:sr-only"
-        >
-          {COPY.title}
-        </h1>
-        {/* An empty list offers it in its own block instead. */}
+        <PageTitle id="clients-title">{COPY.title}</PageTitle>
         {noClients ? null : <AddClientLink size="sm" className="lg:hidden" />}
       </div>
       {!noClients ? (
@@ -168,7 +162,6 @@ export function ClientsTable({ profileId }: ClientsTableProps) {
   );
 }
 
-// A name with no letters (only digits, say) has no initials.
 function ClientIcon() {
   return <UserRound className="size-[var(--fw-icon-sm)]" />;
 }

@@ -3,11 +3,11 @@ import { WebhookVerificationError } from "./errors.js";
 import type { TestWebhookEvent, WebhookEvent } from "./types.js";
 
 export interface VerifyWebhookOptions {
-  /** The request body exactly as it arrived: a body parsed and written again won't match its signature. */
+  /** The raw request body: a body parsed and serialized again won't match its signature. */
   payload: string | Uint8Array;
   /** fetch Headers, or a plain object such as Node's incoming headers; names in any case. */
   headers: Headers | Record<string, string | string[] | undefined>;
-  /** The endpoint's signing secrets (whsec_…): during a rotation's 24 hours, the new and the old one. */
+  /** The endpoint's signing secrets (whsec_…); during a rotation, the new and the old one. */
   secrets: string | readonly string[];
   /** How far the webhook-timestamp may be from now, in seconds; 300 by default. */
   toleranceSeconds?: number;
@@ -25,8 +25,8 @@ const header = (headers: VerifyWebhookOptions["headers"], name: string): string 
 };
 
 /**
- * Checks a webhook's Standard Webhooks headers (D-42) and returns its event. The signature must match one of the
- * secrets, and the timestamp must be within the tolerance, so an old request can't be sent again.
+ * Checks a webhook's Standard Webhooks signature and timestamp, and returns its event.
+ * The timestamp must be within the tolerance, so an old request can't be sent again.
  */
 export function verifyWebhook(options: VerifyWebhookOptions): WebhookEvent | TestWebhookEvent {
   const secrets = typeof options.secrets === "string" ? [options.secrets] : options.secrets;

@@ -11,7 +11,6 @@ export function PasskeyLead() {
   );
 }
 
-/** Why a passkey helps; the frame's footer adds it or moves on. */
 export function PasskeyStep() {
   return (
     <ul className="mx-auto flex w-fit flex-col gap-2.5">

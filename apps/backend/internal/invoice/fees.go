@@ -14,26 +14,22 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// FeePlan sets the platform fee (D-122): RateBps of the price, at least MinUSD and at most CapUSD (nil: no cap), on new
-// invoices only. At launch the rate is 0, so there is no platform fee at all.
+// FeePlan is the platform fee on new invoices: RateBps of the price, at least MinUSD, at most CapUSD.
 type FeePlan struct {
 	RateBps        int64
-	MinUSD, CapUSD *big.Rat
+	MinUSD, CapUSD *big.Rat // nil CapUSD: no cap
 }
 
-// Quoter prices one receiver deploy and settle on a chain in USD (settlement.Quotes).
 type Quoter interface {
 	NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, error)
 }
 
-// ErrFeeQuote: a chain's network fee can't be priced now, so no invoice is made; the same request may try again.
 var ErrFeeQuote = errors.New("the network fee can't be priced right now")
 
 // quoteWait bounds a quote, which runs under the profile's lock; a slow RPC falls back on the chain's last quote.
 const quoteWait = 3 * time.Second
 
-// Pricing is how new invoices are given their fees: Quotes prices the network fee, Plan the platform fee. Without
-// Quotes they carry none.
+// Pricing: Quotes prices the network fee, Plan the platform fee; without Quotes there are no fees.
 type Pricing struct {
 	Quotes Quoter
 	Plan   FeePlan
@@ -43,7 +39,6 @@ func (s *Service) SetPricing(p Pricing) {
 	s.quotes, s.plan = p.Quotes, p.Plan
 }
 
-// networkFee is what the chain quotes for its deploy and settle, in USD; nothing without Quotes.
 func (s *Service) networkFee(ctx context.Context, chainID uint64) (*big.Rat, error) {
 	if s.quotes == nil {
 		return new(big.Rat), nil
@@ -57,10 +52,7 @@ func (s *Service) networkFee(ctx context.Context, chainID uint64) (*big.Rat, err
 	return usd, nil
 }
 
-// withFees gives each option of a new invoice its fees, on top of its amount when the client pays them (D-122). Every
-// option takes the highest network fee its networks quote, so one amount pays the fee on whichever network the client
-// picks. A payer-chooses invoice first leaves out a network it can't price now, or whose own fee its price can't carry,
-// as it does an unscanned one; a fixed invoice has no other to offer.
+// withFees gives each option the highest network fee; payer-chooses drops a network it can't price or carry.
 func (s *Service) withFees(ctx context.Context, options []accepted, chooses, clientPays bool) ([]accepted, error) {
 	var feeErr error
 	var top *big.Rat
@@ -91,9 +83,7 @@ func (s *Service) withFees(ctx context.Context, options []accepted, chooses, cli
 	return kept, nil
 }
 
-// priced is o with the fees of a network fee of usd, its amount raised by them when the client pays. Fees past a tenth
-// of the amount are refused, as settle() refuses them. The platform fee is a rate on the price, rounded up to a base
-// unit (R-227). Each token is worth 1 USD (D-75).
+// priced adds o's fees (platform fee rounded up, 1 token = 1 USD); past a tenth they are refused, as settle() does.
 func (s *Service) priced(o accepted, usd *big.Rat, clientPays bool) (accepted, error) {
 	network, platform := new(big.Int), new(big.Int)
 	if s.quotes != nil {
@@ -128,7 +118,6 @@ func (s *Service) priced(o accepted, usd *big.Rat, clientPays bool) (accepted, e
 	return o, nil
 }
 
-// OptionQuote is the fees one accepted option of a price would carry (R-227), in its base units.
 type OptionQuote struct {
 	ChainID                 uint64
 	Token                   string
@@ -137,16 +126,10 @@ type OptionQuote struct {
 	NetworkFee, PlatformFee *big.Int
 }
 
-// QuoteFees prices the fees of each option a new invoice of r's price would accept in the profile's mode and r's store,
-// before it is made, and gives who pays them by default; r.FeesPaidBy overrides it, as a create's does. The invoice
-// gets its own quote when it is made.
 func (s *Service) QuoteFees(ctx context.Context, profileID string, r Request) (string, []OptionQuote, error) {
 	token, amount, usd, _, _, err := r.normalize()
 	if err != nil {
 		return "", nil, err
-	}
-	if r.FeesPaidBy != "" && r.FeesPaidBy != FeesPaidByOwner && r.FeesPaidBy != FeesPaidByClient {
-		return "", nil, fmt.Errorf("%w: feesPaidBy must be owner or client", ErrInvalid)
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
 	if err != nil {
@@ -163,8 +146,7 @@ func (s *Service) QuoteFees(ctx context.Context, profileID string, r Request) (s
 	if err != nil {
 		return "", nil, err
 	}
-	// The tokens a create keeps (R-136): the profile's, and a merchant's store's, its first store when none is named.
-	// One network more or less can change the highest fee every option carries.
+	// The tokens a create keeps: one network more or less changes the highest fee every option carries.
 	var storeID string
 	switch {
 	case kind == profile.Merchant:

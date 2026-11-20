@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-// The same vectors are in apps/web/src/features/pay/tests/receive-address.test.ts: the pay page derives invoice and
-// option ids as the API does.
+// The same vectors are in apps/web/src/features/pay/tests/receive-address.test.ts.
 func TestInvoiceID(t *testing.T) {
 	var token [32]byte
 	_, _ = hex.Decode(token[:], []byte("7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81"))

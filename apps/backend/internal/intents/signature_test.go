@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// testdata holds two answers 1Click gave on 2026-11-09 for 2.5 USDC from Arbitrum to Base, signed by ManagerKey.
+// testdata holds two real 1Click answers for 2.5 USDC from Arbitrum to Base, signed by managerKey.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := os.ReadFile("testdata/" + name)
@@ -26,13 +26,13 @@ func verify(signed []byte, key string) error {
 
 func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 	for _, name := range []string{"quote-dry.json", "quote.json"} {
-		if err := verify(fixture(t, name), ManagerKey); err != nil {
+		if err := verify(fixture(t, name), managerKey); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
 	signed := fixture(t, "quote.json")
 	for _, change := range [][2]string{
-		{"0x1Ad7e4DDd04f5680cAed3bB23271642BDA6F55Cc", "0x1Ad7e4DDd04f5680cAed3bB23271642BDA6F55Cd"}, // deposit address
+		{"0x1Ad7e4DDd04f5680cAed3bB23271642BDA6F55Cc", "0x1Ad7e4DDd04f5680cAed3bB23271642BDA6F55Cd"},
 		{`"recipient":"0x5e4b7c9a1f3d2e6b8a0c4d7f9e1b3a5c7d9e0f12"`, `"recipient":"0x5e4b7c9a1f3d2e6b8a0c4d7f9e1b3a5c7d9e0f13"`},
 		{`"amountOut":"2500000"`, `"amountOut":"2600000"`},
 		{`"refundTo":"0x6fd1`, `"refundTo":"0x6fd2`},
@@ -42,19 +42,16 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 		if bytes.Equal(changed, signed) {
 			t.Fatalf("%s is not in the answer", change[0])
 		}
-		if err := verify(changed, ManagerKey); !errors.Is(err, ErrSignature) {
+		if err := verify(changed, managerKey); !errors.Is(err, ErrSignature) {
 			t.Fatalf("changing %s: %v, want ErrSignature", change[0], err)
 		}
 	}
-	// 1Click spreads a real quote's fields over its request's, so the address's deadline is signed and the request's
-	// is not.
-	if err := verify(bytes.Replace(signed, []byte(`"deadline":"2026-11-12T02:41:33.000Z"`), []byte(`"deadline":"2026-11-13T02:41:33.000Z"`), 1), ManagerKey); !errors.Is(err, ErrSignature) {
+	if err := verify(bytes.Replace(signed, []byte(`"deadline":"2026-11-12T02:41:33.000Z"`), []byte(`"deadline":"2026-11-13T02:41:33.000Z"`), 1), managerKey); !errors.Is(err, ErrSignature) {
 		t.Fatalf("changed quote deadline: %v", err)
 	}
-	// A key in another case beside a signed one must not take its place: Go's struct decoding would read either.
 	for _, extra := range []string{`"DepositAddress":"0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",`, `"DepositMemo":"1",`, `"AmountIn":"1",`} {
 		changed := bytes.Replace(signed, []byte(`"quote":{`), []byte(`"quote":{`+extra), 1)
-		q, err := Check(changed, quoteAsk(), false, ManagerKey, signedAt)
+		q, err := Check(changed, quoteAsk(), false, managerKey, signedAt)
 		if err != nil {
 			t.Fatalf("%s: %v", extra, err)
 		}
@@ -62,16 +59,13 @@ func TestVerifyAcceptsOnlyWhat1ClickSigned(t *testing.T) {
 			t.Fatalf("%s took the signed value's place: %+v", extra, q)
 		}
 	}
-	// A key other than 1Click's refuses even 1Click's own answer.
 	if err := verify(signed, EncodeKey(make([]byte, 32))); !errors.Is(err, ErrSignature) {
 		t.Fatalf("other key: %v", err)
 	}
 }
 
-// signedAt is a minute after 1Click signed testdata/quote.json.
 var signedAt = time.Date(2026, 11, 9, 2, 12, 34, 0, time.UTC)
 
-// quoteAsk is what testdata/quote.json answers.
 func quoteAsk() Ask {
 	deadline, _ := time.Parse(time.RFC3339, "2026-11-09T02:41:33Z")
 	return Ask{Origin: "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near", Amount: big.NewInt(2500000),
@@ -82,7 +76,7 @@ func quoteAsk() Ask {
 func TestCheckRefusesAQuoteForAnotherPaymentThanAsked(t *testing.T) {
 	ask := quoteAsk()
 	deadline := ask.Deadline
-	q, err := Check(fixture(t, "quote.json"), ask, false, ManagerKey, signedAt)
+	q, err := Check(fixture(t, "quote.json"), ask, false, managerKey, signedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,19 +89,17 @@ func TestCheckRefusesAQuoteForAnotherPaymentThanAsked(t *testing.T) {
 		"amount":    func(a *Ask) { a.Amount = big.NewInt(2400000) },
 		"refund":    func(a *Ask) { a.RefundTo = "0x0000000000000000000000000000000000000002" },
 		"origin":    func(a *Ask) { a.Origin = "nep141:eth.omft.near" },
-		// Not signed in a real quote, but 1Click's echo must still be the deadline asked for.
-		"deadline": func(a *Ask) { a.Deadline = deadline.Add(time.Minute) },
+		"deadline":  func(a *Ask) { a.Deadline = deadline.Add(time.Minute) },
 	} {
 		other := quoteAsk()
 		change(&other)
-		if _, err := Check(fixture(t, "quote.json"), other, false, ManagerKey, signedAt); !errors.Is(err, ErrMismatch) {
+		if _, err := Check(fixture(t, "quote.json"), other, false, managerKey, signedAt); !errors.Is(err, ErrMismatch) {
 			t.Fatalf("%s: %v, want ErrMismatch", name, err)
 		}
 	}
-	// A dry quote is checked as dry: it has no address, and its refund goes to 1Click's own ledger.
 	dry := quoteAsk()
 	dry.RefundTo = ""
-	if _, err := Check(fixture(t, "quote-dry.json"), dry, true, ManagerKey, signedAt); !errors.Is(err, ErrMismatch) {
+	if _, err := Check(fixture(t, "quote-dry.json"), dry, true, managerKey, signedAt); !errors.Is(err, ErrMismatch) {
 		t.Fatalf("a dry quote refunding to the payer's address is not what Quote asks for: %v", err)
 	}
 }

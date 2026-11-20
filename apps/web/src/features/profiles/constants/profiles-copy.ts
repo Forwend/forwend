@@ -1,11 +1,11 @@
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { PROFILE_KINDS, PROFILE_NAME_MAX } from "@/features/profiles/constants/profile";
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
 
 export const PROFILES_COPY = {
   newProfile: "New profile",
   profiles: "Profiles",
   switchProfile: "Switch profile",
-  profileLabel: "Profile",
 } as const;
 
 export const NEW_PROFILE_COPY = {
@@ -45,6 +45,7 @@ export const NEW_PROFILE_COPY = {
 
 export const BILLING_DETAILS_COPY = {
   title: "Billing details",
+  needed: { title: "Add your billing details first", action: "Add billing details" },
   saved: "Billing details saved",
   contactGroup: "Contact",
   addressGroup: "Address and tax",
@@ -65,19 +66,18 @@ export const BILLING_DETAILS_COPY = {
   errors: {
     required: "Fill in this field.",
     country: "Choose a country.",
-    email: "Enter an email like name@example.com.",
+    email: EMAIL_COPY.invalid,
     failed: "We could not save your billing details. Check them and try again.",
     invalid: {
       name: `Use at most ${BILLING_LIMITS.name} characters, with no hidden characters. The name can't be Forwend.`,
       address: `Use at most ${BILLING_LIMITS.address} characters, with no hidden characters.`,
       country: "Choose a country.",
       taxId: `Use at most ${BILLING_LIMITS.taxId} characters, with no hidden characters.`,
-      email: "Enter an email like name@example.com.",
+      email: EMAIL_COPY.invalid,
     },
   },
 } as const;
 
-/** R-136. */
 export const TOKENS_COPY = {
   title: "Accepted assets",
   note: "For new invoices and requests. Sent ones keep theirs.",
@@ -86,14 +86,12 @@ export const TOKENS_COPY = {
   saveFailed: "We could not save this setting. Try again.",
   saving: "Saving…",
   savedAll: "Changes saved.",
-  // R-240: payments from other chains through NEAR Intents, into a live invoice's Base USDC option.
   crossChain: "Accept other tokens",
   crossChainHint:
     "Clients pay a live invoice with a token from another chain. NEAR Intents converts it to USDC on Base, " +
     "which stays on. Clients cover the cost.",
 } as const;
 
-/** D-122: who pays new invoices' fees. */
 export const FEES_COPY = {
   title: "Who pays the network fee",
   legend: "Who pays the network fee",
@@ -107,7 +105,6 @@ export const FEES_COPY = {
   saveFailed: "We could not save who pays the fees. Try again.",
 } as const;
 
-/** R-221. */
 export const DEVELOPER_MODE_COPY = {
   title: "Developer mode",
   toggle: "Developer mode",
@@ -121,7 +118,6 @@ export const DEVELOPER_MODE_COPY = {
     on ? "Developer mode on: test networks" : "Developer mode off: live networks",
   strip: "Developer mode: test networks only. Tokens here have no value.",
   stripAction: "Turn off",
-  // On a page that found nothing: what it opened may be of the other mode (R-221).
   otherMode: (developer: boolean) =>
     developer
       ? "A live one shows only with Developer mode off."
@@ -130,7 +126,6 @@ export const DEVELOPER_MODE_COPY = {
     developer ? "Turn off Developer mode" : "Turn on Developer mode",
 } as const;
 
-/** R-80. */
 export const NOTIFICATIONS_COPY = {
   title: "Notifications",
   note: "When an invoice is paid, reaches your wallet or has money held.",

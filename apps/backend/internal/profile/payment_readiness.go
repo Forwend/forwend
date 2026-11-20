@@ -3,13 +3,7 @@ package profile
 import (
 	"context"
 	"fmt"
-
-	"github.com/jackc/pgx/v5"
 )
-
-type acceptanceReader interface {
-	QueryRow(context.Context, string, ...any) pgx.Row
-}
 
 type PaymentReadiness struct {
 	BillingDetails, Wallet, AcceptedToken bool
@@ -19,8 +13,7 @@ func (r PaymentReadiness) Ready() bool {
 	return r.BillingDetails && r.Wallet && r.AcceptedToken
 }
 
-// ReadPaymentReadiness uses the same union of profile/store token exclusions as TokensOff.
-func ReadPaymentReadiness(ctx context.Context, db acceptanceReader, profileID, storeID string, live bool) (PaymentReadiness, error) {
+func ReadPaymentReadiness(ctx context.Context, db rowQuerier, profileID, storeID string, live bool) (PaymentReadiness, error) {
 	var r PaymentReadiness
 	err := db.QueryRow(ctx, `SELECT
 		EXISTS (SELECT 1 FROM profile_billing_details WHERE profile_id = $1),

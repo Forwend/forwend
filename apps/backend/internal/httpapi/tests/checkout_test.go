@@ -193,8 +193,6 @@ func TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode(t *testing.T) {
 	}
 }
 
-// R-188: checkout sessions, which a shop opens for anonymous shoppers, have their own quota, so a shop's visitors
-// can't use up what the owner's own invoices need.
 func TestCheckoutSessionsCantUseUpTheOwnersInvoiceQuota(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

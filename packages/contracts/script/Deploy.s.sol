@@ -4,8 +4,8 @@ pragma solidity 0.8.30;
 import {Script, console} from "forge-std/Script.sol";
 import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 
-/// Deploys the factory through the CREATE2 deployer, so the address is the same on every chain for the same
-/// refund authority and first executor. Does nothing if it is already deployed. Run with script/deploy.sh.
+/// Deploys the factory through the CREATE2 deployer, at the same address on every chain for the same refund
+/// authority and first executor; no-op if deployed. See deploy.sh.
 contract Deploy is Script {
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     bytes32 internal constant SALT = keccak256("forwend.invoice-receiver-factory.v1");

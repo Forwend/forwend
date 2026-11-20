@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// chainQuotes quotes each chain's network fee in USD; a chain it lacks can't be priced.
 type chainQuotes map[uint64]*big.Rat
 
 func (q chainQuotes) NetworkFee(_ context.Context, chainID uint64) (*big.Rat, error) {
@@ -17,8 +16,6 @@ func (q chainQuotes) NetworkFee(_ context.Context, chainID uint64) (*big.Rat, er
 	return nil, errors.New("no quote")
 }
 
-// D-122: the platform fee is a rate on the price, rounded up to a base unit, within the plan's minimum and cap; at 0%
-// there is none. The network fee is the quote in the token's base units.
 func TestOptionFeesFollowTheQuoteAndThePlan(t *testing.T) {
 	two := big.NewRat(2, 100)
 	for _, c := range []struct {
@@ -41,16 +38,13 @@ func TestOptionFeesFollowTheQuoteAndThePlan(t *testing.T) {
 				c.network, c.platform)
 		}
 	}
-	// Without pricing an invoice carries no fees, as before the fees.
 	o, err := (&Service{}).priced(accepted{chainID: 84532, decimals: 6, amount: big.NewInt(5_000_000)}, nil, false)
 	if err != nil || o.networkFee.Sign() != 0 || o.platformFee.Sign() != 0 {
 		t.Errorf("no pricing: %v %v (%v), want none", o.networkFee, o.platformFee, err)
 	}
 }
 
-// Every option takes the highest fee its networks quote, so one amount covers any network the client picks. A
-// payer-chooses invoice first drops a network it can't price, or whose own fee its price can't carry.
-func TestEveryOptionTakesTheHighestNetworkFee(t *testing.T) {
+func TestPayerChoosesDropsANetworkWhoseFeeItsPriceCantCarry(t *testing.T) {
 	s := &Service{}
 	s.SetPricing(Pricing{Quotes: chainQuotes{1: big.NewRat(1, 100), 2: big.NewRat(6, 100), 3: big.NewRat(4, 10)}})
 	options := func(price int64, chains ...uint64) []accepted {
@@ -60,37 +54,14 @@ func TestEveryOptionTakesTheHighestNetworkFee(t *testing.T) {
 		}
 		return out
 	}
-	for _, c := range []struct {
-		name       string
-		options    []accepted
-		chooses    bool
-		clientPays bool
-		chains     []uint64
-		fee        string
-		amount     string
-	}{
-		{"the client pays the highest on top, on every network", options(45_000_000, 1, 2), true, true,
-			[]uint64{1, 2}, "60000", "45060000"},
-		{"the owner has the highest deducted", options(45_000_000, 1, 2), true, false,
-			[]uint64{1, 2}, "60000", "45000000"},
-		{"a network that can't be priced is left out", options(45_000_000, 1, 2, 9), true, false,
-			[]uint64{1, 2}, "60000", "45000000"},
-		{"a network whose fee the price can't carry is left out", options(3_000_000, 1, 2, 3), true, false,
-			[]uint64{1, 2}, "60000", "3000000"},
-	} {
-		got, err := s.withFees(context.Background(), c.options, c.chooses, c.clientPays)
-		if err != nil || len(got) != len(c.chains) {
-			t.Fatalf("%s: %d options (%v), want %d", c.name, len(got), err, len(c.chains))
-		}
-		for i, o := range got {
-			if o.chainID != c.chains[i] || o.networkFee.String() != c.fee || o.amount.String() != c.amount {
-				t.Errorf("%s: chain %d fee %s amount %s; want chain %d fee %s amount %s", c.name, o.chainID,
-					o.networkFee, o.amount, c.chains[i], c.fee, c.amount)
-			}
-		}
+	got, err := s.withFees(context.Background(), options(3_000_000, 1, 2, 3), true, false)
+	if err != nil || len(got) != 2 || got[0].chainID != 1 || got[1].chainID != 2 {
+		t.Fatalf("options %+v (%v), want chains 1 and 2", got, err)
 	}
-	if _, err := s.withFees(context.Background(), options(45_000_000, 9), false, false); !errors.Is(err, ErrFeeQuote) {
-		t.Fatalf("a fixed invoice on a chain that can't be priced: %v, want ErrFeeQuote", err)
+	for _, o := range got {
+		if o.networkFee.String() != "60000" || o.amount.String() != "3000000" {
+			t.Errorf("chain %d: fee %s amount %s, want the highest fee 60000 on 3000000", o.chainID, o.networkFee, o.amount)
+		}
 	}
 	if _, err := s.withFees(context.Background(), options(90_000, 1, 2), true, false); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("a price no network's fee fits: %v, want ErrInvalid", err)

@@ -24,35 +24,31 @@ export const EXPIRY_CHOICES = {
 
 export const DEFAULT_EXPIRY: ExpiryChoice = "week";
 
-/** The creator picks the close date and time (R-58). */
 export const CUSTOM_EXPIRY = "custom";
 export const EXPIRY_BOUNDS_S = { min: 900, max: 31_536_000 } as const;
 
-/** R-98: later invoices go out this many days before their due date (the API's RetainerLead). */
+/** Days before its due date a repeat goes out: the API's RetainerLead. */
 export const RETAINER_LEAD_DAYS = 7;
 
-/** D-80: with a due date the checkout stays open this many days past it, so a client who pays late still pays. */
+/** Days the checkout stays open past a due date, so a late client still pays. */
 export const DUE_GRACE_DAYS = 60;
 
-/** How the payer pays (R-56). */
 export const PAY_WITH = { any: "any", fixed: "fixed" } as const;
 
-/** GET /v1/profiles/{id}/events kinds (R-81), the same as the owner's email (R-80). */
 export const INVOICE_EVENTS = {
   paid: "invoice.paid",
   settled: "invoice.settled",
   held: "invoice.held",
 } as const;
 
-/** history_events kinds (R-123); a payment status change is "invoice." and the new status. */
+/** A payment status change is "invoice." and the new status. */
 export const HISTORY_KINDS = {
   created: "invoice.created",
   canceled: "invoice.canceled",
   payerEmail: "payer.email_given",
   optionChosen: "payer.option_chosen",
   optionPicked: "payer.option_picked",
-  // A reorg took away the only payment seen.
-  open: "invoice.open",
+  open: "invoice.open", // a reorg dropped the only payment
   detected: "invoice.detected",
   partiallyPaid: "invoice.partially_paid",
   paid: INVOICE_EVENTS.paid,
@@ -80,14 +76,13 @@ export const HISTORY_KINDS = {
   returnReleased: "invoice.return_released",
   receiverSettled: "receiver.settled",
   checkoutCloseChanged: "checkout.close_changed",
-  // R-234: a payment through NEAR Intents.
   crossChainDeposit: "crosschain.deposit_seen",
   crossChainConverted: "crosschain.converted",
   crossChainRefunded: "crosschain.refunded",
   crossChainFailed: "crosschain.failed",
 } as const;
 
-/** The fields an invoice.edited row names (R-127, R-128), as the API calls them. */
+/** The fields an invoice.edited row names. */
 export const HISTORY_FIELDS = {
   memo: "memo",
   clientEmail: "clientEmail",
@@ -100,7 +95,7 @@ export const HISTORY_FIELDS = {
 /** Who made a history change; system is Forwend. */
 export const HISTORY_ACTORS = { owner: "owner", payer: "payer", system: "system" } as const;
 
-/** Each history kind belongs to one category (R-124); a kind the page doesn't know yet is a change. */
+/** A kind the page doesn't know yet is a change. */
 export const HISTORY_CATEGORIES = { payment: "payment", change: "change", email: "email" } as const;
 export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.created]: HISTORY_CATEGORIES.change,
@@ -142,46 +137,42 @@ export const HISTORY_CATEGORY_OF = {
   [HISTORY_KINDS.crossChainFailed]: HISTORY_CATEGORIES.payment,
 } as const satisfies Record<HistoryKind, HistoryCategory>;
 
-/** The History panel's filter: every row, or one category. */
 export const HISTORY_FILTERS = { all: "all", ...HISTORY_CATEGORIES } as const;
 
-/** Payment reminder steps (R-96), in the order they go out: 3 days before the due date, on it, 7 days after. */
+/** In the order they go out: 3 days before the due date, on it, 7 days after. */
 export const REMINDER_STEPS = {
   before: "before",
   due: "due",
   after: "after",
 } as const;
 
-/** A reminder's stop token (R-96). */
 export const STOP_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
-/** A pay link's token (D-86); the invoice id is keccak256 of it. */
+/** The invoice id is keccak256 of it. */
 export const PAY_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
-/** The rows of Owed to you (R-95), in the API's order. */
+/** In the API's order. */
 export const OWED_KINDS = {
   overdue: "overdue",
   partlyPaid: "partlyPaid",
   held: "held",
 } as const;
 
-/** The states whose owner page says what to do next (R-77). */
 export const INVOICE_EXCEPTIONS = {
   canceled: "canceled",
   closedUnpaid: "closedUnpaid",
   closedPartial: "closedPartial",
 } as const;
 
-/** `from` copies an invoice (R-91); `rest` asks only for what is left of a closed one (R-77, D-25). */
+/** from copies an invoice; rest asks only for what is left of a closed one. */
 export const RESTART_PARAMS = {
   from: "from",
   rest: "rest",
   revise: "revise",
-  /** A saved client's id: the invoice starts billed to them, as if picked. */
-  client: "client",
+  client: "client", // a saved client's id
 } as const;
 
-/** R-93, D-82; ISO 4217 decimals. Copies the API's invoice.AgreedCurrencies: a Go test checks both. */
+/** ISO 4217 decimals; copies the API's invoice.AgreedCurrencies, and a Go test checks both. */
 export const AGREED_CURRENCIES = {
   EUR: 2,
   USD: 2,
@@ -215,7 +206,7 @@ export const AGREED_CURRENCIES = {
   ZAR: 2,
 } as const;
 
-/** The API's text limits in characters (openapi.yaml, CreateInvoiceRequest). */
+/** The API's text limits in characters. */
 export const INVOICE_LIMITS = {
   title: 200,
   note: 2000,
@@ -237,7 +228,6 @@ export const INVOICE_FIELDS = {
   dueDate: "dueDate",
   supplyDate: "supplyDate",
   reference: "reference",
-  // R-93.
   agreedCurrency: "agreedValue.currency",
   agreedAmount: "agreedValue.amount",
   agreedDate: "agreedValue.date",
@@ -251,28 +241,19 @@ export const INVOICE_FIELDS = {
   expiresIn: "expiresIn",
   returnUrl: "returnUrl",
   memo: "memo",
-  // R-88.
   lines: "lines",
   reminders: "reminders",
   repeat: "repeat",
   repeatEndDate: "repeat.endDate",
 } as const;
 
-export const AMOUNT_ERRORS = {
-  format: "format",
-  decimals: "decimals",
-  zero: "zero",
-  min: "min",
-} as const;
-
-/** R-88: the API's line item limits. */
+/** The API's line item limits. */
 export const LINE_LIMITS = { count: 100, description: 200, quantityMax: 1_000_000 } as const;
 export const LINE_ERRORS = {
   description: "description",
   quantity: "quantity",
   price: "price",
-  // Quantity times price is not a whole number of the token's smallest unit.
-  exact: "exact",
+  exact: "exact", // qty × price isn't whole base units
 } as const;
 
 export const INVOICE_STEPS = {
@@ -283,10 +264,9 @@ export const INVOICE_STEPS = {
   settled: "settled",
 } as const;
 
-/** The timeline, in order. */
 export const INVOICE_TIMELINE = Object.values(INVOICE_STEPS);
 
-/** The owner's record of an invoice, in order: the last is In your wallet, or how it ended. */
+/** In order: the last is In your wallet, or how it ended. */
 export const RECORD_STEPS = {
   created: "created",
   sent: "sent",
@@ -297,13 +277,19 @@ export const RECORD_STEPS = {
   canceled: "canceled",
 } as const;
 
-/** The PDFs the API draws; the receipt answers 409 until the invoice is paid. */
+export const RECORD_STEP_STATES = {
+  done: "done",
+  current: "current",
+  upcoming: "upcoming",
+  stopped: "stopped",
+} as const;
+
+/** The receipt answers 409 until the invoice is paid. */
 export const INVOICE_PDFS = {
   invoice: "invoice",
   receipt: "receipt",
 } as const;
 
-/** openapi.yaml, Invoice.settlementWait. */
 export const SETTLEMENT_WAITS = {
   signing: "signing",
   finalizing: "finalizing",
@@ -318,7 +304,7 @@ export const RECONCILIATION_STATES = {
   review: "review",
 } as const;
 
-/** New invoice's steps, in order; a personal profile's request has no customer step. */
+/** A personal profile's request has no customer step. */
 export const STEP_IDS = {
   customer: "customer",
   items: "items",
@@ -334,7 +320,3 @@ export const INVOICE_STEP_IDS = [
 ] as const;
 
 export const REQUEST_STEPS = [STEP_IDS.items, STEP_IDS.details, STEP_IDS.review] as const;
-
-/** The invoice page's actions on phones: a bar above the tab bar, within thumb reach. */
-export const PHONE_ACTION_BAR =
-  "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] max-lg:z-[var(--fw-z-nav)] max-lg:flex max-lg:gap-2 max-lg:border-t max-lg:border-line max-lg:bg-[color-mix(in_oklab,var(--fw-bg)_88%,transparent)] max-lg:fw-safe-x max-lg:py-3 max-lg:backdrop-blur-md max-lg:[--fw-pop-y:0.5rem] max-lg:motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)]";

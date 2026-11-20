@@ -5,13 +5,14 @@ import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { EMBED_LAYOUTS, EMBED_PARAMS } from "@/features/pay/constants/embed";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { PayScreen } from "@/screens/pay/pay-screen";
+import { NO_INDEX } from "@/shared/config/site";
 
 export const metadata: Metadata = {
   title: PAY_COPY.title,
-  robots: { index: false, follow: false },
+  robots: NO_INDEX,
 };
 
-// R-168: the checkout in a merchant's page. src/proxy.ts lets only the store's origin the query names frame it.
+// The checkout in a merchant's page. src/proxy.ts lets only the store's origin the query names frame it.
 export default async function EmbedPage({ params, searchParams }: PageProps<"/embed/[token]">) {
   const { token } = await params;
   if (!PAY_TOKEN_PATTERN.test(token)) notFound();
@@ -21,7 +22,7 @@ export default async function EmbedPage({ params, searchParams }: PageProps<"/em
   const theme = Object.values(THEMES).find((t) => t === query[EMBED_PARAMS.theme]);
   return (
     <>
-      {/* The merchant's page picks the theme, set before the first paint as the head script sets the visitor's. */}
+      {/* The merchant's page picks the theme; set before first paint, like the head script. */}
       {theme ? (
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: a fixed theme name from THEMES, never the query's text

@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FreshSignInProvider, useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { FreshSignInProvider } from "@/features/auth/components/fresh-sign-in-provider";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import type { AskFreshSignIn } from "@/shared/api/fresh-sign-in";
 
-// Forwend's own code routes (R-137), as the api answers them.
 const api = vi.hoisted(() => ({
-  // As the api answers a code it sent: 0 lets the tests resend at once.
   sendCode: vi.fn(async () => ({ resendAfterSeconds: 0 })),
   verifyCode: vi.fn(async (_: string) => {}),
 }));
@@ -25,11 +24,9 @@ vi.mock("@/features/auth/api/auth-api", () => ({
 
 let ask: AskFreshSignIn = async () => false;
 const answers: boolean[] = [];
-// What the form saw of the API's answer: cancelled is true only when the user gave up.
 const cancelled: boolean[] = [];
 const refused = { status: 401, data: { error: { code: "reauth_required" } } };
 
-// A form like New key: its request asks for a fresh sign-in, and the step shows in place of its buttons.
 function Form() {
   const fresh = useFreshSignIn();
   return (
@@ -45,7 +42,6 @@ function Form() {
               .run(async () => {
                 const ok = await ask();
                 answers.push(ok);
-                // The API still refuses, whether the user gave up or not.
                 throw refused;
               })
               .catch((error) => cancelled.push(fresh.cancelled(error)))
@@ -84,7 +80,6 @@ describe("fresh sign-in", () => {
     await waitFor(() => expect(api.sendCode).toHaveBeenCalledTimes(1));
     await screen.findByText("Enter the 6-digit code sent to owner@example.com.");
     await screen.findByText(/Didn't get it\?/);
-    // As on the sign-in page: the sixth digit confirms, with no click.
     fireEvent.change(screen.getByLabelText("Code"), { target: { value: "123456" } });
     await waitFor(() => expect(api.verifyCode).toHaveBeenCalledWith("123456"));
     await waitFor(() => expect(answers).toEqual([true]));
@@ -129,7 +124,6 @@ describe("fresh sign-in", () => {
   it("offers to send again when the code couldn't be sent", async () => {
     api.sendCode.mockRejectedValueOnce(new Error("rate limited"));
     renderForm();
-    // Said once, under the code, and not as a wrong code: the boxes stay unmarked.
     await screen.findByText(/We couldn't send the code\./);
     expect(screen.getAllByText(/couldn't send/)).toHaveLength(1);
     expect(screen.getByLabelText("Code").getAttribute("aria-invalid")).not.toBe("true");
@@ -209,13 +203,6 @@ describe("fresh sign-in", () => {
   });
 
   it("asks in a dialog of its own for a request no form claimed", async () => {
-    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
-      this.open = true;
-    };
-    HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
-      this.open = false;
-      this.dispatchEvent(new Event("close"));
-    };
     render(
       <FreshSignInProvider register={(fn) => (ask = fn)}>
         <p>Page</p>
@@ -225,7 +212,6 @@ describe("fresh sign-in", () => {
     act(() => {
       void ask().then((ok) => (answered = ok));
     });
-    // Closing the dialog gives up, as its Cancel does.
     await screen.findByText("Enter the 6-digit code sent to owner@example.com.");
     fireEvent.click(screen.getByRole("button", { name: "Close", hidden: true }));
     await waitFor(() => expect(answered).toBe(false));

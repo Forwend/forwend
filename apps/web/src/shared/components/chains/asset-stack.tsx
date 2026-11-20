@@ -6,7 +6,6 @@ const SHOWN = 4;
 
 export interface AssetStackProps {
   assets: readonly { chainId: number; symbol: string }[];
-  /** What the stack stands for, such as "4 options": the icons are decorative. */
   label: string;
 }
 

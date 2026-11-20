@@ -20,17 +20,6 @@ const merchant: Profile = {
   name: "Shop",
 };
 
-// The app calls the API same-origin ("/api/…"); Node's Request needs an absolute URL.
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 function answer(body: unknown) {
   return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
 }
@@ -38,7 +27,7 @@ function answer(body: unknown) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("profiles API", () => {
-  it("sends the access token and adds a created profile to the cached list", async () => {
+  it("sends the access token and the idempotency key, and adds the created profile to the cached list", async () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(answer({ onboardedAt: null, profiles: [personal] } satisfies Me))
@@ -66,7 +55,7 @@ describe("profiles API", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("reads again what the other mode read once Developer mode turns, and keeps the profiles (R-221)", async () => {
+  it("reads again what the other mode read once Developer mode turns, and keeps the profiles", async () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(

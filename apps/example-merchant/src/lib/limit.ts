@@ -1,5 +1,4 @@
-/** At most max hits per key in each window. wait says how many seconds until a key may hit again, 0 if now, and
- * changes nothing; hit counts one. ponytail: counts live in this process; a shop on several servers shares them. */
+/** At most max hits per key per window; wait only reads. ponytail: counts live in this process. */
 export function limiter(max: number, windowMs: number) {
   const windows = new Map<string, { count: number; resetAt: number }>();
   const live = (key: string, now: number) => {

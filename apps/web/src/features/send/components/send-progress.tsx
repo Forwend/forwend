@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Button,
-  buttonClasses,
-  formatTokenAmount,
-  Spinner,
-  SuccessCheck,
-  shortAddress,
-} from "@forwend/ui-web";
+import { Button, buttonClasses, Spinner, SuccessCheck, shortAddress } from "@forwend/ui-web";
 import { CircleAlert, ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
@@ -20,23 +13,21 @@ import {
 } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Recipient, Relay, Send, SendOption } from "@/features/send/types/send";
+import { invalidValue, notFound } from "@/shared/api/api-error";
 import { txLink } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 
 export interface SendProgressProps {
   profileId: string;
   initial: Send;
-  /** A paymaster send's signature, sent again while the server shows it unsent and its request is valid. */
   relay?: Relay | null;
   option: SendOption;
   recipient: Recipient;
   onSent: () => void;
-  /** True until the server holds the hash: the sheet can't close then. */
   onHolding: (holding: boolean) => void;
   onDone: () => void;
 }
 
-// R-214: the chain, read through the server, says Sent; the browser's own answer only says it was signed.
 export function SendProgress({
   profileId,
   initial,
@@ -47,7 +38,6 @@ export function SendProgress({
   onHolding,
   onDone,
 }: SendProgressProps) {
-  // Each read can cost the api a chain call: none while the tab is hidden, none once the send is over.
   const [polling, setPolling] = useState(true);
   const read = useGetSendQuery(
     { profileId, sendId: initial.sendId },
@@ -55,22 +45,16 @@ export function SendProgress({
   );
   const send = read.currentData ?? initial;
   const readAt = read.fulfilledTimeStamp;
-  // A refusal (not a lost connection) won't change on the next try: the sheet may close, and the watcher still shows
-  // the transfer in Transactions.
   const [refused, setRefused] = useState(false);
-  // A paymaster send the server shows approved or expired never reached it, or Privy answered and the server lost
-  // that: the same signed request again is safe, as Privy sends it once. Once it expires (the server refuses it by
-  // its own clock) the send is over. A wallet-paid send has its hash to report instead.
+  // Resending the signed request is safe: Privy sends it once. Past its expiry the send is over.
   const relayLate = relay != null && readAt !== undefined && readAt >= relay.until;
   const unsent = send.status === SEND_STATUSES.expired && relay != null && (relayLate || refused);
-  // Sent is followed until final: the note then says it arrived, and a reorg shows as Sending again.
   const settled =
     send.status === SEND_STATUSES.failed ||
     unsent ||
     (send.status === SEND_STATUSES.sent && send.final);
   useEffect(() => setPolling(!settled), [settled]);
-  // A hash the server doesn't have yet is reported again on every read: the server must know it to follow the money.
-  // It takes the hash for a send whose approval ended meanwhile too.
+  // The server follows the money by its hash: report it on every read until it has it.
   const [submit] = useSubmitSendMutation();
   const hash = initial.txHash;
   const lost = read.currentData !== undefined && read.currentData.txHash === null;
@@ -87,8 +71,8 @@ export function SendProgress({
     relaying.current = true;
     submit({ profileId, sendId: initial.sendId, signature: relay.signature })
       .unwrap()
-      .catch((e: { status?: unknown }) => {
-        if (e.status === 404 || e.status === 422) setRefused(true);
+      .catch((e: unknown) => {
+        if (notFound(e) || invalidValue(e)) setRefused(true);
       })
       .finally(() => {
         relaying.current = false;
@@ -98,14 +82,11 @@ export function SendProgress({
     if (!lost || !hash || !readAt) return;
     submit({ profileId, sendId: initial.sendId, txHash: hash })
       .unwrap()
-      .catch((e: { status?: unknown }) => {
-        if (e.status === 404 || e.status === 422) setRefused(true);
+      .catch((e: unknown) => {
+        if (notFound(e) || invalidValue(e)) setRefused(true);
       });
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
-  // Locked until the server holds the hash, unless the server can't be reached: then the owner may leave, and the
-  // transfer still shows in Transactions once the watcher records it. A paymaster send has no hash to report: the
-  // server already holds its signed request (R-225).
-  // read.error stays until a read succeeds, so a retry in flight doesn't lock the sheet again.
+  // error stays until a read succeeds, so a retry in flight doesn't lock the sheet again.
   const unreachable = read.error !== undefined;
   const holding =
     send.networkFee.paidBy !== FEE_PAYERS.paymaster &&
@@ -122,7 +103,7 @@ export function SendProgress({
   }, [send.status, onSent]);
 
   const units = BigInt(send.amount);
-  const amount = `${formatTokenAmount({ baseUnits: units, decimals: option.decimals, fractionDigits: exactDigits(units, option.decimals) })} ${option.symbol}`;
+  const amount = amountText(units, option);
   const to =
     "profile" in recipient ? profileLabel(recipient.profile) : shortAddress(recipient.address);
   const link = send.txHash ? txLink(send.chainId, send.txHash) : null;

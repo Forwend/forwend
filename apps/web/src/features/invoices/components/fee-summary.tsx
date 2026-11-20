@@ -5,38 +5,33 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { useEffect, useState } from "react";
 import { useGetFeesQuery } from "@/features/invoices/api/invoices-api";
 import { FEES_FORM_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { decimalText, feeFigures } from "@/features/invoices/lib/invoices";
+import { decimalText } from "@/features/invoices/lib/invoices";
+import { feeFigures } from "@/features/invoices/lib/new-invoice";
 import type { FeeQuote } from "@/features/invoices/types/invoices";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 
 // A quote waits until typing stops, so each keystroke asks nothing.
 const QUOTE_WAIT_MS = 400;
-const UNAVAILABLE = 503; // network_fee_unavailable
 
 export interface FeeSummaryProps {
   profileId: string;
-  /** A merchant invoice's store, whose tokens can leave out the costliest network (R-136). */
   storeId?: string;
-  /** The price: in USD when the client chooses the token, else in base units of token on chainId. */
-  any: boolean;
+  any: boolean; // units in USD, else base units of token
   chainId: number;
   token: string;
   units: bigint;
   decimals: number;
   clientPays: boolean;
   onClientPays: (clientPays: boolean) => void;
-  /** The quote, for the preview. */
   onQuote?: (quote: FeeQuote | undefined) => void;
-  /** True while this price's quote is on its way: neither priced nor refused yet. */
-  onPricing?: (pricing: boolean) => void;
+  onPricing?: (pricing: boolean) => void; // true while the quote is on its way
   money: (units: bigint) => string;
-  /** Only the fee: the price is the payer's to choose, as on an open payment link. */
-  feeOnly?: boolean;
-  /** As the totals under an invoice's items: subtotal, the fee with who pays it, then what each side gets. */
+  feeOnly?: boolean; // the payer chooses the price
   totals?: boolean;
 }
 
-/** R-227: who pays the network fee, and what the client pays and the owner receives, before the form saves. */
+/** Who pays the network fee, and what the client pays and the owner receives, before the form saves. */
 export function FeeSummary({
   profileId,
   storeId,
@@ -64,7 +59,7 @@ export function FeeSummary({
     const wait = setTimeout(() => setAsked(price), QUOTE_WAIT_MS);
     return () => clearTimeout(wait);
   }, [price]);
-  // Who pays decides which networks a small price can carry, as the invoice is priced (D-122).
+  // Who pays decides which networks a small price can carry.
   const feesPaidBy = clientPays ? FEES_PAID_BY.client : FEES_PAID_BY.owner;
   const quote = useGetFeesQuery(
     asked === ""
@@ -73,8 +68,7 @@ export function FeeSummary({
         ? { profileId, storeId, feesPaidBy, amountUsd: asked.slice(4) }
         : { profileId, storeId, feesPaidBy, chainId, token, amount: asked.split(":")[2] ?? "" },
   );
-  // Switching who pays asks again, but rarely changes the fees: the last quote of this same price shows meanwhile.
-  // A refused or failed one shows its answer instead.
+  // The last quote of this same price shows while who pays changes; a refused one shows its answer.
   const last = quote.isError ? undefined : (quote.currentData ?? quote.data);
   const current =
     asked === price &&
@@ -91,14 +85,13 @@ export function FeeSummary({
     price === "" || current
       ? null
       : failed
-        ? (quote.error as { status?: unknown }).status === UNAVAILABLE
+        ? errorStatus(quote.error) === HTTP_STATUS.unavailable
           ? COPY.failed
           : null
         : COPY.pricing;
   if (totals) {
     const ROW = "flex min-h-10 items-center justify-between gap-4 px-4 py-2";
     const VALUE = "text-right font-medium whitespace-nowrap text-ink tabular-nums";
-    // While the fee is priced, each figure that waits on it keeps its place as a placeholder of its own width.
     const pricingNow = pricing && !failed;
     const later = (width: string) => (
       <Skeleton className={`inline-block h-4 align-middle ${width}`} />
@@ -134,7 +127,7 @@ export function FeeSummary({
             ) : waiting ? null : (
               "—"
             )}
-            {/* Always mounted, so a screen reader hears the line when it appears. Only a failure is shown. */}
+            {/* Always mounted, so a screen reader hears the line when it appears. */}
             <span role="status" className={pricingNow ? "sr-only" : "block text-xs"}>
               {figures ? null : waiting}
             </span>

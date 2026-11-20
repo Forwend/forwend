@@ -18,20 +18,19 @@ import { InviteDialog } from "@/features/team/components/invite-dialog";
 import { MemberActions } from "@/features/team/components/member-actions";
 import { RollAfterRemoval } from "@/features/team/components/roll-after-removal";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
-import { formatExpiry } from "@/features/team/lib/team";
 import type { Invite, ToRoll } from "@/features/team/types/team";
 import { LoadError } from "@/shared/components/load-error";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { dateTime } from "@/shared/lib/dates";
 
 export interface TeamMembersProps {
   profileId: string;
 }
 
-// The panel's width decides, not the screen's: below it a row keeps the person, the role and the actions.
 const WIDE = "hidden @2xl:table-cell";
 const NARROW = "block truncate text-xs text-muted @2xl:hidden";
 const ROW = cx(TABLE_ROW_CLASSES, "max-sm:[&>td:first-child]:pl-4 max-sm:[&>td:last-child]:pr-3");
 
-// R-139: an Admin's view of the team. The owner's row has no actions: the owner is an Admin for good (D-93).
 export function TeamMembers({ profileId }: TeamMembersProps) {
   const team = useGetTeamQuery(profileId);
   const stores = useListStoresQuery(profileId);
@@ -55,7 +54,6 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
     }
   };
 
-  // The rows wait for the store names, so a failed stores load needs the same way out.
   const storesFailed = stores.isError && !stores.currentData;
   if ((team.isError && !team.currentData) || storesFailed) {
     return (
@@ -142,7 +140,7 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
         )}
       </section>
       <section aria-labelledby="team-invites" className="fw-panel @container">
-        <h2 id="team-invites" className="fw-panel-head text-base font-semibold text-ink">
+        <h2 id="team-invites" className={PANEL_TITLE}>
           {COPY.invites}
         </h2>
         {!loaded ? (
@@ -176,11 +174,11 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
                     <span className={NARROW}>
                       {ROLE_LABELS[invite.role]} · {reach(invite.stores)}
                     </span>
-                    <span className={NARROW}>{COPY.expires(formatExpiry(invite.expiresAt))}</span>
+                    <span className={NARROW}>{COPY.expires(dateTime(invite.expiresAt))}</span>
                   </td>
                   <td className={cx(WIDE, "truncate text-muted")}>{reach(invite.stores)}</td>
                   <td className={cx(WIDE, "truncate text-muted tabular-nums")}>
-                    {formatExpiry(invite.expiresAt)}
+                    {dateTime(invite.expiresAt)}
                   </td>
                   <td className={WIDE}>
                     <Badge>{ROLE_LABELS[invite.role]}</Badge>

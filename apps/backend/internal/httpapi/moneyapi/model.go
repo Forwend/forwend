@@ -51,22 +51,21 @@ type activityItemJSON struct {
 	At            string `json:"at"`
 	InvoiceID     string `json:"invoiceId"`
 	tokenJSON
-	Amount           string `json:"amount"`
-	Status           string `json:"status"`
-	SettlementStatus string `json:"settlementStatus,omitempty"`
-	TxHash           string `json:"txHash,omitempty"`
-	OptionCount      int    `json:"optionCount"`
-	Closed           bool   `json:"closed"`
-	Held             bool   `json:"held"`
-	// D-114: a booked deposit's parts; D-107: what names the payment.
-	MerchantAmount *string              `json:"merchantAmount"`
-	HeldAmount     *string              `json:"heldAmount"`
-	Purpose        invoice.Purpose      `json:"purpose"`
-	DocumentKind   invoice.DocumentKind `json:"documentKind"`
-	Number         *int64               `json:"number"`
-	Reference      *string              `json:"reference"`
-	ClientName     *string              `json:"clientName"`
-	Title          *string              `json:"title"`
+	Amount           string               `json:"amount"`
+	Status           string               `json:"status"`
+	SettlementStatus string               `json:"settlementStatus,omitempty"`
+	TxHash           string               `json:"txHash,omitempty"`
+	OptionCount      int                  `json:"optionCount"`
+	Closed           bool                 `json:"closed"`
+	Held             bool                 `json:"held"`
+	MerchantAmount   *string              `json:"merchantAmount"`
+	HeldAmount       *string              `json:"heldAmount"`
+	Purpose          invoice.Purpose      `json:"purpose"`
+	DocumentKind     invoice.DocumentKind `json:"documentKind"`
+	Number           *int64               `json:"number"`
+	Reference        *string              `json:"reference"`
+	ClientName       *string              `json:"clientName"`
+	Title            *string              `json:"title"`
 }
 
 func optionalAmount(amount *big.Int) *string {
@@ -98,11 +97,9 @@ type transactionJSON struct {
 	Payment        *transactionPaymentJSON `json:"payment,omitempty"`
 	Invoice        *transactionInvoiceJSON `json:"invoice"`
 	RecordsValue   *recordsValueJSON       `json:"recordsValue"`
-	// FeePaid is the gas the wallet paid for the send, in the token's base units; null when not a known send (R-224).
-	FeePaid *string `json:"feePaid"`
+	FeePaid        *string                 `json:"feePaid"` // token base units; null when not a known send
 }
 
-// R-110: at the ECB rate of RateDate.
 type recordsValueJSON struct {
 	Currency string `json:"currency"`
 	Amount   string `json:"amount"`
@@ -115,11 +112,9 @@ type transactionPaymentJSON struct {
 	DocumentKind    invoice.DocumentKind `json:"documentKind"`
 	PolicyException *string              `json:"policyException"`
 	Unreconciled    bool                 `json:"unreconciled"`
-	// What the settlement paid out of the payment before the rest reached the wallet; null when none (R-228).
-	Fees *string `json:"fees"`
+	Fees            *string              `json:"fees"` // paid out before the rest reached the wallet
 }
 
-// R-108.
 type transactionInvoiceJSON struct {
 	InvoiceID  string  `json:"invoiceId"`
 	Number     int64   `json:"number"`
@@ -150,14 +145,6 @@ func toTransactionJSON(t activity.Transfer) transactionJSON {
 		out.FeePaid = &paid
 	}
 	return out
-}
-
-func tokenAmount(t activity.Transfer) string {
-	return units(t.Amount, t.Decimals)
-}
-
-func units(n *big.Int, decimals int) string {
-	return new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
 }
 
 type balanceHistoryJSON struct {

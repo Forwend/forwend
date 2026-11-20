@@ -37,8 +37,6 @@ func TestMigrationsRollBackAndReapply(t *testing.T) {
 	}
 }
 
-// R-130: 55 gives a reopened row written before it the exact close and takes it back; 54 never rolls back past a
-// reopen, which moved held money to the creator.
 func TestMigrationsKeepAReopenedInvoice(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
@@ -102,7 +100,6 @@ func TestMigrationsKeepAReopenedInvoice(t *testing.T) {
 	data(`{"to": "2027-01-15"}`)
 }
 
-// R-141: 65 never rolls back while a link invoice has no number, which the old schema can't hold.
 func TestMigrationsKeepAnUnnumberedLinkInvoice(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))

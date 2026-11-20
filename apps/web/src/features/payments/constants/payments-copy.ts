@@ -12,7 +12,6 @@ export const PAYMENTS_COPY = {
   },
   search: "Search payments",
   searchPlaceholder: "Order, invoice, customer or amount",
-  status: "Status",
   source: "Source",
   store: "Store",
   allSources: "All",
@@ -27,8 +26,10 @@ export const PAYMENTS_COPY = {
     issue: "Issue",
     date: "Date",
   },
-  // The amount cell: what arrived "of" what was asked.
   of: "of",
+  over: "More than requested; the extra is held for the customer, and Forwend support handles any return",
+  confirming: "Confirming",
+  pending: "confirming",
   table: "Payments",
   noCustomer: "No customer",
   testnet: "Testnet",
@@ -59,6 +60,18 @@ export const PAYMENTS_COPY = {
     `${name || "Webhook endpoint"} · ${failed} failed${paused ? `, ${paused} paused` : ""}`,
   checkWebhooks: "Open webhooks",
   moreWebhooks: "More endpoints need attention. Open Developers for the full list.",
+  export: {
+    title: "Export payment records",
+    trigger: "Export payments",
+    short: "Export",
+    rows: "One row per booked movement, plus separate unbooked observations. Includes the current store, source and status filters.",
+    dates:
+      "Dates use when Forwend recorded the movement, in UTC. Observations do not count toward booked totals. USD uses $1 per accepted stablecoin.",
+    download: "Download CSV",
+    badRange: "Choose a To day on or after From.",
+    tooMany: "This period has more than 10,000 records. Choose a shorter period.",
+    failed: "We could not export payment records. Try again.",
+  },
 } as const;
 
 export const PAYMENT_DETAIL_COPY = {
@@ -70,19 +83,15 @@ export const PAYMENT_DETAIL_COPY = {
   loading: "Loading payment",
   viewReceipt: "Open receipt",
   viewCheckout: "Open checkout",
-  // The same two on a narrow screen, where three buttons share a row.
   receipt: "Receipt",
   checkout: "Checkout",
   invoiceShort: "Invoice",
   amount: "Amount",
-  // R-239: what the customer sent on its own chain, which NEAR Intents converted.
   crossChain: {
     tag: "via NEAR Intents",
-    // The list's lockup: NEAR's mark and name, read as "via NEAR Intents".
     via: "via",
     title: "Paid from another chain through NEAR Intents",
   },
-  // R-248: the payment's money as one sum, then every movement of it.
   sum: {
     cells: {
       requested: "Requested",
@@ -118,10 +127,15 @@ export const PAYMENT_DETAIL_COPY = {
     on: (place: string, when: string | null) => (when ? `On ${place} · ${when}` : `On ${place}`),
     afterPaid: "After the payment is confirmed",
   },
-  // D-118: support returns held money by hand, so the owner has nothing to do.
   held: (money: string, why: string | undefined) =>
     `${money}${why ? ` ${why}` : ""} is held for the customer, and Forwend support handles any return.`,
-  noTokenYet: "The customer has not chosen a token yet",
+  problems: {
+    checkWebhooks: "Check webhooks",
+    webhook: "Payment status is unchanged.",
+    webhookAskAdmin:
+      "Payment status is unchanged. Ask the account owner or an Admin to check delivery.",
+    support: "Contact support with this payment's reference.",
+  },
   late: "Held for the customer",
   toWallet: "To your wallet",
   transferReview: "Needs review",
@@ -189,12 +203,11 @@ export const RECONCILIATION_COPY = {
   checking: "Still checking",
   review: "Needs review",
   moved: "Moved to wallet",
-  returned: "Returned",
   addresses: (verified: number, all: number) =>
     `${verified} of ${all} payment addresses have nothing unbooked or unexplained`,
   blocks: (from: string, to: string, final: string) =>
     `Checked blocks ${from}–${to}, final block ${final}`,
-  counts: "Not yet booked",
+  scanBehind: "This network's scan is behind, so a recent deposit may not show yet.",
   pending: "Pending deposits",
   unbookedIn: "Unbooked deposits",
   unbookedOut: "Unbooked outflows",

@@ -5,7 +5,6 @@ import { Forwend, ForwendError } from "../src/index.js";
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
 const KEY = `fw_test_${"a".repeat(36)}`;
 
-/** A fetch that answers from a list and keeps each request. */
 function fake(answers: Array<{ status?: number; json: unknown }>) {
   const requests: Request[] = [];
   const fetch = async (input: string | URL | Request, init?: RequestInit) => {

@@ -9,11 +9,13 @@ import {
   Skeleton,
   StatusPill,
   Tooltip,
+  WALLET_STATE,
   WalletStateLabel,
 } from "@forwend/ui-web";
 import { ExternalLink, FileDown, ReceiptText } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 import { InvoiceLines } from "@/features/invoices/components/invoice-lines";
+import { DOCUMENT_KINDS, INVOICE_PDFS } from "@/features/invoices/constants/invoices";
 import { invoiceNumber, invoicePdfUrl, linesFigures } from "@/features/invoices/lib/invoices";
 import { useGetPaymentQuery } from "@/features/payments/api/payments-api";
 import { ExportPayments } from "@/features/payments/components/export-payments";
@@ -27,13 +29,9 @@ import {
   paymentJourney,
   paymentMoney,
 } from "@/features/payments/lib/payment-journey";
-import {
-  heldHint,
-  paymentDisplayStatus,
-  paymentLabel,
-  paymentWallet,
-} from "@/features/payments/lib/payments";
+import { heldHint, paymentDisplayStatus, paymentLabel } from "@/features/payments/lib/payments";
 import type { PaymentDetail as PaymentDetailType } from "@/features/payments/types/payments";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
@@ -41,18 +39,16 @@ import { LineSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { FADE_IN } from "@/shared/constants/motion";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { dateTime } from "@/shared/lib/dates";
-
-const NOT_FOUND = 404;
+import { walletStateOf } from "@/shared/lib/payment-state";
 
 export interface PaymentDetailProps {
   profileId: string;
   paymentId: string;
-  /** More header actions the screen composes from other features, such as a checkout's Cancel; focusTitle is where
-   * focus goes once one of them is done and gone. */
   actions?: (payment: PaymentDetailType, focusTitle: () => void) => ReactNode;
-  /** Under the not found line: the screen's way to the other mode (R-221). */
   notFound?: ReactNode;
 }
 
@@ -60,7 +56,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
   const read = useGetPaymentQuery({ profileId, paymentId }, LIVE_QUERY);
   const title = useRef<HTMLHeadingElement>(null);
   const payment = read.currentData;
-  if (!payment && (read.error as { status?: unknown } | undefined)?.status === NOT_FOUND)
+  if (!payment && errorStatus(read.error) === HTTP_STATUS.notFound)
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted">{COPY.notFound}</p>
@@ -80,7 +76,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
     );
   const status = paymentDisplayStatus(payment);
   const held = heldHint(payment.problems);
-  const wallet = paymentWallet(payment);
+  const wallet = walletStateOf(payment);
   const payToken = payment.payToken ?? null;
   // Items are in the base units of the option whose id is the payment's.
   const main = payment.options.find((option) => option.optionId === payment.paymentId);
@@ -98,12 +94,10 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
           <>
             {payment.livemode ? null : <Badge tone="warning">{COPY.testnet}</Badge>}
             {held ? (
-              // Held money is the customer's and support handles it: a hint on the status, not a warning.
               <Tooltip content={held}>
                 <button
                   type="button"
                   aria-label={`${PAYMENT_STATUSES[status].label}. ${held}`}
-                  // On a touch screen a 44px band takes the tap; the badge keeps its size.
                   className="relative cursor-default rounded-sm outline-none before:absolute focus-visible:outline-2 focus-visible:outline-focus pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:h-11 pointer-coarse:before:w-[max(100%,2.75rem)] pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2"
                 >
                   <StatusPill status={status} />
@@ -112,7 +106,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
             ) : (
               <StatusPill status={status} />
             )}
-            {wallet === "none" ? null : <WalletStateLabel state={wallet} />}
+            {wallet === WALLET_STATE.none ? null : <WalletStateLabel state={wallet} />}
           </>
         }
         meta={
@@ -133,7 +127,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
         ) : null}
         <PaymentProblems problems={payment.problems} />
       </div>
-      <div className={`${FADE} lg:col-span-2`}>
+      <div className={`${FADE_IN} lg:col-span-2`}>
         <PaymentSum payment={payment} money={money} />
       </div>
       <div className={ACTIONS}>
@@ -153,10 +147,9 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
             <span className="max-lg:hidden">{paid ? COPY.viewReceipt : COPY.viewCheckout}</span>
           </a>
         ) : null}
-        {payToken && payment.documentKind !== "none" ? (
-          // Details has this link too; on a narrow screen it is far below.
+        {payToken && payment.documentKind !== DOCUMENT_KINDS.none ? (
           <a
-            href={invoicePdfUrl(payToken, "invoice")}
+            href={invoicePdfUrl(payToken, INVOICE_PDFS.invoice)}
             className={`${buttonClasses({ variant: "secondary" })} lg:hidden`}
           >
             <FileDown aria-hidden className="size-[var(--fw-icon-sm)]" />
@@ -166,7 +159,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
         <ExportPayments profileId={profileId} paymentId={paymentId} />
         {actions?.(payment, () => title.current?.focus())}
       </div>
-      <div className={`${FADE} lg:col-span-2`}>
+      <div className={`${FADE_IN} lg:col-span-2`}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
           <div className="flex min-w-0 flex-col gap-6">
             <PaymentJourney payment={payment} steps={paymentJourney(payment, money)} />
@@ -175,7 +168,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                 lines={payment.items}
                 decimals={main.decimals}
                 unit={payment.optionCount > 1 ? MONEY_COPY.usd : main.symbol}
-                // Every option carries the same fees (D-122), so before the client picks, the main option's are theirs.
+                // Every option carries the same fees: before a pick, the main option's are the client's.
                 {...linesFigures(main, money.paidWith ?? main)}
                 owner
               />
@@ -187,9 +180,11 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                 {payment.reference ? (
                   <DetailRow term={COPY.reference}>{payment.reference}</DetailRow>
                 ) : null}
-                {payment.documentKind !== "none" && payment.number ? (
+                {payment.documentKind !== DOCUMENT_KINDS.none && payment.number ? (
                   <DetailRow
-                    term={payment.documentKind === "request" ? COPY.request : COPY.invoice}
+                    term={
+                      payment.documentKind === DOCUMENT_KINDS.request ? COPY.request : COPY.invoice
+                    }
                   >
                     <RecordLink href={`${APP_ROUTES.invoices}/${payment.paymentId}`}>
                       {invoiceNumber(payment.number)}
@@ -229,17 +224,17 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
                 {payToken ? (
                   <DetailRow term={COPY.documents}>
                     <span className="flex flex-wrap justify-end gap-x-5 gap-y-1">
-                      {payment.documentKind !== "none" ? (
-                        <PdfLink href={invoicePdfUrl(payToken, "invoice")}>
+                      {payment.documentKind !== DOCUMENT_KINDS.none ? (
+                        <PdfLink href={invoicePdfUrl(payToken, INVOICE_PDFS.invoice)}>
                           {COPY.invoicePdf}
                         </PdfLink>
                       ) : null}
-                      {payment.paymentStatus === "paid" ? (
-                        <PdfLink href={invoicePdfUrl(payToken, "receipt")}>
+                      {paid ? (
+                        <PdfLink href={invoicePdfUrl(payToken, INVOICE_PDFS.receipt)}>
                           {COPY.receiptPdf}
                         </PdfLink>
                       ) : null}
-                      {payment.documentKind === "none" && payment.paymentStatus !== "paid" ? (
+                      {payment.documentKind === DOCUMENT_KINDS.none && !paid ? (
                         <span className="text-subtle">{COPY.noDocuments}</span>
                       ) : null}
                     </span>
@@ -254,18 +249,15 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
   );
 }
 
-// One column on narrow screens, in the order written: header, notices, the sum, the actions, the rest. From large
-// screens the grid puts the actions beside the header. They stay one element, so a dialog they open is drawn once.
 const PAGE = "grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start";
 const ACTIONS =
   "flex flex-wrap items-center gap-2 max-lg:*:flex-1 lg:col-start-2 lg:row-start-1 lg:justify-end";
-const FADE = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="fw-panel overflow-hidden">
-      <h2 id={id} className="fw-panel-head text-base font-semibold text-ink">
+      <h2 id={id} className={PANEL_TITLE}>
         {title}
       </h2>
       {children}
@@ -290,7 +282,6 @@ function DetailSkeleton() {
       </span>
       <DetailHeaderSkeleton
         back={{ href: APP_ROUTES.payments, label: COPY.back }}
-        // The source's icon is not known yet: an empty tile.
         icon={<span />}
         actions={null}
       />
@@ -299,7 +290,6 @@ function DetailSkeleton() {
         className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface lg:col-span-2 lg:flex-row"
       >
         {SKELETON_CELLS.map((cell, i) => (
-          // On narrow screens the first is the headline and the others are lines under it, as in the sum.
           <div
             key={cell}
             className={cx(
@@ -360,6 +350,5 @@ function DetailSkeleton() {
   );
 }
 
-// The sum's usual three figures and the journey's usual four rows, so the page keeps its place once loaded.
 const SKELETON_CELLS = ["paid", "fee", "wallet"] as const;
 const SKELETON_STEPS = ["created", "sent", "fee", "wallet"] as const;

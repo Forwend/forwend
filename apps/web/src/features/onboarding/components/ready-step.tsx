@@ -1,34 +1,70 @@
 import { SuccessCheck } from "@forwend/ui-web";
-import { ArrowRight, BookOpen, Droplet } from "lucide-react";
-import type { ComponentType } from "react";
-import { TEST_USDC_FAUCET } from "@/features/onboarding/constants/onboarding";
+import {
+  ArrowRight,
+  BookOpen,
+  Droplet,
+  FilePlus2,
+  KeyRound,
+  Link2,
+  type LucideIcon,
+  Wallet,
+} from "lucide-react";
+import {
+  CHOICE_KINDS,
+  ONBOARDING_CHOICES,
+  TEST_USDC_FAUCET,
+} from "@/features/onboarding/constants/onboarding";
 import { FIRST_RUN_COPY } from "@/features/onboarding/constants/onboarding-copy";
+import type { OnboardingChoice } from "@/features/onboarding/types/onboarding";
 import type { ProfileKind } from "@/features/profiles/types/profile";
 import { docsPath } from "@/shared/config/docs-routes";
+import { APP_ROUTES } from "@/shared/config/routes";
 
 const COPY = FIRST_RUN_COPY.ready;
 
-export interface ReadyAction {
-  /** The profile the action opens in. */
-  kind: ProfileKind;
+/** In this order, whatever order the goals were picked in. */
+const ACTIONS: readonly {
+  choice: OnboardingChoice;
   href: string;
   title: string;
   hint: string;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-}
+  icon: LucideIcon;
+}[] = [
+  {
+    choice: ONBOARDING_CHOICES.getPaidByClients,
+    href: APP_ROUTES.newInvoice,
+    icon: FilePlus2,
+    ...COPY.actions.freelancer,
+  },
+  {
+    choice: ONBOARDING_CHOICES.acceptBusinessPayments,
+    href: APP_ROUTES.newLink,
+    icon: Link2,
+    ...COPY.actions.merchant,
+  },
+  {
+    choice: ONBOARDING_CHOICES.buildIntegration,
+    href: APP_ROUTES.developers,
+    icon: KeyRound,
+    ...COPY.actions.developer,
+  },
+  {
+    choice: ONBOARDING_CHOICES.receiveAndSend,
+    href: APP_ROUTES.home,
+    icon: Wallet,
+    ...COPY.actions.personal,
+  },
+];
 
 export interface ReadyStepProps {
-  /** One per goal picked, the first as the main one. */
-  actions: readonly ReadyAction[];
-  onAction: (action: ReadyAction) => void;
-  /** Developer mode (D-120): the faucet's test USDC is the money to try it with. */
+  picked: readonly OnboardingChoice[];
+  onAction: (kind: ProfileKind, href: string) => void;
   testnet: boolean;
 }
 
 const CARD =
   "group flex items-center gap-3 rounded-lg border bg-surface p-4 text-left sm:gap-4 sm:p-5 text-ink transition-colors duration-[var(--fw-duration-fast)] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
-// The same box as the main action's icon, so every card's text starts at one line.
 const TILE =
   "grid size-10 shrink-0 place-items-center rounded-md bg-surface-2 text-accent sm:size-11";
 
@@ -40,13 +76,16 @@ export function ReadyLead() {
   );
 }
 
-/** The first thing to do with each profile, the main one first, then test money and the docs' first payment. */
-export function ReadyStep({ actions, onAction, testnet }: ReadyStepProps) {
-  const [main, ...more] = actions;
+export function ReadyStep({ picked, onAction, testnet }: ReadyStepProps) {
+  const [main, ...more] = ACTIONS.filter((action) => picked.includes(action.choice));
   return (
     <div className="flex flex-col gap-3">
       {main ? (
-        <button type="button" onClick={() => onAction(main)} className={`${CARD} border-ink`}>
+        <button
+          type="button"
+          onClick={() => onAction(CHOICE_KINDS[main.choice], main.href)}
+          className={`${CARD} border-ink`}
+        >
           <span className="grid size-10 shrink-0 place-items-center rounded-md border border-brand-edge bg-brand text-on-brand sm:size-11">
             <main.icon aria-hidden className="size-5" />
           </span>
@@ -65,7 +104,7 @@ export function ReadyStep({ actions, onAction, testnet }: ReadyStepProps) {
           <button
             key={action.href}
             type="button"
-            onClick={() => onAction(action)}
+            onClick={() => onAction(CHOICE_KINDS[action.choice], action.href)}
             className={`${CARD} border-line`}
           >
             <span className={TILE}>

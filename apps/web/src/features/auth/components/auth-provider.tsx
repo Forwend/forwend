@@ -3,16 +3,15 @@
 import { THEME_ATTRIBUTE, THEMES, type Theme } from "@forwend/design-tokens";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { type ReactNode, useEffect, useState } from "react";
-import { MfaProvider } from "@/features/auth/components/mfa-step";
+import { MfaProvider } from "@/features/auth/components/mfa-provider";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { PRIVY_CHAINS } from "@/features/auth/constants/privy-chains";
 
-/** Privy login methods (D-21); each must also be enabled in the Privy dashboard. No wallet login. */
+/** Each must also be on in the Privy dashboard. */
 const LOGIN_METHODS = ["email", "google", "passkey"] as const;
 
 const APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
-// No wallet is made on login: the backend makes one per profile (D-21).
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [theme, setTheme] = useState<Theme>(THEMES.light);
   useEffect(() => {
@@ -29,16 +28,14 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <PrivyProvider
       appId={APP_ID}
-      // No wallet login, so no wallet list: Privy fetches WalletConnect's wallet registry for one, and starts
-      // WalletConnect, on every page it loads.
+      // An empty wallet list stops Privy loading WalletConnect on every page.
       config={{
         loginMethods: [...LOGIN_METHODS],
         appearance: { theme, walletList: [] },
         externalWallets: { walletConnect: { enabled: false } },
         supportedChains: PRIVY_CHAINS,
-        // Privy still requires its MFA to sign or export; Forwend asks for it in its own step (MfaProvider).
+        // Privy still asks for MFA; MfaProvider shows the ask in Forwend's own step.
         mfa: { noPromptOnMfaRequired: true },
-        // A passkey turned off as the second step stays a way to sign in.
         passkeys: { shouldUnlinkOnUnenrollMfa: false },
       }}
     >

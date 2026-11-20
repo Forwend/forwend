@@ -12,13 +12,12 @@ import {
 } from "react";
 import { cx } from "../../lib/cx";
 import { FIELD_CONTROL_CLASSES, OPTION_ROW_CLASSES } from "./field-classes";
+import { FieldMessage, fieldMessageId } from "./field-message";
 
 export interface ComboboxOption {
   value: string;
   label: string;
-  /** A quieter second line, also searched, such as a client's email. */
   detail?: string;
-  /** A small mark before the label, such as a token or network logo; the field shows the chosen one's too. */
   icon?: ReactNode;
 }
 
@@ -34,13 +33,9 @@ export interface ComboboxFieldProps {
   error?: string;
   id?: string;
   className?: string;
-  /** For a list searched elsewhere, such as an API: gets what is typed, and options are then shown as given. */
   onSearchChange?: (text: string) => void;
-  /** The chosen option's label when options (one search's answer) leave it out. */
   valueLabel?: string;
-  /** The answer for what is typed is on its way: the list says so, and Enter waits for it. */
   loading?: boolean;
-  loadingText?: string;
 }
 
 const fold = (text: string) =>
@@ -70,8 +65,7 @@ const LIST_MIN = 126;
 // The search row and the list's padding, plus the gap to the field and a margin to whatever clips the panel.
 const PANEL_EXTRA = 64;
 
-/** Where the panel has room inside what clips it (a scrolling form or dialog body, or the window), and how tall its
- *  list can be there: below the field unless above has more room. */
+/** Whether the panel opens upward, and its list's height, within whatever clips it. */
 function placement(field: HTMLElement): { up: boolean; list: number } {
   const box = field.getBoundingClientRect();
   let top = 0;
@@ -104,12 +98,11 @@ export function ComboboxField({
   onSearchChange,
   valueLabel,
   loading = false,
-  loadingText = "Searching…",
 }: ComboboxFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   const listId = `${fieldId}-list`;
-  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
+  const describedBy = fieldMessageId(fieldId, error, hint);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -121,7 +114,6 @@ export function ComboboxField({
     options.find((option) => option.value === value) ??
     (value && valueLabel ? { value, label: valueLabel } : undefined);
   const words = fold(query.trim());
-  // Hovering a row changes only the active row: the list is ranked again only for new options or a new search.
   const shown = useMemo(
     () => (words && !onSearchChange ? matching(options, words) : options),
     [options, words, onSearchChange],
@@ -190,7 +182,6 @@ export function ComboboxField({
       <label id={`${fieldId}-label`} htmlFor={fieldId} className="text-sm font-medium text-ink">
         {label}
       </label>
-      {/* The panel hangs from the field itself, above its hint or error. */}
       <div className="relative">
         <button
           ref={trigger}
@@ -266,7 +257,7 @@ export function ComboboxField({
                 shown.length && !loading ? "sr-only" : "px-3.5 py-6 text-center text-sm text-muted"
               }
             >
-              {loading ? loadingText : shown.length ? "" : noResults}
+              {loading ? "Searching…" : shown.length ? "" : noResults}
             </p>
             <div
               id={listId}
@@ -283,7 +274,7 @@ export function ComboboxField({
                   id={`${listId}-${i}`}
                   role="option"
                   tabIndex={-1}
-                  // As in the command menu, the row the keys are on is the selected one; the field's value has the check.
+                  // The row the keys are on is the selected one; the field's value gets the check.
                   aria-selected={i === current}
                   data-chosen={option.value === value ? "" : undefined}
                   onClick={() => pick(option)}
@@ -311,15 +302,7 @@ export function ComboboxField({
           </div>
         ) : null}
       </div>
-      {error ? (
-        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${fieldId}-hint`} className="text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldMessage fieldId={fieldId} error={error} hint={hint} />
     </div>
   );
 }

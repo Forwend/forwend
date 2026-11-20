@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var ErrNotPublic = errors.New("address not public")
+
 // Client checks each resolved address immediately before connecting, including after DNS changes.
 func Client(allowLoopback bool) *http.Client {
 	return &http.Client{Transport: &http.Transport{DialContext: Dialer(allowLoopback).DialContext,
@@ -17,7 +19,6 @@ func Client(allowLoopback bool) *http.Client {
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
-// Dialer refuses, at connection time, every address that is not public (loopback only when allowed).
 func Dialer(allowLoopback bool) *net.Dialer {
 	return &net.Dialer{Timeout: 5 * time.Second, Control: func(_, address string, _ syscall.RawConn) error {
 		host, _, err := net.SplitHostPort(address)
@@ -26,7 +27,7 @@ func Dialer(allowLoopback bool) *net.Dialer {
 		}
 		addr, err := netip.ParseAddr(host)
 		if err != nil || !(PublicAddr(addr) || allowLoopback && addr.IsLoopback()) {
-			return errors.New("destination is not public")
+			return ErrNotPublic
 		}
 		return nil
 	}}

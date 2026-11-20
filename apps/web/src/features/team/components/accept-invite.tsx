@@ -11,23 +11,18 @@ import {
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { loginEmail } from "@/features/auth/lib/privy-user";
 import { useSignUpQuery } from "@/features/profiles/api/profiles-api";
 import { ROLE_LABELS } from "@/features/profiles/constants/profile";
 import { saveChosenProfileId } from "@/features/profiles/lib/chosen-profile";
 import { useAcceptInviteMutation, useGetInvitationQuery } from "@/features/team/api/team-api";
 import { TEAM_ERRORS } from "@/features/team/constants/team";
 import { INVITE_COPY as COPY } from "@/features/team/constants/team-copy";
-import { formatExpiry } from "@/features/team/lib/team";
+import { apiError, notFound } from "@/shared/api/api-error";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { dateTime } from "@/shared/lib/dates";
 
-const NOT_FOUND = 404;
-
-const status = (error: unknown) => (error as { status?: unknown } | undefined)?.status;
-const code = (error: unknown) =>
-  (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
-
-// Its padding matches DetailRow's, so the facts line up with the heading.
 const PANEL = "fw-panel w-full max-w-md overflow-hidden";
 const SECTION = "flex flex-col gap-3 px-4 py-5 sm:px-5";
 const ACTION = "w-full sm:w-auto sm:self-start";
@@ -36,28 +31,26 @@ export interface AcceptInviteProps {
   token: string;
 }
 
-// R-139: for a signed-in user. Signing up first (POST /v1/me) makes the account the invite joins.
 export function AcceptInvite({ token }: AcceptInviteProps) {
   const { user, logout } = usePrivy();
   const router = useRouter();
   const me = useSignUpQuery();
   const invitation = useGetInvitationQuery(token, { skip: !me.currentData });
   const [accept, accepting] = useAcceptInviteMutation();
-  const email = (user?.email?.address ?? user?.google?.email ?? "").toLowerCase();
+  const email = (loginEmail(user) ?? "").toLowerCase();
 
   const onAccept = async () => {
     try {
       const { profileId } = await accept(token).unwrap();
-      // The app opens on the new list, which has the team's profile and the first run marked done.
       await me.refetch();
       if (user) saveChosenProfileId(user.id, profileId);
       router.push(APP_ROUTES.home);
     } catch {
-      // Said below.
+      // Shown below.
     }
   };
 
-  const gone = status(invitation.error) === NOT_FOUND || status(accepting.error) === NOT_FOUND;
+  const gone = notFound(invitation.error) || notFound(accepting.error);
   if (gone) {
     return (
       <div className={PANEL}>
@@ -83,7 +76,8 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
   }
   const invite = invitation.currentData;
   if (!invite) return <InviteSkeleton label={COPY.loading} />;
-  const otherEmail = email !== invite.email || code(accepting.error) === TEAM_ERRORS.otherEmail;
+  const otherEmail =
+    email !== invite.email || apiError(accepting.error).code === TEAM_ERRORS.otherEmail;
   return (
     <div className={PANEL}>
       <Heading
@@ -94,7 +88,7 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
         <DetailRow term={COPY.role}>{ROLE_LABELS[invite.role]}</DetailRow>
         <DetailRow term={COPY.sentTo}>{invite.email}</DetailRow>
         {email ? <DetailRow term={COPY.signedInAs}>{email}</DetailRow> : null}
-        <DetailRow term={COPY.expires}>{formatExpiry(invite.expiresAt)}</DetailRow>
+        <DetailRow term={COPY.expires}>{dateTime(invite.expiresAt)}</DetailRow>
       </DetailList>
       <div className={SECTION}>
         {otherEmail ? (
@@ -140,7 +134,6 @@ function Heading({ title, body }: { title: string; body: string }) {
   );
 }
 
-/** The invite panel before it can say anything: while sign-in is checked and while the invite loads. */
 export function InviteSkeleton({ label }: { label: string }) {
   return (
     <div role="status" className={PANEL}>

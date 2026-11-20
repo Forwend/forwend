@@ -15,16 +15,16 @@ import { useSaveLinkMutation } from "@/features/links/api/links-api";
 import { LINK_SETUP_REQUIRED_CODE } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import type { Link } from "@/features/links/types/links";
+import { apiError } from "@/shared/api/api-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface LinkActionsProps {
   profileId: string;
   link: Link;
-  /** The link is reloading: until the new read is in, Turn off or on would act on the old state. */
   refreshing: boolean;
 }
 
-// R-140: Turn off or on saves the link as it is, with only `active` changed.
+// Turn off or on saves the link as it is, with only `active` changed.
 export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
   const [save, { isLoading }] = useSaveLinkMutation();
   const toast = useToast();
@@ -44,6 +44,7 @@ export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
           endsAt: link.endsAt,
           maxPayments: link.maxPayments,
           active,
+          feesPaidBy: link.feesPaidBy,
         },
       }).unwrap();
       toast({
@@ -51,7 +52,7 @@ export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
         title: active ? COPY.turnedOn(link.title) : COPY.turnedOff(link.title),
       });
     } catch (error) {
-      const code = (error as { data?: { error?: { code?: string } } }).data?.error?.code;
+      const code = apiError(error).code;
       toast({
         tone: TONES.warning,
         title: code === LINK_SETUP_REQUIRED_CODE ? COPY.errors.notReady : COPY.toggleFailed,

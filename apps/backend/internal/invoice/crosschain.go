@@ -16,44 +16,32 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// Cross-chain payments through NEAR Intents (D-123, D-125).
 const (
 	// crossChainLeast: no quote for a checkout closing sooner, so the conversion lands before the close.
-	crossChainLeast = 20 * time.Minute
-	// A quote's deadline is the earlier of crossChainDeadline from now and crossChainBeforeClose before the close; its
-	// price shows for crossChainShown, ending at least 5 minutes before that deadline.
+	crossChainLeast       = 20 * time.Minute
 	crossChainDeadline    = time.Hour
 	crossChainBeforeClose = 10 * time.Minute
 	crossChainShown       = intents.PriceWindow
-	// A slow chain's deposit can take an hour to mine (intents.SlowChains): its deadline is crossChainSlowDeadline,
-	// bounded by the close the same way, and a token is offered only while that leaves crossChainSlowLeast.
+	// A slow chain's deposit can take an hour to mine; its token is offered only while crossChainSlowLeast is left.
 	crossChainSlowDeadline = 2 * time.Hour
 	crossChainSlowLeast    = 90 * time.Minute
-	// An open quote is given again while at least crossChainReuse of its price window is left.
-	crossChainReuse = 5 * time.Minute
-	// CrossChainPerHour bounds one invoice's quotes, as each one is a 1Click call and a deposit address.
+	crossChainReuse        = 5 * time.Minute
+	// Each quote is a 1Click call and a deposit address.
 	CrossChainPerHour = 20
 	dryQuoteTTL       = 30 * time.Second
 )
 
 var (
-	// ErrCrossChainOff: this invoice can't be paid from another chain now; the error says why.
 	ErrCrossChainOff = errors.New("cross-chain payment unavailable")
-	// ErrTooManyQuotes: the invoice had CrossChainPerHour quotes in the last hour.
 	ErrTooManyQuotes = errors.New("too many cross-chain quotes")
-	// ErrProvider: 1Click didn't give a quote that checks out (D-124); the same request may try again.
-	ErrProvider = errors.New("cross-chain provider unavailable")
-	// ErrNoLiquidity: 1Click has no liquidity for the token now (R-245); another token may convert.
-	ErrNoLiquidity = errors.New("1Click has no liquidity for this token now")
-	// ErrQuoteRefused: 1Click refused a quote for a reason that names neither a minimum, liquidity nor the refund address.
-	ErrQuoteRefused = errors.New("NEAR Intents refused this quote")
+	ErrProvider      = errors.New("cross-chain provider unavailable")
+	ErrNoLiquidity   = errors.New("1Click has no liquidity for this token now")
+	ErrQuoteRefused  = errors.New("NEAR Intents refused this quote")
 )
 
-// CrossToken is a token a payer can pay with through 1Click; Estimate is about what they send, in its base units, at
-// 1Click's listed price with its slippage on top, as a quote asks (R-244). The quote is the real amount.
 type CrossToken struct {
 	intents.Token
-	Estimate *big.Int
+	Estimate *big.Int // listed price plus slippage; the quote is exact
 }
 
 // CrossQuote is a quote a payer asked for. A dry one has no ID, address, window or signature.
@@ -72,14 +60,11 @@ type CrossQuote struct {
 	ShownUntil     time.Time
 	Deadline       time.Time
 	CreatedAt      time.Time
-	Signed         []byte // 1Click's answer byte for byte, so the pay page can check it (D-124)
+	Signed         []byte // 1Click's answer byte for byte, for the pay page's check
 }
 
-// SetCrossChain lets payers pay through 1Click; nil turns cross-chain off.
 func (s *Service) SetCrossChain(c *intents.Client) { s.crossChain, s.crossChainOff = c, c == nil }
 
-// crossTarget is what a payer pays into from another chain: the invoice's open Base USDC option, the amount still due
-// on it and its close.
 type crossTarget struct {
 	invoice Invoice
 	option  Option
@@ -98,7 +83,7 @@ func (s *Service) crossTarget(ctx context.Context, payToken string, now time.Tim
 		return o.ChainID == intents.BaseChainID && o.Token == intents.BaseUSDC
 	})
 	switch {
-	case !inv.Livemode: // 1Click has no testnet (D-123)
+	case !inv.Livemode: // 1Click has no testnet
 		return crossTarget{}, fmt.Errorf("%w: test mode", ErrCrossChainOff)
 	case !inv.CrossChainOn:
 		return crossTarget{}, fmt.Errorf("%w: the payee turned it off", ErrCrossChainOff)
@@ -132,8 +117,7 @@ func (s *Service) crossTarget(ctx context.Context, payToken string, now time.Tim
 	return crossTarget{invoice: inv, option: option, due: due}, nil
 }
 
-// CrossChainTokens lists what the payer can pay with through 1Click (R-232): no memo chain, unpriced token, token the
-// invoice takes directly or token without liquidity (R-245). due is what is still due, in the Base option's base units.
+// CrossChainTokens leaves out memo chains, unpriced tokens, tokens the invoice takes directly and dry routes.
 func (s *Service) CrossChainTokens(ctx context.Context, payToken string) (due *big.Int, decimals int, tokens []CrossToken, err error) {
 	target, err := s.crossTarget(ctx, payToken, s.currentTime())
 	if err != nil {
@@ -160,8 +144,7 @@ func offered(t intents.Token, target crossTarget, now time.Time) bool {
 	}) && t.AssetID != intents.BaseUSDCAsset
 }
 
-// estimate is due (USD stablecoin base units at 1 USD, D-75) in t's base units at its listed price, with 1Click's
-// slippage on top, rounded up.
+// estimate is due (USD stablecoin base units) in t's base units at its listed price plus slippage, rounded up.
 func estimate(due *big.Int, decimals int, t intents.Token) *big.Int {
 	price, ok := new(big.Rat).SetString(t.USD)
 	if !ok || price.Sign() <= 0 {
@@ -177,8 +160,6 @@ func estimate(due *big.Int, decimals int, t intents.Token) *big.Int {
 	return q
 }
 
-// crossDeadline is the deadline a quote for t asks for: the earlier of its chain's wait and crossChainBeforeClose
-// before the close. fits is false when a slow chain's would leave its deposit too little time.
 func crossDeadline(t intents.Token, closes, now time.Time) (deadline time.Time, fits bool) {
 	wait, least := crossChainDeadline, time.Duration(0)
 	if intents.SlowChains[t.Blockchain] {
@@ -200,10 +181,7 @@ func pow10(n int) *big.Int { return new(big.Int).Exp(big.NewInt(10), big.NewInt(
 // refundAddress is a plain address of any chain 1Click serves; 1Click checks it belongs to the origin's chain.
 var refundAddress = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,200}$`)
 
-// QuoteCrossChain asks 1Click for a quote that pays exactly the amount due into the Base option (R-231). A real
-// quote is kept, given again while its window lasts (R-233), and keeps the Base option as the payer's pick, except
-// from the owner's preview (R-125). allow spends from the budget all invoices share, only when 1Click is called; a
-// wait over 0 refuses with *TooSoonError.
+// allow spends from the shared budget only when 1Click is called; a wait over 0 refuses with *TooSoonError.
 func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundTo string, dry, preview bool,
 	allow func() time.Duration) (CrossQuote, error) {
 	now := s.currentTime()
@@ -261,8 +239,7 @@ func (s *Service) QuoteCrossChain(ctx context.Context, payToken, origin, refundT
 	return q, s.pickBase(ctx, payToken, target, preview)
 }
 
-// pickBase keeps the Base option as the payer's pick, once a quote to it is given, kept or new. It shows only what the
-// payer chose; the deposit on Base still chooses the option (R-56).
+// pickBase only shows the payer's choice; the deposit on Base still chooses the option.
 func (s *Service) pickBase(ctx context.Context, payToken string, target crossTarget, preview bool) error {
 	if preview || target.invoice.OptionCount < 2 || target.invoice.PickedOptionID == target.option.ID {
 		return nil
@@ -273,8 +250,6 @@ func (s *Service) pickBase(ctx context.Context, payToken string, target crossTar
 	return nil
 }
 
-// openQuote is the payer's quote for the same token, refund address and amount while enough of its window is left,
-// or none (an empty ID). It refuses the next quote once the invoice had CrossChainPerHour in an hour.
 func (s *Service) openQuote(ctx context.Context, target crossTarget, token intents.Token, refundTo string, now time.Time) (CrossQuote, error) {
 	origin := token.AssetID
 	var q CrossQuote
@@ -316,10 +291,7 @@ func crossQuote(quote intents.Quote, token intents.Token, refundTo string) Cross
 		Signed: quote.Signed}
 }
 
-// learnMinimum keeps what 1Click just said of a route, so the picker shows it to the next payer at once: a minimum
-// it named (D-126), or that it has no route now (R-245).
 func (s *Service) learnMinimum(ctx context.Context, origin string, err error, now time.Time) {
-	// A payer's price or quote refused for want of a route hides the token at once, not at the worker's next check.
 	if errors.Is(err, intents.ErrNoLiquidity) {
 		if err := intents.SetNoLiquidity(ctx, s.pool, origin, now); err != nil {
 			slog.Warn("keep 1Click's no liquidity", "err", err)
@@ -336,8 +308,6 @@ func (s *Service) learnMinimum(ctx context.Context, origin string, err error, no
 	}
 }
 
-// providerError maps 1Click's answer to the payer's: a route's minimum (an *intents.BelowMinimum) or a refusal is the
-// request's, the rest is 1Click's. A quote that fails its checks is logged: 1Click, or something between, changed it.
 func providerError(err error, invoiceID string, dry bool) error {
 	var below *intents.BelowMinimum
 	switch {

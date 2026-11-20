@@ -4,7 +4,6 @@ import { Badge, BUTTON_VARIANTS, Button, StatusPill, TONES, useToast } from "@fo
 import { BriefcaseBusiness } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useWithdrawChangeMutation } from "@/features/jobs/api/jobs-api";
 import { JobRecord } from "@/features/jobs/components/job-record";
@@ -13,45 +12,40 @@ import { PaymentStep } from "@/features/jobs/components/payment-step";
 import { ProposeChange } from "@/features/jobs/components/propose-change";
 import { JOB_LIMITS, PAYMENT_STEPS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { apiCents, isPendingChange, paymentStep } from "@/features/jobs/lib/jobs";
+import { isPendingChange, paymentStep } from "@/features/jobs/lib/jobs";
 import type { Job, JobPaymentStatus } from "@/features/jobs/types/jobs";
+import { errorStatus, HTTP_STATUS, notFound } from "@/shared/api/api-error";
 import { CopyValue } from "@/shared/components/copy-value";
 import { DetailHeader } from "@/shared/components/detail-header";
 import { Party } from "@/shared/components/party";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { shortDate } from "@/shared/lib/dates";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { countryName } from "@/shared/lib/countries";
+import { dateTime, shortDate } from "@/shared/lib/dates";
+import { formatUsd, usdCents, usdText } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.detail;
-const CONFLICT = 409;
-const NOT_FOUND = 404;
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const DAY = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
-const COUNTRY = new Intl.DisplayNames(undefined, { type: "region" });
 const PANEL = "fw-panel";
-const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 const LINK = "text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink";
-const usd = (amountUsd: string) => `${formatUsd(apiCents(amountUsd))} ${MONEY_COPY.usd}`;
 
 export interface JobDetailProps {
   profileId: string;
   job: Job;
-  /** The More actions menu, at the header's end. */
   actions?: ReactNode;
-  /** The heading's text, which takes focus when the menu goes. */
   titleRef?: Ref<HTMLSpanElement>;
 }
 
-// R-101. Once accepted, the next agreed payment can be marked done (R-103) and a change proposed (R-106).
 export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps) {
-  // The app renders only in the browser, after sign-in.
+  // Browser only: the app renders after sign-in.
   const link = `${window.location.origin}/w/${job.token}`;
   const c = job.client;
   const next = job.acceptedAt
     ? job.payments.find((p) => !p.invoiceId && !isPendingChange(p))
     : undefined;
   const pending = job.payments.find(isPendingChange);
-  // The final is the last payment the client agreed to; once it is done the job takes no change (R-105).
+  // The final is the last agreed payment; a waiting change comes after it.
   const final = job.payments.at(pending ? -2 : -1);
   const agreed = job.payments.filter((p) => !isPendingChange(p));
   const paid = agreed.filter((p) => paymentStep(p) === PAYMENT_STEPS.paid).length;
@@ -62,7 +56,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
     job.payments.length < JOB_LIMITS.payments;
   const [withdraw, withdrawing] = useWithdrawChangeMutation();
   const toast = useToast();
-  // Proposing takes its button away: focus moves to the change's Withdraw once the job shows it.
   const [focusWithdraw, setFocusWithdraw] = useState(false);
   useEffect(() => {
     if (focusWithdraw && pending) {
@@ -70,7 +63,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
       setFocusWithdraw(false);
     }
   }, [focusWithdraw, pending]);
-  // Marking a step done takes its button away: focus moves to its invoice once the job shows it.
   const [focusInvoice, setFocusInvoice] = useState<number | null>(null);
   const made = focusInvoice ? job.payments[focusInvoice - 1]?.invoiceId : null;
   useEffect(() => {
@@ -81,7 +73,6 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
   }, [focusInvoice, made]);
   return (
     <div className="flex flex-col gap-6">
-      {/* As the payment and invoice pages: the status says where it stands, and each payment's row what to do. */}
       <DetailHeader
         back={{ href: APP_ROUTES.jobs, label: JOBS_COPY.title }}
         icon={<BriefcaseBusiness aria-hidden />}
@@ -100,7 +91,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
           label: COPY.total,
           value: (
             <>
-              {formatUsd(apiCents(job.totalUsd))}{" "}
+              {formatUsd(usdCents(job.totalUsd))}{" "}
               <span className="text-base font-normal text-muted">{MONEY_COPY.usd}</span>
             </>
           ),
@@ -127,7 +118,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                   payment={p}
                   first={i === 0}
                   last={i === job.payments.length - 1}
-                  amount={usd(p.amountUsd)}
+                  amount={usdText(usdCents(p.amountUsd))}
                 >
                   <p className="font-medium break-words text-ink">{p.title}</p>
                   <p className="text-sm text-muted">
@@ -138,7 +129,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                       <span className="font-medium text-ink">{COPY.change}</span>
                       {" · "}
                       {p.acceptedAt && p.acceptedName
-                        ? COPY.changeAccepted(p.acceptedName, TIME.format(new Date(p.acceptedAt)))
+                        ? COPY.changeAccepted(p.acceptedName, dateTime(p.acceptedAt))
                         : COPY.changeWaiting}
                       {p === pending && p.clientEmailed && job.acceptedEmail
                         ? ` ${COPY.changeEmailed(job.acceptedEmail)}`
@@ -162,14 +153,11 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                           toast({ tone: TONES.success, title: COPY.withdrawn(p.title) });
                           document.getElementById("job-payments")?.focus();
                         } catch (failure) {
-                          const status = (failure as { status?: unknown }).status;
-                          // The client accepted it meanwhile, or it is already gone: trying again can't help.
+                          const gone =
+                            errorStatus(failure) === HTTP_STATUS.conflict || notFound(failure);
                           toast({
                             tone: TONES.warning,
-                            title:
-                              status === CONFLICT || status === NOT_FOUND
-                                ? COPY.withdrawGone
-                                : COPY.withdrawFailed,
+                            title: gone ? COPY.withdrawGone : COPY.withdrawFailed,
                           });
                         }
                       }}
@@ -224,7 +212,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
             <p className="flex items-baseline justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
               <span className="text-sm text-muted">{COPY.total}</span>
               <span className="text-lg font-semibold tabular-nums text-ink">
-                {usd(job.totalUsd)}
+                {usdText(usdCents(job.totalUsd))}
               </span>
             </p>
             {canPropose ? (
@@ -264,7 +252,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                     ? COPY.acceptedBy(
                         job.acceptedName,
                         job.acceptedEmail ?? "",
-                        TIME.format(new Date(job.acceptedAt)),
+                        dateTime(job.acceptedAt),
                       )
                     : COPY.waiting(c.name)
                 }
@@ -272,7 +260,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
               />
             </div>
           </section>
-          <JobRecord job={job} acceptedEmail={job.acceptedEmail} />
+          <JobRecord job={job} />
           <section aria-labelledby="job-client" className={PANEL}>
             <h2 id="job-client" className={PANEL_TITLE}>
               {COPY.client}
@@ -282,7 +270,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                 c.name,
                 c.email,
                 c.address,
-                c.country ? (COUNTRY.of(c.country) ?? c.country) : null,
+                countryName(c.country),
                 c.taxId ? `${COPY.taxId} ${c.taxId}` : null,
               ]}
             />

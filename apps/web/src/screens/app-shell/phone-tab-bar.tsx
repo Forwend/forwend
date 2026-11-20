@@ -8,8 +8,8 @@ import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
 import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
 import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
+import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { profileLabel } from "@/features/profiles/lib/profile";
-import type { Profile } from "@/features/profiles/types/profile";
 import { NAV } from "@/screens/app-shell/constants/app-nav";
 import {
   isCurrentPage,
@@ -17,8 +17,8 @@ import {
   pageAllowed,
   SETTINGS_PATHS,
 } from "@/screens/app-shell/lib/app-nav";
-import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useDesktop } from "@/shared/hooks/use-desktop";
 
 const TAB_COPY = { home: "Home", nav: "Main", more: "More", soon: "Coming soon" } as const;
 const TABS = [
@@ -37,11 +37,11 @@ const HEADING = "px-1 pb-2 text-xs font-medium text-muted";
 
 export interface PhoneTabBarProps {
   pathname: string;
-  active: Profile;
   onProfiles: () => void;
 }
 
-export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) {
+export function PhoneTabBar({ pathname, onProfiles }: PhoneTabBarProps) {
+  const { profile: active } = useAppSession();
   const [open, setOpen] = useState(false);
   const tabs = TABS.filter(({ href }) => pageAllowed(active, href));
   const primary = tabs.some(({ href }) => isCurrentPage(pathname, href));
@@ -60,12 +60,10 @@ export function PhoneTabBar({ pathname, active, onProfiles }: PhoneTabBarProps) 
     className: ROW,
   });
 
+  const desktop = useDesktop();
   useEffect(() => {
-    const desktop = window.matchMedia(DESKTOP_QUERY);
-    const closeOnDesktop = () => desktop.matches && setOpen(false);
-    desktop.addEventListener("change", closeOnDesktop);
-    return () => desktop.removeEventListener("change", closeOnDesktop);
-  }, []);
+    if (desktop) setOpen(false);
+  }, [desktop]);
 
   return (
     <>

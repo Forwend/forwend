@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// option adds an accepted option of invoice main (R-56): its own id and receive address, the main row's other terms.
 func (e chainEnv) option(t *testing.T, main string, n int) (id, receive string) {
 	t.Helper()
 	id, receive = fmt.Sprintf("0x%064x", n), fmt.Sprintf("0x%040x", 0xa0+n)
@@ -30,7 +29,6 @@ func (e chainEnv) option(t *testing.T, main string, n int) (id, receive string) 
 	return id, receive
 }
 
-// D-76.
 func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 	ctx := context.Background()
 	e := newChainEnv(t)
@@ -63,7 +61,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		t.Fatalf("certified money on %s, chosen %q", other, got)
 	}
 
-	e.anvil.Transfer(e.token, mainReceive, "5000000") // the payer pays again, to the option not chosen
+	e.anvil.Transfer(e.token, mainReceive, "5000000")
 	e.anvil.Mine(2)
 	e.run(t)
 	want(t, "chosen option", e.state(t, other), state{payment: Paid, refund: "none", receiver: 5000000, owed: 5000000})
@@ -72,7 +70,6 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		t.Fatalf("the choice moved to %q", got)
 	}
 
-	// Only the chosen option settles, and the invoice people see is the chosen option.
 	var intents int
 	var current, payment string
 	if err := e.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM settlement_intents WHERE invoice_id IN ($1, $2)),
@@ -88,7 +85,6 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		t.Fatalf("settlement intent for %q (%v), want %s", settles, err, other)
 	}
 
-	// Past expiry too: the option not chosen only adds the money held on it.
 	e.anvil.Wait(4000)
 	e.anvil.Mine(3)
 	e.run(t)
@@ -100,7 +96,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 		"invoice.settlement_queued by system",
 		fmt.Sprintf(`invoice.held by system {"amount": "5000000", "option": "%s", "reason": "other_option"}`, main),
 	}
-	slices.Sort(got) // the two options run in either order
+	slices.Sort(got)
 	slices.Sort(history)
 	if !slices.Equal(got, history) {
 		t.Fatalf("history\n got %q\nwant %q", got, history)
@@ -150,10 +146,9 @@ func deref(s *string) string {
 	return *s
 }
 
-// optionSim: the main row on chain 1 and one option on chain 2, both closing at 5000, nothing paid.
 type optionSim struct {
 	*sim
-	main, option, dust, full string // the rows and their receive addresses
+	main, option, dust, full string
 }
 
 func newOptionSim(t *testing.T) optionSim {
@@ -161,7 +156,6 @@ func newOptionSim(t *testing.T) optionSim {
 	return newOptionSimFor(t, 5000000)
 }
 
-// newOptionSimFor is newOptionSim for an invoice of amount base units.
 func newOptionSimFor(t *testing.T, amount int64) optionSim {
 	t.Helper()
 	s := newSim(t)
@@ -197,7 +191,6 @@ func (o optionSim) pay(id string, chainID int, receive string, amount, blockTime
 	o.answer[receive].Add(o.answer[receive], big.NewInt(amount))
 }
 
-// scanned says the chain was read, and is final, up to time.
 func (o optionSim) scanned(chainID, time int64) {
 	o.exec("UPDATE chain_cursors SET last_scanned_time = $2, last_finalized_time = $2 WHERE chain_id = $1", chainID, time)
 }
@@ -205,10 +198,10 @@ func (o optionSim) scanned(chainID, time int64) {
 func TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 4800)
-	o.pay(o.option, 2, o.full, 5000000, 4900) // just before the checkout closes at 5000
-	o.scanned(2, 5100)                        // past the close too
-	o.process(o.option)                       // chosen at once: chain 1's lag doesn't hold it back
-	o.scanned(1, 5100)                        // read past the close, and past the payment
+	o.pay(o.option, 2, o.full, 5000000, 4900)
+	o.scanned(2, 5100)
+	o.process(o.option)
+	o.scanned(1, 5100)
 	o.process(o.main)
 	o.process(o.option)
 	if got, _ := o.payment(o.option); got != Paid {
@@ -225,7 +218,7 @@ func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(2, 4800)
 	o.scanned(1, 5100)
-	o.process(o.main) // chain 2 was read only to 4800: the main row must not close yet
+	o.process(o.main)
 	if got, _ := o.payment(o.main); got != Open {
 		t.Fatalf("the main row before chain 2 was read past the close: %s, want open", got)
 	}
@@ -243,11 +236,9 @@ func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 	}
 }
 
-// F413: a payment final on its own chain is chosen, booked and queued to settle at once; a lagging chain of another
-// option doesn't hold it back. Money found there later is held for the payer.
 func TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains(t *testing.T) {
 	o := newOptionSim(t)
-	o.scanned(1, 1000) // the main row's chain lags far behind
+	o.scanned(1, 1000)
 	o.pay(o.option, 2, o.full, 5000000, 1400)
 	o.scanned(2, 2000)
 	o.process(o.option)
@@ -267,7 +258,7 @@ func TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains(t *testing.T) {
 			deref(chosen), queued)
 	}
 
-	o.pay(o.main, 1, o.dust, 1, 1300) // earlier on chain time, found once chain 1 catches up
+	o.pay(o.main, 1, o.dust, 1, 1300)
 	o.scanned(1, 2000)
 	o.process(o.main)
 	read()
@@ -311,11 +302,9 @@ func TestEarlyOptionClosePreservesOtherCheckoutOptions(t *testing.T) {
 	}
 }
 
-// A deposit under 1 USD never chooses its option: the payer's real payment on another option does, and the small
-// deposit is held for the payer.
 func TestDustNeverChoosesItsOption(t *testing.T) {
 	o := newOptionSim(t)
-	o.pay(o.main, 1, o.dust, 10000, 1300) // 0.01 USDC, first on chain
+	o.pay(o.main, 1, o.dust, 10000, 1300)
 	o.scanned(1, 2000)
 	o.process(o.main)
 	var chosen *string
@@ -341,8 +330,6 @@ func TestDustNeverChoosesItsOption(t *testing.T) {
 	}
 }
 
-// A payment sent in parts counts in full once one part brings its option to a tenth of the amount (0.50 USDC here):
-// the parts before it pay the creator too, whether they were final in the same worker round or in earlier ones.
 func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
 	for _, rounds := range []string{"one round", "rounds apart"} {
 		t.Run(rounds, func(t *testing.T) {
@@ -353,7 +340,7 @@ func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
 			if rounds == "rounds apart" {
 				o.process(o.option)
 			}
-			o.pay(o.option, 2, o.full, 300000, 1310) // 0.60 USDC in all: this one chooses the option
+			o.pay(o.option, 2, o.full, 300000, 1310)
 			if rounds == "rounds apart" {
 				o.process(o.option)
 			}
@@ -372,8 +359,6 @@ func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
 	}
 }
 
-// A 1.00 USD payer-chooses invoice paid in two parts: the first part already counts, so the invoice is partly paid,
-// and the second completes it; only the surplus is the payer's.
 func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
 	o := newOptionSimFor(t, 1000000)
 	o.scanned(1, 2000)
@@ -395,8 +380,6 @@ func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
 	}
 }
 
-// A deposit the old 1.00 USD rule booked as held, on an invoice still open, chooses its option under the tenth rule
-// once it is past a tenth; it then pays the creator, so the invoice is never locked to an option its payment can't pay.
 func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
 	o := newOptionSimFor(t, 1000000)
 	ctx := context.Background()
@@ -409,7 +392,8 @@ func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
 			return err
 		}
 		held := big.NewInt(500000)
-		return book(ctx, tx, o.option, "deposit", &id, held, new(big.Int), held)
+		_, err := book(ctx, tx, o.option, "deposit", &id, held, new(big.Int), held)
+		return err
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -424,8 +408,6 @@ func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
 	}
 }
 
-// A part returned to its payer before the choice still has its held deposit row, as a refund names no deposit. Late
-// money held later on the open invoice must not go to the creator in that part's name.
 func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 2000)
@@ -438,10 +420,10 @@ func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
 		'0x' || repeat('a', 64), 1, '0x' || repeat('b', 64), 1, 1305, 1000, 0)`, o.option, o.full, simToken)
 	o.answer[o.full].Sub(o.answer[o.full], big.NewInt(300000))
 	o.process(o.option)
-	o.pay(o.option, 2, o.full, 600000, 1310) // chooses the option: 0.60 of 5.00 paid
+	o.pay(o.option, 2, o.full, 600000, 1310)
 	o.process(o.option)
-	o.pay(o.option, 2, o.full, 1000000, 5050)                 // late: held
-	o.answer[o.full].Add(o.answer[o.full], big.NewInt(50000)) // money no transfer explains keeps the invoice open
+	o.pay(o.option, 2, o.full, 1000000, 5050)
+	o.answer[o.full].Add(o.answer[o.full], big.NewInt(50000))
 	o.scanned(1, 5100)
 	o.scanned(2, 5100)
 	o.process(o.option)
@@ -455,7 +437,6 @@ func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
 	}
 }
 
-// D-26: money that comes after a cancel stays the payer's, even a payment that chooses its option after it.
 func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 2000)
@@ -463,7 +444,7 @@ func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
 	o.pay(o.option, 2, o.full, 300000, 1300)
 	o.process(o.option)
 	o.exec(`UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE coalesce(main_id, id) = $1`, o.main)
-	o.pay(o.option, 2, o.full, 300000, 1310) // 0.60 USDC in all: past the option's tenth
+	o.pay(o.option, 2, o.full, 300000, 1310)
 	o.process(o.option)
 	a, err := ReadAmounts(context.Background(), o.pool, o.option)
 	if err != nil {
@@ -474,15 +455,14 @@ func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
 	}
 }
 
-// R-130: a reopen gives back what the expiry held, once: a part the choice already gave the creator is not given twice.
 func TestReopenAfterAChoiceGivesEachPartOnce(t *testing.T) {
 	o := newOptionSimFor(t, 1000000)
 	ctx := context.Background()
 	o.scanned(1, 2000)
 	o.scanned(2, 2000)
-	o.pay(o.option, 2, o.full, 50000, 1300) // under the tenth: held while nothing is chosen
+	o.pay(o.option, 2, o.full, 50000, 1300)
 	o.process(o.option)
-	o.pay(o.option, 2, o.full, 100000, 1310) // chooses the option: both parts pay the creator
+	o.pay(o.option, 2, o.full, 100000, 1310)
 	o.process(o.option)
 	o.scanned(1, 5100)
 	o.scanned(2, 5100)
@@ -504,7 +484,6 @@ func TestReopenAfterAChoiceGivesEachPartOnce(t *testing.T) {
 	}
 }
 
-// The watcher first sees a deposit, then confirms it: 0.01 USDC never makes the invoice confirming or partly paid.
 func TestDustSeenThenConfirmedKeepsTheInvoiceOpen(t *testing.T) {
 	o := newOptionSim(t)
 	o.pay(o.main, 1, o.dust, 10000, 1300)
@@ -521,7 +500,6 @@ func TestDustSeenThenConfirmedKeepsTheInvoiceOpen(t *testing.T) {
 	}
 }
 
-// Only a deposit under 1 USD came: the invoice still expires, as unpaid, and the deposit is held for the payer.
 func TestDustOnlyExpiresAndIsHeld(t *testing.T) {
 	o := newOptionSim(t)
 	o.pay(o.main, 1, o.dust, 10000, 1300)
@@ -532,14 +510,12 @@ func TestDustOnlyExpiresAndIsHeld(t *testing.T) {
 	if got, refund := o.payment(o.main); got != Expired || refund != "held" {
 		t.Fatalf("the invoice: %s, refund %s; want expired with the 0.01 USDC held", got, refund)
 	}
-	// Dust a stranger may send never emails the owner: no held event for it.
 	want := []string{"invoice.expired by system"}
 	if got := historytest.Events(t, o.pool, o.main); !slices.Equal(got, want) {
 		t.Fatalf("history\n got %q\nwant %q", got, want)
 	}
 }
 
-// R-80: money that comes after a payer-chooses invoice expired unchosen is held, and the owner is told.
 func TestLateMoneyAfterAnUnchosenExpiryIsAnnounced(t *testing.T) {
 	o := newOptionSim(t)
 	o.scanned(1, 5100)
@@ -558,8 +534,6 @@ func TestLateMoneyAfterAnUnchosenExpiryIsAnnounced(t *testing.T) {
 	}
 }
 
-// Dust on an option the payer didn't pay is held without a word to the owner, whether it was booked before or after
-// the choice.
 func TestDustIsHeldSilentlyInEveryTiming(t *testing.T) {
 	for _, order := range []string{"dust booked first", "choice made first"} {
 		t.Run(order, func(t *testing.T) {

@@ -12,7 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
-// R-108.
 func TestTransferClassification(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -32,8 +31,7 @@ func TestTransferClassification(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoice := addInvoice(t, pool, profile, 1, 0)
-	addInvoice(t, pool, other, 2, 0) // the user's other profile's invoice: not this profile's money
-	// A second payment option of the invoice, with its own receive address.
+	addInvoice(t, pool, other, 2, 0)
 	exec(t, pool, `INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
 		    request_hash)
@@ -54,7 +52,7 @@ func TestTransferClassification(t *testing.T) {
 			usdc, mine, direction, counterparty, hash, n)
 		return hash
 	}
-	paid := add(1, "in", fmt.Sprintf("0x33%038x", 1)) // from the invoice's receive address
+	paid := add(1, "in", fmt.Sprintf("0x33%038x", 1))
 	ownIn := add(2, "in", second)
 	ownOut := add(3, "out", second)
 	sent := add(4, "out", stranger)
@@ -128,7 +126,6 @@ func TestTransferClassification(t *testing.T) {
 	}
 }
 
-// R-110.
 func TestRecordsValue(t *testing.T) {
 	pool := open(t)
 	ctx := context.Background()
@@ -166,7 +163,7 @@ func TestRecordsValue(t *testing.T) {
 	usdOnly := add(6, time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC), 1000000)
 	stale := add(7, time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC), 1000000) // the last rate is 7 days old
 
-	// A session clock off UTC, so the transfer's day is the UTC one only by intent.
+	// A session clock off UTC, so a UTC day can only come from the query.
 	exec(t, pool, `DO $$ BEGIN EXECUTE format('ALTER DATABASE %I SET timezone = %L', current_database(),
 		'America/New_York'); END $$`)
 	pool.Reset()
@@ -240,7 +237,8 @@ func TestRecordsValue(t *testing.T) {
 
 func collect(s *Service, profile string, from, to time.Time) ([]Transfer, error) {
 	var out []Transfer
-	err := s.EachTransfer(context.Background(), profile, from, to, func(t Transfer) error {
+	header := func(string) error { return nil }
+	err := s.ExportTransfers(context.Background(), profile, from, to, header, func(t Transfer) error {
 		out = append(out, t)
 		return nil
 	})

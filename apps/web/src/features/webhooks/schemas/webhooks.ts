@@ -6,13 +6,11 @@ import {
 } from "@/features/webhooks/constants/webhooks";
 import { apiTime } from "@/shared/schemas/api";
 
-/** One webhook endpoint (apps/backend/api/openapi.yaml, WebhookEndpoint); never its secret. */
 export const endpointSchema = z.object({
   endpointId: z.guid(),
   url: z.string(),
   description: z.string(),
-  // A merchant endpoint's one store; null for all of them, and for a freelancer's.
-  storeId: z.guid().nullable(),
+  storeId: z.guid().nullable(), // null for all stores
   events: z.array(z.enum(WEBHOOK_EVENTS)),
   enabled: z.boolean(),
   livemode: z.boolean(),
@@ -20,7 +18,6 @@ export const endpointSchema = z.object({
   updatedAt: apiTime,
 });
 
-/** GET /v1/profiles/{profileId}/webhooks: newest first. */
 export const endpointsSchema = z.object({ endpoints: z.array(endpointSchema) });
 
 export const endpointBodySchema = z.object({
@@ -31,7 +28,7 @@ export const endpointBodySchema = z.object({
   enabled: z.boolean(),
 });
 
-/** The working signing secrets, newest first: during a rotation's 24 hours, the old one too. */
+/** Newest first: during a rotation's 24 hours, the old one too. */
 export const secretsSchema = z.object({
   secrets: z.array(
     z.object({
@@ -45,9 +42,8 @@ export const secretsSchema = z.object({
 export const deliverySchema = z.object({
   eventId: z.string().regex(/^evt_[0-9a-f]{32}$/),
   type: z.enum([...WEBHOOK_EVENTS, TEST_EVENT]),
-  // Null for a test event; number is null too before a payment-link invoice's first deposit.
-  invoiceId: z.string().nullable(),
-  number: z.number().int().positive().nullable(),
+  invoiceId: z.string().nullable(), // null for a test event
+  number: z.number().int().positive().nullable(), // null before a link's first deposit
   status: z.enum(Object.values(DELIVERY_STATUSES)),
   nextAttemptAt: apiTime.nullable(),
   createdAt: apiTime,
@@ -61,7 +57,6 @@ export const deliverySchema = z.object({
   ),
 });
 
-/** GET .../deliveries: the newest 50. */
 export const deliveriesSchema = z.object({ deliveries: z.array(deliverySchema) });
 
 export const resentSchema = z.object({ resent: z.number().int().nonnegative() });

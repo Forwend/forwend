@@ -36,7 +36,6 @@ func servePDF(invoices *invoice.Service, profiles *profile.Service, webURL, kind
 			httpio.WriteError(w, r, invoice.ErrNotFound)
 			return
 		}
-		// R-135: the store's logo, when its invoice has one.
 		var logo []byte
 		if inv.LogoAt != nil {
 			if logo, _, err = profiles.StoreLogo(r.Context(), inv.StoreID); err != nil && !errors.Is(err, profile.ErrNoLogo) {
@@ -44,12 +43,12 @@ func servePDF(invoices *invoice.Service, profiles *profile.Service, webURL, kind
 				return
 			}
 		}
-		pdf, err := render(inv, webURL+"/pay/"+inv.PayToken, logo)
+		pdf, err := render(inv, invoice.PayURL(webURL, inv.PayToken), logo)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		// The same invoice gives the same bytes, so their hash changes exactly when the file does.
+		// PDFs are deterministic, so the hash changes exactly when the file does.
 		sum := sha256.Sum256(pdf)
 		w.Header().Set("ETag", `"`+hex.EncodeToString(sum[:16])+`"`)
 		w.Header().Set("Cache-Control", "private, no-cache")

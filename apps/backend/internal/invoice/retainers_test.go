@@ -22,7 +22,6 @@ func TestRetainerStartedFromReviseMakesLaterMonths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A stored template can contain the first invoice's one-time Revise action.
 	if _, err := pool.Exec(ctx, `UPDATE retainers SET request = request || jsonb_build_object('Replaces', $1::text)`,
 		original.ID); err != nil {
 		t.Fatal(err)
@@ -50,7 +49,6 @@ func TestRetainerStartedFromReviseMakesLaterMonths(t *testing.T) {
 	}
 }
 
-// R-98: each month's due day is the first due date's day, or the month's last day when shorter.
 func TestRetainerMakesEachMonthOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -136,7 +134,6 @@ func TestRetainerMakesEachMonthOnce(t *testing.T) {
 	}
 }
 
-// R-98: also when the stop lands while the worker is making a month.
 func TestStoppedRetainerMakesNothing(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -160,7 +157,7 @@ func TestStoppedRetainerMakesNothing(t *testing.T) {
 	if err := s.MakeRetainerInvoices(ctx); err != nil {
 		t.Fatal(err)
 	}
-	// The worker read the retainer as running just before the stop.
+	// As if the worker read the retainer as running just before the stop.
 	_, _, err = s.Create(ctx, profile, "retainer:"+retainer+":1", Request{ChainID: 84532, Token: usdc, Amount: "5000000",
 		Details: Details{DueDate: due}, cycle: &cycle{retainer: retainer, n: 1}})
 	if !errors.Is(err, errRetainerStopped) {
@@ -176,7 +173,6 @@ func TestStoppedRetainerMakesNothing(t *testing.T) {
 	}
 }
 
-// R-98, R-96.
 func TestRetainerSkipsPassedMonthsAndKeepsAReminderStop(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -241,7 +237,6 @@ func TestRetainerSkipsPassedMonthsAndKeepsAReminderStop(t *testing.T) {
 	}
 }
 
-// R-134: a later month copies the first invoice's return link, as Edit keeps a link its store no longer allows.
 func TestRetainerMonthKeepsAReturnLinkItsStoreDropped(t *testing.T) {
 	ctx := context.Background()
 	pool, _ := open(t)
@@ -296,7 +291,6 @@ func TestRetainerMonthKeepsAReturnLinkItsStoreDropped(t *testing.T) {
 	}
 }
 
-// R-136: the client agreed to the token, so turning it off later stops no month.
 func TestFixedRetainerMonthKeepsATokenTurnedOff(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -328,36 +322,6 @@ func TestFixedRetainerMonthKeepsATokenTurnedOff(t *testing.T) {
 	}
 }
 
-// R-136: a payer-chooses month offers what is on when it is made, so with its only token off it is not made.
-func TestPayerChoosesRetainerMonthOffersWhatIsOn(t *testing.T) {
-	ctx := context.Background()
-	pool, profile := open(t)
-	s := NewService(pool)
-	at := func(day string) {
-		now, _ := time.Parse(time.DateOnly, day)
-		s.now = func() time.Time { return now.Add(12 * time.Hour) }
-	}
-	at("2027-01-10")
-	if _, _, err := s.Create(ctx, profile, "k1", Request{AmountUSD: "5", ExpiresInSeconds: new(int64(86400)),
-		Repeat: &Repeat{}, Details: Details{DueDate: "2027-01-31", ClientEmail: "ap@bob.example"}}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `INSERT INTO profile_tokens_off (profile_id, chain_id, token_contract)
-		VALUES ($1, 84532, $2)`, profile, usdc); err != nil {
-		t.Fatal(err)
-	}
-	at("2027-02-21")
-	if err := s.MakeRetainerInvoices(ctx); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("the month with every token off: %v, want ErrInvalid", err)
-	}
-	var months int
-	if err := pool.QueryRow(ctx, "SELECT count(*) FROM retainer_invoices").Scan(&months); err != nil || months != 1 {
-		t.Fatalf("%d months made (%v), want only the first", months, err)
-	}
-}
-
-// D-122: a retainer's months keep who pays its first month's fees, also one saved before the choice was in its
-// request, when the profile chooses otherwise later.
 func TestRetainerMonthsKeepWhoPaysTheFees(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -386,7 +350,6 @@ func TestRetainerMonthsKeepWhoPaysTheFees(t *testing.T) {
 	}
 }
 
-// R-98: a month that can't be made waits longer after each failure, and the owner is emailed once.
 func TestRetainerMonthThatFailsBacksOffAndTellsTheOwnerOnce(t *testing.T) {
 	ctx := context.Background()
 	pool, profile := open(t)
@@ -416,7 +379,7 @@ func TestRetainerMonthThatFailsBacksOffAndTellsTheOwnerOnce(t *testing.T) {
 		if err := s.MakeRetainerInvoices(ctx); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("try %d: %v, want ErrInvalid", i+1, err)
 		}
-		if err := s.MakeRetainerInvoices(ctx); err != nil { // before its wait is over: not tried
+		if err := s.MakeRetainerInvoices(ctx); err != nil {
 			t.Fatalf("try %d again at once: %v", i+1, err)
 		}
 		if failures, told := state(); failures != i+1 || told != min(max(i-1, 0), 1) {

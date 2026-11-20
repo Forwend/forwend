@@ -11,6 +11,7 @@ import type { Link as PaymentLink } from "@/features/links/types/links";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const linkHref = (link: PaymentLink) => `${APP_ROUTES.links}/${link.linkId}`;
@@ -38,15 +39,12 @@ function StateBadge({ link }: { link: PaymentLink }) {
 
 export interface LinksTableProps {
   profileId: string;
-  /** Roles that can't make links see no New link. */
   canWrite: boolean;
 }
 
-// R-140: the owner sees each link's visits and paid count, not every unpaid invoice it made.
 export function LinksTable({ profileId, canWrite }: LinksTableProps) {
   const list = useListLinksInfiniteQuery(profileId);
   const links = list.currentData?.pages.flatMap((page) => page.links) ?? [];
-  // An empty list offers New link in its own block, so the toolbar would only repeat it.
   const noLinks = Boolean(list.currentData) && links.length === 0;
   return (
     <section
@@ -54,11 +52,8 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
       aria-busy={!list.currentData && !list.isError}
       className="flex flex-col gap-4"
     >
-      {/* The header's breadcrumb names the page on desktop, so the heading and its action show only below that. */}
       <div className="flex items-center justify-between gap-3 lg:contents">
-        <h1 id="links-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {COPY.title}
-        </h1>
+        <PageTitle id="links-title">{COPY.title}</PageTitle>
         {canWrite && !noLinks ? <NewLinkLink size="sm" className="lg:hidden" /> : null}
       </div>
       {noLinks ? null : (

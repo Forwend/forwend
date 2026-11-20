@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
@@ -19,7 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// usdCents is a USD amount with at most 2 decimals and at most 10 whole digits, so a job's total fits an int64.
+// At most 10 whole digits, so a job's total fits an int64.
 var usdCents = regexp.MustCompile(`^([0-9]{1,10})(?:\.([0-9]{1,2}))?$`)
 
 func (r Request) check() ([]int64, error) {
@@ -28,7 +27,7 @@ func (r Request) check() ([]int64, error) {
 		max         int
 		lines       bool
 	}{{"title", r.Title, MaxTitle, false}, {"scope", r.Scope, MaxScope, true}} {
-		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !profile.PlainText(f.value, f.lines) {
+		if !profile.ValidText(f.value, f.max, f.lines) {
 			return nil, fmt.Errorf("%w: %s must be at most %d characters of plain text", ErrInvalid, f.name, f.max)
 		}
 	}
@@ -50,8 +49,7 @@ func (r Request) check() ([]int64, error) {
 func checkPayments(payments []PaymentRequest) ([]int64, error) {
 	cents := make([]int64, len(payments))
 	for i, p := range payments {
-		if p.Title == "" || !utf8.ValidString(p.Title) || utf8.RuneCountInString(p.Title) > MaxPaymentTitle ||
-			!profile.PlainText(p.Title, false) {
+		if p.Title == "" || !profile.ValidText(p.Title, MaxPaymentTitle, false) {
 			return nil, fmt.Errorf("%w: payments need a title of at most %d characters of plain text", ErrInvalid,
 				MaxPaymentTitle)
 		}
@@ -73,14 +71,13 @@ func checkPayments(payments []PaymentRequest) ([]int64, error) {
 	return cents, nil
 }
 
-// Create is idempotent per (profile, key): a repeat returns the stored job with created false. It copies the
-// profile's billing details as the issuer. The caller must check the user's access to the profile.
+// Create is idempotent per (profile, key).
 func (s *Service) Create(ctx context.Context, profileID, key string, r Request) (j Job, created bool, err error) {
 	cents, err := r.check()
 	if err != nil {
 		return Job{}, false, err
 	}
-	// The checked values in a fixed format, amounts in cents so "300" and "300.00" match; the body is never stored.
+	// Amounts in cents, so "300" and "300.00" hash the same.
 	b := fmt.Appendf(nil, "%q|%q|%q|%q|%q|%q|%q", r.Title, r.Scope, r.Client.Name, r.Client.Email, r.Client.Address,
 		r.Client.Country, r.Client.TaxID)
 	for i, p := range r.Payments {
@@ -109,7 +106,6 @@ func (s *Service) Create(ctx context.Context, profileID, key string, r Request) 
 			return fmt.Errorf("%w: a profile has at most %d jobs", ErrInvalid, MaxJobs)
 		}
 		c := r.Client
-		// The job keeps the profile's mode now: its invoices are of it, whatever the profile's mode later (R-221).
 		err := tx.QueryRow(ctx, `INSERT INTO jobs (profile_id, token, idempotency_key, request_hash, title, scope,
 			    client_name, client_email, client_address, client_country, client_tax_id, issuer_name, issuer_address,
 			    issuer_country, issuer_tax_id, issuer_email, livemode)

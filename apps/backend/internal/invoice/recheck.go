@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RecheckEvery spaces the checks of one invoice, across api replicas (R-55).
+// RecheckEvery spaces the checks of one invoice, across api replicas.
 const RecheckEvery = 5 * time.Minute
 
 // Money no log explains (docs/backend/money-safety.md) must not start a full rescan on every press.
@@ -21,21 +21,14 @@ const RescanAgainAfter = 10 * time.Minute
 
 var ErrChainUnavailable = errors.New("chain unavailable")
 
-type TooSoonError struct{ Wait time.Duration }
-
-func (e *TooSoonError) Error() string { return fmt.Sprintf("checked recently: wait %s", e.Wait) }
-
-// OnChain is the receive address's balance at the finalized block; Recorded sums its transfers.
 type Recheck struct {
-	OnChain, Recorded *big.Int
+	OnChain, Recorded *big.Int // finalized balance; sum of recorded transfers
 	Rescanning        bool
 	NextAt            time.Time
-	// Unreadable lists the chains of options whose RPC did not answer; the others were still checked.
-	Unreadable []uint64
+	Unreadable        []uint64 // chains whose RPC did not answer
 }
 
-// Recheck (D-77) never signs, books or moves a cursor; it only asks the worker to rescan. allow runs only for an
-// invoice due a check, so unknown ids never spend the shared budget.
+// Recheck only asks the worker to rescan; allow runs only for an invoice due a check.
 func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger.BalanceOf,
 	allow func(owner string) time.Duration) (Recheck, error) {
 	inv, err := s.Get(ctx, payToken)
@@ -93,8 +86,7 @@ func (s *Service) Recheck(ctx context.Context, payToken string, balanceOf ledger
 		if err != nil {
 			return Recheck{}, err
 		}
-		// What the page shows: an option holding more than recorded, else the current option. Another option's empty
-		// read never stands in for the current one: the page names the current option's network.
+		// An option holding more than recorded, else the current one: the page names the current option's network.
 		if (o.ID == inv.OptionID && (found.OnChain == nil || found.OnChain.Cmp(found.Recorded) <= 0)) ||
 			r.OnChain.Cmp(r.Recorded) > 0 {
 			found = r
@@ -113,7 +105,6 @@ func (s *Service) recheckOption(ctx context.Context, o Option, balanceOf ledger.
 		// Redacted: an RPC error can carry the provider URL with its key.
 		return Recheck{}, fmt.Errorf("%w: read invoice %s balance: %s", ErrChainUnavailable, o.ID, chain.Redact(err))
 	}
-	// The main row's check is already there; an option gets its own row to hold its rescan.
 	if _, err := s.pool.Exec(ctx, "INSERT INTO invoice_rechecks (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING",
 		o.ID); err != nil {
 		return Recheck{}, fmt.Errorf("start invoice %s check: %w", o.ID, err)

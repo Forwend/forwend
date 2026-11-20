@@ -1,6 +1,7 @@
 import { buttonClasses, Logo } from "@forwend/ui-web";
 import Link from "next/link";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { SITE_COPY } from "@/shared/constants/site-copy";
 import styles from "./landing-footer.module.css";
 
 export function LandingFooter() {
@@ -47,7 +48,7 @@ export function LandingFooter() {
         <Link
           prefetch={false}
           href={APP_ROUTES.site}
-          aria-label="Forwend home"
+          aria-label={SITE_COPY.home}
           className={styles.home}
         >
           <Logo />

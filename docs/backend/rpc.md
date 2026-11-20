@@ -3,15 +3,17 @@
 ## Configuration
 
 - `chains` owns canonical numeric IDs, readable unique names, EVM family, activation and maximum latest-head age.
-- `rpc_endpoints` owns provider identity, legacy role label, private/public tier, priority, enablement, destination reference and budget group.
-- Migration 82 seeds existing public endpoints without activating chains; Base Sepolia is added disabled if missing.
-- Migration 92 removes dRPC and adds public HTTPS and WSS endpoints measured on 2026-10-29.
+- `rpc_endpoints` owns provider identity, role label, private/public tier, priority, enablement, destination reference and budget group.
+  - The role label is `primary` or `confirmation`; it does not change routing.
+- Migration 82 seeds the public endpoints without activating chains; it adds Base Sepolia disabled if missing.
+- Migration 92 removes dRPC and adds public HTTPS and WSS endpoints.
   - They passed chain ID, finalized tag, log range, batch and block-hash `eth_call` checks.
   - Tenderly's WSS is left out: it never answers a batch.
-- Migration 94 adds thirdweb for Base, Arbitrum and Arc, in its own budget group, measured on 2026-10-30.
+- Migration 94 adds thirdweb for Base, Arbitrum and Arc, in its own budget group.
   - Without a key it takes logs over up to 1000 blocks and batches of up to 25 calls; larger ones are refused.
   - It turns off Tenderly, whose 100-call batches get a rate limit, and PublicNode's WSS, which answers part of a batch.
-- Migration 105 adds the four mainnets, live mode and switched off, with public endpoints from chainlist.org (a list of chain RPCs), measured on 2026-11-08 (R-220).
+- Migration 105 adds the four mainnets, live mode and switched off (R-220).
+  - Their public endpoints come from chainlist.org, a list of chain RPCs.
   - Each passed the migration 92 checks, with 1000-block logs and 25-call batches.
   - Left out: `mainnet.base.org`, which refused logs and batches at its rate limit.
   - Also left out: PublicNode on Arbitrum, which has no state at the finalized block.
@@ -28,7 +30,7 @@
 ## Adding a private endpoint
 
 - Identify the actual upstream provider, including aliases or resellers; use one stable provider identifier for shared infrastructure.
-- Use `primary` for new endpoints; existing `confirmation` labels remain valid metadata.
+- Use `primary` for new endpoints.
 - Both labels use the same ordered pool for reads, verification and broadcasts.
 - One configured endpoint is sufficient; provider and hostname independence are not required.
 - Insert metadata using an operator connection; this example contains no credential.
@@ -47,7 +49,7 @@ VALUES
 - Priority sets the starting order within each tier; lower numbers come first, and endpoint ID breaks ties.
 - After that, measured answers decide (see [routing](#routing-and-health)), not the configured order.
 - Disable an endpoint with `enabled=false`; edit its priority to change the starting order, then restart consumers.
-- Every enabled endpoint participates in failover, including endpoints previously labeled `confirmation`.
+- Every enabled endpoint takes part in failover, whatever its role label.
 - Additional endpoints improve availability; payment processing does not wait for a second provider.
 
 ## Routing and health
@@ -97,7 +99,7 @@ VALUES
 - Successful probes establish availability, not honesty; finalized evidence is trusted from the selected provider.
 - Local circuit state is not shared across processes; weighted budgets are shared through Postgres.
 - Structured warnings name chain ID, endpoint ID, cooldown and a safe failure category.
-- Operators must monitor unavailable-chain warnings and existing worker/signer errors until dedicated metrics are implemented.
+- There are no RPC metrics. Operators watch the unavailable-chain warnings and the worker and signer errors.
 
 ## WebSocket endpoints
 
@@ -123,7 +125,7 @@ VALUES
 - HTTP error bodies and redirect locations never reach callers or logs.
 - Execution reverts, invalid input, insufficient funds and nonce errors do not trigger infrastructure failover.
 - Log-range and batch-limit errors that every endpoint gave remain recognizable so callers can reduce query size.
-- Optional block-receipt support retains the watcher's existing fallback; broader per-method routing is deferred.
+- `eth_getBlockReceipts` is optional: the watcher uses it only for an oversized single block, and there is no per-method routing.
 - Only allowlisted stateless reads and `eth_sendRawTransaction` pass through the transport.
 - Retries replay the same signed bytes; the transport never signs, chooses nonces, increases fees or changes recipients.
 - After an endpoint answers `eth_sendRawTransaction`, the same bytes also go to one endpoint on another host (R-187).
@@ -150,7 +152,7 @@ VALUES
 - The canary retains independent `CANARY_RPC_URLS`, factory and code-hash configuration, as required by R-51.
 - Treat configuration-write access as privileged; metadata identifiers must never contain credentials.
 - Deployment operators must separate migration privileges from read-only endpoint configuration access for runtime database roles.
-- Current API startup still performs migrations; separate migration execution is deferred, and this deployment limitation remains explicit.
+- API startup runs the migrations; there is no separate migration step.
 - Environment secrets are readable by their process and privileged host operators; restrict deployment access and local file permissions.
 - Rotate with a new reference/version, validate it, restart consumers, then revoke the previous credential after the rollback window.
 - [OWASP secret guidance](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html) recommends least privilege, rotation and excluding secrets from logs.
@@ -159,17 +161,14 @@ VALUES
 ## Migration and verification
 
 - Restart API, worker and signer together when changing the provider policy.
-- Apply migration 82 through the API's normal migration process.
-- Translate existing private provider configuration into explicit endpoint records and generic secret references before restarting consumers.
-- `CHAINS_FILE` and `INFURA_API_KEYS` no longer configure the backend; private credentials are not copied automatically.
-- The contracts package retains its separate deployment picker and manifest; those values no longer configure payment services.
+- The contracts package keeps its own deployment RPC picker (`INFURA_API_KEYS`); it never configures payment services.
 - Restart all RPC consumers and inspect startup results for each enabled chain.
 - Verify chain identity, canonical hash reads and historical state availability from the deployment region.
 - Local tests cannot establish public-provider uptime, quotas or honesty.
 - Run `pnpm --filter @forwend/backend test` for configuration, security, failover, ledger and signer regressions.
 - Run `pnpm --filter @forwend/backend e2e` for real-binary invoice, payment, confirmation and settlement workflows.
 - Fault proxies around Anvil cover failed providers and ambiguous broadcasts without relying on external RPC availability.
-- Rollback requires the previous binary's previous environment configuration; retain old secret versions until rollback is no longer required.
+- Rollback needs the previous binary's environment; keep old secret versions until the rollback window ends.
 
 ## Future architecture
 
@@ -180,7 +179,7 @@ VALUES
 - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html) illustrates managed encryption, rotation and least-privilege access.
 - Add metrics for endpoint latency, errors, cooldown, head age, lag and quota waits.
 - Alert on exhausted pools, stalled payment cursors and long settlement delays.
-- Add active health probes, archive capability routing and measured latency selection only when operational needs justify their cost.
+- Add background health probes and archive capability routing only when operational needs justify their cost.
 - Evaluate [eRPC](https://docs.erpc.cloud/config/failsafe) for larger deployments requiring shared health, routing and observability.
 - Preserve bounded retries and identical signed transaction bytes when changing routing infrastructure.
 - Do not implement an administration service, shared health service, custom encryption or a routing proxy in this MVP.

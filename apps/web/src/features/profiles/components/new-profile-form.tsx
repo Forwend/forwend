@@ -26,28 +26,27 @@ import {
 } from "@/features/profiles/constants/profile";
 import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
-import type { ProfileKind } from "@/features/profiles/types/profile";
+import type { NewProfileKind, ProfileKind } from "@/features/profiles/types/profile";
+import { apiError } from "@/shared/api/api-error";
 import { APP_ROUTES } from "@/shared/config/routes";
-
-type NewKind = (typeof NEW_PROFILE_KINDS)[number];
 
 const KIND_ICONS = {
   [PROFILE_KINDS.freelancer]: FreelancerIcon,
   [PROFILE_KINDS.merchant]: MerchantIcon,
 } as const;
 
-// One idempotency key per filled-in form: a retry makes one profile and finishes its wallet.
+// One idempotency key per filled-in form: a retry makes one profile.
 export function NewProfileForm() {
   const { profiles, chooseProfile } = useAppSession();
   const [createProfile] = useCreateProfileMutation();
   const router = useRouter();
   const keys = useRef(new Map<string, string>());
-  const [kind, setKind] = useState<NewKind>(PROFILE_KINDS.freelancer);
+  const [kind, setKind] = useState<NewProfileKind>(PROFILE_KINDS.freelancer);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState("");
   const [formError, setFormError] = useState("");
-  // The cap counts the profiles the user owns; ones they joined on a team are someone else's.
+  // The cap counts owned profiles, not ones joined on a team.
   const owned = profiles.filter((profile) => profile.role === ROLES.owner).length;
   const full = owned >= PROFILES_MAX;
 
@@ -67,8 +66,7 @@ export function NewProfileForm() {
       chooseProfile(profile.profileId);
       router.push(APP_ROUTES.home);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
+      const message = apiError(error).message ?? "";
       if (message.includes("profiles")) setFormError(COPY.errors.cap);
       else if (message.includes("name")) setNameError(COPY.errors.name);
       else setFormError(COPY.errors.failed);
@@ -130,7 +128,6 @@ export function NewProfileForm() {
         <p role="alert" className="text-sm text-danger empty:hidden">
           {formError || (full ? COPY.errors.cap : "")}
         </p>
-        {/* Phones: Create across the width, Cancel and the count under it. */}
         <div className="grid grid-cols-2 items-center gap-3 border-t border-line pt-4 sm:flex sm:justify-between">
           <Link
             href={APP_ROUTES.home}
@@ -186,7 +183,6 @@ export function NewProfileForm() {
   );
 }
 
-/** The profile this form makes, as the profile list will show it. */
 function NewRow({ kind, name }: { kind: ProfileKind; name: string }) {
   return (
     <div className="flex items-center gap-3 rounded-md border border-dashed border-brand-edge bg-surface-2 px-3 py-2.5">

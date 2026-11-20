@@ -4,11 +4,9 @@ import { PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
 import { leadOption, receivedAmount } from "@/features/payments/lib/payments";
 import type { Payment } from "@/features/payments/types/payments";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { chainName } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
-
-const OVER =
-  "More than requested; the extra is held for the customer, and Forwend support handles any return";
 
 export interface PaymentReceivedProps {
   payment: Pick<
@@ -23,8 +21,6 @@ export interface PaymentReceivedProps {
     | "optionLocked"
     | "optionCount"
   >;
-  /** One line for a list row: what arrived of what was asked ("0.50 of 1.23 USDC"), or what was asked alone while
-   * nothing arrived or both match. */
   compact?: boolean;
 }
 
@@ -38,7 +34,6 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
           decimals: payment.decimals,
           symbol: payment.symbol,
         };
-    // Several accepted tokens share USD terms, so the requested amount is in USD.
     const asked = (
       <PaymentAmount
         amount={payment.amount}
@@ -54,25 +49,25 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
     if (got === want) return asked;
     const units = BigInt(received.received);
     return (
-      <span title={got > want ? OVER : undefined} className="whitespace-nowrap">
+      <span title={got > want ? PAYMENTS_COPY.over : undefined} className="whitespace-nowrap">
         <span className="text-muted">
           <Money
             baseUnits={units}
             decimals={received.decimals}
             fractionDigits={exactDigits(units, received.decimals)}
-            // Asked in USD across tokens: what arrived names its token.
             token={payment.optionCount > 1 ? received.symbol : undefined}
             nowrap
           />{" "}
           {PAYMENTS_COPY.of}
         </span>{" "}
         {asked}
-        {got > want ? <span className="sr-only"> ({OVER})</span> : null}
+        {got > want ? <span className="sr-only"> ({PAYMENTS_COPY.over})</span> : null}
       </span>
     );
   }
   if (!receipts.length) {
-    if (payment.paymentStatus === "detected") return <span className="text-muted">Confirming</span>;
+    if (payment.paymentStatus === API_PAYMENT_STATUSES.detected)
+      return <span className="text-muted">{PAYMENTS_COPY.confirming}</span>;
     return (
       <PaymentAmount
         amount={receivedAmount(payment.amounts)}
@@ -102,7 +97,7 @@ export function PaymentReceived({ payment, compact }: PaymentReceivedProps) {
                 decimals={receipt.decimals}
                 symbol={receipt.symbol}
               />{" "}
-              confirming
+              {PAYMENTS_COPY.pending}
             </span>
           ) : null}
         </span>

@@ -2,19 +2,17 @@
 
 import { type ComponentPropsWithoutRef, useId } from "react";
 import { cx } from "../../lib/cx";
+import { FieldMessage, fieldMessageId } from "./field-message";
 
 export interface AmountFieldProps extends ComponentPropsWithoutRef<"input"> {
   label: string;
-  /** The currency or token, inside the field at its end. */
   unit: string;
   hint?: string;
   error?: string;
-  /** A send's amount: the figure large and centered with its unit beside it, no box; the label is for screen readers.
-   * Long amounts step the size down so they stay on one line. */
   bare?: boolean;
 }
 
-/** An amount someone checks at a glance, such as a sale's total: large figures, with the unit inside the field. */
+/** An amount checked at a glance: large figures, with the unit inside the field. */
 export function AmountField({
   label,
   unit,
@@ -27,7 +25,9 @@ export function AmountField({
 }: AmountFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
-  const line = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : null;
+  const describedBy = [`${fieldId}-unit`, fieldMessageId(fieldId, error, hint)]
+    .filter(Boolean)
+    .join(" ");
   if (bare) {
     const shown = String(props.value || props.defaultValue || props.placeholder || "0");
     const length = shown.length;
@@ -43,9 +43,8 @@ export function AmountField({
             inputMode="decimal"
             autoComplete="off"
             aria-invalid={error ? true : undefined}
-            aria-describedby={[`${fieldId}-unit`, line].filter(Boolean).join(" ")}
-            // As wide as its figures (tabular, so a ch each, the point narrower), in every browser. The figures sit at
-            // the field's end, so the room the point leaves falls outside them, not between them and the unit.
+            aria-describedby={describedBy}
+            // As wide as its tabular figures (1ch each) in every browser; size alone varies by browser.
             style={{ width: `${Math.max(length, 1) + 0.5}ch` }}
             className={cx(
               "max-w-full bg-transparent text-right font-medium tracking-tight tabular-nums outline-none transition-[font-size] duration-[var(--fw-duration-fast)] ease-out placeholder:text-subtle motion-reduce:transition-none",
@@ -58,15 +57,7 @@ export function AmountField({
             {unit}
           </span>
         </div>
-        {error ? (
-          <p id={`${fieldId}-error`} role="alert" className="text-center text-sm text-danger">
-            {error}
-          </p>
-        ) : hint ? (
-          <p id={`${fieldId}-hint`} className="text-center text-sm text-muted">
-            {hint}
-          </p>
-        ) : null}
+        <FieldMessage fieldId={fieldId} error={error} hint={hint} className="text-center" />
       </div>
     );
   }
@@ -86,7 +77,7 @@ export function AmountField({
           inputMode="decimal"
           autoComplete="off"
           aria-invalid={error ? true : undefined}
-          aria-describedby={[`${fieldId}-unit`, line].filter(Boolean).join(" ")}
+          aria-describedby={describedBy}
           className="min-w-0 flex-1 bg-transparent text-3xl font-medium tracking-tight text-ink tabular-nums outline-none placeholder:text-subtle"
           {...props}
         />
@@ -94,15 +85,7 @@ export function AmountField({
           {unit}
         </span>
       </div>
-      {error ? (
-        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${fieldId}-hint`} className="text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldMessage fieldId={fieldId} error={error} hint={hint} />
     </div>
   );
 }

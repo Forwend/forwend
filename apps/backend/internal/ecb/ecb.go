@@ -1,5 +1,4 @@
-// Package ecb keeps the European Central Bank's daily euro reference rates (D-82), which records use to value a
-// payment in a currency other than USD (R-110). The ECB publishes them on TARGET business days around 16:00 CET.
+// Package ecb keeps the ECB's daily euro reference rates, used to value a payment in a currency other than USD.
 package ecb
 
 import (
@@ -15,10 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Every is how often the worker reads the rates again; Retry is the wait after a failed read.
+// every is how often the worker reads the rates again; retry is the wait after a failed read.
 const (
-	Every = 6 * time.Hour
-	Retry = 10 * time.Minute
+	every = 6 * time.Hour
+	retry = 10 * time.Minute
 )
 
 // Rate is one currency's euro rate on one day: PerEUR units of Currency for 1 EUR, as the ECB writes it.
@@ -44,7 +43,7 @@ type envelope struct {
 	} `xml:"Cube>Cube"`
 }
 
-func Parse(r io.Reader) ([]Rate, error) {
+func parse(r io.Reader) ([]Rate, error) {
 	var e envelope
 	if err := xml.NewDecoder(r).Decode(&e); err != nil {
 		return nil, fmt.Errorf("parse ECB rates: %w", err)
@@ -80,10 +79,10 @@ func (k *Keeper) Tick(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	if err := k.refresh(ctx); err != nil {
-		k.due = now.Add(Retry)
+		k.due = now.Add(retry)
 		return err
 	}
-	k.due = now.Add(Every)
+	k.due = now.Add(every)
 	return nil
 }
 
@@ -101,7 +100,7 @@ func (k *Keeper) refresh(ctx context.Context) error {
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("read ECB rates: status %d", res.StatusCode)
 	}
-	rates, err := Parse(io.LimitReader(res.Body, 16<<20))
+	rates, err := parse(io.LimitReader(res.Body, 16<<20))
 	if err != nil {
 		return err
 	}

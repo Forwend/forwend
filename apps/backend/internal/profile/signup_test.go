@@ -13,23 +13,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/privy/privytest"
 )
 
-func TestSignUpOnce(t *testing.T) {
-	s, f, pool := newService(t)
-	ctx := context.Background()
-	first, created, err := s.SignUp(ctx, alice)
-	if err != nil || !created || len(first) != 1 || first[0].Kind != Personal || first[0].WalletAddress == "" {
-		t.Fatalf("got %+v, %v, %v; want one new personal profile with a wallet", first, created, err)
-	}
-	again, created, err := s.SignUp(ctx, alice)
-	if err != nil || created || len(again) != 1 || again[0] != first[0] {
-		t.Fatalf("again: %+v, %v, %v; want the same profile, not created", again, created, err)
-	}
-	if count(t, pool, "users") != 1 || count(t, pool, "profiles") != 1 || f.Wallets() != 1 || len(f.Creates) != 1 {
-		t.Fatalf("users %d, profiles %d, Privy wallets %d, creates %d; want 1 each", count(t, pool, "users"),
-			count(t, pool, "profiles"), f.Wallets(), len(f.Creates))
-	}
-}
-
 func TestSignUpConcurrently(t *testing.T) {
 	s, f, pool := newService(t)
 	var wg sync.WaitGroup

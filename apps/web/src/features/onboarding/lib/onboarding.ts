@@ -1,6 +1,6 @@
 import {
   CHECKLIST_STEPS,
-  ONBOARDING_CHOICES,
+  CHOICE_KINDS,
   ONBOARDING_STEPS,
 } from "@/features/onboarding/constants/onboarding";
 import type {
@@ -9,9 +9,11 @@ import type {
   ChecklistStep,
   OnboardingChoice,
   OnboardingStep,
+  ProfileDetails,
 } from "@/features/onboarding/types/onboarding";
-import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
-import type { Profile, ProfileKind } from "@/features/profiles/types/profile";
+import { NEW_PROFILE_KINDS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
+import type { BillingDetailsBody } from "@/features/profiles/types/billing-details";
+import type { NewProfileKind, Profile, ProfileKind } from "@/features/profiles/types/profile";
 import {
   TRANSACTION_DIRECTIONS,
   TRANSACTION_STATUSES,
@@ -19,22 +21,12 @@ import {
 import { APP_ROUTES } from "@/shared/config/routes";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 
-// As the API maps them (profile/onboard.go): receive and send is the personal profile every user has (D-73).
-const CHOICE_KINDS: Readonly<Record<OnboardingChoice, ProfileKind>> = {
-  [ONBOARDING_CHOICES.receiveAndSend]: PROFILE_KINDS.personal,
-  [ONBOARDING_CHOICES.getPaidByClients]: PROFILE_KINDS.freelancer,
-  [ONBOARDING_CHOICES.acceptBusinessPayments]: PROFILE_KINDS.merchant,
-  [ONBOARDING_CHOICES.buildIntegration]: PROFILE_KINDS.merchant,
-};
-
-/** The profiles the choices add, freelancer first: two business choices share one merchant profile. */
-export function newKinds(choices: readonly OnboardingChoice[]): ProfileKind[] {
-  const kinds = new Set(choices.map((choice) => CHOICE_KINDS[choice]));
-  return [PROFILE_KINDS.freelancer, PROFILE_KINDS.merchant].filter((kind) => kinds.has(kind));
+/** Two business choices share one merchant profile. */
+export function newKinds(choices: readonly OnboardingChoice[]): NewProfileKind[] {
+  const kinds = new Set<ProfileKind>(choices.map((choice) => CHOICE_KINDS[choice]));
+  return NEW_PROFILE_KINDS.filter((kind) => kinds.has(kind));
 }
 
-/** The steps a first run shows for these choices (R-50): a details step per new profile, the passkey only when none
- * is linked. */
 export function onboardingSteps(
   choices: readonly OnboardingChoice[],
   passkeyLinked: boolean,
@@ -50,7 +42,30 @@ export function onboardingSteps(
   ];
 }
 
-// The page asked for before the first run waits in the tab, so the address stays /app/onboarding (R-50).
+export function billingBody(details: ProfileDetails): BillingDetailsBody {
+  return {
+    name: details.name.trim(),
+    email: details.email.trim(),
+    country: details.country,
+    address: details.address.trim(),
+    taxId: null,
+  };
+}
+
+// Mirrors origin() in profile/stores.go, so the store save is never refused.
+const ORIGIN =
+  /^(?<scheme>https?):\/\/(?<host>[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*)(?<port>:[0-9]{1,5})?\/?$/;
+
+export function websiteOrigin(text: string): string | null {
+  const groups = ORIGIN.exec(text.trim().toLowerCase())?.groups;
+  if (!groups?.scheme || !groups.host) return null;
+  const { scheme, host, port = "" } = groups;
+  if (scheme === "https") return `https://${host}${port === ":443" ? "" : port}`;
+  if (host === "localhost" || host === "127.0.0.1")
+    return `http://${host}${port === ":80" ? "" : port}`;
+  return null;
+}
+
 const RETURN_KEY = "forwend:onboarding:return";
 
 export function rememberReturnPage(path: string) {
@@ -61,7 +76,6 @@ export function rememberReturnPage(path: string) {
   }
 }
 
-/** The page to open once the first run is done, read once: never another site (see afterOnboarding). */
 export function takeReturnPage(): string {
   let path: string | null = null;
   try {
@@ -98,7 +112,7 @@ export function checklistSteps(kind: ProfileKind, facts: ChecklistFacts): Checkl
     { id: CHECKLIST_STEPS.firstInvoice, done: facts.invoices.length > 0 },
     {
       id: CHECKLIST_STEPS.firstPaid,
-      // Paid stays paid once settled; a partial payment is not paid.
+      // A partial payment is not paid.
       done: facts.invoices.some((inv) => inv.paymentStatus === API_PAYMENT_STATUSES.paid),
     },
     {
@@ -122,7 +136,6 @@ export function visibleSteps(
   return shown.some((s) => !s.done) ? shown : null;
 }
 
-// Per profile in this browser: a viewer's convenience, not product data.
 const dismissalKey = (profileId: string) => `forwend:checklist:${profileId}`;
 
 export function readDismissal(profileId: string): ChecklistDismissal {
@@ -154,7 +167,7 @@ export function afterOnboarding(next: string | null): string {
   try {
     url = new URL(next || APP_ROUTES.home, base);
   } catch {
-    return APP_ROUTES.home; // not a URL at all ("http://[")
+    return APP_ROUTES.home;
   }
   return url.origin === base &&
     /^\/app(\/|$)/.test(url.pathname) &&

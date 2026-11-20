@@ -3,8 +3,12 @@ import { Button, DateRangePicker, Dialog } from "@forwend/ui-web";
 import { Download } from "lucide-react";
 import { useRef, useState } from "react";
 import { useLazyExportPaymentsQuery } from "@/features/payments/api/payments-api";
-import { RECONCILIATION_COPY } from "@/features/payments/constants/payments-copy";
+import { PAYMENTS_COPY, RECONCILIATION_COPY } from "@/features/payments/constants/payments-copy";
 import type { PaymentFilters } from "@/features/payments/types/payments";
+import { apiError } from "@/shared/api/api-error";
+
+const COPY = PAYMENTS_COPY.export;
+
 export interface ExportPaymentsProps {
   disabled?: boolean;
   profileId: string;
@@ -25,7 +29,7 @@ export function ExportPayments({
   const save = async () => {
     if (disabled) return;
     if (from && to && from > to) {
-      setError("Choose a To day on or after From.");
+      setError(COPY.badRange);
       return;
     }
     setError("");
@@ -45,24 +49,18 @@ export function ExportPayments({
       URL.revokeObjectURL(url);
       form.current?.closest("dialog")?.close();
     } catch (failure) {
-      setError(
-        (failure as { data?: { error?: { code?: string } } }).data?.error?.code ===
-          "too_many_movements"
-          ? "This period has more than 10,000 records. Choose a shorter period."
-          : "We could not export payment records. Try again.",
-      );
+      setError(apiError(failure).code === "too_many_movements" ? COPY.tooMany : COPY.failed);
     }
   };
   return (
     <Dialog
-      title="Export payment records"
-      triggerLabel="Export payments"
+      title={COPY.title}
+      triggerLabel={COPY.trigger}
       trigger={(open) => (
-        // Phones show only the icon, so the accessible name says what it does.
         <Button
           disabled={disabled}
           variant="secondary"
-          aria-label="Export"
+          aria-label={COPY.short}
           onClick={() => {
             setError("");
             open();
@@ -70,18 +68,12 @@ export function ExportPayments({
           className="max-sm:w-10 max-sm:px-0 max-sm:pointer-coarse:before:left-1/2 max-sm:pointer-coarse:before:w-11 max-sm:pointer-coarse:before:-translate-x-1/2"
         >
           <Download aria-hidden className="size-[var(--fw-icon-sm)]" />
-          <span className="max-sm:sr-only">Export</span>
+          <span className="max-sm:sr-only">{COPY.short}</span>
         </Button>
       )}
     >
-      <p className="text-sm text-muted">
-        One row per booked movement, plus separate unbooked observations. Includes the current
-        store, source and status filters.
-      </p>
-      <p className="mt-2 text-sm text-muted">
-        Dates use when Forwend recorded the movement, in UTC. Observations do not count toward
-        booked totals. USD uses $1 per accepted stablecoin.
-      </p>
+      <p className="text-sm text-muted">{COPY.rows}</p>
+      <p className="mt-2 text-sm text-muted">{COPY.dates}</p>
       <form
         ref={form}
         onSubmit={(event) => {
@@ -106,7 +98,7 @@ export function ExportPayments({
           </p>
         ) : null}
         <Button type="submit" disabled={state.isFetching || disabled}>
-          Download CSV
+          {COPY.download}
         </Button>
       </form>
     </Dialog>

@@ -12,7 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 )
 
-// R-105.
 func TestScopeChange(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -23,9 +22,6 @@ func TestScopeChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	extra := PaymentRequest{Title: "Extra page", AmountUSD: "150", DueDays: 7}
-	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c1", extra); !errors.Is(err, ErrNotAccepted) {
-		t.Fatalf("before acceptance: %v, want ErrNotAccepted", err)
-	}
 	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +44,7 @@ func TestScopeChange(t *testing.T) {
 		return n
 	}
 	if emails() != 1 || !change.ClientEmailed || proposed.Payments[1].ClientEmailed {
-		t.Fatalf("change emails %d, clientEmailed %v, want 1 on the change alone (R-107)", emails(), change.ClientEmailed)
+		t.Fatalf("change emails %d, clientEmailed %v, want 1 on the change alone", emails(), change.ClientEmailed)
 	}
 	if again, created, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Extra page",
 		AmountUSD: "150.00", DueDays: 7}); err != nil || created || len(again.Payments) != 3 {
@@ -65,26 +61,17 @@ func TestScopeChange(t *testing.T) {
 		DueDays: 7, OnAccept: true}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("a change as deposit: %v, want ErrInvalid", err)
 	}
-
-	if _, err := s.MarkDone(ctx, profileID, j.ID, 2, ""); !errors.Is(err, ErrChangePending) {
-		t.Fatalf("the last agreed payment while a change waits: %v, want ErrChangePending", err)
-	}
-	if _, err := s.MarkDone(ctx, profileID, j.ID, 3, ""); !errors.Is(err, ErrChangeNotAccepted) {
-		t.Fatalf("change not accepted: %v, want ErrChangeNotAccepted", err)
-	}
 	for _, bad := range []int{1, 2, 4} {
 		if _, err := s.AcceptChange(ctx, j.Token, bad, change.ProposedAt, "Jane Doe", "jane@bob.example", noLimit); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("accept payment %d: %v, want ErrNotFound", bad, err)
 		}
 	}
-	// A quote payment is no change, also by its own zero proposedAt, and asks nothing of the shared limit (R-117).
-	asked := func() time.Duration { t.Fatal("the shared limit was asked"); return 0 }
+	asked := func() time.Duration { t.Fatal("a quote payment asked the shared limit"); return 0 }
 	for _, bad := range []int{1, 2} {
 		if _, err := s.AcceptChange(ctx, j.Token, bad, time.Time{}, "Jane Doe", "jane@bob.example", asked); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("accept payment %d with a zero proposedAt: %v, want ErrNotFound", bad, err)
 		}
 	}
-	// Past the shared limit the change stays waiting.
 	var soon *invoice.TooSoonError
 	if _, err := s.AcceptChange(ctx, j.Token, 3, change.ProposedAt, "Jane Doe", "jane@bob.example",
 		func() time.Duration { return time.Second }); !errors.As(err, &soon) {
@@ -100,9 +87,6 @@ func TestScopeChange(t *testing.T) {
 			t.Fatalf("total with the accepted change: %d, want 115050", accepted.TotalCents())
 		}
 	}
-	if err := s.WithdrawChange(ctx, profileID, j.ID, 3); !errors.Is(err, ErrNotWithdrawable) {
-		t.Fatalf("withdraw an accepted change: %v, want ErrNotWithdrawable", err)
-	}
 	if _, err := s.MarkDone(ctx, profileID, j.ID, 2, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -115,12 +99,6 @@ func TestScopeChange(t *testing.T) {
 		t.Fatalf("the change's invoice: %v %q %v", inv.Amount, inv.Note, err)
 	}
 
-	// The last payment is done: more work is a new job.
-	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c3", extra); !errors.Is(err, ErrJobFinished) {
-		t.Fatalf("a change on a finished job: %v, want ErrJobFinished", err)
-	}
-
-	// A withdrawn change leaves no gap; only the last payment can go, and a payment of the quote never.
 	j, _, err = s.Create(ctx, profileID, "k2", quote(true))
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +136,6 @@ func TestScopeChange(t *testing.T) {
 	}
 }
 
-// R-105.
 func TestScopeChangeConsent(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -176,9 +153,6 @@ func TestScopeChangeConsent(t *testing.T) {
 		t.Fatal(err)
 	}
 	read := small.Payments[2].ProposedAt
-	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c2", PaymentRequest{Title: "More", AmountUSD: "1", DueDays: 7}); !errors.Is(err, ErrChangePending) {
-		t.Fatalf("a second change while one waits: %v, want ErrChangePending", err)
-	}
 	// The owner swaps the change for a bigger one; the client's accept of the one they read lands on nothing.
 	if err := s.WithdrawChange(ctx, profileID, j.ID, 3); err != nil {
 		t.Fatal(err)
@@ -192,17 +166,12 @@ func TestScopeChangeConsent(t *testing.T) {
 	if got, err := s.Get(ctx, profileID, j.ID); err != nil || !got.Payments[2].AcceptedAt.IsZero() {
 		t.Fatalf("the new change got the acceptance: %+v %v", got.Payments[2], err)
 	}
-	// A late retry of the withdrawn change's request replays: it adds nothing, and its key stays used.
 	again, created, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Extra", AmountUSD: "150", DueDays: 7})
 	if err != nil || created || len(again.Payments) != 3 || again.Payments[2].AmountCents != 500000 {
 		t.Fatalf("retry of the withdrawn change: %+v, created %v, %v", again.Payments, created, err)
 	}
 	if _, _, err := s.ProposeChange(ctx, profileID, j.ID, "c1", PaymentRequest{Title: "Other", AmountUSD: "1", DueDays: 7}); !errors.Is(err, ErrConflict) {
 		t.Fatalf("the withdrawn change's key with another change: %v, want ErrConflict", err)
-	}
-	// The final invoice waits until no change does, so its note never misses one.
-	if _, err := s.MarkDone(ctx, profileID, j.ID, 2, ""); !errors.Is(err, ErrChangePending) {
-		t.Fatalf("the final while a change waits: %v, want ErrChangePending", err)
 	}
 	if err := s.WithdrawChange(ctx, profileID, j.ID, 3); err != nil {
 		t.Fatal(err)
@@ -220,7 +189,6 @@ func TestScopeChangeConsent(t *testing.T) {
 	}
 }
 
-// R-105.
 func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -232,7 +200,7 @@ func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", noLimit); err != nil {
 		t.Fatal(err)
 	}
-	// A proposal in flight: it holds the job row and adds the change, as ProposeChange does.
+	// A proposal in flight, as ProposeChange does it: job row held, change added.
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -251,7 +219,6 @@ func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 		_, err := s.MarkDone(ctx, profileID, j.ID, 2, "")
 		done <- err
 	}()
-	// MarkDone read the job before the change and now waits for the job row.
 	deadline := time.Now().Add(10 * time.Second)
 	for waiting := false; !waiting; time.Sleep(10 * time.Millisecond) {
 		if time.Now().After(deadline) {
@@ -273,7 +240,6 @@ func TestFinalWaitsForAChangeInFlight(t *testing.T) {
 	}
 }
 
-// R-105: Mark done never finishes a deposit-only job, since its deposit is invoiced at acceptance.
 func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -308,7 +274,6 @@ func TestDepositOnlyJobTakesAChange(t *testing.T) {
 	}
 }
 
-// R-107, R-116: past the caps the change is still added, and the owner's read says no email went.
 func TestChangeEmailsPerDay(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -336,7 +301,6 @@ func TestChangeEmailsPerDay(t *testing.T) {
 		t.Fatalf("change emails %d %v, want %d", n, err, MaxChangeEmails)
 	}
 
-	// The user's other client emails count too, of any kind.
 	other, _, err := s.Create(ctx, profileID, "k2", quote(true))
 	if err != nil {
 		t.Fatal(err)

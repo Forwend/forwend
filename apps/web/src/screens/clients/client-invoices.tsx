@@ -8,18 +8,16 @@ import type { Client } from "@/features/clients/types/clients";
 import { useGetInvoicesInfiniteQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmount } from "@/features/invoices/components/invoice-amount";
 import { INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
-import {
-  formatDueDate,
-  formatDueDateShort,
-  invoiceNumber,
-  invoiceStatus,
-} from "@/features/invoices/lib/invoices";
+import { invoiceNumber, invoiceStatus } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary } from "@/features/invoices/types/invoices";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { apiSearch, SEARCH_PARAM, withParam } from "@/shared/hooks/use-list-filters";
+import { SEARCH_PARAM } from "@/shared/constants/search";
+import { formatDueDate, formatDueDateShort } from "@/shared/lib/dates";
+import { apiSearch } from "@/shared/lib/search";
+import { withParam } from "@/shared/lib/url-params";
 
 const invoiceHref = (inv: InvoiceSummary) => `${APP_ROUTES.invoices}/${inv.invoiceId}`;
 
@@ -28,8 +26,7 @@ export interface ClientInvoicesProps {
   client: Client;
 }
 
-// Invoices keep their own copy of the client, so the list is the Invoices search for the client's email (or its name
-// without one): the first page only, with the rest a link away.
+// Invoices keep their own copy of the client, so this searches them by its email or name.
 export function ClientInvoices({ profileId, client }: ClientInvoicesProps) {
   const search = apiSearch(client.email ?? client.name) ?? "";
   const list = useGetInvoicesInfiniteQuery({ profileId, q: search });

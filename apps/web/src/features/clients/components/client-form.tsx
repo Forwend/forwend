@@ -13,22 +13,21 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSaveClientMutation } from "@/features/clients/api/clients-api";
-import { CLIENT_KINDS, CLIENT_LIMITS } from "@/features/clients/constants/clients";
+import { CLIENT_FIELDS, CLIENT_KINDS, CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
-import {
-  clientCountryOptions,
-  clientKind,
-  invalidClientField,
-} from "@/features/clients/lib/clients";
+import { clientCountryOptions, clientKind } from "@/features/clients/lib/clients";
 import type {
   Client,
   ClientKind,
   ClientTextField,
   SavedClientBody,
 } from "@/features/clients/types/clients";
+import { namedField } from "@/shared/api/api-error";
 import { FieldGroup } from "@/shared/components/field-group";
-import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
+import { FormPreview, StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
 
 type Field = ClientTextField;
 
@@ -42,7 +41,7 @@ export interface ClientFormProps {
   client?: Client;
 }
 
-// R-86: a new client's id is made once, so a retried save after an error makes one client.
+// A new client's id is made once, so a retried save after an error makes one client.
 export function ClientForm({ profileId, client }: ClientFormProps) {
   const [save] = useSaveClientMutation();
   const toast = useToast();
@@ -63,11 +62,9 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
     const value = (name: Field) => String(new FormData(form).get(name) ?? "").trim();
     const shown: Partial<Record<Field, string>> = {};
     if (!value("name")) shown.name = COPY.errors.required;
-    if (value("email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value("email")))
-      shown.email = COPY.errors.email;
+    if (value("email") && !EMAIL_PATTERN.test(value("email"))) shown.email = COPY.errors.email;
     return shown;
   };
-  // The preview reads the free-text fields as they are typed; they stay uncontrolled.
   const [typed, setTyped] = useState(() => ({
     name: client?.name ?? "",
     email: client?.email ?? "",
@@ -117,9 +114,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       toast({ tone: TONES.success, title: COPY.saved(body.name) });
       router.push(`${APP_ROUTES.clients}/${clientId.current}`);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidClientField(message);
+      const field = namedField(error, CLIENT_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         flow.focusError(form);

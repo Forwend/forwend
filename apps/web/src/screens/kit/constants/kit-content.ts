@@ -1,18 +1,4 @@
 // Values mirror packages/design-tokens/src/{tokens,theme}.css.
-export const KIT_SECTIONS = [
-  "Logo",
-  "Colors",
-  "Typography",
-  "Spacing",
-  "Radius",
-  "Shadows",
-  "Motion",
-  "Icons",
-  "Animations",
-  "Components",
-  "Payment components",
-] as const;
-
 export const TYPE_SCALE = [
   { token: "text-6xl", size: "5.25rem", sample: "Get paid." },
   { token: "text-5xl", size: "4rem", sample: "Get paid in stablecoins." },

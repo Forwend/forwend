@@ -13,15 +13,12 @@ import (
 )
 
 type Service struct {
-	pool   *pgxpool.Pool
-	now    func() time.Time
-	quotes Quoter // nil: no fees (SetPricing)
-	plan   FeePlan
-	// crossChain is 1Click (D-123); nil leaves cross-chain off (SetCrossChain).
-	crossChain *intents.Client
-	// crossChainOff: SetCrossChain(nil) turned it off, so reads say the pay page can't offer it. A service that never
-	// set it, as the webhook sender's, reads the profile's switch alone.
-	crossChainOff bool
+	pool          *pgxpool.Pool
+	now           func() time.Time
+	quotes        Quoter // nil: no fees (SetPricing)
+	plan          FeePlan
+	crossChain    *intents.Client // nil: cross-chain off
+	crossChainOff bool            // SetCrossChain(nil); unset reads the profile's switch
 	dry           dryQuotes
 }
 
@@ -37,7 +34,7 @@ func (s *Service) currentTime() time.Time {
 }
 
 // invoiceColumns reads FROM invoicesCurrent: the main row's number and details with the current option's terms.
-const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
+var invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
 	(SELECT count(*) FROM invoices o WHERE o.id = invoices.id OR o.main_id = invoices.id), number, coalesce(title, ''), coalesce(note, ''),
 	coalesce(to_char(due_date, 'YYYY-MM-DD'), ''), coalesce(client_name, ''), coalesce(client_email, ''),
 	coalesce(client_address, ''), coalesce(sender_name, ''), issuer_name, coalesce(issuer_address, ''), coalesce(issuer_country, ''),
@@ -67,7 +64,7 @@ const invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
  (SELECT o.platform_fee::text FROM invoices o WHERE o.id = invoices.option_id),
  (SELECT o.fees_paid_by FROM invoices o WHERE o.id = invoices.option_id)`
 
-// The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
+// Aliased as invoices, so filters written for the table work on the view.
 const invoicesCurrent = "invoices_current invoices"
 
 func scanInvoice(row pgx.Row) (Invoice, error) {

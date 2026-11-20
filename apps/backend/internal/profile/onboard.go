@@ -9,8 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// First-run choices (R-50, D-53) and the profile kind each one needs. Receive and send is the personal profile every
-// user has; a payment integration runs on a merchant profile, so choosing it with business payments makes one.
+// First-run choices. A payment integration runs on a merchant profile, so choosing it makes one.
 const (
 	ReceiveAndSend         = "receive_and_send"
 	GetPaidByClients       = "get_paid_by_clients"
@@ -25,9 +24,7 @@ var choiceKinds = map[string]string{
 	BuildIntegration:       Merchant,
 }
 
-// Onboard runs the first-run choice once, in one transaction; later calls change nothing. No choices (skip) only
-// sets onboarded_at; nil choices are refused. names, by profile kind, names the profiles this call makes (R-50); a
-// name for a kind no choice makes is refused. onboarded reports that this call did it.
+// Onboard runs once; later calls change nothing. Empty choices skip, nil is refused; names is by profile kind.
 func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []string, names map[string]string) (
 	profiles []Profile, onboardedAt time.Time, onboarded bool, err error) {
 	if choices == nil {
@@ -52,7 +49,7 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		var userID string
 		var at *time.Time
-		// The row lock makes concurrent calls run one after another: only the first finds onboarded_at empty.
+		// The row lock serializes calls: only the first finds onboarded_at empty.
 		err := tx.QueryRow(ctx, "SELECT id, onboarded_at FROM users WHERE privy_user_id = $1 FOR UPDATE",
 			privyUserID).Scan(&userID, &at)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -81,7 +78,6 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 			if !kinds[kind] {
 				continue
 			}
-			// An empty name is no name; a merchant's first store takes the profile's name (migration 00058).
 			if _, err := tx.Exec(ctx, "INSERT INTO profiles (user_id, kind, name) VALUES ($1, $2, NULLIF($3, ''))",
 				userID, kind, names[kind]); err != nil {
 				return fmt.Errorf("insert %s profile: %w", kind, err)
@@ -96,8 +92,6 @@ func (s *Service) Onboard(ctx context.Context, privyUserID string, choices []str
 	if err != nil {
 		return nil, time.Time{}, false, err
 	}
-	// Signup makes every missing wallet and lists the profiles; a wallet Privy fails to make now is made by the next
-	// signup call, as for POST /v1/profiles.
 	if profiles, _, err = s.SignUp(ctx, privyUserID); err != nil {
 		return nil, time.Time{}, false, err
 	}

@@ -88,16 +88,7 @@ func run() error {
 		return err
 	}
 	users := privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, "")
-	// Confirm it's you codes (R-137) go out from the api at once; without a key none can be sent.
-	var sender email.Sender
-	if cfg.Email.ResendKey != "" {
-		r := email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
-		if cfg.Email.ResendURL != "" {
-			r.URL = cfg.Email.ResendURL // a test's fake Resend
-		}
-		sender = r
-	}
-	site := notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress, Support: cfg.Email.Support}
+	sender, site := notify.FromConfig(cfg.Email)
 	codes := reauth.NewService(pool, sender, func(code string) (email.Message, error) {
 		return notify.CodeMessage(site, code, reauth.CodeTTL)
 	}, cfg.CodesPerHour)
@@ -113,8 +104,7 @@ func run() error {
 	server := &http.Server{
 		Addr: cfg.Addr,
 		Handler: httpapi.NewMux(pool, verifier, users, balances.Read, balances.Client, codes, cfg.PublicWebURL,
-			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: quotes,
-				Plan: invoice.FeePlan{RateBps: cfg.Fees.RateBps, MinUSD: cfg.Fees.MinUSD, CapUSD: cfg.Fees.CapUSD}}, crossChain),
+			cfg.UserBurst, cfg.WebhookKey, cfg.TrustProxyHeader, invoice.Pricing{Quotes: quotes, Plan: invoice.FeePlan(cfg.Fees)}, crossChain),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

@@ -1,4 +1,4 @@
-// Package auth checks who calls the API: Privy access tokens verified locally, and access to a profile (R-18, R-138).
+// Package auth checks who calls the API: Privy access tokens verified locally, and access to a profile.
 package auth
 
 import (
@@ -18,47 +18,36 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// ErrUnauthorized means the token is missing, malformed, expired, or not signed by Privy for this app.
 var ErrUnauthorized = errors.New("invalid access token")
 
-// ErrForbidden means the user may not do this on the profile, or it does not exist.
+// ErrForbidden also covers a profile that does not exist.
 var ErrForbidden = errors.New("not allowed for this profile")
 
-// ErrReauthRequired means the action needs a fresh sign-in (D-49): a full sign-in, or a confirmed Forwend code for the
-// session, within FreshWindow.
 var ErrReauthRequired = errors.New("fresh sign-in required")
 
-// FreshWindow is how old a token may be for a money action or another change D-63 names, and how long a confirmed
-// Forwend code keeps its session fresh. Privy keeps a sign-in's token
-// about 55 minutes before a refresh changes its iat, so this can stay that long at most.
+// FreshWindow must stay under about 55 minutes: Privy keeps a sign-in's token that long before a refresh.
 const FreshWindow = 15 * time.Minute
 
-// Token is a verified access token: the user's Privy DID, when Privy issued it, and its Privy session (sid). A
-// refresh keeps the session, and so does a Privy sign-in made while signed in.
 type Token struct {
-	User     string
+	User     string // Privy DID
 	IssuedAt time.Time
-	Session  string
+	Session  string // Privy sid: a refresh or a sign-in while signed in keeps it
 }
 
-// IsFresh reports whether t comes from a sign-in, not a refresh: Privy sets an email or passkey account's
-// latest_verified_at (signIns, Unix seconds) to the iat of the token that sign-in issues, and a refresh leaves it (S-8).
+// IsFresh: Privy sets latest_verified_at (signIns) to the iat of a sign-in's token; a refresh leaves it.
 func IsFresh(t Token, now time.Time, signIns []int64) bool {
 	return now.Sub(t.IssuedAt) <= FreshWindow && slices.Contains(signIns, t.IssuedAt.Unix())
 }
 
-// RefetchInterval is the shortest time between two JWKS fetches caused by tokens with an unknown kid.
+// RefetchInterval is the shortest time between two JWKS fetches for unknown kids.
 const RefetchInterval = time.Minute
 
-// MaxKeyAge is how long a fetched key list is trusted: after it, the next token refetches it, so a key Privy
-// withdrew (rotated or revoked) stops verifying.
+// MaxKeyAge bounds how long a key Privy withdrew still verifies.
 const MaxKeyAge = time.Hour
 
-// KeyGrace is how much longer the last list still verifies while Privy can't be reached; past it, nothing does (R-30).
+// KeyGrace is how long the last list still verifies while Privy can't be reached; past it, nothing does.
 const KeyGrace = 10 * time.Minute
 
-// Verifier checks Privy access tokens with the app's published signing keys (R-29). It refetches them for an unknown
-// kid (at most once per RefetchInterval) or a list older than MaxKeyAge (R-30).
 type Verifier struct {
 	jwksURL string
 	client  *http.Client
@@ -67,8 +56,8 @@ type Verifier struct {
 
 	mu        sync.Mutex
 	keys      map[string]*ecdsa.PublicKey
-	fetchedAt time.Time // last successful fetch: the key list's age
-	triedAt   time.Time // last attempt: limits fetches to one per RefetchInterval
+	fetchedAt time.Time // last success
+	triedAt   time.Time // last attempt
 }
 
 func NewVerifier(ctx context.Context, appID, jwksURL string, client *http.Client) (*Verifier, error) {
@@ -94,8 +83,7 @@ func NewVerifier(ctx context.Context, appID, jwksURL string, client *http.Client
 	return v, nil
 }
 
-// accessClaims: Privy signs identity tokens for the app too; they have no sid and carry
-// linked_accounts, and must not work as bearer tokens.
+// Privy signs identity tokens for the app too (no sid, linked_accounts); they must not work as bearer tokens.
 type accessClaims struct {
 	jwt.RegisteredClaims
 	SessionID      string          `json:"sid"`
@@ -125,8 +113,7 @@ func (v *Verifier) Verify(ctx context.Context, token string) (Token, error) {
 	return t, nil
 }
 
-// keysFor: a token without a kid may match any published key. The lock is not held during the fetch, so known keys
-// keep working while Privy answers.
+// keysFor: a token without a kid may match any key. No lock during the fetch, so known keys keep working.
 func (v *Verifier) keysFor(ctx context.Context, kid string) (jwt.VerificationKeySet, error) {
 	v.mu.Lock()
 	cached, known := v.lookup(kid)

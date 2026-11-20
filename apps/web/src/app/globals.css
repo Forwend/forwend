@@ -3,8 +3,7 @@
 @import "@forwend/design-tokens/theme.css";
 @import "@forwend/design-tokens/base.css";
 
-/* The fallbacks of shared/config/fonts.ts: Arial, or where it is missing its metric twins Liberation Sans and Arimo,
-   sized to each face as next/font sizes Arial. */
+/* The fallbacks of shared/config/fonts.ts, sized to each face as next/font sizes Arial. */
 @font-face {
   font-family: "Hanken Grotesk Fallback";
   src: local("Arial"), local("Liberation Sans"), local("Arimo");
@@ -22,14 +21,14 @@
   size-adjust: 106.33%;
 }
 
-/* An embed sized to its content shows no scrollbar (R-168), so it keeps no room for one at its edge. */
+/* An embed sized to its content shows no scrollbar, so it keeps no room for one at its edge. */
 :root:has([data-embed]) {
   scrollbar-gutter: auto;
 }
 
 @source "../../../../packages/ui-web/src";
 
-/* A card at every width: on a phone it keeps the page's 1rem gutter and never touches the screen's edge. */
+/* A card at every width: on a phone it never touches the screen's edge. */
 @utility fw-panel {
   background-color: var(--fw-surface);
   border: 1px solid var(--fw-line);
@@ -49,8 +48,7 @@
   }
 }
 
-/* The app's and checkout's gutter. Its own variable: the public pages' --fw-page-gutter is wider on phones and
-   would leave every panel too narrow there. */
+/* Not --fw-page-gutter: that one is wider on phones and would leave panels too narrow. */
 @utility fw-safe-x {
   --fw-safe-gutter: 1rem;
   padding-left: max(var(--fw-safe-gutter), env(safe-area-inset-left));

@@ -4,7 +4,6 @@ import type { ActivityItem } from "@/features/activity/types/activity";
 import { API_DEPOSIT_STATUSES } from "@/shared/constants/payment-state";
 import { paymentStatusOf } from "@/shared/lib/payment-state";
 
-/** A deposit row has its own confirmation; an invoice row reads as its payment does everywhere else. */
 export function activityStatus(
   item: Pick<
     ActivityItem,

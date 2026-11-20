@@ -1,13 +1,28 @@
-import { chainName } from "@/shared/lib/chains";
-import { foldText } from "@/shared/lib/search";
+import { chainName, tokenKey } from "@/shared/lib/chains";
+import { matchesWords } from "@/shared/lib/search";
 import type { AssetGroup, AssetOption } from "@/shared/types/asset-selection";
 
-const key = (option: AssetOption) => `${option.chainId}:${option.token}`;
+export function toggled(
+  selected: ReadonlySet<string>,
+  keys: readonly string[],
+  on: boolean,
+): Set<string> {
+  const next = new Set(selected);
+  for (const key of keys) {
+    if (on) next.add(key);
+    else next.delete(key);
+  }
+  return next;
+}
 
-/** Every word must match the symbol, the network or the contract, so "usdc base" and "0x036c" both find one. */
-function matches(option: AssetOption, words: readonly string[]): boolean {
-  const text = foldText(`${option.symbol} ${chainName(option.chainId)} ${option.token}`);
-  return words.every((word) => text.includes(word));
+/** The tokens left out of selected, as the API's token refs. */
+export function offRefs(
+  tokens: readonly { chainId: number; token: string }[],
+  selected: ReadonlySet<string>,
+): { chainId: number; token: string }[] {
+  return tokens
+    .filter((t) => !selected.has(tokenKey(t)))
+    .map(({ chainId, token }) => ({ chainId, token }));
 }
 
 /** The options grouped by the allowlist's symbol, each group's networks by name; null `only` keeps every option. */
@@ -16,11 +31,11 @@ export function assetGroups(
   query: string,
   only: ReadonlySet<string> | null,
 ): AssetGroup[] {
-  const words = foldText(query).split(/\s+/).filter(Boolean);
   const groups = new Map<string, AssetOption[]>();
   for (const option of options) {
-    if (only && !only.has(key(option))) continue;
-    if (!matches(option, words)) continue;
+    if (only && !only.has(tokenKey(option))) continue;
+    if (!matchesWords(`${option.symbol} ${chainName(option.chainId)} ${option.token}`, query))
+      continue;
     const group = groups.get(option.symbol);
     if (group) group.push(option);
     else groups.set(option.symbol, [option]);
@@ -38,7 +53,7 @@ export function selectionSummary(
   options: readonly AssetOption[],
   selected: ReadonlySet<string>,
 ): string {
-  const chosen = options.filter((option) => selected.has(key(option)));
+  const chosen = options.filter((option) => selected.has(tokenKey(option)));
   if (chosen.length === 0) return "Nothing accepted yet.";
   const byAsset = new Map<string, number>();
   for (const option of chosen) byAsset.set(option.symbol, (byAsset.get(option.symbol) ?? 0) + 1);

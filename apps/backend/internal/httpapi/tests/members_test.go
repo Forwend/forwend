@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// R-138, D-93.
 func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -85,7 +84,6 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 	if mine := profilesOf(e.call(t, "GET", "/v1/me", alice, "", "")); mine[len(mine)-1]["role"] != "owner" {
 		t.Fatalf("the owner's profiles: %v", mine)
 	}
-	// A route a role has, and one it lacks: 200 against 403. The owner has them all.
 	for _, c := range []struct {
 		method, suffix, body string
 		allowed              []string
@@ -111,7 +109,6 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 		}
 	}
 
-	// Developer and Finance members reach only their stores.
 	for _, user := range []string{dev, fin} {
 		if got := storeList(user); !reflect.DeepEqual(got, []string{storeB}) {
 			t.Errorf("%s's stores: %v", user, got)
@@ -138,9 +135,9 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 			for _, item := range items {
 				ids = append(ids, item.(map[string]any)["invoiceId"].(string))
 			}
-			want := []string{held[1], inPro.body["invoiceId"].(string)} // newest first
+			want := []string{held[1], inPro.body["invoiceId"].(string)}
 			if list == "/owed" {
-				want = want[1:] // held money is the payer's, never owed (D-114)
+				want = want[1:] // held money is the payer's, never owed
 			}
 			if r.status != http.StatusOK || !reflect.DeepEqual(ids, want) {
 				t.Errorf("%s's %s: %d %v, want %v", user, list, r.status, ids, want)
@@ -162,7 +159,6 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 		t.Errorf("a Developer with no store sees invoices: %v", got)
 	}
 
-	// A Developer edits their store and no other, and can't make one; Finance changes no store.
 	body := `{"name": "Pro shop 2", "defaultExpiresIn": 3600}`
 	if r := e.call(t, "PUT", path("/stores/"+storeB), dev, "", body); r.status != http.StatusOK {
 		t.Errorf("a Developer saves their store: %d %v", r.status, r.body)
@@ -176,7 +172,6 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 	if r := e.call(t, "PUT", path("/stores/"+storeB), fin, "", body); r.status != http.StatusForbidden {
 		t.Errorf("Finance saves a store: %d %v", r.status, r.body)
 	}
-	// Only an Admin turns a store's tokens on or off (D-93).
 	e.enableArbUSDC(t)
 	off := `{"name": "Pro shop 2", "defaultExpiresIn": 3600, "tokensOff": [{"chainId": 421614, "token": "` + arbUSDC + `"}]}`
 	if r := e.call(t, "PUT", path("/stores/"+storeB), dev, "", off); r.status != http.StatusForbidden {
@@ -193,12 +188,10 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 		t.Errorf("a Developer saves a store, its tokens as they are: %d %v", r.status, r.body)
 	}
 
-	// Create takes their first store, and refuses another; with no store a member can't invoice.
 	made := e.post(t, dev, shop, "dev-1", `{`+fixed+`}`)
 	if made.status != http.StatusCreated || made.body["store"].(map[string]any)["storeId"] != storeB {
 		t.Errorf("a Developer's invoice: %d %v", made.status, made.body)
 	}
-	// A Revise can't reach another store's invoice either.
 	if r := e.post(t, dev, shop, "dev-2", `{`+fixed+`, "replaces": "`+inFirst.body["invoiceId"].(string)+`"}`); r.status !=
 		http.StatusNotFound || errorCode(r) != "invoice_not_found" {
 		t.Errorf("a Developer revises another store's invoice: %d %v", r.status, r.body)
@@ -217,7 +210,6 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 		}
 	}
 
-	// The database keeps members to merchant profiles, never the owner.
 	for _, profile := range []string{e.aliceProfile, shop} {
 		if _, err := e.pool.Exec(ctx, `INSERT INTO profile_members (profile_id, user_id, role)
 			SELECT $1, id, 'admin' FROM users WHERE privy_user_id = $2`, profile, map[string]string{
@@ -227,7 +219,6 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 	}
 }
 
-// R-138, D-61: a member's sign-up repairs only their own profiles' wallets, never makes one for a team's profile.
 func TestMemberSignUpMakesNoWalletForTheirTeamsProfile(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()

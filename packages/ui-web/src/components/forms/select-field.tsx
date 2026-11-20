@@ -2,9 +2,11 @@
 
 import * as RadixSelect from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
+import { useDialogContainer } from "../../hooks/use-dialog-container";
 import { cx } from "../../lib/cx";
 import { FIELD_CONTROL_CLASSES, OPTION_ROW_CLASSES } from "./field-classes";
+import { FieldMessage, fieldMessageId } from "./field-message";
 
 const PAGE_SCROLL_KEYS = [" ", "PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"];
 
@@ -12,13 +14,11 @@ export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
-  /** A small mark before the label, such as a token or network logo; the field shows the chosen one's too. */
   icon?: ReactNode;
 }
 
 export interface SelectFieldProps {
   label: string;
-  /** Keeps the label for screen readers only, for a select whose purpose is clear where it sits. */
   hideLabel?: boolean;
   options: readonly SelectOption[];
   hint?: string;
@@ -50,15 +50,9 @@ export function SelectField({
 }: SelectFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
-  const describedBy = error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined;
-  // Inside a modal <dialog> everything outside it is inert, so the list opens in the dialog, not at the end of <body>.
-  const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
-  const trigger = useCallback(
-    (el: HTMLButtonElement | null) => setDialog(el?.closest("dialog") ?? null),
-    [],
-  );
-  // The page keeps its scrollbar while the list is open (base.css), so it could still scroll by keys. The list has
-  // handled each key by the time it reaches window; what is left would only scroll the page behind it.
+  const describedBy = fieldMessageId(fieldId, error, hint);
+  const [dialog, trigger] = useDialogContainer();
+  // The page keeps its scrollbar while the list is open: keys the list left would scroll the page.
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -141,15 +135,7 @@ export function SelectField({
           </RadixSelect.Content>
         </RadixSelect.Portal>
       </RadixSelect.Root>
-      {error ? (
-        <p id={`${fieldId}-error`} role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${fieldId}-hint`} className="text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldMessage fieldId={fieldId} error={error} hint={hint} />
     </div>
   );
 }

@@ -8,11 +8,10 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// Fees are an option's fees, who pays them, and what the owner receives of the amount (R-228).
 type Fees struct {
 	NetworkFee  string `json:"networkFee"`
 	PlatformFee string `json:"platformFee"`
-	NetAmount   string `json:"netAmount"`
+	NetAmount   string `json:"netAmount"` // what the owner receives
 	FeesPaidBy  string `json:"feesPaidBy"`
 }
 

@@ -67,7 +67,6 @@ describe("historySeries", () => {
       price(84532, "0.9992"),
     ]);
     if (!series) throw new Error("no series");
-    // 3 × 0.9992 = 2.9976 USD: 299 cents, where three days cut apart would give 3 × 99 = 297.
     expect(seriesTotal(series)).toBe(299n);
     expect(series.values).toEqual([99n, 100n, 100n]);
     expect(runningTotal(series).values.at(-1)).toBe(299n);

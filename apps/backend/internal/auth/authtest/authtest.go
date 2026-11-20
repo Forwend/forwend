@@ -24,7 +24,6 @@ type Privy struct {
 	keys map[string]*ecdsa.PrivateKey
 }
 
-// NewPrivy publishes one key with kid "key-1".
 func NewPrivy(t *testing.T) *Privy {
 	t.Helper()
 	p := &Privy{keys: map[string]*ecdsa.PrivateKey{}}

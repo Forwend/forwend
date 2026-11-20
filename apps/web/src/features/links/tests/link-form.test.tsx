@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { ToastProvider } from "@forwend/ui-web";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, expect, it, vi } from "vitest";
 import { LinkForm } from "@/features/links/components/link-form";
@@ -8,16 +8,6 @@ import type { Link } from "@/features/links/types/links";
 import { makeStore } from "@/store/store";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
 
 afterEach(cleanup);
 
@@ -58,15 +48,18 @@ function edit(link: Link) {
   return bodies;
 }
 
-const save = async () => {
-  fireEvent.click(screen.getByRole("button", { name: "Save link" }));
-  await act(() => new Promise((resolve) => setTimeout(resolve, 30)));
+const save = async (bodies: unknown[]) => {
+  const button = screen.getByRole("button", { name: "Save link" });
+  const count = bodies.length + 1;
+  fireEvent.click(button);
+  await waitFor(() => expect(bodies).toHaveLength(count));
+  await waitFor(() => expect(button.getAttribute("aria-busy")).toBeNull());
 };
 
 it("preserves an exact payment-link expiry when only its title changes", async () => {
   const bodies = edit(LINK);
   fireEvent.change(screen.getByLabelText("Title"), { target: { value: "After" } });
-  await save();
+  await save(bodies);
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({ title: "After", endsAt: LINK.endsAt });
 });
@@ -76,18 +69,17 @@ it("saves a link that isn't reusable with a cap of one payment, and a reusable o
   const reusable = screen.getByRole("switch", { name: "Reusable" });
   expect(reusable.getAttribute("aria-checked")).toBe("true");
   fireEvent.click(reusable);
-  // Off, the limit slides shut: still mounted for the motion, but inert.
   expect(screen.getByLabelText("Payment limit").closest("[inert]")).not.toBeNull();
-  await save();
+  await save(bodies);
   fireEvent.click(reusable);
-  await save();
+  await save(bodies);
   expect(bodies.map((body) => body.maxPayments)).toEqual([1, 25]);
 });
 
 it("saves a reusable link with an empty limit as no limit", async () => {
   const bodies = edit(LINK);
   expect(screen.getByLabelText("Payment limit")).toHaveProperty("value", "");
-  await save();
+  await save(bodies);
   expect(bodies.map((body) => body.maxPayments)).toEqual([null]);
 });
 
@@ -98,18 +90,16 @@ it("opens a one-payment link with Reusable off", () => {
   );
 });
 
-// D-122: the link saves who pays its fees: the profile's choice to start, and the client once the switch is on.
 it("saves who pays the network fee", async () => {
   const bodies = edit(LINK);
-  await save();
+  await save(bodies);
   fireEvent.click(
     screen.getByRole("switch", { name: "Add the network fee to what your client pays" }),
   );
-  await save();
+  await save(bodies);
   expect(bodies.map((body) => body.feesPaidBy)).toEqual(["owner", "client"]);
 });
 
-// D-122: a link's invoices keep its store's tokens, so its fee quote does too.
 it("prices the fee with the link's store", async () => {
   const asked: URL[] = [];
   vi.stubGlobal(

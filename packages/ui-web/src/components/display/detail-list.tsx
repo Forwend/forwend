@@ -3,13 +3,11 @@ import { cx } from "../../lib/cx";
 
 export interface DetailRowProps {
   term: string;
-  /** A long value (a note, an address) goes under its term instead of beside it. */
   stacked?: boolean;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
 }
 
-/** One statement row: the term on the left, its value on the right, hairlines between rows. */
 export function DetailRow({ term, stacked = false, children, ref }: DetailRowProps) {
   return stacked ? (
     <div ref={ref} tabIndex={ref ? -1 : undefined} className="px-4 py-2.5 outline-none sm:px-5">

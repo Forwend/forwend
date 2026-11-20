@@ -1,25 +1,22 @@
 "use client";
 
 import { CalendarDays, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId } from "react";
 import { cx } from "../../../lib/cx";
 import { IconButton } from "../../buttons/icon-button";
 import { FIELD_CONTROL_CLASSES } from "../field-classes";
+import { FieldMessage, fieldMessageId } from "../field-message";
 import { Calendar, type CalendarProps } from "./calendar";
 import { toTime } from "./iso-date";
-import { usePopoverPosition } from "./use-popover-position";
+import { useDatePopover } from "./use-date-popover";
 
 export interface DatePickerProps extends Pick<CalendarProps, "min" | "max" | "isDisabled"> {
   label: string;
-  /** The chosen ISO date (YYYY-MM-DD), or null for none. */
   value: string | null;
   onChange: (iso: string | null) => void;
-  /** Sent with the form as an ISO date, empty when none is chosen. */
   name?: string;
-  placeholder?: string;
   hint?: string;
   error?: string;
-  /** Shows a button that clears the date; for optional fields. */
   clearLabel?: string;
   className?: string;
 }
@@ -31,7 +28,6 @@ export function DatePicker({
   value,
   onChange,
   name,
-  placeholder = "Choose a date",
   hint,
   error,
   clearLabel,
@@ -41,26 +37,7 @@ export function DatePicker({
   className,
 }: DatePickerProps) {
   const id = useId();
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const popover = useRef<HTMLDivElement>(null);
-  const position = usePopoverPosition(trigger, popover, open);
-  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
-
-  useEffect(() => {
-    if (!open) return;
-    const outside = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", outside);
-    return () => document.removeEventListener("pointerdown", outside);
-  }, [open]);
-
-  const close = () => {
-    setOpen(false);
-    trigger.current?.focus();
-  };
+  const { open, toggle, close, onKeyDown, root, trigger, popover, position } = useDatePopover();
 
   return (
     <div className={cx("flex flex-col gap-1.5", className)}>
@@ -68,18 +45,7 @@ export function DatePicker({
         {label}
       </span>
       {/* biome-ignore lint/a11y/noStaticElementInteractions: catches Escape from the trigger and the calendar inside */}
-      <div
-        ref={root}
-        className="relative"
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && open) {
-            // Only the calendar closes: a native dialog around it would close on Escape's default action too.
-            event.preventDefault();
-            event.stopPropagation(); // inside a sheet, Escape closes the calendar first
-            close();
-          }
-        }}
-      >
+      <div ref={root} className="relative" onKeyDown={onKeyDown}>
         <div className="flex items-center gap-2">
           <button
             ref={trigger}
@@ -88,15 +54,15 @@ export function DatePicker({
             aria-expanded={open}
             aria-labelledby={`${id}-label ${id}-value`}
             aria-invalid={error ? true : undefined}
-            aria-describedby={describedBy}
-            onClick={() => setOpen((o) => !o)}
+            aria-describedby={fieldMessageId(id, error, hint)}
+            onClick={toggle}
             className={cx(
               FIELD_CONTROL_CLASSES,
               "flex items-center justify-between gap-3 text-left",
             )}
           >
             <span id={`${id}-value`} className={value ? "text-ink" : "text-subtle"}>
-              {value ? SHOWN.format(toTime(value)) : placeholder}
+              {value ? SHOWN.format(toTime(value)) : "Choose a date"}
             </span>
             <CalendarDays aria-hidden className="size-[var(--fw-icon-md)] shrink-0 text-muted" />
           </button>
@@ -130,15 +96,7 @@ export function DatePicker({
         ) : null}
       </div>
       {name ? <input type="hidden" name={name} value={value ?? ""} /> : null}
-      {error ? (
-        <p id={`${id}-error`} role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-hint`} className="text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldMessage fieldId={id} error={error} hint={hint} />
     </div>
   );
 }

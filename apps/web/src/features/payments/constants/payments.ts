@@ -1,6 +1,5 @@
 import { FileText, HandCoins, Link2, ShoppingCart } from "lucide-react";
 
-/** What made a payment: an invoice, a sale on Checkout, a request or a payment link. */
 export const PAYMENT_SOURCE = {
   invoice: "invoice",
   checkout: "checkout",
@@ -13,12 +12,21 @@ export const PAYMENT_SOURCES = [
   PAYMENT_SOURCE.request,
   PAYMENT_SOURCE.paymentLink,
 ] as const;
+/** The Payments page's filters in its URL; all but view are the API's query names. */
+export const PAYMENT_PARAMS = {
+  view: "view",
+  state: "state",
+  source: "source",
+  storeId: "storeId",
+  linkId: "linkId",
+  settlementStatus: "settlementStatus",
+} as const;
+
 export const PAYMENT_VIEWS = {
   all: "all",
   attention: "attention",
   reconciliation: "reconciliation",
 } as const;
-/** Each source's icon: the table, the overview and the Source filter show the same one. */
 export const SOURCE_ICONS = {
   invoice: FileText,
   checkout: ShoppingCart,
@@ -42,7 +50,23 @@ export const PAYMENT_PROBLEMS = {
   settlement_refused: "Wallet transfer refused",
   webhook_delivery: "Webhook delivery failed or paused",
 } as const;
-/** Why money is held for the payer, by the API's reason (D-26): each follows an amount, as "0.50 USDC over the amount". */
+export const PROBLEM_CODES = {
+  heldFunds: "held_funds",
+  partialPayment: "partial_payment",
+  verificationPending: "verification_pending",
+  outflowUnreconciled: "outflow_unreconciled",
+  settlementDelayed: "settlement_delayed",
+  settlementRefused: "settlement_refused",
+  webhookDelivery: "webhook_delivery",
+} as const satisfies Record<string, keyof typeof PAYMENT_PROBLEMS>;
+export const PROBLEM_ACTIONS = {
+  wait: "wait",
+  reviewWebhooks: "review_webhooks",
+  askAdmin: "ask_admin",
+} as const;
+export const SETTLEMENT_STATES = { sent: "sent", refused: "refused" } as const;
+export const SETTLEMENT_HOLDS = { unresolved: "unresolved", cap: "cap" } as const;
+/** Each follows an amount: "0.50 USDC over the amount". */
 export const HELD_REASONS = {
   overpaid: "over the amount",
   late: "paid after the checkout closed",
@@ -51,7 +75,7 @@ export const HELD_REASONS = {
   other_option: "paid with an option the customer didn't choose",
 } as const;
 export const PAYMENT_PAGE_SIZE = 25;
-/** The figures of a payment page's sum (R-248), in the order it reads: what came in, what was taken, what is left. */
+/** In the order the sum reads: what came in, what was taken, what is left. */
 export const SUM_CELLS = {
   requested: "requested",
   paid: "paid",
@@ -62,7 +86,6 @@ export const SUM_CELLS = {
   platformFee: "platformFee",
   wallet: "wallet",
 } as const;
-/** The rows of How the money moved (R-248). */
 export const JOURNEY_KINDS = {
   created: "created",
   origin: "origin",

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/search"
 	"github.com/jackc/pgx/v5"
 )
@@ -18,8 +19,7 @@ const (
 // Paid includes wallet-settled payments; the wallet filter is a narrower view.
 var StatusFilters = []string{"open", "confirming", "paid", "settled", "expired", "canceled"}
 
-// ClosedSQL: every reader shows the checkout expired before the ledger does (R-77); detected may be money after it.
-// Paid on time but awaiting the finalized balance check is not closed. Before an option is chosen, every option counts (R-119).
+// ClosedSQL: readers show the checkout expired before the ledger does; paid but unconfirmed is not closed.
 const ClosedSQL = `((invoices.settlement_status = 'settled' AND invoices.payment_status <> 'paid') OR (invoices.payment_status IN ('open', 'detected', 'partially_paid')
 	AND NOT EXISTS (SELECT 1 FROM invoices open_option
         WHERE (open_option.id = invoices.option_id OR invoices.chosen_id IS NULL AND open_option.main_id = invoices.id)
@@ -36,19 +36,16 @@ const StatusFilterSQL = `CASE WHEN invoices.settlement_status = 'settled' AND in
 	WHEN invoices.payment_status IN ('expired', 'expired_partially_paid') OR ` + ClosedSQL + ` THEN 'expired'
 	ELSE 'open' END`
 
-// ConfirmingSQL also holds once the ledger credited the whole amount but the finalized balance check is pending: the
-// status stays detected or partially_paid until then (ledger.status).
-const ConfirmingSQL = `(EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices candidate ON candidate.id=t.invoice_id
+// ConfirmingSQL also holds once the ledger owes the whole amount but the finalized balance check is pending.
+var ConfirmingSQL = `(EXISTS (SELECT 1 FROM chain_transfers t JOIN invoices candidate ON candidate.id=t.invoice_id
  WHERE (candidate.id=invoices.option_id OR invoices.chosen_id IS NULL AND candidate.main_id=invoices.id)
  AND (t.status='detected' OR t.status='confirmed' AND NOT t.booked) AND t.block_time<=candidate.closes_at)
- OR invoices.payment_status IN ('detected','partially_paid') AND (SELECT -coalesce(sum(e.amount),0) FROM ledger_transactions l
- JOIN ledger_entries e ON e.transaction_id=l.id WHERE l.invoice_id=invoices.option_id AND e.account='recipient_payable') >= invoices.amount)`
+ OR invoices.payment_status IN ('detected','partially_paid') AND ` + ledger.OwedSQL("invoices.option_id") + ` >= invoices.amount)`
 
-const ListStatusFilterSQL = `CASE WHEN invoices.payment_status IN ('open','detected','partially_paid') AND NOT ` + ClosedSQL + `
+var ListStatusFilterSQL = `CASE WHEN invoices.payment_status IN ('open','detected','partially_paid') AND NOT ` + ClosedSQL + `
  AND (invoices.payment_status = 'detected' OR ` + ConfirmingSQL + `) THEN 'confirming' ELSE ` + StatusFilterSQL + ` END`
 
-// StatusColumnsSQL is what each list status needs of the raw status columns. A filter tests it before the costly CASE,
-// so the rows that can't match skip it.
+// StatusColumnsSQL is what each list status needs of the raw columns, tested before the costly CASE.
 var StatusColumnsSQL = map[string]string{
 	"open":       "invoices.payment_status IN ('open', 'detected', 'partially_paid')",
 	"confirming": "invoices.payment_status IN ('open', 'detected', 'partially_paid')",
@@ -58,20 +55,17 @@ var StatusColumnsSQL = map[string]string{
 	"canceled":   "invoices.payment_status = 'canceled'",
 }
 
-// Must stay the expression of the invoices_search trigram index (migration 00032) on the main row's columns.
+// Must stay the expression of the invoices_search trigram index.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
 	|| ' ' || coalesce(note, '') || ' ' || coalesce(client_name, '') || ' ' || coalesce(client_email, '') || ' '
 	|| main_receive_address || ' ' || coalesce(reference, ''))`
 
-// Page is one page of invoices without deposits; NextCursor is "" on the last one.
 type Page struct {
 	Items      []Invoice
-	NextCursor string
+	NextCursor string // "" on the last page
 }
 
-// Newest first by number, which only grows. The caller must check the user's access to the profile.
-// stores, when not nil, keeps only those stores' invoices: a Developer's or Finance member's (R-138). live, when not
-// nil, keeps only that mode's: a key's (D-87).
+// List is newest first by number; non-nil stores and live narrow it. The caller checks profile access.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status, state string, q search.Query,
 	stores []string, live *bool) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
@@ -93,14 +87,13 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	}
 	// Each condition is added only when used: a cached generic plan of "$n IS NULL OR ..." never uses the index.
 	args := []any{profileID, before, limit + 1}
-	// A link invoice reaches the owner with its number, at its first deposit (R-141).
 	where := "profile_id = $1 AND number IS NOT NULL AND ($2::bigint IS NULL OR number < $2)"
 	if status != "" {
 		args = append(args, status)
 		where += fmt.Sprintf(" AND %s AND ($%d = 'paid' AND invoices.payment_status = 'paid' OR %s = $%d)",
 			StatusColumnsSQL[status], len(args), ListStatusFilterSQL, len(args))
 	}
-	// D-114: the same states the Payments list filters by, so both lists name a payment alike.
+	// The same states the Payments list filters by, so both lists name a payment alike.
 	if state != "" {
 		args = append(args, state)
 		where += fmt.Sprintf(" AND %s AND %s = $%d", PaymentStateColumnsSQL[state], PaymentStateSQL, len(args))

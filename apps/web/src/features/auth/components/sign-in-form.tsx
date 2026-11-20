@@ -4,18 +4,12 @@ import { BrandIcon, Button, CodeInput, Form, TextField } from "@forwend/ui-web";
 import { useLoginWithEmail, useLoginWithOAuth, useLoginWithPasskey } from "@privy-io/react-auth";
 import { Fingerprint } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import {
-  CODE_LENGTH,
-  GOOGLE_PROVIDER,
-  SIGN_IN_COPY,
-  SIGN_IN_STEPS,
-} from "@/features/auth/constants/sign-in";
+import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
+import { CODE_LENGTH, GOOGLE_PROVIDER, SIGN_IN_STEPS } from "@/features/auth/constants/sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
 import type { SignInStep } from "@/features/auth/types/sign-in";
+import { EMAIL_PATTERN } from "@/shared/constants/email";
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// The page moves on to /app once Privy reports the user signed in.
 export function SignInForm() {
   const { sendCode, loginWithCode } = useLoginWithEmail();
   const { loginWithPasskey } = useLoginWithPasskey();
@@ -26,13 +20,12 @@ export function SignInForm() {
   const [fieldError, setFieldError] = useState("");
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
-  // Google answers after the redirect, so read its result from state; onError fires for every method.
+  // Google answers after the redirect, so its result is read from state.
   const { initOAuth, loading: googleBusy, state: google } = useLoginWithOAuth();
   useEffect(() => {
     if (google.status === "error") setFormError(SIGN_IN_COPY.errors.google);
   }, [google.status]);
 
-  // A full code signs in once however it arrived; the Sign in button retries the same code.
   const tryCode = useCallback(
     (full: string) => {
       setBusy("code");
@@ -67,7 +60,7 @@ export function SignInForm() {
 
   const submitEmail = (event: FormEvent) => {
     event.preventDefault();
-    if (!EMAIL.test(email.trim())) return setFieldError(SIGN_IN_COPY.errors.email);
+    if (!EMAIL_PATTERN.test(email.trim())) return setFieldError(SIGN_IN_COPY.errors.email);
     setFieldError("");
     void send(false);
   };
@@ -86,13 +79,12 @@ export function SignInForm() {
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink">
             {SIGN_IN_COPY.codeTitle}
           </h1>
-          {/* The address on its own line, so a long one never breaks in the middle of the sentence. */}
           <p className="text-muted">
             {SIGN_IN_COPY.codeSentTo}
             <span className="block font-medium break-words text-ink">{email.trim()}</span>
           </p>
         </div>
-        {/* Stays enabled while the code is checked: disabling it would drop keyboard focus. */}
+        {/* Stays enabled while checked: disabling it would drop keyboard focus. */}
         <CodeInput
           label={SIGN_IN_COPY.codeLabel}
           length={CODE_LENGTH}
@@ -108,7 +100,6 @@ export function SignInForm() {
         <Button size="lg" type="submit" loading={busy === "code"} disabled={busy === "resend"}>
           {SIGN_IN_COPY.signIn}
         </Button>
-        {/* Sign in is the one action; the ways around a missing code stay quiet under it. */}
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           <Button
             type="button"
@@ -211,7 +202,7 @@ export function SignInForm() {
   );
 }
 
-// Always rendered so screen readers announce a change; one reserved line, so keep each message short.
+// Always rendered, so screen readers announce each change.
 function Messages({ error, notice }: { error: string; notice: string }) {
   return (
     <div className="min-h-5 text-sm">

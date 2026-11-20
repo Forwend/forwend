@@ -1,15 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MfaProvider, useMfaStep } from "@/features/auth/components/mfa-step";
-
-// jsdom lacks the modal methods; the fallback dialog opens with them.
-const proto = HTMLDialogElement.prototype as HTMLDialogElement & Record<string, unknown>;
-if (typeof proto.showModal !== "function") {
-  proto.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-}
+import { MfaProvider } from "@/features/auth/components/mfa-provider";
+import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 
 const OPTIONS = { challenge: "c" };
 const privy = vi.hoisted(() => ({
@@ -33,7 +26,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// A form that signs: the ask shows where its buttons were.
 function Form() {
   const mfa = useMfaStep();
   return (
@@ -46,7 +38,7 @@ function Form() {
   );
 }
 
-describe("Privy's two-step ask in Forwend's own step (R-219)", () => {
+describe("Privy's two-step ask in Forwend's own step", () => {
   it("shows in the form that started the action, and Cancel ends that action", () => {
     render(
       <MfaProvider>
@@ -62,7 +54,6 @@ describe("Privy's two-step ask in Forwend's own step (R-219)", () => {
     expect(privy.cancel).toHaveBeenCalledTimes(1);
   });
 
-  // The send sheet can close while its setup waits for two-step: the ask ends with it, and the next one shows.
   it("ends the ask when its form goes away, and shows the next one elsewhere", () => {
     const view = render(
       <MfaProvider>

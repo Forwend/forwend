@@ -89,7 +89,6 @@ func TestReceiveAddressIsUniquePerChain(t *testing.T) {
 	conn, profile := moneyDB(t)
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
 	wantCode(t, insertInvoice(conn, profile, 2, hex20(100), "key-2", "5000000"), codeUnique, "same receive address")
-	// A checksummed (mixed-case) copy would dodge the unique index, so only lowercase is stored.
 	must(t, insertInvoice(conn, profile, 3, hex20(0xabcdef), "key-3", "5000000"))
 	mixed := "0x" + strings.ToUpper(hex20(0xabcdef)[2:])
 	wantCode(t, insertInvoice(conn, profile, 4, mixed, "key-4", "5000000"), codeCheck, "mixed-case address")
@@ -114,7 +113,6 @@ func TestAmountFitsUint256(t *testing.T) {
 	wantCode(t, insertInvoice(conn, profile, 3, hex20(102), "key-3", "0"), codeCheck, "amount 0")
 }
 
-// R-226: the fees are contract terms, so they never change and never pass the contract's tenth of the amount.
 func TestInvoiceFeesAreFixedTermsWithinATenth(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -216,7 +214,7 @@ func TestWebhookEventsAreAppendOnly(t *testing.T) {
 	for _, stmt := range []string{
 		"UPDATE webhook_events SET livemode = true",
 		"DELETE FROM webhook_events",
-		"TRUNCATE webhook_events CASCADE", // the tables that reference it would refuse a plain one first
+		"TRUNCATE webhook_events CASCADE",
 	} {
 		_, err := conn.Exec(ctx, stmt)
 		wantCode(t, err, codeRaise, stmt)
@@ -227,7 +225,6 @@ func TestWebhookEventsAreAppendOnly(t *testing.T) {
 	wantCode(t, err, codeRaise, "DELETE in replica mode")
 }
 
-// R-149: only a test event lacks a history row, invoice and sequence; an invoice event has all three.
 func TestWebhookEventsNameTheirInvoice(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -258,7 +255,6 @@ func TestLedgerTransactionsBalance(t *testing.T) {
 	_, err = conn.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", transfer)
 	must(t, err)
 
-	// Unbalanced, but checked only at commit.
 	tx, err := conn.Begin(ctx)
 	must(t, err)
 	_, err = tx.Exec(ctx, `
@@ -285,7 +281,6 @@ func TestLedgerTransactionNeedsEntries(t *testing.T) {
 	must(t, err)
 	_, err = conn.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", transfer)
 	must(t, err)
-	// An empty transaction would take the transfer's only deposit slot.
 	_, err = conn.Exec(ctx, "INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id) VALUES ($1, 'deposit', $2)",
 		hex32(1), transfer)
 	wantCode(t, err, codeRaise, "ledger transaction without entries")
@@ -317,15 +312,12 @@ func TestBookedTransferCannotChange(t *testing.T) {
 	wantCode(t, err, codeRaise, "inserting a transfer already marked booked")
 	_, err = conn.Exec(ctx, book, hex32(1), transfer)
 	must(t, err)
-	// Marking it reorged would let a re-mined copy be booked again: the money counted twice.
 	_, err = conn.Exec(ctx, "UPDATE chain_transfers SET status = 'reorged' WHERE id = $1", transfer)
 	wantCode(t, err, codeRaise, "reorging a booked transfer")
 	_, err = conn.Exec(ctx, "UPDATE chain_transfers SET status = 'reorged', booked = false WHERE id = $1", transfer)
 	wantCode(t, err, codeRaise, "unbooking and reorging a booked transfer")
 }
 
-// A reorg update racing a booking waits for it, then fails: in READ COMMITTED on the booked row, in REPEATABLE READ
-// on the concurrent write.
 func TestBookingAndReorgDoNotRace(t *testing.T) {
 	for _, level := range []pgx.TxIsoLevel{pgx.ReadCommitted, pgx.RepeatableRead} {
 		t.Run(string(level), func(t *testing.T) { bookingRacesReorg(t, level) })
@@ -373,7 +365,7 @@ func bookingRacesReorg(t *testing.T, level pgx.TxIsoLevel) {
 	must(t, booking.Commit(ctx))
 	want := codeRaise
 	if level == pgx.RepeatableRead {
-		want = "40001" // serialization_failure
+		want = "40001"
 	}
 	wantCode(t, <-reorg, want, "reorg after a concurrent booking")
 }
@@ -415,7 +407,6 @@ func TestInvoicePaidInSeveralTransfers(t *testing.T) {
 	}
 }
 
-// R-21.
 func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -448,7 +439,6 @@ func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 	}
 }
 
-// D-50: a failed insert uses no number.
 func TestInvoiceNumbers(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -474,7 +464,6 @@ func TestInvoiceNumbers(t *testing.T) {
 		_, err := conn.Exec(ctx, "UPDATE invoices SET "+column+" WHERE id = $1", hex32(1))
 		wantCode(t, err, codeRaise, column)
 	}
-	// R-127: the owner may change these at any time; R-128: these only while it is open with no money seen.
 	_, err := conn.Exec(ctx, `UPDATE invoices SET client_email = 'bob@example.com', return_url = 'https://alice.example',
 		memo = 'Split in two' WHERE id = $1`, hex32(1))
 	must(t, err)
@@ -491,7 +480,6 @@ func TestInvoiceNumbers(t *testing.T) {
 	}
 }
 
-// R-56, D-76.
 func TestInvoiceOptions(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
@@ -531,7 +519,6 @@ func TestInvoiceOptions(t *testing.T) {
 	wantCode(t, err, codeRaise, "leaving the group")
 	must(t, choose(3, 3))
 
-	// F144.
 	must(t, insertInvoice(conn, profile, 5, hex20(105), "key-5", "5000000"))
 	_, err = insertTransfer(conn, 5, hex20(105), 50, 50, 0)
 	must(t, err)
@@ -550,7 +537,6 @@ func TestInvoiceOptions(t *testing.T) {
 	must(t, err)
 	wantCode(t, opt(8, 7, "key-7"), codeRaise, "an option for an expired invoice")
 
-	// The view shows each invoice once, with the chosen option's terms.
 	var current string
 	var count int
 	must(t, conn.QueryRow(ctx, `SELECT (SELECT option_id FROM invoices_current WHERE id = $1),
@@ -560,7 +546,6 @@ func TestInvoiceOptions(t *testing.T) {
 	}
 }
 
-// R-130: reopen rows come once, between the first expiry and a second; the status goes back only with the close.
 func TestReopenRules(t *testing.T) {
 	conn, profile := moneyDB(t)
 	ctx := context.Background()

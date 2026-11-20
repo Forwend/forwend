@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exactDigits, usdCents, usdFromCents } from "@/shared/lib/money";
+import { amountText, exactAmount, usdCents, usdFromCents } from "@/shared/lib/money";
 
 describe("USD cents", () => {
   it("reads a USD decimal as exact cents and writes cents back with 2 decimals", () => {
@@ -11,11 +11,13 @@ describe("USD cents", () => {
   });
 });
 
-describe("exactDigits", () => {
+describe("exact amounts", () => {
   it("shows every decimal an amount has, and at least 2", () => {
-    expect(exactDigits(1n, 6)).toBe(6);
-    expect(exactDigits(1_234_560_000n, 6)).toBe(2);
-    expect(exactDigits(1_123_000n, 6)).toBe(3);
-    expect(exactDigits(5n, 0)).toBe(0);
+    expect(exactAmount(1n, 6)).toBe("0.000001");
+    expect(exactAmount(1_234_560_000n, 6)).toBe("1,234.56");
+    expect(exactAmount(1_123_000n, 6)).toBe("1.123");
+    expect(exactAmount(1_200_000n, 6)).toBe("1.20");
+    expect(exactAmount(5n, 0)).toBe("5");
+    expect(amountText(1_200_000n, { decimals: 6, symbol: "USDC" })).toBe("1.20 USDC");
   });
 });

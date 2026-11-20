@@ -8,7 +8,7 @@ function env(name: string): string {
 
 let client: Forwend | undefined;
 
-/** The API client. Its key stays on this server, never in a page. */
+/** The API client; its key stays on this server. */
 export function forwend(): Forwend {
   client ??= new Forwend({
     apiKey: env("FORWEND_API_KEY"),

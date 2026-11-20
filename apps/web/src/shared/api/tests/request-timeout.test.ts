@@ -2,17 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { balancesApi } from "@/features/balances/api/balances-api";
 import { makeStore } from "@/store/store";
 
-// The app calls the API same-origin ("/api/…"); Node's Request needs an absolute URL.
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();

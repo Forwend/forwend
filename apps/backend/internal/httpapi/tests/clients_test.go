@@ -16,7 +16,6 @@ const (
 	clientB = "22222222-2222-4222-8222-222222222222"
 )
 
-// R-86.
 func TestClients(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -125,7 +124,7 @@ func TestClients(t *testing.T) {
 		t.Fatalf("DELETE with a malformed id: %d %v", r.status, r.body)
 	}
 
-	// The cap is 1000 clients; concurrent saves are in TestSaveClientCapCountsASaveInFlight.
+	// 999 fillers and anna make 1000, the cap.
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO clients (profile_id, name)
 		SELECT $1, 'filler ' || n FROM generate_series(1, 999) n`, e.aliceProfile); err != nil {
 		t.Fatal(err)
@@ -138,7 +137,6 @@ func TestClients(t *testing.T) {
 	}
 }
 
-// R-177: the client page reads one client by id; another profile's, an unknown or a malformed id is not found.
 func TestClientReadByID(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -164,12 +162,11 @@ func TestClientReadByID(t *testing.T) {
 	}
 }
 
-// R-177: the clients list reads one page at a time by name, and q searches the name, the email and the tax ID.
 func TestClientPages(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	path := "/v1/profiles/" + e.aliceProfile + "/clients"
-	// Names that sort by letter case and accents, and two with the same name: the id breaks the tie.
+	// Case, accents and a shared name: the id breaks the tie.
 	for i, name := range []string{"bob", "Alice", "Émile", "alice", "Zoë", "Bob"} {
 		id := fmt.Sprintf("aaaaaaaa-0000-4000-8000-%012d", i+1)
 		body := fmt.Sprintf(`{"name": %q, "email": "client%d@example.com", "taxId": "DE00%d"}`, name, i+1, i+1)
@@ -219,7 +216,7 @@ func TestClientPages(t *testing.T) {
 	for query, status := range map[string]int{"limit=0": http.StatusUnprocessableEntity,
 		"limit=101": http.StatusUnprocessableEntity, "limit=x": http.StatusBadRequest,
 		"cursor=bm90LWEtY3Vyc29y": http.StatusUnprocessableEntity, "q=%20": http.StatusUnprocessableEntity,
-		// An id, then a name that isn't UTF-8: refused, never handed to Postgres.
+		// A cursor whose name isn't UTF-8 never reaches Postgres.
 		"cursor=" + base64.RawURLEncoding.EncodeToString([]byte("aaaaaaaa-0000-4000-8000-000000000001|\xff")): http.StatusUnprocessableEntity} {
 		if r := e.call(t, "GET", path+"?"+query, alice, "", ""); r.status != status {
 			t.Errorf("%s: %d %v, want %d", query, r.status, r.body, status)

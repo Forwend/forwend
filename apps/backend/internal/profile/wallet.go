@@ -7,8 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ensureWallet: concurrent calls get the same wallet from Privy (by external_id), and the profile row lock lets one
-// store it. Any other conflict, such as a wallet already stored for another profile, is an error.
+// Concurrent calls get the same wallet from Privy (by external_id); the profile row lock lets one store it.
 func (s *Service) ensureWallet(ctx context.Context, privyUserID, profileID string) error {
 	has, err := s.hasWallet(ctx, s.pool, profileID)
 	if err != nil || has {
@@ -33,9 +32,7 @@ func (s *Service) ensureWallet(ctx context.Context, privyUserID, profileID strin
 	})
 }
 
-func (s *Service) hasWallet(ctx context.Context, db interface {
-	QueryRow(context.Context, string, ...any) pgx.Row
-}, profileID string) (bool, error) {
+func (s *Service) hasWallet(ctx context.Context, db rowQuerier, profileID string) (bool, error) {
 	var has bool
 	if err := db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM profile_wallets WHERE profile_id = $1 AND chain_family = 'evm')",
 		profileID).Scan(&has); err != nil {

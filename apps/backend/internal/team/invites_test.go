@@ -10,8 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
-// R-139, D-93: the inviter is checked again under the profile lock, by the permission map, so a member who lost the
-// team permission after the request's access check sends no invite.
 func TestInviteChecksTheInviterAgain(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.Migrated(t, database.Migrate)

@@ -11,7 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
-// R-127.
 func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -47,7 +46,6 @@ func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
 			t.Fatalf("%.60s: %d %v, want %d", body, r.status, r.body, status)
 		}
 	}
-	// Another profile's invoice, also the same user's, is not found; Bob may not use Alice's profile.
 	if r := put(e.walletless, edit); r.status != http.StatusNotFound || errorCode(r) != "invoice_not_found" {
 		t.Fatalf("Alice's other profile: %d %v, want 404", r.status, r.body)
 	}
@@ -70,7 +68,6 @@ func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
 	}
 }
 
-// R-128.
 func TestOwnerEditsReferenceNoteAndDueDateBeforePayment(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -104,7 +101,6 @@ func TestOwnerEditsReferenceNoteAndDueDateBeforePayment(t *testing.T) {
 		}
 	}
 
-	// Once money is seen: these are locked, here and in the database; the memo still changes.
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
 		SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1, 1, $4, receive_address, 1000000, 'detected' FROM invoices WHERE id = $2`,

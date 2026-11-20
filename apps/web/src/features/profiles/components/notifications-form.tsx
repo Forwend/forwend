@@ -10,7 +10,6 @@ export interface NotificationsFormProps {
   saved: Notifications;
 }
 
-// The address is the login email and is never typed here (R-80).
 export function NotificationsForm({ profileId, saved }: NotificationsFormProps) {
   const [save, { isLoading, isError }] = useSaveNotificationsMutation();
   const toast = useToast();
@@ -19,7 +18,7 @@ export function NotificationsForm({ profileId, saved }: NotificationsFormProps) 
       await save({ profileId, email }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved(email) });
     } catch {
-      // Said below; the switch stays as saved.
+      // Shown below.
     }
   };
   return (

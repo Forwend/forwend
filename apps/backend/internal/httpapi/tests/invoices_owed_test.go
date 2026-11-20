@@ -12,7 +12,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// deposit books a confirmed transfer of amount to the invoice id; the ledger reads 2.5 USDC on chain.
+// deposit books a confirmed transfer of amount; the ledger reads 2.5 USDC on chain.
 func (e invoiceEnv) deposit(t *testing.T, id, amount string) {
 	t.Helper()
 	e.exec(t, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
@@ -30,7 +30,6 @@ func (e invoiceEnv) deposit(t *testing.T, id, amount string) {
 	}
 }
 
-// R-95.
 func TestOwedToYou(t *testing.T) {
 	e := invoiceAPI(t)
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }
@@ -67,7 +66,6 @@ func TestOwedToYou(t *testing.T) {
 	closed := create("closed", "5000000", day(-20))
 	e.closeCheckout(t, closed)
 
-	// D-114: the canceled invoice's money is held for its payer, so it is not owed.
 	want := []string{
 		"overdue " + late10 + " 10 5000000",
 		"overdue " + late3 + " 3 4000000",
@@ -91,7 +89,6 @@ func TestOwedToYou(t *testing.T) {
 		if strings.Join(got, "\n") != strings.Join(page, "\n") {
 			t.Fatalf("owed, limit %d:\n%s\nwant:\n%s", limit, strings.Join(got, "\n"), strings.Join(page, "\n"))
 		}
-		// Count and totals cover every row, not only the page's.
 		totals := fmt.Sprint(r.body["totals"])
 		if r.body["count"] != float64(3) ||
 			totals != "[map[amount:12500000 chainId:84532 decimals:6 symbol:USDC token:"+usdc+"]]" {
@@ -109,7 +106,6 @@ func TestOwedToYou(t *testing.T) {
 	}
 }
 
-// R-95, D-107: a checkout session has no number, so its order reference names it.
 func TestOwedListsOpenPartlyPaidCheckoutSessions(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

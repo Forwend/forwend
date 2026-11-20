@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ours     = "0x00000000000000000000000000000000000000b1" // another profile's wallet
+	ours     = "0x00000000000000000000000000000000000000b1"
 	outsider = "0x00000000000000000000000000000000000000cc"
 	zero     = "0x0000000000000000000000000000000000000000"
 )
@@ -48,11 +48,10 @@ func (e env) walletRows(t *testing.T) []string {
 	return out
 }
 
-// The scan reaches back RescanDepth below finalized, so setup's mint to Sender counts as received.
 func TestWalletTransfersAreRecordedInAndOut(t *testing.T) {
 	e := setup(t)
 	addWallets(t, e.pool, chaintest.Sender, ours)
-	lookalike := e.anvil.DeployToken() // listed but disabled: its transfers are ignored
+	lookalike := e.anvil.DeployToken()
 	e.anvil.Mint(lookalike, "100000000")
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals,
 		enabled) VALUES ($1, 'evm', $2, 'OLD', 6, false)`, chaintest.ChainID, lookalike); err != nil {
@@ -71,7 +70,7 @@ func TestWalletTransfersAreRecordedInAndOut(t *testing.T) {
 		t.Fatalf("after the transfers:\n got %q\nwant %q", got, want)
 	}
 
-	e.anvil.Mine(2) // both blocks become final
+	e.anvil.Mine(2)
 	e.scan(t)
 	want = []string{mint, sides[0] + "confirmed", sides[1] + "confirmed", sides[2] + "confirmed"}
 	if got := e.walletRows(t); !reflect.DeepEqual(got, want) {
@@ -90,13 +89,13 @@ func TestWalletTransferReorg(t *testing.T) {
 		t.Fatalf("after the transfer: %q", got)
 	}
 
-	e.anvil.Reorg(1) // the block with the transfer is replaced by an empty one
+	e.anvil.Reorg(1)
 	e.scan(t)
 	if got := e.walletRows(t); !reflect.DeepEqual(got, []string{row + "reorged"}) {
 		t.Fatalf("after the reorg: %q", got)
 	}
 
-	e.anvil.SendRaw(raw) // mined again in another block: same tx hash and log index, new row
+	e.anvil.SendRaw(raw)
 	e.scan(t)
 	if got := e.walletRows(t); !reflect.DeepEqual(got, []string{row + "reorged", row + "detected"}) {
 		t.Fatalf("after the transaction is mined again: %q", got)
@@ -129,7 +128,7 @@ func TestDetectedTransferOfADisabledTokenStillConfirms(t *testing.T) {
 	if _, err := e.pool.Exec(ctx, "UPDATE tokens SET enabled = false WHERE contract = $1", e.token); err != nil {
 		t.Fatal(err)
 	}
-	e.anvil.Transfer(e.token, ours, "1000000") // after the token is disabled: not recorded
+	e.anvil.Transfer(e.token, ours, "1000000")
 	e.anvil.Mine(2 * RescanDepth)
 	e.scan(t)
 	if got := e.walletRows(t); !reflect.DeepEqual(got, []string{row + "confirmed"}) {
@@ -183,7 +182,7 @@ func TestAddressListsAreSplitForTheNode(t *testing.T) {
 	if got, n := e.rows(t); n != 2 || got[first] == nil || got[next] == nil {
 		t.Fatalf("deposits to two receive addresses: %v", got)
 	}
-	if got := e.walletRows(t); len(got) != 5 { // the mint to Sender, and per transfer one side for each wallet involved
+	if got := e.walletRows(t); len(got) != 5 {
 		t.Fatalf("wallet transfers: %q", got)
 	}
 }

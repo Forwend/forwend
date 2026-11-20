@@ -34,7 +34,6 @@ describe("send", () => {
     expect(isWalletAddress(" 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed ")).toBe(true);
     expect(isWalletAddress("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed")).toBe(false);
     expect(isWalletAddress("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAe")).toBe(false);
-    // EIP-55: one case is fine; mixed case must carry the checksum.
     expect(isWalletAddress("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed")).toBe(true);
     expect(isWalletAddress("0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359")).toBe(true);
     expect(isWalletAddress("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAeD")).toBe(false);
@@ -90,7 +89,6 @@ describe("max and the server's answer", () => {
     expect(matchesRequest({ ...send, to: "0xcc" }, asked, expected)).toBe(false);
     expect(matchesRequest({ ...send, chainId: 421614 }, asked, expected)).toBe(false);
     expect(matchesRequest({ ...send, token: "0xdd" }, asked, expected)).toBe(false);
-    // Privy signs from the wallet the send names, in the units the amount step used.
     expect(matchesRequest({ ...send, from: "0xee" }, asked, expected)).toBe(false);
     expect(matchesRequest({ ...send, decimals: 18 }, asked, expected)).toBe(false);
   });
@@ -99,7 +97,7 @@ describe("max and the server's answer", () => {
 describe("a wallet-paid send", () => {
   const asked = { chainId: 5042002, token: "0x36", amount: "10000", to: "0xbb" };
   const expected = { to: asked.to, from: "0xwa", decimals: 6 };
-  // 90,000 gas at 40 gwei is 0.0036 of an 18-decimal coin: 3,600 base units of a 6-decimal token.
+  // 90,000 gas at 40 gwei is 0.0036 of an 18-decimal coin: 3,600 units of a 6-decimal token.
   const gas = { limit: "90000", maxFeePerGas: "40000000000", maxPriorityFeePerGas: "1000000000" };
   const send = {
     ...asked,
@@ -127,9 +125,9 @@ describe("a paymaster send", () => {
     chainId: 8453,
     token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
     amount: "2500000",
-    to: "0x" + "bb".repeat(20),
+    to: `0x${"bb".repeat(20)}`,
   };
-  const expected = { to: asked.to, from: "0x" + "aa".repeat(20), decimals: 6 };
+  const expected = { to: asked.to, from: `0x${"aa".repeat(20)}`, decimals: 6 };
   const send = {
     ...asked,
     sendId: "send-1",
@@ -191,12 +189,10 @@ describe("a paymaster send", () => {
       ...request,
       headers: { ...request.headers, ...change },
     });
-    // Sent once, soon: a far expiry could be sent again after Privy's idempotency window.
     expect(matches(send, headers({ "privy-idempotency-key": "send-2" }))).toBe(false);
     expect(matches(send, headers({ "privy-request-expiry": String(now + 24 * 3_600_000) }))).toBe(
       false,
     );
-    // A device clock a few minutes fast still signs; Privy refuses an expired request itself.
     expect(matches(send, headers({ "privy-request-expiry": String(now - 180_000) }))).toBe(true);
     expect(matches(send, headers({ "privy-extra": "1" }))).toBe(false);
     expect(matches(send, { ...request, body: { ...request.body, reference_id: "send-2" } })).toBe(
@@ -221,8 +217,8 @@ describe("a paymaster send", () => {
       matches(send, { ...request, body: { ...request.body, sponsor_options: { asset: "usdt" } } }),
     ).toBe(false);
     expect(matches(send, withTx({ data: transferCalldata(send.to, 2_500_001n) }))).toBe(false);
-    expect(matches(send, withTx({ to: "0x" + "cc".repeat(20) }))).toBe(false);
-    expect(matches(send, withTx({ from: "0x" + "dd".repeat(20) }))).toBe(false);
+    expect(matches(send, withTx({ to: `0x${"cc".repeat(20)}` }))).toBe(false);
+    expect(matches(send, withTx({ from: `0x${"dd".repeat(20)}` }))).toBe(false);
     expect(matches(send, withTx({ value: "0x1" }))).toBe(false);
     expect(matches(send, withTx({ gas: "0x1" }))).toBe(false);
     expect(

@@ -1,5 +1,4 @@
-/* A floating glass bar: it reads on hero art and on page content alike, so it needs no scroll state. Landing and
-   sign-in share it, so the logo stays in one place between them. */
+/* A floating glass bar that reads on hero art and page content alike, so it needs no scroll state. */
 .bar {
   position: sticky;
   top: var(--fw-site-bar-offset);

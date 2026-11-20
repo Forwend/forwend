@@ -19,16 +19,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Returns of held money by hand (PLAN 11.10.3, D-118): support finds the case, this checks it against the ledger and
-// the chain and locks the money, and the refund authority sends the calls it gives. Nothing here signs or holds a key.
-
-var (
-	refundSelector    = selector("refund(address,uint256)")
-	transferSelector  = selector("transfer(address,uint256)")
-	authoritySelector = selector("refundAuthority()")
-)
+// Returns of held money by hand: support finds the case, this checks it and locks the money; nothing here signs.
 
 const refundSignature = "refund(address,uint256)"
+
+var (
+	refundSelector   = selector(refundSignature)
+	transferSelector = selector("transfer(address,uint256)")
+)
 
 var (
 	ErrNoCase         = errors.New("no invoice has that pay link, address or transaction")
@@ -47,10 +45,7 @@ var (
 	ErrMissedDeposit  = errors.New("the receiver holds more than the ledger booked: wait for a worker round; if it stays, record the missed deposit with ops deposit")
 )
 
-// Payment is a final payment to an invoice option. Quote is set when NEAR Intents delivered it: From is then NEAR
-// Intents' address, and the payer paid OriginTx on OriginChain with RefundTo as their own address there. Relayed is
-// set when no quote names it but NEAR Intents may have sent it: From delivered another NEAR Intents payment on this
-// chain, or a quote of the option that did not fail or refund saw a deposit and names no delivery yet.
+// Payment is a final payment to an option; with Quote or Relayed set, From is NEAR Intents, not the payer.
 type Payment struct {
 	TxHash, From                           string
 	Amount                                 *big.Int
@@ -103,8 +98,7 @@ type CaseOption struct {
 	ChainID uint64
 }
 
-// CaseOptions finds the invoice options a support case points to: a pay link or its token, a receive address, a
-// payment's transaction hash, or an invoice id from the owner's dashboard.
+// CaseOptions finds the options a case points to: a pay link or token, receive address, payment hash or invoice id.
 func CaseOptions(ctx context.Context, db *pgxpool.Pool, ref string) ([]CaseOption, error) {
 	ref = strings.ToLower(strings.TrimSpace(ref))
 	var query string
@@ -142,26 +136,18 @@ func CaseOptions(ctx context.Context, db *pgxpool.Pool, ref string) ([]CaseOptio
 // ReadHeld reads an option's held money from the ledger and its receiver from the chain.
 func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, invoiceID string) (Held, error) {
 	h := Held{InvoiceID: invoiceID}
-	var recipient, factory string
-	var amount [3]string
-	var expires, deadline int64
 	err := db.QueryRow(ctx, `SELECT i.chain_id, i.receive_address, i.token_contract, coalesce(t.symbol, ''),
-		coalesce(t.decimals, 0), i.payment_status, i.refund_status, i.recipient_address, i.amount::text,
-		i.network_fee::text, i.platform_fee::text, i.expires_at, i.settle_deadline, i.factory_address
+		coalesce(t.decimals, 0), i.payment_status, i.refund_status
 		FROM invoices i LEFT JOIN tokens t ON t.chain_id = i.chain_id AND t.contract = i.token_contract WHERE i.id = $1`,
-		invoiceID).Scan(&h.ChainID, &h.Receive, &h.Token, &h.Symbol, &h.Decimals, &h.PaymentStatus, &h.RefundStatus,
-		&recipient, &amount[0], &amount[1], &amount[2], &expires, &deadline, &factory)
+		invoiceID).Scan(&h.ChainID, &h.Receive, &h.Token, &h.Symbol, &h.Decimals, &h.PaymentStatus, &h.RefundStatus)
 	if err != nil {
 		return Held{}, fmt.Errorf("read invoice %s: %w", invoiceID, err)
 	}
-	known, ok := address.KnownFactory(factory)
-	if !ok {
-		return Held{}, fmt.Errorf("invoice %s: its factory is not a Forwend factory", invoiceID)
-	}
-	h.factory = common.Address(known)
-	if h.terms, err = termsOf(known, invoiceID, recipient, h.Token, amount, expires, deadline, h.ChainID, h.Receive); err != nil {
+	factory, terms, err := readTerms(ctx, db, invoiceID)
+	if err != nil {
 		return Held{}, err
 	}
+	h.factory, h.terms = common.Address(factory), terms
 	amounts, err := ledger.ReadAmounts(ctx, db, invoiceID)
 	if err != nil {
 		return Held{}, fmt.Errorf("read invoice %s amounts: %w", invoiceID, err)
@@ -206,37 +192,13 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	}
 	h.Deployed, h.Settled, h.Balance, h.Refundable = status.Deployed, status.Settled, status.Balance, status.Refundable
 	h.Deadline = time.Unix(int64(status.Deadline), 0).UTC()
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &h.factory, Data: authoritySelector}, nil)
-	if err != nil {
-		return Held{}, fmt.Errorf("factory.refundAuthority: %w", err)
+	if h.Authority, err = refundAuthority(ctx, client, h.factory); err != nil {
+		return Held{}, err
 	}
-	if len(out) != 32 {
-		return Held{}, fmt.Errorf("factory.refundAuthority: %d-byte answer", len(out))
-	}
-	h.Authority = common.BytesToAddress(out)
 	return h, nil
 }
 
-// termsOf builds an option's terms and checks they compute its stored receive address: money moves only by those.
-func termsOf(factory [20]byte, invoiceID, recipient, token string, amount [3]string, expires, deadline int64, chainID uint64,
-	receive string) (address.Terms, error) {
-	var value [3]*big.Int // amount, network fee, platform fee
-	for i, a := range amount {
-		value[i], _ = new(big.Int).SetString(a, 10)
-	}
-	t := address.Terms{InvoiceID: [32]byte(common.FromHex(invoiceID)), Recipient: common.HexToAddress(recipient),
-		Token: common.HexToAddress(token), Amount: value[0], ExpiresAt: uint64(expires), SettleDeadline: uint64(deadline),
-		IntendedChainID: chainID, NetworkFee: value[1], PlatformFee: value[2]}
-	if at, err := address.ReceiveAt(factory, t); err != nil || !strings.EqualFold(common.Address(at).Hex(), receive) {
-		return address.Terms{}, fmt.Errorf("invoice %s: its terms do not compute its receive address", invoiceID)
-	}
-	return t, nil
-}
-
-// QueueReturn checks a return of held money against the ledger and the chain, locks the money and gives the calls
-// for the refund authority. The destination defaults to the address that made the payment (D-118), except for one NEAR
-// Intents delivered; the amount, to everything held and refundable when one payer made every payment. The amount is
-// at most what the payment's payer paid, less what was returned to them.
+// QueueReturn checks a return, locks the money and gives the refund authority's calls; to defaults to the payer.
 func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, invoiceID, txHash string,
 	to *common.Address, amount *big.Int) (Return, error) {
 	h, err := ReadHeld(ctx, db, client, invoiceID)
@@ -308,19 +270,13 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		return Return{}, ErrCrossChain
 	}
 	receive, token := common.HexToAddress(h.Receive), common.HexToAddress(h.Token)
-	if r.To == (common.Address{}) || r.To == receive || r.To == token || address.Ours(r.To) ||
-		relays[strings.ToLower(r.To.Hex())] {
+	if relays[strings.ToLower(r.To.Hex())] {
 		return Return{}, ErrDestination
 	}
-	var invoiceAddress bool
-	if err := db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM invoices WHERE receive_address = $1)",
-		strings.ToLower(r.To.Hex())).Scan(&invoiceAddress); err != nil {
-		return Return{}, fmt.Errorf("check the destination: %w", err)
+	if err := refuseDestination(ctx, db, r.To, receive, token); err != nil {
+		return Return{}, err
 	}
-	if invoiceAddress {
-		return Return{}, ErrDestination // another invoice's receiver: the money would be held there, not returned
-	}
-	limit := minInt(h.Held, h.Refundable)
+	limit := minBig(h.Held, h.Refundable)
 	if limit.Sign() <= 0 {
 		if h.Settled || !time.Now().Before(h.Deadline) {
 			return Return{}, ErrNotYet
@@ -332,9 +288,9 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		if len(senders) > 1 {
 			return Return{}, ErrAmountNeeded
 		}
-		r.Amount = minInt(limit, payerLeft)
+		r.Amount = minBig(limit, payerLeft)
 	}
-	// 0.10 USD: every token Forwend takes is a stablecoin worth 1 USD (D-75).
+	// 0.10 USD: every token Forwend takes is a stablecoin worth 1 USD.
 	least := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(h.Decimals)), nil)
 	if r.Amount.Cmp(least.Div(least, big.NewInt(10))) < 0 {
 		return Return{}, ErrTooLittle
@@ -355,12 +311,8 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 	case !senders[strings.ToLower(r.To.Hex())]:
 		r.Warnings = append(r.Warnings, "No payment came from this address: check the payer's proof that it is theirs.")
 	}
-	code, err := client.CodeAt(ctx, r.To, nil)
-	if err != nil {
-		return Return{}, fmt.Errorf("read the destination: %w", err)
-	}
-	if len(code) > 0 {
-		r.Warnings = append(r.Warnings, "The destination is a contract (an exchange, an app or a smart wallet): check it can receive this token.")
+	if r.Warnings, err = contractWarning(ctx, client, r.To, r.Warnings); err != nil {
+		return Return{}, err
 	}
 	// A dry run as the chain would see it: a blocklisted address, a paused token or a short balance fails here,
 	// before the Safe's owners sign.
@@ -376,13 +328,11 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 			return Return{}, fmt.Errorf("the receiver refuses this refund: %w", err)
 		}
 	} else {
-		deploy, err := address.Call([20]byte(h.factory), "deploy", h.terms)
+		deploy, err := deployCall(h.factory, invoiceID, h.terms)
 		if err != nil {
 			return Return{}, err
 		}
-		signature, _ := address.Signature([20]byte(h.factory), "deploy")
-		args, _ := address.Args([20]byte(h.factory), invoiceID, h.terms)
-		r.Calls = append(r.Calls, Call{To: h.factory, Data: deploy, Signature: signature, Args: []string{args}})
+		r.Calls = append(r.Calls, deploy)
 	}
 	r.Calls = append(r.Calls, Call{To: receive, Data: refund, Signature: refundSignature,
 		Args: []string{strings.ToLower(r.To.Hex()), r.Amount.String()}})
@@ -424,8 +374,7 @@ func ReleaseReturn(ctx context.Context, db *pgxpool.Pool, invoiceID string) erro
 	return err
 }
 
-// payer names who made a payment. NEAR Intents sends every cross-chain payer's money from one address: each quote,
-// and each payment it may have relayed, is its own payer.
+// payer names who made a payment; NEAR Intents sends all cross-chain payments from one address, so each quote is one.
 func payer(p Payment) string {
 	switch {
 	case p.Quote != "":
@@ -440,8 +389,7 @@ type querier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-// returnedTo sums an option's booked refunds to a payer: to own, the address they paid from directly, or to a
-// destination support queued a return of one of their payments to.
+// returnedTo sums an option's booked refunds to a payer: to own, or where support queued a return of their payment.
 func returnedTo(ctx context.Context, db querier, invoiceID, own string, hashes []string) (*big.Int, error) {
 	var sum string
 	if err := db.QueryRow(ctx, `SELECT coalesce(sum(o.amount), 0)::text FROM receiver_outflows o
@@ -472,8 +420,7 @@ func checkBooked(ctx context.Context, db querier, invoiceID string) error {
 
 var errUnchanged = errors.New("refund status changed meanwhile")
 
-// setRefundStatus moves the status from one value to another, with its history row in the same transaction. check,
-// when given, runs holding the row, which the ledger also locks to book.
+// setRefundStatus moves the status with its history row; check, if given, runs holding the row the ledger locks.
 func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to, kind string, data history.Data,
 	check func(pgx.Tx) error) error {
 	return pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
@@ -494,9 +441,29 @@ func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to,
 	})
 }
 
-func minInt(a, b *big.Int) *big.Int {
-	if a.Cmp(b) < 0 {
-		return new(big.Int).Set(a)
+// refuseDestination refuses zero, the receiver, the token, our contracts or another receiver (held there again).
+func refuseDestination(ctx context.Context, db *pgxpool.Pool, to, receiver, token common.Address) error {
+	if to == (common.Address{}) || to == receiver || to == token || address.Ours(to) {
+		return ErrDestination
 	}
-	return new(big.Int).Set(b)
+	var invoiceAddress bool
+	if err := db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM invoices WHERE receive_address = $1)",
+		strings.ToLower(to.Hex())).Scan(&invoiceAddress); err != nil {
+		return fmt.Errorf("check the destination: %w", err)
+	}
+	if invoiceAddress {
+		return ErrDestination
+	}
+	return nil
+}
+
+func contractWarning(ctx context.Context, client *ethclient.Client, to common.Address, warnings []string) ([]string, error) {
+	code, err := client.CodeAt(ctx, to, nil)
+	if err != nil {
+		return nil, fmt.Errorf("read the destination: %w", err)
+	}
+	if len(code) > 0 {
+		warnings = append(warnings, "The destination is a contract (an exchange, an app or a smart wallet): check it can receive this token.")
+	}
+	return warnings, nil
 }

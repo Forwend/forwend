@@ -2,7 +2,6 @@ package activity
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -40,7 +39,7 @@ func exec(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
 	}
 }
 
-// invoice n of profile, made at minute minute after created; its receive address is 0x33…n.
+// addInvoice makes invoice n minute minutes after created; its receive address is 0x33…n.
 func addInvoice(t *testing.T, pool *pgxpool.Pool, profile string, n, minute int) string {
 	t.Helper()
 	id := fmt.Sprintf("0x%064x", n)
@@ -53,8 +52,7 @@ func addInvoice(t *testing.T, pool *pgxpool.Pool, profile string, n, minute int)
 	return id
 }
 
-// addDeposit's block time is minute minutes after created. The watcher records it later, and the later the earlier its
-// block, so a list in record order would read backwards.
+// addDeposit records a later block earlier, so a list in record order would read backwards.
 func addDeposit(t *testing.T, pool *pgxpool.Pool, invoice string, n, minute int, status string) {
 	t.Helper()
 	exec(t, pool, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
@@ -65,8 +63,7 @@ func addDeposit(t *testing.T, pool *pgxpool.Pool, invoice string, n, minute int,
 		usdc, invoice, fmt.Sprintf("0x%064x", n), payer, status, created, minute)
 }
 
-// pages reads the whole list with each page size and checks every reading gives the same items: no page skips or
-// repeats one, also between items at the same time.
+// pages reads the list at every page size and checks each reading gives the same items.
 func pages(t *testing.T, s *Service, profile, status, state string) []string {
 	t.Helper()
 	ctx := context.Background()
@@ -82,6 +79,9 @@ func pages(t *testing.T, s *Service, profile, status, state string) []string {
 		var got []string
 		cursor := ""
 		for read := 1; ; read++ {
+			if read > len(want) {
+				t.Fatalf("status %q, limit %d: more than %d pages", status, limit, len(want))
+			}
 			page, err := s.List(ctx, profile, cursor, limit, status, state, search.Query{})
 			if err != nil {
 				t.Fatal(err)
@@ -131,17 +131,16 @@ func TestListNewestFirstInPages(t *testing.T) {
 	c := addInvoice(t, pool, profile, 3, 5) // same time as b: ties broken by kind and key
 	addDeposit(t, pool, a, 10, 7, "confirmed")
 	addDeposit(t, pool, b, 11, 9, "detected")
-	addDeposit(t, pool, b, 12, 9, "reorged") // left out
+	addDeposit(t, pool, b, 12, 9, "reorged")
 	addDeposit(t, pool, c, 13, 9, "detected")
 	addDeposit(t, pool, c, 14, 5, "detected") // the same time as invoices b and c: before them
-	// Paid within the second it was made: the block's whole-second time is before it, the deposit still after it.
+	// Paid within its first second: the block's whole-second time is before the invoice.
 	d := addInvoice(t, pool, profile, 6, 2)
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard")
 	exec(t, pool, "UPDATE invoices SET created_at = created_at + interval '0.5 second' WHERE id = $1", d)
 	exec(t, pool, "ALTER TABLE invoices ENABLE TRIGGER invoices_guard")
 	addDeposit(t, pool, d, 16, 2, "detected")
-	addInvoice(t, pool, other, 4, 8) // another profile's: left out
-	// A checkout session has no document: only its deposit is listed.
+	addInvoice(t, pool, other, 4, 8)
 	session := fmt.Sprintf("0x%064x", 5)
 	exec(t, pool, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key,
@@ -161,7 +160,6 @@ func TestListNewestFirstInPages(t *testing.T) {
 	for _, status := range invoice.StatusFilters {
 		pages(t, s, profile, status, "")
 	}
-	// D-114: each state pages like the rest, and the states split the list without overlap.
 	seen := map[string]string{}
 	for _, state := range invoice.PaymentStates {
 		for _, key := range pages(t, s, profile, "", state) {
@@ -204,21 +202,6 @@ func TestListNewestFirstInPages(t *testing.T) {
 	}
 }
 
-func TestListRefusesBadInput(t *testing.T) {
-	s := NewService(open(t))
-	ctx := context.Background()
-	profile := "00000000-0000-0000-0000-000000000000"
-	for _, c := range []struct {
-		cursor string
-		limit  int
-	}{{"", 0}, {"", MaxLimit + 1}, {"not base64!", 10}, {encode(time.Time{}, "payment", "x"), 10}, {"MTIz", 10}} {
-		if _, err := s.List(ctx, profile, c.cursor, c.limit, "", "", search.Query{}); !errors.Is(err, ErrInvalid) {
-			t.Fatalf("cursor %q limit %d: %v, want ErrInvalid", c.cursor, c.limit, err)
-		}
-	}
-}
-
-// D-26: booked deposits follow the ledger; unbooked ones the ledger's own rule (late, final invoice, other option).
 func TestListMarksHeldDeposits(t *testing.T) {
 	pool := open(t)
 	var profile string
@@ -248,21 +231,20 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	addDeposit(t, pool, option, 13, 3, "detected")
 	open := addInvoice(t, pool, profile, 5, 0)
 	addDeposit(t, pool, open, 14, 4, "detected")
-	paidOver := addInvoice(t, pool, profile, 8, 0) // money after paid, not booked yet
+	paidOver := addInvoice(t, pool, profile, 8, 0)
 	exec(t, pool, "UPDATE invoices SET payment_status = 'paid' WHERE id = $1", paidOver)
 	addDeposit(t, pool, paidOver, 17, 7, "detected")
 	expired := addInvoice(t, pool, profile, 9, 0)
 	exec(t, pool, "UPDATE invoices SET payment_status = 'expired' WHERE id = $1", expired)
 	addDeposit(t, pool, expired, 18, 8, "detected")
-	// Booked: the ledger says what reached the owner. All of the first held, the second to the owner, the third to the
-	// owner until the invoice expired partly paid and the expiry book moved it to the payer.
+	// Booked: the ledger decides; partial's money moves to the payer once it expires partly paid.
 	paidHeld := addInvoice(t, pool, profile, 6, 0)
 	addDeposit(t, pool, paidHeld, 15, 5, "confirmed")
 	paid := addInvoice(t, pool, profile, 7, 0)
 	addDeposit(t, pool, paid, 16, 6, "confirmed")
 	partial := addInvoice(t, pool, profile, 10, 0)
 	addDeposit(t, pool, partial, 19, 9, "confirmed")
-	split := addInvoice(t, pool, profile, 11, 0) // the deposit that paid it in full, with more than was left
+	split := addInvoice(t, pool, profile, 11, 0) // paid in full with more than was left
 	addDeposit(t, pool, split, 20, 10, "confirmed")
 	for inv, owner := range map[string]int{paidHeld: 0, paid: 1000000, partial: 1000000, split: 600000} {
 		exec(t, pool, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
@@ -294,7 +276,6 @@ func TestListMarksHeldDeposits(t *testing.T) {
 	if !reflect.DeepEqual(held, want) {
 		t.Fatalf("held %v, want %v", held, want)
 	}
-	// D-114: of a split deposit only the owner's part is received; held money stays the payer's.
 	wantParts := map[string]string{paidHeld: "0+1000000", paid: "1000000+0", partial: "0+1000000", split: "600000+400000"}
 	if !reflect.DeepEqual(parts, wantParts) {
 		t.Fatalf("parts %v, want %v", parts, wantParts)

@@ -8,7 +8,6 @@ export const TRANSACTIONS_COPY = {
   transactions: "Transactions",
   noFee: "No fee",
   noFeeRecorded: "No fee recorded",
-  // The opened row's sum: what the fee came out of, or what it was added to.
   customerPaid: "Customer paid",
   arrived: "Arrived in your wallet",
   sentAmount: "Sent",
@@ -22,7 +21,6 @@ export const TRANSACTIONS_COPY = {
   introBusiness:
     "Every transfer in and out of the profile's wallet, across all stores. Payments has each customer payment.",
   recentTransactions: "Recent transactions",
-  payments: "Payments",
   viewAll: "View all",
   received: "Received",
   sent: "Sent",
@@ -103,7 +101,6 @@ export const TRANSACTIONS_COPY = {
   notifications: "Notifications",
   newCount: (n: number) => (n === 1 ? "1 new" : `${n} new`),
   noNotifications: "Nothing yet. You get a note here when money arrives.",
-  // The bell (R-81): what happened, then the payment or sender it names, as on Activity.
   bell: {
     paid: "Paid",
     inWallet: "In your wallet",

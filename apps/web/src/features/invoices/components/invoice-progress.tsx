@@ -21,7 +21,6 @@ export function ConfirmingStatus({ blocks, total, seconds }: ConfirmingStatusPro
   );
 }
 
-/** The blocks and time left, in an info tooltip beside a confirming state. */
 export function ConfirmingHint({ blocks, seconds }: Omit<ConfirmingStatusProps, "total">) {
   const hint = COPY.confirmingHint(seconds, blocks);
   return hint ? (

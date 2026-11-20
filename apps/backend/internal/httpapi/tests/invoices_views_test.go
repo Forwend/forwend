@@ -8,7 +8,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
 )
 
-// R-125.
 func TestPayPageLoadsCountAsViews(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -33,7 +32,6 @@ func TestPayPageLoadsCountAsViews(t *testing.T) {
 	if v["count"] != 2.0 || !strings.HasSuffix(first, "Z") || !strings.HasSuffix(last, "Z") || last < first {
 		t.Fatalf("views after two loads: %v; want 2 with UTC times", v)
 	}
-	// Per link, past the burst: refused, and not counted.
 	counted, refused := 2.0, 0
 	for range invoiceapi.ViewBurst {
 		switch status := view(e.link(t, id)); status {
@@ -48,7 +46,6 @@ func TestPayPageLoadsCountAsViews(t *testing.T) {
 	if refused == 0 || owner()["count"] != counted {
 		t.Fatalf("%d refused, count %v; want some refused and %v counted", refused, owner()["count"], counted)
 	}
-	// The on-chain id is public (D-86), so it counts nothing.
 	if status := view(id); status != http.StatusNotFound {
 		t.Fatalf("view by invoice id: %d, want 404", status)
 	}

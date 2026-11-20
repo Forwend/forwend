@@ -5,28 +5,21 @@ import { type FormEvent, useState } from "react";
 import { flushSync } from "react-dom";
 import { ACCEPT_FIELDS } from "@/features/jobs/constants/jobs";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { namedField } from "@/features/jobs/lib/jobs";
 import type { AcceptField } from "@/features/jobs/types/jobs";
+import { errorStatus, HTTP_STATUS, invalidValue, namedField } from "@/shared/api/api-error";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
-
-const NOT_FOUND = 404;
-const INVALID_VALUE = 422;
-const TOO_MANY = 429;
 
 export interface ConsentFormProps {
   text: string;
   action: string;
-  /** A rejection is the API's failure. */
   onConsent: (name: string, email: string) => Promise<void>;
   loading: boolean;
-  /** Said when the API answers 404, unless onConsent handles it. */
   notFound?: string;
   compact?: boolean;
   className?: string;
   "aria-label"?: string;
 }
 
-// The consent a quote (R-102) and each scope change (R-106) are accepted with.
 export function ConsentForm({
   text,
   action,
@@ -60,16 +53,15 @@ export function ConsentForm({
     try {
       await onConsent(name, email);
     } catch (error) {
-      const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
-      const field = namedField(failure.data?.error?.message ?? "", Object.values(ACCEPT_FIELDS));
-      if (failure.status === INVALID_VALUE && field) {
+      const field = namedField(error, Object.values(ACCEPT_FIELDS));
+      if (invalidValue(error) && field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
       } else
         setFormError(
-          failure.status === NOT_FOUND && notFound
+          errorStatus(error) === HTTP_STATUS.notFound && notFound
             ? notFound
-            : failure.status === TOO_MANY
+            : errorStatus(error) === HTTP_STATUS.tooManyRequests
               ? COPY.errors.tooMany
               : COPY.errors.failed,
         );

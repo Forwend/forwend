@@ -1,6 +1,5 @@
 import type { ClientKind } from "@/features/clients/types/clients";
 import {
-  AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
@@ -28,9 +27,12 @@ import type {
   PayWith,
   Recheck,
   RecordStepId,
+  RecordStepState,
   ReminderStep,
   SettlementWaitKind,
 } from "@/features/invoices/types/invoices";
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
+import { AMOUNT_ERRORS } from "@/shared/constants/money";
 
 const atMost = (n: number) =>
   `Use at most ${n.toLocaleString("en-US")} characters, with no hidden characters.`;
@@ -39,7 +41,6 @@ export const timeLeft = (seconds: number) =>
   seconds < 60 ? "under a minute" : `about ${Math.ceil(seconds / 60)} min`;
 
 export const INVOICES_COPY = {
-  // R-129, on New invoice when it replaces one.
   revise: {
     title: (number: string) => `This replaces ${number}`,
     body: (number: string) =>
@@ -77,7 +78,6 @@ export const INVOICES_COPY = {
   noClient: "No client",
   noDueDate: "No due date",
   due: (date: string) => `Due ${date}`,
-  // How far the due date is: said on hover over the date, and to screen readers once late (R-253).
   dueIn: (days: number) =>
     days === 0
       ? "today"
@@ -88,7 +88,6 @@ export const INVOICES_COPY = {
   linkCopied: (number: string) => `Pay link of ${number} copied`,
   copyFailed: "Copy failed",
   actions: "Actions",
-  // The strip over the list: the invoices that need the owner now.
   attention: {
     title: "Needs attention",
     count: (n: number) => (n === 1 ? "1 needs attention" : `${n} need attention`),
@@ -106,7 +105,7 @@ export const INVOICES_COPY = {
   baseUnits: (token: string) => `base units of ${token}`,
 } as const;
 
-/** A personal profile's invoices are requests (PRODUCT.md). */
+/** A personal profile's invoices are requests. */
 export const REQUESTS_COPY = {
   ...INVOICES_COPY,
   invoices: "Requests",
@@ -130,13 +129,11 @@ export const NEW_INVOICE_COPY = {
     [STEP_IDS.review]: "Review",
   },
   reviewGroup: "Review",
-  // The review's rows: what the client is asked for and what the owner gets, each with a way back to its step.
   review: {
     items: "Items",
     itemsValue: (n: number, total: string) => `${n === 1 ? "1 item" : `${n} items`} · ${total}`,
     clientPays: "Client pays",
     closes: "Checkout closes",
-    // A preset counts from the moment the invoice is created; a custom close is a day.
     afterCreated: (span: string) => `${span} after it is created`,
     youReceive: "You receive",
     afterFee: (receives: string, fee: string, platform: boolean) =>
@@ -158,7 +155,6 @@ export const NEW_INVOICE_COPY = {
   amountGroup: "Items",
   payWithLabel: "How the client pays",
   payWith: { any: "Client chooses", fixed: "One token" } satisfies Record<PayWith, string>,
-  // R-56: the least a new payment asks. Which tokens and networks the client can use shows in the preview.
   minimumHint: (unit: string) => `Min 1 ${unit}`,
   tokenLabel: "Network and token",
   searchTokens: "Search tokens",
@@ -182,8 +178,12 @@ export const NEW_INVOICE_COPY = {
   returnLabel: "Return link (optional)",
   returnHint: "The client sees Back to it after paying.",
   returnError: "Enter an https link, like https://example.com/thanks.",
-  // R-134: a merchant invoice's store.
   storeLabel: "Store",
+  storeNoTokens:
+    "This store has no accepted tokens available. Check its payment settings before creating an invoice.",
+  checkAssets: "Check accepted assets",
+  tokenGone: "The previously selected token is no longer accepted. Choose a token below.",
+  chooseToken: "Choose an accepted network and token before creating this invoice.",
   returnOrigins: (origins: string) => `A link that starts with ${origins}.`,
   returnNoOrigins: "Add your site to this store under Stores first.",
   returnOriginError: "Use a link that starts with one of this store's allowed origins.",
@@ -207,20 +207,15 @@ export const NEW_INVOICE_COPY = {
       date: "Pick the day you agreed it.",
     },
   },
-  billingNeeded: {
-    title: "Add your billing details first",
-    text: "Every invoice shows who bills the client: your name, address, country and email. EU, UK and US invoices need them.",
-    action: "Add billing details",
-  },
+  billingNeeded:
+    "Every invoice shows who bills the client: your name, address, country and email. EU, UK and US invoices need them.",
   datesGroup: "Dates",
   supplyLabel: "Supply date (optional)",
   supplyHint: "When the work was done, if not today.",
   supplyClear: "Clear supply date",
   dueLabel: "Due date (optional)",
-  // Payment reminders (R-97): on at once when the invoice is made.
   remindersLabel: "Send payment reminders",
   remindersHint: "Emails the client around the due date until it is paid.",
-  // R-99.
   repeatLabel: "Repeat every month",
   repeatHint: `A new invoice each month, emailed ${RETAINER_LEAD_DAYS} days before it is due.`,
   repeatEndLabel: "Last due date (optional)",
@@ -229,7 +224,6 @@ export const NEW_INVOICE_COPY = {
   dueClear: "Clear due date",
   expiryLabel: "Checkout closes after",
   followsDue: (day: string) => `Open until ${day}, so a late payment still reaches you.`,
-  // D-80: a close before the due date plus the grace days holds a late payment for the client.
   closesEarly: (day: string) =>
     `Closes before ${day}: a payment after that is held for the client.`,
   closesAtLimit: (day: string) =>
@@ -266,7 +260,6 @@ export const NEW_INVOICE_COPY = {
     description: "Item",
     descriptionPlaceholder: "What is this item?",
     quantity: "Qty",
-    // The visible label first, then which item: each row's fields share their visible labels.
     quantityOf: (n: number) => `Qty, item ${n}`,
     price: (unit: string) => `Price (${unit})`,
     priceOf: (unit: string, n: number) => `Price (${unit}), item ${n}`,
@@ -297,7 +290,7 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.dueDate]: "Enter a date, or leave it empty.",
     [INVOICE_FIELDS.supplyDate]: "Enter a date, or leave it empty.",
     [INVOICE_FIELDS.clientName]: atMost(INVOICE_LIMITS.clientName),
-    [INVOICE_FIELDS.clientEmail]: "Enter an email like name@example.com.",
+    [INVOICE_FIELDS.clientEmail]: EMAIL_COPY.invalid,
     [INVOICE_FIELDS.clientAddress]: atMost(INVOICE_LIMITS.clientAddress),
     [INVOICE_FIELDS.clientCountry]: "Choose a country.",
     [INVOICE_FIELDS.clientTaxId]: atMost(INVOICE_LIMITS.clientTaxId),
@@ -316,8 +309,16 @@ export const NEW_INVOICE_COPY = {
   invalid: "We could not create the invoice with these values. Check them and try again.",
   preview: {
     title: "Preview",
-    // Which of the three things the client sees is drawn.
     show: "What to preview",
+    views: { invoice: "Invoice", payer: "Payer page", email: "Email" },
+    kind: "Invoice",
+    taxId: (id: string) => `Tax ID ${id}`,
+    amount: "Amount",
+    payWith: "Pay with",
+    showAddress: "Show address",
+    sample: "Preview: the address shows once it is created.",
+    viewAndPay: "View and pay",
+    emailNote: "Sent from Forwend. Replies go to you.",
     zoomOut: "Zoom out",
     zoomIn: "Zoom in",
     fit: "Fit page",
@@ -359,7 +360,6 @@ export const NEW_REQUEST_COPY = {
   noTokens: "No networks are enabled yet, so there is nothing to request in.",
   tokensFailed: "We could not load the assets you can request in.",
   noteLabel: "Note to the payer (optional)",
-  // A request has no items: its first step asks only for the amount.
   stepLabels: { ...NEW_INVOICE_COPY.stepLabels, [STEP_IDS.items]: "Amount" },
   amountGroup: "Amount",
   payWithLabel: "How the payer pays",
@@ -370,6 +370,7 @@ export const NEW_REQUEST_COPY = {
   create: "Create request",
   preview: {
     ...NEW_INVOICE_COPY.preview,
+    kind: "Request",
     emailLead: (from: string, amount: string) =>
       `${from} asked you for ${amount}. You pay it in stablecoins on the payment page.`,
   },
@@ -380,14 +381,13 @@ export const NEW_REQUEST_COPY = {
 export const INVOICE_COPY = {
   allItems: (n: number) => `Show all ${n} items`,
   reconciliationNeeded: "We could not verify this payment. Contact support before sending more.",
-  verificationPending: "Confirming payment.",
+  verificationDetails: "View verification details",
   recordedReturns: (amount: string, network: string) =>
     `Recorded returns: ${amount} on ${network}.`,
   latestReturn: "Latest return transaction",
   back: "Invoices",
   testnet: "Testnet",
   clientChooses: "Client picks the token",
-  heldOn: (symbol: string, network: string) => `Held for the payer · ${symbol} on ${network}`,
   partlyPaid: "Partially paid",
   viewPayment: "View payment",
   paymentLink: "Payment link",
@@ -400,13 +400,12 @@ export const INVOICE_COPY = {
   notPaid: "Not paid",
   inWallet: "In your wallet",
   onNetwork: (symbol: string, network: string) => `${symbol} on ${network}`,
+  confirmation: "Payment confirmation",
   billedTo: (name: string) => `Billed to ${name}`,
-  // The amount panel's one sentence: a bold part, then at most one short quiet part.
   say: {
     due: (date: string) => `Due ${date}.`,
     late: (days: number) =>
       `${days === 1 ? "1 day" : `${days.toLocaleString("en-US")} days`} late.`,
-    // Overdue: the pay link still takes money until the checkout closes (D-80).
     until: (date: string) => `The link works until ${date}.`,
     rest: "The same link takes the rest.",
     arriving: "A payment is on its way.",
@@ -414,7 +413,6 @@ export const INVOICE_COPY = {
     closed: (date: string) => `The checkout closed ${date}.`,
     canceled: "The pay link takes no payments.",
   },
-  // The money line: what the client pays, each fee, and what the owner gets (R-228).
   terms: {
     clientPays: "Client pays",
     customerPaid: "Customer paid",
@@ -427,11 +425,13 @@ export const INVOICE_COPY = {
   qrLabel: "QR code of the pay link",
   emailed: (date: string) => `Emailed ${date}`,
   emailFailed: "Email failed",
-  reopenNote: (until: string) => `Open again until ${until}, once.`,
-  restartNote: "A copy with a new number and pay link.",
   progressTitle: "Progress",
-  stepStates: { done: "Done", current: "Now", upcoming: "Next", stopped: "Ended" },
-  progress: "Payment progress",
+  stepStates: {
+    done: "Done",
+    current: "Now",
+    upcoming: "Next",
+    stopped: "Ended",
+  } satisfies Record<RecordStepState, string>,
   confirmingCount: (done: number, total: number) =>
     total > 0
       ? `Confirming (${done.toLocaleString("en-US")}/${total.toLocaleString("en-US")})`
@@ -443,7 +443,6 @@ export const INVOICE_COPY = {
       .filter(Boolean)
       .join(" · ");
   },
-  // Why a paid invoice's money still waits (R-54); `at` is a short local time.
   settling: {
     [SETTLEMENT_WAITS.signing]: () => "Sending to your wallet",
     [SETTLEMENT_WAITS.finalizing]: (network: string, seconds: number) =>
@@ -456,12 +455,11 @@ export const INVOICE_COPY = {
       "Stopped for a manual check. The money stays at the invoice's address until Forwend resolves it",
   } satisfies Record<SettlementWaitKind, (network: string, seconds: number, at: string) => string>,
   checkStatus: "Check status",
-  // What Check status found (R-55).
   recheck: (r: Recheck, network: string, money: (units: bigint) => string) => {
     const missing = BigInt(r.onChain) - BigInt(r.recorded);
     if (r.rescanning && missing > 0n) return `Found ${money(missing)}. Recording it now.`;
     if (r.rescanning) return `Looking on ${network} again.`;
-    // A full look ran minutes ago and found no transfer for it: money that moved without a Transfer log.
+    // A full look found no transfer for it: money that moved without a Transfer log.
     if (missing > 0n) return `${money(missing)} has no recorded transfer yet.`;
     if (BigInt(r.onChain) === 0n && BigInt(r.recorded) === 0n) return `Nothing on ${network} yet.`;
     return "Up to date";
@@ -470,10 +468,8 @@ export const INVOICE_COPY = {
   recheckUnreadable: (networks: string) => `${networks} did not answer.`,
   recheckTooSoon: "Checked recently.",
   nextCheck: (left: string) => `Next check in ${left}`,
-  // R-69.
   depositPreview: "Showing selected transactions. Totals include all transfers.",
   noun: { invoice: "invoice", request: "request" },
-  testMode: "Test mode",
   newInvoice: "New invoice",
   newRequest: "New request",
   copy: "Copy link",
@@ -529,7 +525,6 @@ export const INVOICE_COPY = {
   inNewTab: "in a new tab",
   canceledOn: "Canceled on",
   memo: "Your memo",
-  // R-127.
   edit: {
     trigger: "Edit",
     title: (number: string) => `Edit ${number}`,
@@ -552,7 +547,6 @@ export const INVOICE_COPY = {
     saved: (number: string) => `${number} saved`,
     failed: "We could not save it. Try again.",
   },
-  // Cancel before any money (R-79, D-79).
   moreActions: "More actions",
   cancel: {
     trigger: (noun: string) => `Cancel ${noun}`,
@@ -564,7 +558,6 @@ export const INVOICE_COPY = {
     failed: "We could not cancel it. Try again.",
     tooLate: "It can't be canceled anymore: money was seen or the checkout closed.",
   },
-  // R-130.
   reopen: {
     trigger: "Reopen checkout",
     title: (number: string) => `Reopen ${number}?`,
@@ -577,7 +570,6 @@ export const INVOICE_COPY = {
     tooLate: "It can't be reopened anymore.",
   },
   noIssuer: "None on this invoice.",
-  // R-94.
   send: {
     action: "Email the client",
     noEmail: "No client email.",
@@ -588,7 +580,6 @@ export const INVOICE_COPY = {
     limited: "You can't send more emails right now. Try again later.",
     error: "We could not send it. Try again.",
   },
-  // R-96.
   reminders: {
     toggle: "Payment reminders",
     hint: "Emails the client 3 days before the due date, on it and 7 days after.",
@@ -606,7 +597,6 @@ export const INVOICE_COPY = {
     conflict: "Reminders can't be turned on for this invoice now.",
     error: "We could not save it. Try again.",
   },
-  // R-99.
   repeat: {
     title: "Repeats every month",
     next: (due: string, on: string) => `Next invoice due ${due}, emailed to the client on ${on}.`,
@@ -621,10 +611,8 @@ export const INVOICE_COPY = {
     done: "Stopped repeating",
     error: "We could not stop it. Try again.",
   },
-  // R-239: a payment through NEAR Intents.
   paidThrough: "Paid through NEAR Intents",
   paidThroughValue: (amount: string, chain: string) => `${amount} on ${chain}`,
-  // R-124.
   history: {
     title: "Document history",
     filter: "Show",
@@ -658,7 +646,6 @@ export const INVOICE_COPY = {
       [HISTORY_KINDS.settlementQueued]: "Wallet transfer queued",
       [HISTORY_KINDS.settled]: "In wallet",
       [HISTORY_KINDS.refunded]: "Funds returned",
-      // Support returns held money by hand (PLAN 11.10.3); the refund itself is Funds returned.
       [HISTORY_KINDS.returnQueued]: "Return queued",
       [HISTORY_KINDS.returnReleased]: "Return released",
       [HISTORY_KINDS.receiverSettled]: "Funds moved to wallet",
@@ -690,17 +677,12 @@ export const INVOICE_COPY = {
       [HISTORY_FIELDS.note]: "Note",
       [HISTORY_FIELDS.dueDate]: "Due date",
     } satisfies Record<HistoryField, string>,
-    // An edited due date: its old and new day, or none.
     moved: (field: string, from: string, to: string) => `${field}: ${from} → ${to}`,
     noDate: "none",
-    // R-129: the other invoice of a Revise.
     replacedBy: (number: string) => `By ${number}`,
     replaces: (number: string) => `Replaces ${number}`,
-    // R-130: when the reopened checkout closes.
     closeChanged: (until: string) => `Closes ${until}`,
     reopenedUntil: (close: string) => `Until ${close}`,
-    // Details a kind's label leaves out.
-    dropped: "No longer on the chain",
     toClient: "To the client",
     toPayer: "To the payer",
     stoppedByLink: "From the reminder email's stop link",
@@ -709,8 +691,6 @@ export const INVOICE_COPY = {
       [REMINDER_STEPS.due]: "On the due date",
       [REMINDER_STEPS.after]: "7 days after the due date",
     } satisfies Record<ReminderStep, string>,
-    heldFor: (money: string, network: string) => `${money} for the payer · ${network}`,
-    // R-125.
     notOpened: "Pay link not opened yet.",
     opened: (count: number) =>
       count === 1
@@ -720,14 +700,11 @@ export const INVOICE_COPY = {
     last: "last",
   },
 } as const;
-
-// R-96.
 export const STOP_REMINDERS_COPY = {
   title: "Stop payment reminders?",
   body: "You will get no more payment reminders for this invoice. The invoice and its payment page stay as they are.",
   action: "Stop reminders",
   doneTitle: "Reminders stopped",
-  // Before the invoice number, kept on one line, and after it.
   doneFor: "You will get no more payment reminders for",
   doneFrom: (from: string | null) => (from ? ` from ${from}.` : "."),
   notFound:
@@ -735,7 +712,7 @@ export const STOP_REMINDERS_COPY = {
   failed: "We could not stop them. Try again.",
 } as const;
 
-// R-95, D-114: what customers still owe. Money held for a payer is theirs, so it never shows here.
+// Money held for a payer is theirs, so it never shows as owed.
 export const OWED_COPY = {
   title: "Unpaid",
   description: "Not paid in full yet, most urgent first.",
@@ -748,14 +725,12 @@ export const OWED_COPY = {
   left: "left to pay",
   none: "Nothing unpaid right now.",
   failed: "We could not load unpaid payments.",
-  retry: "Try again",
   showAll: (n: number) => `Show all ${n}`,
   checkout: "Checkout",
   more: (n: number) => (n === 1 ? "1 more is unpaid." : `${n} more are unpaid.`),
   inPayments: "Open Payments",
 } as const;
 
-/** R-227: the fees a new invoice or link would carry, before it is saved. */
 export const FEES_FORM_COPY = {
   clientPays: "Add the network fee to what your client pays",
   subtotal: "Subtotal",
@@ -763,7 +738,6 @@ export const FEES_FORM_COPY = {
   fees: "Network and platform fees",
   clientTotal: "Your client pays",
   youReceive: "You receive",
-  // The invoice form's totals: the fee is one of their lines, with who pays it beside it.
   whoPays: "Who pays the network fee",
   paidBy: { owner: "You pay it", client: "Client pays it" },
   clientPaysTotal: "Client pays",

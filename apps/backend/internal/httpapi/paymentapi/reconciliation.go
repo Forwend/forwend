@@ -43,6 +43,7 @@ type reconciliationAssetJSON struct {
 	MinVerifiedBlock      *uint64      `json:"minVerifiedBlock"`
 	MaxVerifiedBlock      *uint64      `json:"maxVerifiedBlock"`
 	ChainFinalizedBlock   *uint64      `json:"chainFinalizedBlock"`
+	ScanCurrent           bool         `json:"scanCurrent"`
 }
 
 func toBalances(value invoice.PaymentBalances) balancesJSON {
@@ -77,7 +78,7 @@ func reconciliation(invoices *invoice.Service) http.HandlerFunc {
 				Opening: toBalances(asset.Opening), Changes: toBalances(asset.Changes), Closing: toBalances(asset.Closing), Settled: asset.Settled.String(), Fees: asset.Fees.String(), Refunded: asset.Refunded.String(),
 				CheckpointBalance: optionalAmount(asset.CheckpointBalance), CheckpointDifference: optionalAmount(asset.CheckpointDifference), ReceiverCount: asset.ReceiverCount, VerifiedReceivers: asset.VerifiedReceivers, UnreconciledReceivers: asset.UnreconciledReceivers,
 				PendingDeposits: asset.PendingDeposits, UnbookedDeposits: asset.UnbookedDeposits, UnprovedDeposits: asset.UnprovedDeposits, UnbookedOutflows: asset.UnbookedOutflows, OtherAssetMovements: asset.OtherAssetMovements, PolicyExceptions: asset.PolicyExceptions, BookedMovements: asset.BookedMovements,
-				MinVerifiedBlock: asset.MinVerifiedBlock, MaxVerifiedBlock: asset.MaxVerifiedBlock, ChainFinalizedBlock: asset.ChainFinalizedBlock})
+				MinVerifiedBlock: asset.MinVerifiedBlock, MaxVerifiedBlock: asset.MaxVerifiedBlock, ChainFinalizedBlock: asset.ChainFinalizedBlock, ScanCurrent: asset.ScanCurrent})
 		}
 		httpio.WriteJSON(w, http.StatusOK, out)
 	}

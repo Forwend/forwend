@@ -3,7 +3,6 @@
 import {
   ChoiceCard,
   DatePicker,
-  formatTokenAmount,
   SelectField,
   SwitchCard,
   TextField,
@@ -15,39 +14,39 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { FeeSummary } from "@/features/invoices/components/fee-summary";
-import { formatDueDate, parseTokenAmount } from "@/features/invoices/lib/invoices";
 import { useSaveLinkMutation } from "@/features/links/api/links-api";
+import { LinkPreview } from "@/features/links/components/link-preview";
 import {
   AMOUNT_KINDS,
+  LINK_FIELDS,
   LINK_LIMITS,
   LINK_SETUP_REQUIRED_CODE,
-  USD_PATTERN,
 } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
-import { amountLabel, endsAtOf, invalidLinkField, linkAddress } from "@/features/links/lib/links";
+import { endsAtOf, linkAddress } from "@/features/links/lib/links";
 import type {
   AmountKind,
   LinkBody,
   LinkField,
   Link as PaymentLink,
 } from "@/features/links/types/links";
-import { Payee } from "@/features/pay/components/payee";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import type { Store } from "@/features/stores/types/stores";
+import { apiError, namedField } from "@/shared/api/api-error";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
-import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
+import { StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { LEAST_USD_CENTS, USD_PATTERN } from "@/shared/constants/money";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { exactDigits } from "@/shared/lib/money";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
+import { amountText, parseTokenAmount, usdCents } from "@/shared/lib/money";
 
 export interface LinkFormProps {
   profileId: string;
   link?: PaymentLink;
-  /** A merchant's stores the user reaches; empty for a freelancer. */
   stores: readonly Store[];
-  /** D-122: who pays the fees unless the link says otherwise, the profile's choice. */
   feesPaidBy?: FeesPaidBy;
 }
 
@@ -63,7 +62,7 @@ const FIELD_STEPS: Record<LinkField, string> = {
 // A link's price is USD, which the stablecoins hold with 6 decimals (USDC, OUSD); the quote is in their units.
 const PRICE_DECIMALS = 6;
 
-// R-140: a new link's id is made once, so a retried save after an error makes one link.
+// A new link's id is made once, so a retried save after an error makes one link.
 export function LinkForm({
   profileId,
   link,
@@ -83,7 +82,6 @@ export function LinkForm({
   const [clientPays, setClientPays] = useState(
     (link?.feesPaidBy ?? feesPaidBy) === FEES_PAID_BY.client,
   );
-  // Off, the link takes one payment: a cap of 1.
   const [reusable, setReusable] = useState(link?.maxPayments !== 1);
   const [errors, setErrors] = useState<Partial<Record<LinkField, string>>>({});
   const [formError, setFormError] = useState("");
@@ -130,7 +128,6 @@ export function LinkForm({
       feesPaidBy: clientPays ? FEES_PAID_BY.client : FEES_PAID_BY.owner,
     };
   };
-  // Every problem the form has now, whichever step holds it.
   const problems = (form: HTMLFormElement) => {
     const body = read(form);
     const cap = String(new FormData(form).get("maxPayments") ?? "").trim();
@@ -139,8 +136,7 @@ export function LinkForm({
     if (kind === AMOUNT_KINDS.fixed && !body.amountUsd) shown.amountUsd = COPY.errors.amount;
     for (const field of ["amountUsd", "minUsd", "maxUsd"] as const) {
       const value = body[field];
-      // R-56: every payment through the link asks for at least 1.00 USD.
-      if (value !== null && (!USD_PATTERN.test(value) || Number(value) < 1))
+      if (value !== null && (!USD_PATTERN.test(value) || usdCents(value) < LEAST_USD_CENTS))
         shown[field] = COPY.errors.amount;
     }
     if (body.minUsd && body.maxUsd && !shown.minUsd && Number(body.minUsd) > Number(body.maxUsd))
@@ -169,45 +165,19 @@ export function LinkForm({
     try {
       await save({ profileId, linkId: linkId.current, body }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved(body.title) });
-      // A new link opens on its page, where its address is ready to copy.
       router.push(link ? APP_ROUTES.links : `${APP_ROUTES.links}/${linkId.current}`);
     } catch (error) {
-      // A 422 names the field it refused, as the form's own checks would.
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidLinkField(message);
+      const field = namedField(error, LINK_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         flow.focusError(form);
-      } else if (
-        (error as { data?: { error?: { code?: string } } }).data?.error?.code ===
-        LINK_SETUP_REQUIRED_CODE
-      ) {
+      } else if (apiError(error).code === LINK_SETUP_REQUIRED_CODE) {
         setFormError(COPY.errors.notReady);
       } else setFormError(COPY.errors.failed);
       setBusy(false);
     }
   };
 
-  const picked = stores.find((s) => s.storeId === store);
-  const amount =
-    kind === AMOUNT_KINDS.fixed
-      ? typed.amountUsd && USD_PATTERN.test(typed.amountUsd)
-        ? amountLabel({ amountUsd: typed.amountUsd, minUsd: null, maxUsd: null })
-        : COPY.preview.noAmount
-      : amountLabel({
-          amountUsd: null,
-          minUsd: USD_PATTERN.test(typed.minUsd) ? typed.minUsd : null,
-          maxUsd: USD_PATTERN.test(typed.maxUsd) ? typed.maxUsd : null,
-        });
-  const limits = [
-    endsAt ? COPY.preview.until(formatDueDate(endsAt.slice(0, 10))) : null,
-    !reusable
-      ? COPY.preview.once
-      : /^\d+$/.test(typed.maxPayments)
-        ? COPY.preview.cap(Number(typed.maxPayments))
-        : null,
-  ].filter(Boolean);
   return (
     <StepForm
       label={COPY.stepsLabel}
@@ -231,35 +201,14 @@ export function LinkForm({
       onInput={readTyped}
       error={formError}
       preview={
-        <FormPreview title={COPY.preview.title} note={COPY.preview.note}>
-          <div className="flex flex-col gap-4 rounded-md bg-surface p-5 shadow-sm ring-1 ring-line">
-            <Payee
-              as="p"
-              name={picked?.name ?? (typed.title || COPY.preview.noTitle)}
-              subtitle={COPY.preview.subtitle}
-              brand={
-                picked
-                  ? { storeId: picked.storeId, color: picked.brandColor, logoAt: picked.logoAt }
-                  : null
-              }
-            />
-            <div className="flex flex-col gap-1 border-t border-line pt-4">
-              {picked ? (
-                <p
-                  className={`font-medium break-words ${typed.title ? "text-ink" : "text-subtle"}`}
-                >
-                  {typed.title || COPY.preview.noTitle}
-                </p>
-              ) : null}
-              <p className="text-2xl font-medium tracking-tight text-ink tabular-nums">{amount}</p>
-            </div>
-            {limits.length || !active ? (
-              <p className="border-t border-line pt-4 text-sm text-muted">
-                {active ? limits.join(" · ") : COPY.preview.off}
-              </p>
-            ) : null}
-          </div>
-        </FormPreview>
+        <LinkPreview
+          typed={typed}
+          kind={kind}
+          store={stores.find((s) => s.storeId === store)}
+          endsAt={endsAt}
+          reusable={reusable}
+          active={active}
+        />
       }
     >
       <div data-step={STEPS.link} className={flow.shows(STEPS.link)}>
@@ -359,7 +308,6 @@ export function LinkForm({
               </p>
             </div>
           )}
-          {/* R-227: an open link's payer chooses the price, so it shows the fee alone; the lowest price prices it. */}
           <FeeSummary
             profileId={profileId}
             storeId={store || undefined}
@@ -377,7 +325,7 @@ export function LinkForm({
             clientPays={clientPays}
             onClientPays={setClientPays}
             money={(units) =>
-              `${formatTokenAmount({ baseUnits: units, decimals: PRICE_DECIMALS, fractionDigits: Math.max(2, exactDigits(units, PRICE_DECIMALS)) })} ${MONEY_COPY.usd}`
+              amountText(units, { decimals: PRICE_DECIMALS, symbol: MONEY_COPY.usd })
             }
             feeOnly={kind === AMOUNT_KINDS.open}
           />
@@ -392,7 +340,6 @@ export function LinkForm({
             checked={reusable}
             onCheckedChange={setReusable}
           >
-            {/* Empty is no limit. */}
             <TextField
               label={COPY.maxPayments}
               name="maxPayments"

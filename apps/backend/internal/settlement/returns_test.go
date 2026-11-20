@@ -32,7 +32,6 @@ func (e env) refundStatus(t *testing.T, id string) string {
 	return status
 }
 
-// round is the worker's: the watcher records what the chain did, then the ledger books it.
 func (e env) round(t *testing.T) {
 	t.Helper()
 	e.anvil.Mine(2)
@@ -44,14 +43,12 @@ func (e env) round(t *testing.T) {
 	}
 }
 
-// send runs the calls as the refund authority, as `cast send` with the printed signature and arguments.
 func (e env) send(r Return) {
 	for _, c := range r.Calls {
 		e.anvil.AsAuthority(strings.ToLower(c.To.Hex()), c.Signature, c.Args...)
 	}
 }
 
-// PLAN 11.10.3: support returns an overpayment to the address that paid, once, and the money stays locked until then.
 func TestSupportReturnsAnOverpaymentToItsSenderOnce(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
@@ -86,7 +83,6 @@ func TestSupportReturnsAnOverpaymentToItsSenderOnce(t *testing.T) {
 	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrReturnQueued) {
 		t.Fatalf("a second return of the same money: %v", err)
 	}
-	// The signer settles the paid amount meanwhile: booking it must not unlock the queued return.
 	e.final(t, e.signer(t))
 	e.round(t)
 	var settlement string
@@ -141,7 +137,6 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 		t.Fatalf("a refused return locked the money: %s", got)
 	}
 
-	// An exchange payer's own address, after support checked their proof (D-118); 0.10 USD is the least it sends.
 	r, err := QueueReturn(ctx, e.pool, e.client, id, hash, &other, big.NewInt(100000))
 	if err != nil || r.To != other || r.Amount.Int64() != 100000 || len(r.Warnings) != 1 {
 		t.Fatalf("return to another address: %+v, %v", r, err)
@@ -149,7 +144,6 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 	if err := ReleaseReturn(ctx, e.pool, id); err != nil {
 		t.Fatal(err)
 	}
-	// A contract destination, such as an exchange's or an app's, is allowed after a warning.
 	contract := common.HexToAddress(e.anvil.DeployToken())
 	if r, err := QueueReturn(ctx, e.pool, e.client, id, hash, &contract, big.NewInt(100000)); err != nil ||
 		!slices.ContainsFunc(r.Warnings, func(w string) bool { return strings.Contains(w, "contract") }) {
@@ -164,7 +158,6 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 	if got := e.refundStatus(t, id); got != "held" {
 		t.Fatalf("after release: %s", got)
 	}
-	// Support's actions on the payer's money stay in the invoice's history (D-92).
 	var rows []string
 	if err := e.pool.QueryRow(ctx, `SELECT array_agg(kind || ' ' || actor || ' ' || coalesce(data->>'amount', '') || ' ' ||
 		coalesce(data->>'to', '') ORDER BY id) FROM history_events WHERE invoice_id = $1 AND kind LIKE 'invoice.return_%'`,
@@ -178,7 +171,6 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 	}
 }
 
-// The contract keeps an expired partial payment until its deadline, so the owner can still reopen the invoice (R-130).
 func TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
@@ -186,7 +178,7 @@ func TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline(t *testing.T)
 	e.anvil.Transfer(e.token, receive, "2000000")
 	e.round(t)
 	e.anvil.Wait(120)
-	e.round(t) // Anvil's finalized block is two behind: the second round books the expiry
+	e.round(t)
 	e.round(t)
 	hash := e.paymentHash(t, id)
 	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrNotYet) {
@@ -205,8 +197,6 @@ func TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline(t *testing.T)
 	}
 }
 
-// Past the deadline of an invoice never settled, the contract lets the whole balance out, so the ledger is the only
-// guard of the creator's money: a refund sent but not booked yet must stop the next return.
 func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
@@ -219,7 +209,6 @@ func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
 		t.Fatalf("first return: %+v, %v", r, err)
 	}
 	e.send(r)
-	// Released by mistake before the watcher booked the refund.
 	if err := ReleaseReturn(ctx, e.pool, id); err != nil {
 		t.Fatal(err)
 	}
@@ -232,18 +221,16 @@ func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
 	}
 }
 
-// A payment not booked yet can hide a refund that isn't either, and its money is another payer's: support waits.
 func TestSupportWaitsForEveryPaymentToBeBooked(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.paidInvoice(t)
 	hash := e.paymentHash(t, id)
 	e.anvil.Transfer(e.token, receive, "1000000")
-	// Not recorded yet, as a deposit the scan missed would stay.
 	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrMissedDeposit) {
 		t.Fatalf("with money on chain no payment explains: %v", err)
 	}
-	if err := e.watch.Scan(ctx); err != nil { // seen, not yet final
+	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := QueueReturn(ctx, e.pool, e.client, id, hash, nil, nil); !errors.Is(err, ErrUnbooked) {
@@ -257,12 +244,10 @@ func TestSupportWaitsForEveryPaymentToBeBooked(t *testing.T) {
 
 func ptr[T any](v T) *T { return &v }
 
-// NEAR Intents sends a cross-chain payment from its own address, never the payer's: a return of it goes only to an
-// address support gives, never back to NEAR Intents.
 func TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
-	id, _ := e.paidInvoice(t) // 6 paid on an invoice of 5: 1 held as overpaid
+	id, _ := e.paidInvoice(t)
 	hash := e.paymentHash(t, id)
 	refundTo, originTx := "TJRabPrwbZy45sbavfcjinPJC18kjpRTv8", "ab12"
 	if _, err := e.pool.Exec(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
@@ -296,13 +281,11 @@ func TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress(t *testing.T) {
 	}
 }
 
-// Tracking can stop before 1Click names the Base transaction. A payment from an address that delivered another
-// payment through NEAR Intents is still not returned to that address by default.
 func TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
 	id, _ := e.paidInvoice(t)
-	other, _ := e.pay(t, 8) // NEAR Intents delivered this one from the same sender, and its quote names it
+	other, _ := e.pay(t, 8)
 	if _, err := e.pool.Exec(ctx, `INSERT INTO crosschain_quotes (invoice_id, option_id, origin_asset, refund_to,
 		    deposit_address, amount_in, min_amount_in, amount_out, time_estimate, shown_until, deadline, signed, status,
 		    origin_blockchain, origin_symbol, origin_decimals, deposit_seen_at, converted_at, origin_txs, destination_txs)
@@ -329,7 +312,6 @@ func TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNam
 	}
 }
 
-// A quote that saw the payer's deposit but names no Base transaction yet: any payment to its option may be the delivery.
 func TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
@@ -347,8 +329,6 @@ func TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress(t *te
 	}
 }
 
-// Two support returns overlap: one read 1 USDC held, and another return was booked before it locked the money. It
-// must not queue more than is still held, or the refund takes the creator's money.
 func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
@@ -376,7 +356,6 @@ func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// The other return's 0.5 USDC, booked as the ledger books a refund.
 	if _, err := hold.Exec(ctx, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind) VALUES ($1, 'refund') RETURNING id)
 		INSERT INTO ledger_entries (transaction_id, account, amount)
 		SELECT id, 'payer_held', 500000 FROM x UNION ALL SELECT id, 'receiver', -500000 FROM x`, id); err != nil {
@@ -393,12 +372,10 @@ func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
 	}
 }
 
-// A receive address is public: a stranger who pays 0.10 to an overpaid invoice and asks for "the held money" gets back
-// only what they paid, whatever the destination.
 func TestSupportReturnsAPayerAtMostWhatTheyPaid(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()
-	id, receive := e.paidInvoice(t) // 6 paid on an invoice of 5: 1 held for the first payer
+	id, receive := e.paidInvoice(t)
 	first := e.paymentHash(t, id)
 	const stranger = "0x70997970c51812dc3a010c7e01a50d79c8c4d3bc"
 	e.anvil.Transfer(e.token, stranger, "100000")

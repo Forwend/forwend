@@ -18,8 +18,7 @@ const (
 
 var ErrInvalid = errors.New("invalid balance history request")
 
-// At is the day's end (00:00 UTC of the next day), or now for today; a day's bucket runs from the previous At,
-// included, to At, excluded. USD fields count 1 USD per token, 2 decimals; "" when a wallet balance is missing.
+// At is the day's end (00:00 UTC next day), or now for today. USD is 1 USD per token; "" if missing.
 type Point struct {
 	At                                 time.Time
 	EstimatedUSD, ReceivedUSD, SentUSD string
@@ -37,8 +36,7 @@ type History struct {
 	Tokens []TokenHistory
 }
 
-// History covers the last days UTC days, oldest first (R-38): each earlier balance undoes the wallet transfers the
-// current one includes. The caller has checked the user's access to the profile.
+// History covers the last days UTC days, oldest first; the caller has checked access to the profile.
 func (s *Service) History(ctx context.Context, profileID string, days int, now time.Time) (History, error) {
 	if days < 1 || days > MaxDays {
 		return History{}, fmt.Errorf("%w: days must be 1 to %d", ErrInvalid, MaxDays)
@@ -54,8 +52,8 @@ func (s *Service) History(ctx context.Context, profileID string, days int, now t
 	}
 	h.Points[days-1].At = now.UTC()
 
-	// Summed in the database: dust sent to the wallet must not make this read every row (R-118). Only transfers at or
-	// below the block a balance was read at count, as the balance includes those.
+	// Summed in SQL so dust sent to the wallet can't make this read every row. Only transfers up to
+	// the block a balance was read at count, as the balance includes those.
 	var chains, blocks []int64
 	var tokens []string
 	for _, t := range current.Tokens {

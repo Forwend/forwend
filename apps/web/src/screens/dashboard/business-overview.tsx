@@ -25,13 +25,11 @@ import { BalanceCard } from "@/screens/dashboard/balance-card";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { OnItsWayCard } from "@/screens/dashboard/on-its-way-card";
 import { ReceivedCard } from "@/screens/dashboard/received-card";
+import { PageTitle } from "@/shared/components/page-title";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 
-// Every row splits at the same line, so the cards' edges line up down the page.
 const ROW = "grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]";
 
-// The C comp's order: what you have and what is coming, then how money came in and what it is in, then who still owes
-// you and the latest payments. Every card leads somewhere to act.
 export function BusinessOverview() {
   const { profile, openReceive, openSend } = useAppSession();
   const [range, setRange] = useState<HistoryRange>(DEFAULT_RANGE);
@@ -45,7 +43,7 @@ export function BusinessOverview() {
   );
   const now = Date.now();
 
-  // The chart keeps the last range's line, dimmed, while the next loads; the figures wait for their own range.
+  // data keeps the last range's line while the next loads; figures wait for their own range.
   const received = history.data
     ? historySeries(history.data, HISTORY_FIELDS.received, prices)
     : null;
@@ -76,11 +74,10 @@ export function BusinessOverview() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-      <h1 className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
+      <PageTitle>
         <span className="sr-only">{profileLabel(profile)} </span>
         {COPY.overview}
-      </h1>
+      </PageTitle>
 
       <div className={ROW}>
         <BalanceCard

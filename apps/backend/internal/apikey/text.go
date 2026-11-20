@@ -10,8 +10,7 @@ import (
 
 const base62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-// A key's text is fw_test_ or fw_live_, 30 random base62 characters (178 bits) and a 6-character CRC32 of the rest, as
-// GitHub's token format has it: a typo or a made-up key is refused without a lookup, and secret scanners can tell it.
+// Prefix, 30 random base62 characters (178 bits) and a CRC32 of the rest, so typos fail without a lookup.
 var textPattern = regexp.MustCompile(`^fw_(test|live)_[0-9A-Za-z]{36}$`)
 
 func prefix(livemode bool) string {
@@ -21,7 +20,6 @@ func prefix(livemode bool) string {
 	return "fw_test_"
 }
 
-// newText is a new key's text and the SHA-256 kept for it.
 func newText(livemode bool) (string, []byte) {
 	var b strings.Builder
 	b.WriteString(prefix(livemode))
@@ -47,7 +45,6 @@ func checksum(s string) string {
 	return string(out)
 }
 
-// hashOf is the SHA-256 kept for a key's text, and false for text that isn't a key's.
 func hashOf(text string) ([]byte, bool) {
 	if !textPattern.MatchString(text) || checksum(text[:len(text)-6]) != text[len(text)-6:] {
 		return nil, false
@@ -56,7 +53,7 @@ func hashOf(text string) ([]byte, bool) {
 	return sum[:], true
 }
 
-// IsKey reports whether a bearer token looks like a key's text, so it is checked as one and never as a sign-in.
+// IsKey: a bearer token that looks like a key is checked as one, never as a sign-in.
 func IsKey(bearer string) bool {
 	return strings.HasPrefix(bearer, "fw_")
 }

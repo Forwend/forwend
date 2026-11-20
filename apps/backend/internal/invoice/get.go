@@ -17,7 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Get takes the pay link's secret token (D-86), never an on-chain id: the chain makes those public.
+// Get takes the pay link's secret token, never an on-chain id: the chain makes those public.
 func (s *Service) Get(ctx context.Context, payToken string) (Invoice, error) {
 	id, ok := idOf(payToken)
 	if !ok {
@@ -37,7 +37,8 @@ func idOf(payToken string) (string, bool) {
 
 var payTokenShape = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// GetOfProfile is Get for the profile's owner: another profile's invoice is ErrNotFound.
+func PayURL(webURL, payToken string) string { return webURL + "/pay/" + payToken }
+
 func (s *Service) GetOfProfile(ctx context.Context, profileID, id string) (Invoice, error) {
 	return s.get(ctx, profileID, id, false)
 }
@@ -46,7 +47,6 @@ func (s *Service) GetProfileSummary(ctx context.Context, profileID, id string) (
 	return s.get(ctx, profileID, id, true)
 }
 
-// Unnumbered is true for a link invoice before its first deposit, which only its payer sees (R-141).
 func (s *Service) Unnumbered(ctx context.Context, id string) (bool, error) {
 	var unnumbered bool
 	if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM invoices WHERE id = lower($1) AND number IS NULL)",
@@ -109,7 +109,6 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 	if settledAt != nil {
 		inv.SettledAt = settledAt.UTC()
 	}
-	// The page shows when Check status may run again, also after a reload (R-55).
 	var next *time.Time
 	if err := s.pool.QueryRow(ctx, `SELECT max(checked_at) + make_interval(secs => $2) FROM invoice_rechecks
 		WHERE invoice_id = $1 AND checked_at > now() - make_interval(secs => $2)`, inv.ID,
@@ -163,7 +162,7 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 			return Invoice{}, err
 		}
 		inv.Receipts = receipts[inv.ID]
-		head, err := s.head(ctx, inv.ChainID)
+		head, err := readHead(ctx, s.pool, inv.ChainID)
 		if err != nil {
 			return Invoice{}, err
 		}
@@ -216,8 +215,7 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 	return inv, err
 }
 
-// PaidAtSQL is the block time (unix seconds) of the last deposit booked to the owner on the option row whose id is
-// the SQL expression option; later deposits are held. Read it once paid.
+// PaidAtSQL is the unix block time of the last deposit booked to the owner on option; read it once paid.
 func PaidAtSQL(option string) string {
 	return `(SELECT max(ct.block_time) FROM chain_transfers ct
 		JOIN ledger_transactions l ON l.chain_transfer_id = ct.id
@@ -262,10 +260,6 @@ func (s *Service) settlementWait(ctx context.Context, inv Invoice, head finality
 	}
 }
 
-func (s *Service) head(ctx context.Context, chainID uint64) (finality.Block, error) {
-	return readHead(ctx, s.pool, chainID)
-}
-
 func readHead(ctx context.Context, db paymentReader, chainID uint64) (finality.Block, error) {
 	var head finality.Block
 	err := db.QueryRow(ctx, "SELECT last_finalized_block, last_finalized_time FROM chain_cursors WHERE chain_id = $1",
@@ -274,15 +268,6 @@ func readHead(ctx context.Context, db paymentReader, chainID uint64) (finality.B
 		return finality.Block{}, fmt.Errorf("read chain %d cursor: %w", chainID, err)
 	}
 	return head, nil
-}
-
-func (s *Service) options(ctx context.Context, id string) ([]Option, error) {
-	return readPaymentOptions(ctx, s.pool, id)
-}
-
-func readPaymentOptions(ctx context.Context, db paymentReader, id string) ([]Option, error) {
-	options, err := readPaymentOptionsFor(ctx, db, []string{id}, false)
-	return options[id], err
 }
 
 func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, activeOnly bool) (map[string][]Option, error) {
@@ -317,7 +302,6 @@ func readPaymentOptionsFor(ctx context.Context, db paymentReader, ids []string, 
 	return result, rows.Err()
 }
 
-// R-88.
 func readLines(ctx context.Context, q paymentReader, id string) ([]Line, error) {
 	rows, err := q.Query(ctx, `SELECT description, quantity::text, unit_price::text, amount::text
 		FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, id)
@@ -334,7 +318,6 @@ func readLines(ctx context.Context, q paymentReader, id string) ([]Line, error) 
 	})
 }
 
-// revision reads the other invoice of a Revise with query, nil when there is none.
 func (s *Service) revision(ctx context.Context, query, id string) (*Revision, error) {
 	var r Revision
 	err := s.pool.QueryRow(ctx, query, id).Scan(&r.ID, &r.Number, &r.PayToken)

@@ -12,21 +12,25 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { amountText, orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
+import { orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
 import type { CrossToken } from "@/features/pay/types/crosschain";
 import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
 import { StoredLogo } from "@/shared/components/chains/stored-logo";
-import { BLOCKCHAIN_ICONS, CROSS_CHAIN_TOKEN_ICONS } from "@/shared/constants/chains";
+import {
+  BLOCKCHAIN_ICONS,
+  CROSS_CHAIN_TARGET,
+  CROSS_CHAIN_TOKEN_ICONS,
+} from "@/shared/constants/chains";
+import { STEP_IN } from "@/shared/constants/motion";
 import { blockchainName, chainLogo, iconOf, tokenLogo } from "@/shared/lib/chains";
+import { amountText } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
 
 export interface CrossChainPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** As the api lists them: stablecoins first. Undefined while they load. */
   tokens: readonly CrossToken[] | undefined;
-  /** What is due, in Base USDC base units: a token NEAR Intents needs more from can't be picked (D-126). */
   due: bigint | undefined;
   dueDecimals: number;
   onPick: (token: CrossToken) => void;
@@ -36,11 +40,7 @@ const matches = (query: string, ...texts: string[]) =>
   texts.some((text) => text.toLowerCase().includes(query.trim().toLowerCase()));
 
 const STEPS = { chains: "chains", tokens: "tokens" } as const;
-// A list that takes another's place fades in from a slight blur: the content changes, not the place.
-const STEP_IN = "motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]";
 
-/** Networks beside the chosen network's tokens (R-236). A phone has no room for both: it shows the networks first,
- * then the chosen one's tokens with a way back. A token search looks across every network at either step. */
 export function CrossChainPicker({
   open,
   onOpenChange,
@@ -51,11 +51,9 @@ export function CrossChainPicker({
 }: CrossChainPickerProps) {
   const chains = useMemo(() => orderBlockchains((tokens ?? []).map((t) => t.blockchain)), [tokens]);
   const [chosen, setChosen] = useState<string>();
-  // The phone's step; from small screens up both lists show and it changes nothing.
   const [step, setStep] = useState<(typeof STEPS)[keyof typeof STEPS]>(STEPS.chains);
   const back = useRef<HTMLButtonElement>(null);
   const chainList = useRef<HTMLUListElement>(null);
-  // The list a tap led to takes the focus the tapped row had: Back on the way in, the network on the way out.
   const stepped = useRef(false);
   useEffect(() => {
     if (!stepped.current) return;
@@ -82,9 +80,7 @@ export function CrossChainPicker({
   const cent = 10n ** BigInt(Math.max(dueDecimals - 2, 0));
   const centsUp = (units: bigint) => ((units + cent - 1n) / cent) * cent;
   const usdc = (units: bigint) =>
-    `${formatTokenAmount({ baseUnits: units, decimals: dueDecimals, fractionDigits: 2 })} USDC`;
-  // A search names a token on any chain, so a payer who knows the token finds it without the chain. Tokens that fit
-  // come first; the rest stay listed, with what they need.
+    `${formatTokenAmount({ baseUnits: units, decimals: dueDecimals, fractionDigits: 2 })} ${CROSS_CHAIN_TARGET.symbol}`;
   const shownTokens = (tokens ?? [])
     .filter((t) =>
       tokenQuery
@@ -92,7 +88,6 @@ export function CrossChainPicker({
         : t.blockchain === chain,
     )
     .sort((a, b) => Number(minimumOver(a) !== null) - Number(minimumOver(b) !== null));
-  // On a phone: the networks until one is tapped; a search shows its tokens from every network at once.
   const tokensOnPhone = step === STEPS.tokens || tokenQuery !== "";
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={COPY.pickerTitle} size="lg">
@@ -118,13 +113,12 @@ export function CrossChainPicker({
               className={`flex min-w-0 flex-col gap-2 ${tokensOnPhone ? "max-sm:hidden" : ""}`}
             >
               <SearchField
-                label={COPY.searchChains}
-                placeholder={COPY.searchChains}
+                label={PAY_COPY.searchNetworks}
+                placeholder={PAY_COPY.searchNetworks}
                 value={chainQuery}
                 onValueChange={setChainQuery}
                 className="max-sm:hidden"
               />
-              {/* Phones: full rows, each with how many tokens it has; from small screens a list beside the tokens. */}
               <ul
                 ref={chainList}
                 className={`flex flex-col gap-0.5 sm:max-h-80 sm:overflow-y-auto ${STEP_IN}`}
@@ -162,7 +156,7 @@ export function CrossChainPicker({
             </section>
             <section
               aria-label={
-                tokenQuery ? COPY.searchTokens : COPY.tokensOn(blockchainName(chain ?? ""))
+                tokenQuery ? PAY_COPY.searchTokens : COPY.tokensOn(blockchainName(chain ?? ""))
               }
               className="flex min-w-0 flex-col gap-2 max-sm:order-first"
             >
@@ -178,13 +172,14 @@ export function CrossChainPicker({
                   <Mark
                     text={blockchainName(chain ?? "")}
                     icon={iconOf(BLOCKCHAIN_ICONS, chain ?? "")}
+                    logo={chainLogo(chain ?? "")}
                   />
                   {blockchainName(chain ?? "")}
                 </button>
               ) : null}
               <SearchField
-                label={COPY.searchTokens}
-                placeholder={COPY.searchTokens}
+                label={PAY_COPY.searchTokens}
+                placeholder={PAY_COPY.searchTokens}
                 value={tokenQuery}
                 onValueChange={setTokenQuery}
               />
@@ -192,11 +187,10 @@ export function CrossChainPicker({
                 <p
                   className={`px-2 py-3 text-sm text-muted ${tokensOnPhone ? "" : "max-sm:hidden"}`}
                 >
-                  {COPY.noMatch}
+                  {PAY_COPY.noMatch}
                 </p>
               ) : (
                 <ul
-                  // A new network's tokens are a new list: it fades in, on any screen.
                   key={tokenQuery ? "search" : chain}
                   className={`flex flex-col sm:max-h-80 sm:overflow-y-auto ${STEP_IN} ${tokensOnPhone ? "" : "max-sm:hidden"}`}
                 >
@@ -210,7 +204,6 @@ export function CrossChainPicker({
                           onClick={() => {
                             onPick(t);
                             onOpenChange(false);
-                            // The next opening starts at the networks again.
                             setStep(STEPS.chains);
                             setTokenQuery("");
                             setChainQuery("");
@@ -255,12 +248,8 @@ export function CrossChainPicker({
   );
 }
 
-// The usual first screen of rows, so the sheet opens at about the height it will keep.
 const LOADING_ROWS = ["a", "b", "c", "d", "e", "f"] as const;
 
-// Forwend draws the popular logos itself (R-246); any other token or network shows the logo file the web ships
-// (R-250), and one without either shows its first letter in the place a logo takes. A token that can't be picked
-// greys its logo as its row does (R-242).
 function Mark({
   text,
   icon,

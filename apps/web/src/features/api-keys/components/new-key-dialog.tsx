@@ -8,22 +8,18 @@ import { useCreateKeyMutation } from "@/features/api-keys/api/api-keys-api";
 import { KEY_NAME_MAX, KEY_SCOPES } from "@/features/api-keys/constants/api-keys";
 import { API_KEYS_COPY as COPY } from "@/features/api-keys/constants/api-keys-copy";
 import type { KeyScope } from "@/features/api-keys/types/api-keys";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 
 export interface NewKeyDialogProps {
   profileId: string;
-  /** A merchant's stores, one of which the key is for; null for a freelancer, whose key has none. */
   stores: readonly Store[] | null;
-  /** Gets the new key's text, the one time the API answers it. */
   onMade: (secret: string) => void;
 }
 
-// Most keys make and read invoices; anything more is a choice.
 const DEFAULT_SCOPES: KeyScope[] = [PERMISSIONS.invoicesRead, PERMISSIONS.invoicesWrite];
 
-// R-144: the API asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
   const [create, creating] = useCreateKeyMutation();
   const fresh = useFreshSignIn();
@@ -59,7 +55,7 @@ export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
       });
       const made = await fresh.run(() => pending.unwrap());
       onMade(made.secret);
-      // The answer held the secret: drop it from the store too. The hook's reset would be this render's, a no-op.
+      // Drop the secret from the store; the hook's reset would be a no-op here.
       pending.reset();
       close();
     } catch (error) {
@@ -82,7 +78,6 @@ export function NewKeyDialog({ profileId, stores, onMade }: NewKeyDialogProps) {
       )}
     >
       <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">
-        {/* While the user confirms it's them, the key they confirm stays shown as it is. */}
         <fieldset disabled={fresh.pending} className="flex min-w-0 flex-col gap-4">
           <TextField
             label={COPY.name}

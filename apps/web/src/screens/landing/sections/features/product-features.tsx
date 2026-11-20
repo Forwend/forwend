@@ -97,7 +97,7 @@ function FeatureArticle({ feature, number }: { feature: Feature; number: number 
   );
 }
 
-// The ways to ask for money come first, then how a customer can pay any of them, then the money's way to the wallet.
+// The first three are the ways to ask for money.
 const ASKING = FEATURES.slice(0, 3);
 const FOLLOWING = FEATURES.slice(3);
 

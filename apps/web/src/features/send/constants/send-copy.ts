@@ -24,7 +24,6 @@ export const SEND_COPY = {
   moreThanBalanceWithFee: "That plus the network fee is more than this wallet holds.",
   feeAtReview: "Shown at review",
   total: "Total",
-  // An estimate: the wallet pays at most this, usually less (R-216).
   approx: (amount: string) => `≈ ${amount}`,
   available: (amount: string) => `${amount} available`,
   amountFormat: "Enter an amount such as 25 or 25.50.",

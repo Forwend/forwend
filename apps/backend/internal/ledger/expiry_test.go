@@ -17,16 +17,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// sim: transfers are written directly and the test sets the second RPC's answers.
 type sim struct {
 	t        *testing.T
 	pool     *pgxpool.Pool
 	service  *Service
-	answer   map[string]*big.Int // second RPC balance per receive address
-	down     map[string]bool     // second RPC errors for these addresses
-	behind   map[string]bool     // second RPC answers 0 from a block before the finalized one
-	deployed map[string]uint64   // factory.deployedAt per receive address
-	calls    []string            // second RPC balance calls, by receive address
+	answer   map[string]*big.Int
+	down     map[string]bool
+	behind   map[string]bool // second RPC answers 0 from a block before the finalized one
+	deployed map[string]uint64
+	calls    []string
 	n        int
 }
 
@@ -85,7 +84,6 @@ func (s *sim) invoice() (id, receive string) {
 	return id, receive
 }
 
-// transfer also adds the amount to the second RPC's answer.
 func (s *sim) transfer(id, receive string, amount, blockTime int64, status string) int64 {
 	s.t.Helper()
 	s.n++
@@ -135,7 +133,7 @@ func TestLaggingSecondRPCNeverExpiresAPaidInvoice(t *testing.T) {
 	id, receive := s.invoice()
 	s.transfer(id, receive, 5000000, simExpires-10, "confirmed")
 	s.finalizedAt(simExpires + 1)
-	s.answer[receive] = new(big.Int) // lags: reports nothing yet
+	s.answer[receive] = new(big.Int)
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Detected {
 		t.Fatalf("while the second RPC lags: %s, want detected (not final, not a partial payment)", payment)
@@ -166,22 +164,20 @@ func TestPendingOnTimeDepositDelaysExpiry(t *testing.T) {
 func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
-	s.answer[receive] = big.NewInt(5000000) // on chain, but no transfer row
+	s.answer[receive] = big.NewInt(5000000)
 	s.finalizedAt(simExpires + 1)
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Open {
 		t.Fatalf("with an unexplained balance: %s, want open", payment)
 	}
 	s.answer[receive] = new(big.Int)
-	s.exec("UPDATE invoice_balance_alerts SET next_check_at = now()") // its next check is due (R-120)
+	s.exec("UPDATE invoice_balance_alerts SET next_check_at = now()")
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Expired {
 		t.Fatalf("once the balance matches the ledger: %s, want expired", payment)
 	}
 }
 
-// A deposit the scan missed beside a paid invoice alerts and holds refunds, and the invoice is still paid. One the scan
-// saw but has not booked yet does not alert.
 func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
 	s := newSim(t)
 	ctx := context.Background()
@@ -201,8 +197,6 @@ func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
 		t.Fatalf("with a deposit seen, not booked yet: %s, alert %v; want paid and none", payment, alert(seen))
 	}
 
-	// The balance is read at block 1000; the scan has finalized only up to 100, so the extra may be a deposit it
-	// will still record.
 	ahead, receive := s.invoice()
 	s.transfer(ahead, receive, 5_000_000, 500, "confirmed")
 	s.answer[receive].Add(s.answer[receive], big.NewInt(2_000_000))
@@ -226,8 +220,6 @@ func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
 	}
 }
 
-// Arc floors each native transfer to micro-USDC but balanceOf floors their sum, so two sends under a micro each leave
-// 1 on chain that no transfer explains. Dust like that must not keep an invoice open past its close for good.
 func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -239,7 +231,6 @@ func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
 	}
 }
 
-// Dust is 0.01 of the invoice's own token, whatever its decimals: just under it expires, that much is a missed deposit.
 func TestDustFollowsTheTokensDecimals(t *testing.T) {
 	s := newSim(t)
 	s.exec("UPDATE tokens SET decimals = 18")
@@ -258,17 +249,14 @@ func TestDustFollowsTheTokensDecimals(t *testing.T) {
 	}
 }
 
-// A refund of money the scan missed waits until that deposit is recorded: booked before, it would take the money of
-// the payer the ledger did book.
 func TestRefundOfAMissedDepositWaitsForThatDeposit(t *testing.T) {
 	s := newSim(t)
 	ctx := context.Background()
 	id, receive := s.invoice()
-	s.transfer(id, receive, 3_000_000, 500, "confirmed")            // payer A, on time
-	s.answer[receive].Add(s.answer[receive], big.NewInt(1_000_000)) // payer B's deposit: on chain, never recorded
+	s.transfer(id, receive, 3_000_000, 500, "confirmed")
+	s.answer[receive].Add(s.answer[receive], big.NewInt(1_000_000))
 	s.finalizedAt(simExpires + 1)
 	s.process(id)
-	// The Safe refunds B's money, and the scan records the receiver's Refunded event.
 	s.exec(`INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract, kind, destination,
 		amount, tx_hash, log_index, block_hash, block_number, block_time, verified_block, transfer_log_index)
 		VALUES ($1, 1, $2, $3, 'refund', '0x00000000000000000000000000000000000000bb', 1000000,
@@ -282,9 +270,8 @@ func TestRefundOfAMissedDepositWaitsForThatDeposit(t *testing.T) {
 		WHERE invoice_id = $1`, id).Scan(&reason, &booked); err != nil || booked || reason != "unrecorded_deposit" {
 		t.Fatalf("refund before B's deposit is recorded: booked=%v reason=%q (%v)", booked, reason, err)
 	}
-	// ops deposit records B's deposit; it is earlier in chain order than the refund.
 	s.transfer(id, receive, 1_000_000, simExpires+500, "confirmed")
-	s.answer[receive].Sub(s.answer[receive], big.NewInt(1_000_000)) // already counted above
+	s.answer[receive].Sub(s.answer[receive], big.NewInt(1_000_000))
 	s.process(id)
 	s.process(id)
 	a, err := ReadAmounts(ctx, s.pool, id)
@@ -298,13 +285,12 @@ func TestRefundOfAMissedDepositWaitsForThatDeposit(t *testing.T) {
 	}
 }
 
-// A refund mined before the missed deposit can't have returned it: once that deposit is recorded, both book.
 func TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded(t *testing.T) {
 	s := newSim(t)
 	ctx := context.Background()
 	id, receive := s.invoice()
 	s.transfer(id, receive, 3_000_000, 500, "confirmed")
-	s.answer[receive].Add(s.answer[receive], big.NewInt(1_000_000)) // payer B's deposit, mined at block 950, missed
+	s.answer[receive].Add(s.answer[receive], big.NewInt(1_000_000))
 	s.finalizedAt(simExpires + 1)
 	s.process(id)
 	s.exec(`INSERT INTO receiver_outflows (invoice_id, chain_id, receiver_address, token_contract, kind, destination,
@@ -314,7 +300,7 @@ func TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded(t *testing.T) {
 	s.answer[receive].Sub(s.answer[receive], big.NewInt(1_000_000))
 	s.finalizedAt(200001)
 	s.process(id)
-	b := s.transfer(id, receive, 1_000_000, 200100, "confirmed") // ops deposit records B
+	b := s.transfer(id, receive, 1_000_000, 200100, "confirmed")
 	s.answer[receive].Sub(s.answer[receive], big.NewInt(1_000_000))
 	s.exec("UPDATE chain_transfers SET block_number = 950 WHERE id = $1", b)
 	s.process(id)
@@ -333,15 +319,13 @@ func TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded(t *testing.T) {
 	}
 }
 
-// An alert that ends without a new deposit, as when one answer lagged at the close, must not keep the option in review
-// and block its reopen for good.
 func TestBalanceAlertEndsWhenTheBalanceAgreesAgain(t *testing.T) {
 	s := newSim(t)
 	ctx := context.Background()
 	id, receive := s.invoice()
 	s.transfer(id, receive, 3_000_000, 500, "confirmed")
 	s.process(id)
-	s.answer[receive].SetInt64(2_000_000) // one answer short of the booked money at the close
+	s.answer[receive].SetInt64(2_000_000)
 	s.finalizedAt(simExpires + 1)
 	s.process(id)
 	s.answer[receive].SetInt64(3_000_000)
@@ -364,7 +348,6 @@ func TestBalanceAlertEndsWhenTheBalanceAgreesAgain(t *testing.T) {
 	}
 }
 
-// R-120: stuck invoices can't use up a chain's round, and an honest invoice in the same round is still paid.
 func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	s := newSim(t)
 	var stuck []string
@@ -412,7 +395,6 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	if n, left := wait(); n != 2 || left < 110*time.Second || left > 2*time.Minute {
 		t.Fatalf("after two alerts: %d, %v left; want 2 and about two minutes", n, left)
 	}
-	// Weeks later the wait stays a day: the doubling stops before it overflows.
 	s.exec("UPDATE invoice_balance_alerts SET alerts = 100, next_check_at = now()")
 	round()
 	if n, left := wait(); n != 101 || left < 23*time.Hour || left > 24*time.Hour {
@@ -420,7 +402,6 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 	}
 }
 
-// The round that completes a partly paid invoice can meet an RPC behind the finalized block; later rounds still pay it.
 func TestPartlyPaidInvoiceCompletedWhileTheRPCLagsIsPaidLater(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -445,7 +426,6 @@ func TestPartlyPaidInvoiceCompletedWhileTheRPCLagsIsPaidLater(t *testing.T) {
 	}
 }
 
-// Less on chain than booked keeps an invoice owed in full from being paid; past the wait it is listed for an alert.
 func TestOwedInFullButShortOnChainIsListedForAnAlert(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -471,11 +451,10 @@ func TestOwedInFullButShortOnChainIsListedForAnAlert(t *testing.T) {
 	}
 }
 
-// A missed on-time log and a second RPC behind the finalized block both read 0: that must not expire the invoice.
 func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
-	s.answer[receive] = big.NewInt(5000000) // paid on time, but the watcher missed the log
+	s.answer[receive] = big.NewInt(5000000)
 	s.behind[receive] = true
 	s.finalizedAt(simExpires + 1)
 	s.process(id)
@@ -487,8 +466,8 @@ func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
 	if payment, _ := s.payment(id); payment != Open {
 		t.Fatalf("once it catches up, the unexplained balance still blocks expiry: %s", payment)
 	}
-	s.transfer(id, receive, 5000000, simExpires-10, "confirmed") // the watcher finds the log
-	s.answer[receive] = big.NewInt(5000000)                      // transfer() added it again; the chain holds 5
+	s.transfer(id, receive, 5000000, simExpires-10, "confirmed")
+	s.answer[receive] = big.NewInt(5000000)
 	s.process(id)
 	if payment, _ := s.payment(id); payment != Paid {
 		t.Fatalf("after the watcher books it: %s, want paid", payment)
@@ -524,7 +503,6 @@ func TestInvoiceStartsOpen(t *testing.T) {
 	}
 }
 
-// R-79, D-26: even the whole amount on time is held and never settled.
 func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -552,7 +530,6 @@ func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 	}
 }
 
-// R-80: each event once, from the transaction that made it; held carries the amount newly held.
 func TestOutboxEventsFollowTheLedger(t *testing.T) {
 	s := newSim(t)
 	events := func(id string) []string {
@@ -573,7 +550,6 @@ func TestOutboxEventsFollowTheLedger(t *testing.T) {
 	s.answer[receive] = big.NewInt(5000000)
 	s.process(paid)
 	s.process(paid)
-	// A late deposit after it was paid is held, and said once.
 	s.transfer(paid, receive, 700000, simExpires+10, "confirmed")
 	s.answer[receive] = big.NewInt(5700000)
 	s.process(paid)
@@ -593,7 +569,6 @@ func TestOutboxEventsFollowTheLedger(t *testing.T) {
 	}
 }
 
-// R-82.
 func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -609,8 +584,6 @@ func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 	}
 }
 
-// An invoice's options and the chain's open invoices are read through their indexes, so a round's cost doesn't grow
-// with every invoice ever made.
 func TestRoundReadsInvoicesThroughTheirIndexes(t *testing.T) {
 	s := newSim(t)
 	id, _ := s.invoice()
@@ -630,7 +603,6 @@ func TestRoundReadsInvoicesThroughTheirIndexes(t *testing.T) {
 	}
 }
 
-// A round that changes nothing leaves the invoice's row as it was, so waiting invoices aren't rewritten every round.
 func TestUnchangedStatusIsNotWrittenAgain(t *testing.T) {
 	s := newSim(t)
 	id, _ := s.invoice()

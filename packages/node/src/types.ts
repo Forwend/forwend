@@ -1,4 +1,4 @@
-/** The invoice events a webhook carries (docs/backend/api.md, R-147). */
+/** The invoice events a webhook carries. */
 export const WEBHOOK_EVENT_TYPES = [
   "invoice.detected",
   "invoice.partially_paid",
@@ -37,7 +37,7 @@ export const LIST_STATUSES = [
 /** Why money is held for the payer. */
 export const HELD_REASONS = ["overpaid", "late", "expired", "canceled", "other_option"] as const;
 
-/** 1Click's statuses of a payment through NEAR Intents (D-123); SUCCESS, REFUNDED and FAILED are final. */
+/** 1Click's statuses of a NEAR Intents payment; SUCCESS, REFUNDED and FAILED are final. */
 export const CROSS_CHAIN_STATUSES = [
   "PENDING_DEPOSIT",
   "KNOWN_DEPOSIT_TX",
@@ -64,7 +64,7 @@ export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CheckoutState = (typeof CHECKOUT_STATES)[number];
 
-/** The merchant's payment state (D-114); paymentStatus keeps its raw value. */
+/** The merchant's payment state; paymentStatus keeps the raw value. */
 export const PAYMENT_STATES = [
   "waiting",
   "confirming",
@@ -75,7 +75,7 @@ export const PAYMENT_STATES = [
   "canceled",
 ] as const;
 export type PaymentState = (typeof PAYMENT_STATES)[number];
-/** Where the received money is on its way to the profile's wallet (D-114). */
+/** Where the received money is on its way to the profile's wallet. */
 export const WALLET_STATES = ["none", "pending", "in_wallet", "delayed", "refused"] as const;
 export type WalletState = (typeof WALLET_STATES)[number];
 
@@ -88,7 +88,6 @@ export interface PaymentAmounts {
   held: string;
   /** What settlement paid the recipient: the amount less the fees. */
   settled: string;
-  /** The network and platform fees settlement paid. */
   fees: string;
   refunded: string;
   observedRefunded: string;
@@ -101,11 +100,11 @@ export const FEES_PAID_BY = ["owner", "client"] as const;
 /** owner: the fees are deducted at settlement. client: they are added on top of the price. */
 export type FeesPaidBy = (typeof FEES_PAID_BY)[number];
 
-/** An option's fees, in base units of its token, and what the owner receives of its amount. */
+/** An option's fees, in its token's base units. */
 export interface OptionFees {
   /** Paid at settlement to the settler for its gas. */
   networkFee: string;
-  /** Paid at settlement to Forwend; 0 at launch. */
+  /** Paid at settlement to Forwend. */
   platformFee: string;
   /** The amount less both fees. */
   netAmount: string;
@@ -130,11 +129,7 @@ export interface CrossChainTx {
   explorerUrl: string;
 }
 
-/**
- * How a payment through NEAR Intents went (R-235). The payer sent the token on its own chain; 1Click delivered exactly
- * amountOut of the option's USDC on Base. amountIn, deposited and refunded are in the token's base units; amounts are
- * null until 1Click says.
- */
+/** A NEAR Intents payment; amounts are base units of their token, null until 1Click reports them. */
 export interface CrossChain {
   provider: "near_intents";
   quoteId: string;
@@ -159,7 +154,7 @@ export interface CrossChain {
   createdAt: string;
   depositSeenAt: string | null;
   convertedAt: string | null;
-  /** 1Click's signed answer, as the pay page checks it (D-124). */
+  /** 1Click's signed answer, as the pay page checks it. */
   signed: Record<string, unknown>;
 }
 
@@ -198,18 +193,20 @@ export interface Payment extends OptionFees {
   createdAt: string;
   closesAt: string;
   hostedUrl: string | null;
-  /** The hosted page's token, the last part of hostedUrl: what @forwend/js and @forwend/react take. */
+  /** The hosted page's token: what @forwend/js and @forwend/react take. */
   payToken: string | null;
-  /** A payment through NEAR Intents; a list fills it only while the deposit pays the payment. With status SUCCESS it
-   * paid the payment if optionLocked is false or optionId is the Base USDC option; if not, the USDC is held. */
+  /**
+   * A NEAR Intents payment; a list fills it only while that deposit pays this payment.
+   * With status SUCCESS it paid if optionLocked is false or optionId is the Base USDC option; else the USDC is held.
+   */
   crossChain: CrossChain | null;
 }
 
-/** One payment with its line items, options and open problems, as payments.get returns it. */
+/** One payment as payments.get returns it. */
 export interface PaymentDetails extends Payment {
   customer: { name: string | null; email: string | null };
   metadata: Record<string, string>;
-  /** Money in the base units of the option whose optionId is the paymentId; quantity has 2 decimals. */
+  /** Base units of the paymentId option's token; quantity has 2 decimals. */
   items: { description: string; quantity: string; unitPrice: string; amount: string }[];
   options: PaymentOption[];
   deliveries: PaymentDelivery[];
@@ -235,7 +232,7 @@ export interface PaymentOption extends OptionFees {
   amounts: PaymentAmounts | null;
   coverage: PaymentCoverage;
   settlement: PaymentSettlement | null;
-  /** Held money the refund authority sent back to a payer, in chain order. */
+  /** Held money sent back to the payer, in chain order. */
   returns: PaymentReturn[];
   deposits: Deposit[];
   /** More transfers reached the address than deposits lists. */
@@ -244,7 +241,7 @@ export interface PaymentOption extends OptionFees {
 
 /** How far the scan of an option's address got, and what it could not book yet. */
 export interface PaymentCoverage {
-  /** False once the scan no longer reads the address's deposits. */
+  /** False once the scan stops reading the address's deposits. */
   historyComplete: boolean;
   verifiedBlock: number | null;
   verifiedHash: string | null;
@@ -258,7 +255,7 @@ export interface PaymentCoverage {
   chainFinalizedBlock: number | null;
   pendingDeposits: number;
   unbookedDeposits: number;
-  /** 1 while the final balance holds more than every recorded deposit: a deposit the scan missed. */
+  /** 1 when the balance exceeds every recorded deposit: the scan missed one. */
   unprovedDeposits: number;
   unbookedOutflows: number;
 }
@@ -272,7 +269,7 @@ export interface PaymentSettlement {
   nextAttemptAt: string;
   signedAt: string | null;
   txHash: string | null;
-  /** The settlement seen to succeed, a mined replacement too; for display only. */
+  /** The settlement seen to succeed, a mined replacement too; display only. */
   receiptTxHash: string | null;
   blockNumber: number | null;
   /** Null before a successful receipt. */
@@ -389,7 +386,7 @@ export interface CreateCheckoutSession {
   reference?: string;
   title?: string;
   expiresIn?: number;
-  /** Who pays the fees; left out, the profile's choice. client adds them to the price. */
+  /** Who pays the fees; omitted, the profile's choice applies. client adds them to the price. */
   feesPaidBy?: FeesPaidBy;
   returnUrl?: string;
   metadata?: CreateInvoice["metadata"];
@@ -417,10 +414,7 @@ export interface ListCheckoutSessions {
   storeId?: string;
 }
 
-/**
- * An invoice as its owner's list returns it. With several options, the terms and statuses are the current option's:
- * the one that received money first, else the first.
- */
+/** An invoice in its owner's list; its terms are the first-paid option's, else the first option's. */
 export interface Invoice extends OptionFees {
   amounts?: PaymentAmounts;
   purpose: PaymentPurpose;
@@ -430,12 +424,12 @@ export interface Invoice extends OptionFees {
   payToken: string | null;
   /** The option the terms are in; invoiceId for a fixed invoice. */
   optionId: string;
-  /** An option's final payments reached 1.00 USD: money sent to any other option is held for the payer. */
+  /** Final payments here reached 1.00 USD: money sent to other options is held. */
   optionLocked: boolean;
-  /** The option the payer last picked with Show address; only payments decide the option. */
+  /** The option the payer last picked; only payments decide the option. */
   pickedOptionId: string | null;
   optionCount: number;
-  /** A payment made before the close is not final yet; show a partially_paid invoice as confirming. */
+  /** A payment before the close is not final yet: show partially_paid as confirming. */
   confirming: boolean;
   /** The checkout closed unpaid; paymentStatus turns expired once the chain is final. */
   closed: boolean;
@@ -455,7 +449,6 @@ export interface Invoice extends OptionFees {
     country: string | null;
     taxId: string | null;
   };
-  /** A merchant invoice's store. */
   store?: { storeId: string; name: string };
   metadata: Record<string, string>;
   brand: { storeId: string; color: string | null; logoAt: string | null } | null;
@@ -570,7 +563,7 @@ export interface InvoiceDetails extends Invoice {
   /** At most 100 transfers, in chain order; depositSummary has the totals. */
   deposits: Deposit[];
   options: InvoiceOption[];
-  /** Money in the base units of the option whose optionId is the invoiceId. */
+  /** Base units of the invoiceId option's token. */
   lines: PaymentDetails["items"];
   /** When Check status may run again; null when it may now. */
   nextCheckAt: string | null;
@@ -578,9 +571,9 @@ export interface InvoiceDetails extends Invoice {
   updates: { at: string; field: UpdateField; from: string | null; to: string | null }[];
   replacedBy: Revision | null;
   replaces: Revision | null;
-  /** A payment through NEAR Intents. */
+  /** A NEAR Intents payment. */
   crossChain: CrossChain | null;
-  /** The payee takes payments from other chains (R-240). */
+  /** The payee takes payments from other chains. */
   crossChainOn: boolean;
   /** Why paid money has not reached the profile wallet yet; null when it is not waiting. */
   settlementWait: { kind: SettlementWait; until: string | null; secondsLeft: number | null } | null;
@@ -606,7 +599,7 @@ export interface InvoiceDetails extends Invoice {
   reopenUntil: string | null;
 }
 
-/** What a create takes; the API checks each value (docs/backend/api.md). */
+/** What a create takes; the API checks each value. */
 export interface CreateInvoice {
   chainId?: number;
   token?: string;
@@ -615,7 +608,7 @@ export interface CreateInvoice {
   /** Or a USD amount the payer pays in any accepted stablecoin. */
   amountUsd?: string;
   expiresIn?: number;
-  /** Who pays the fees; left out, the profile's choice. client adds them to the price. */
+  /** Who pays the fees; omitted, the profile's choice applies. client adds them to the price. */
   feesPaidBy?: FeesPaidBy;
   title?: string;
   note?: string;

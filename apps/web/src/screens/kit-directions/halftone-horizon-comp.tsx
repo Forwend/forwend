@@ -1,9 +1,9 @@
-import { CTA } from "@/features/waitlist/constants/waitlist";
+import { CTA } from "@/screens/kit/constants/sample-cta";
 import { CompNav } from "@/screens/kit-directions/comp-nav";
-import { COMP_UI, NAV_VARIANTS } from "@/screens/kit-directions/constants/comp";
+import { COMP_UI } from "@/screens/kit-directions/constants/comp";
+import { HalftoneRidge } from "@/screens/kit-directions/halftone-ridge";
 import { InvoicePanel } from "@/screens/kit-directions/invoice-panel";
 import { compVars } from "@/screens/kit-directions/lib/comp";
-import { HalftoneRidge } from "@/shared/components/art/halftone-ridge";
 
 export function HalftoneHorizonComp() {
   return (
@@ -12,7 +12,7 @@ export function HalftoneHorizonComp() {
       className="relative isolate flex min-h-[46rem] flex-col overflow-hidden rounded-[1.75rem] border border-[var(--line)] px-4 pt-5 pb-8 text-[var(--ink)] sm:px-8"
     >
       <HalftoneRidge className="absolute inset-0 -z-10 h-full w-full" />
-      <CompNav variant={NAV_VARIANTS.bar} />
+      <CompNav />
       <div className="mt-16 max-w-2xl">
         <h3 className="font-[family-name:var(--font-bricolage)] text-[clamp(2.5rem,6vw,4.9rem)] leading-[0.98] font-bold tracking-[-0.035em] text-balance">
           Invoices in USDC. Status you can check.

@@ -1,46 +1,30 @@
-// Package webhook keeps a profile's webhook endpoints and the secrets that sign their events (R-146, D-42).
+// Package webhook keeps a profile's webhook endpoints, the secrets that sign their events, and deliveries.
 package webhook
 
 import (
+	"context"
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// The events an endpoint can take (PLAN 11.5); invoice.confirmed is not one (owner decision 6).
-const (
-	InvoiceDetected      = "invoice.detected"
-	InvoicePartiallyPaid = "invoice.partially_paid"
-	InvoicePaid          = "invoice.paid"
-	InvoiceSettled       = "invoice.settled"
-	InvoiceExpired       = "invoice.expired"
-	InvoiceCanceled      = "invoice.canceled"
-	InvoiceHeld          = "invoice.held"
-	InvoiceOpen          = "invoice.open"     // a reorg took away the payment it was detected with: it waits again
-	InvoiceReopened      = "invoice.reopened" // the owner reopened it after it expired partly paid (R-130)
-)
-
-var EventTypes = []string{InvoiceDetected, InvoicePartiallyPaid, InvoicePaid, InvoiceSettled, InvoiceExpired,
-	InvoiceCanceled, InvoiceHeld, InvoiceOpen, InvoiceReopened}
+const InvoicePaid = "invoice.paid"
 
 // Overlap is how long a rotated secret keeps signing beside its new one.
 const Overlap = 24 * time.Hour
 
 var (
-	// ErrInvalid wraps a request value that breaks a rule; the message names it.
-	ErrInvalid  = errors.New("invalid webhook request")
-	ErrNotFound = errors.New("webhook endpoint not found")
-	// ErrPersonal: a personal profile has no API, so no webhooks.
-	ErrPersonal = errors.New("a personal profile has no webhooks")
-	// ErrNotConfigured: without WEBHOOK_SECRET_KEY no secret can be kept, so webhooks are off.
-	ErrNotConfigured = errors.New("webhooks are not configured")
+	ErrInvalid       = errors.New("invalid webhook request")
+	ErrNotFound      = errors.New("webhook endpoint not found")
+	ErrPersonal      = errors.New("a personal profile has no webhooks")
+	ErrNotConfigured = errors.New("webhooks are not configured") // no WEBHOOK_SECRET_KEY
 )
 
-// Endpoint is where a profile's events go. StoreID is "" for all of a merchant's stores, and for a freelancer.
 type Endpoint struct {
 	ID          string
-	StoreID     string
+	StoreID     string // "" = all stores, or a freelancer
 	URL         string
 	Description string
 	Events      []string
@@ -50,7 +34,6 @@ type Endpoint struct {
 	UpdatedAt   time.Time
 }
 
-// Details are what the owner sets.
 type Details struct {
 	URL         string
 	Description string
@@ -59,11 +42,14 @@ type Details struct {
 	Enabled     bool
 }
 
-// Secret is a signing secret's text; ExpiresAt is set once rotated: it signs until then.
 type Secret struct {
 	Text      string
 	CreatedAt time.Time
-	ExpiresAt *time.Time
+	ExpiresAt *time.Time // set once rotated; signs until then
+}
+
+type queryer interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
 type Service struct {

@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// R-80.
 func TestNotificationsUseTheLoginEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	const dave = "did:privy:dave"
@@ -16,7 +15,7 @@ func TestNotificationsUseTheLoginEmail(t *testing.T) {
 		t.Fatalf("sign up: %d %v", r.status, r.body)
 	}
 	e.wallets.Lock()
-	e.wallets.Emails[dave] = "changed@example.com" // read once: a later change is not picked up on every load
+	e.wallets.Emails[dave] = "changed@example.com" // read once: a later change is not read again
 	e.wallets.Unlock()
 	if r := e.call(t, "POST", "/v1/me", dave, "", ""); r.status != http.StatusOK {
 		t.Fatalf("second load: %d %v", r.status, r.body)

@@ -33,20 +33,18 @@ func (r RPCs) Close() {
 	}
 }
 
-func NewRPCs(spec Spec, rate float64, budgets ...*Budget) (RPCs, error) {
+// budget, when not nil, spaces this pool's calls with the other processes' (Budget).
+func NewRPCs(spec Spec, rate float64, budget *Budget) (RPCs, error) {
 	if err := validate(spec); err != nil {
 		return RPCs{}, err
 	}
 	if !(rate > 0) || math.IsInf(rate, 0) {
 		return RPCs{}, fmt.Errorf("invalid RPC rate")
 	}
-	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: AttemptTimeout,
-		http: outbound.Client(spec.AllowLoopback), maxHeadAge: spec.MaxHeadAge}
-	if len(budgets) > 0 {
-		p.budget = budgets[0]
-	}
+	p := &pool{chainID: spec.ChainID, perCall: time.Duration(float64(time.Second) / rate), timeout: attemptTimeout,
+		http: outbound.Client(spec.AllowLoopback), maxHeadAge: spec.MaxHeadAge, budget: budget}
 	// A wss endpoint dials through the same destination checks, never a proxy, and never follows a redirect.
-	dialer := &websocket.Dialer{NetDialContext: outbound.Dialer(spec.AllowLoopback).DialContext, HandshakeTimeout: AttemptTimeout}
+	dialer := &websocket.Dialer{NetDialContext: outbound.Dialer(spec.AllowLoopback).DialContext, HandshakeTimeout: attemptTimeout}
 	for _, e := range ordered(spec.Endpoints) {
 		ep := &endpoint{url: e.URL, host: hostOf(e.URL), name: e.ID, tier: e.Tier, budgetGroup: e.BudgetGroup}
 		if strings.HasPrefix(e.URL, "wss://") || strings.HasPrefix(e.URL, "ws://") {

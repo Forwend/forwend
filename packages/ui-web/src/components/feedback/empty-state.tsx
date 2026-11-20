@@ -7,13 +7,10 @@ export interface EmptyStateProps {
   description?: string;
   action?: ReactNode;
   icon?: LucideIcon;
-  /** Inside a panel that already has its frame, such as an overview card: no border, less height. */
   compact?: boolean;
-  /** The whole page's content: no frame, centered in the workspace below the page's toolbar. */
   page?: boolean;
 }
 
-// R-75: an empty or filtered-out list never looks broken.
 export function EmptyState({
   title,
   description,
@@ -24,7 +21,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      // The page's workspace grows every box down to this one (app shell), so it centers in what is left on screen.
+      // The app shell grows the workspace down to this box, so it centers in what is left.
       data-page-empty={page ? "" : undefined}
       className={cx(
         "flex w-full flex-col items-center justify-center px-6 text-center",
@@ -38,7 +35,6 @@ export function EmptyState({
       <span className="grid size-10 place-items-center rounded-md bg-surface-2">
         <Icon aria-hidden className="size-[var(--fw-icon-lg)] text-muted" />
       </span>
-      {/* In a card it reads like the card's error state: one quiet line, not a page heading. */}
       <p className={cx("font-medium text-ink", compact ? "mt-3 text-sm" : "mt-4 text-lg")}>
         {title}
       </p>

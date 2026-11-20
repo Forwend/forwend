@@ -22,8 +22,7 @@ const (
 	storeB = "44444444-4444-4444-8444-444444444444"
 )
 
-// merchant makes Alice a merchant profile with a wallet and billing details, so it can invoice; its first store came
-// with it.
+// merchant makes Alice a merchant profile that can invoice, with its first store.
 func (e invoiceEnv) merchant(t *testing.T) string {
 	t.Helper()
 	var id string
@@ -41,7 +40,6 @@ func (e invoiceEnv) merchant(t *testing.T) string {
 	return id
 }
 
-// R-134.
 func TestStores(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -123,7 +121,7 @@ func TestStores(t *testing.T) {
 		{"allowedOrigins", `["http://shop.example.com"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["http://localhost.example.com:3000"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["http://localhost:3000/shop"]`, "invalid_value", http.StatusUnprocessableEntity},
-		// An origin goes into frame-ancestors (R-168): a wildcard or a separator there would let any site frame.
+		// An origin goes into frame-ancestors: a wildcard or separator there lets any site frame.
 		{"allowedOrigins", `["https://*"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["https://*.example.com"]`, "invalid_value", http.StatusUnprocessableEntity},
 		{"allowedOrigins", `["https://shop.example.com;sandbox"]`, "invalid_value", http.StatusUnprocessableEntity},
@@ -177,7 +175,6 @@ func manyOrigins(n int) string {
 	return "[" + strings.Join(origins, ", ") + "]"
 }
 
-// R-134: the store, its default close and its origins.
 func TestMerchantInvoicesRecordTheirStore(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -292,7 +289,6 @@ func storeIDs(t *testing.T, e invoiceEnv, profile string) []string {
 	return ids
 }
 
-// R-135.
 func TestStoreBranding(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -371,7 +367,7 @@ func TestStoreBranding(t *testing.T) {
 	if r := upload(alice, encode(image.NewRGBA64(image.Rect(0, 0, 8, 8)), "png")); r.status != http.StatusOK {
 		t.Fatalf("PUT a 16-bit PNG: %d %v", r.status, r.body)
 	}
-	// A photo-like JPEG within the limits makes a PNG of more than 1 MB; it is still taken.
+	// A photo-like JPEG under the byte limit becomes a PNG over 1 MB: still taken.
 	photo := image.NewNRGBA(image.Rect(0, 0, profile.MaxLogoSide, profile.MaxLogoSide))
 	for i := range photo.Pix {
 		photo.Pix[i] = byte(i*7919%251) | 0x80
@@ -450,7 +446,6 @@ func TestStoreBranding(t *testing.T) {
 	}
 }
 
-// R-177, D-93: the store page reads one store by id; a scoped member reads only their stores.
 func TestStoreReadByID(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, dev = "did:privy:alice", "did:privy:erin"

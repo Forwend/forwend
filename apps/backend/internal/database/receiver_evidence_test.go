@@ -47,8 +47,6 @@ func TestDroppingReceiverEvidenceRewindsRecoveryToTheLaggingReceiver(t *testing.
 		    '0x1111111111111111111111111111111111111111', 'evm_create2', '0x2222222222222222222222222222222222222222',
 		    '0x00000000000000000000000000000000000000a'||$1, 'key-'||$1, decode(repeat('00', 32), 'hex') FROM profiles`, n)
 	}
-	// The watched receiver with money lags at 1200. The one past the watch window, at 100, is the refund authority's;
-	// the one never paid, at 300, has nothing to settle or refund.
 	exec(`UPDATE receiver_scans SET start_block = 1000, next_block = 1200 WHERE invoice_id = '0x' || repeat('01', 32)`)
 	exec(`UPDATE receiver_scans SET start_block = 0, next_block = 100 WHERE invoice_id = '0x' || repeat('02', 32)`)
 	exec(`UPDATE receiver_scans SET start_block = 0, next_block = 300 WHERE invoice_id = '0x' || repeat('03', 32)`)

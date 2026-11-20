@@ -27,12 +27,12 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  // Playwright starts these in order: the first builds, the second reuses that build. Both the build, which fixes the
-  // /api/v1 rewrite, and the proxy at run time (src/proxy.ts) read API_URL: each must point at the stub, not .env.
+  // In order: the first builds, the second reuses that build. The build's rewrite and src/proxy.ts
+  // both read API_URL, so each server points it at the stub, not .env.
   webServer: [
     {
       command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p ${PUBLIC_PORT}`,
-      // The fake 1Click's key (e2e/oneclick.ts): the page takes it only on loopback, as these tests run (D-124).
+      // The fake 1Click's key (e2e/oneclick.ts): the page takes it only on loopback.
       env: {
         NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL,
         API_URL,
@@ -56,7 +56,7 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 30_000,
     },
-    // The example merchant (R-170), built with FORWEND_URL for its frame-src.
+    // The example merchant, built with FORWEND_URL for its frame-src.
     {
       command: `pnpm --workspace-root exec turbo run build --filter=@forwend/example-merchant... && pnpm --filter @forwend/example-merchant exec next start -p ${EXAMPLE_PORT}`,
       url: EXAMPLE_URL,
@@ -67,7 +67,7 @@ export default defineConfig({
         FORWEND_PROFILE_ID: "11111111-1111-4111-8111-111111111111",
         FORWEND_STORE_ID: "33333333-3333-4333-8333-333333333333",
         FORWEND_WEBHOOK_SECRET: EXAMPLE_WEBHOOK_SECRET,
-        // A file both of its server bundles open: Next runs routes and pages apart. test-results is the run's output.
+        // A file, since Next runs routes and pages in separate bundles that must share it.
         EXAMPLE_DATABASE: fileURLToPath(
           new URL("./test-results/example-merchant.db", import.meta.url),
         ),

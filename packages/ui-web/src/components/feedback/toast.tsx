@@ -65,17 +65,10 @@ export function useToast() {
 
 export interface ToastProviderProps {
   children: ReactNode;
-  label?: string;
-  closeLabel?: string;
   className?: string;
 }
 
-export function ToastProvider({
-  children,
-  label = "Notifications",
-  closeLabel = "Close notification",
-  className,
-}: ToastProviderProps) {
+export function ToastProvider({ children, className }: ToastProviderProps) {
   const [toasts, setToasts] = useState<(ToastMessage & { id: number })[]>([]);
   const lastId = useRef(0);
   const show = useCallback((toast: ToastMessage) => {
@@ -92,7 +85,7 @@ export function ToastProvider({
     <ShowToast.Provider value={show}>
       {children}
       <section
-        aria-label={label}
+        aria-label="Notifications"
         className={cx(
           "pointer-events-none fixed inset-x-4 bottom-4 z-[var(--fw-z-toast)] sm:left-auto sm:w-sm lg:top-4 lg:bottom-auto",
           className,
@@ -100,7 +93,7 @@ export function ToastProvider({
       >
         <ol aria-live="polite" className="flex flex-col gap-2">
           {toasts.map(({ id, ...toast }) => (
-            <TimedToast key={id} id={id} toast={toast} onClose={close} closeLabel={closeLabel} />
+            <TimedToast key={id} id={id} toast={toast} onClose={close} />
           ))}
         </ol>
       </section>
@@ -112,12 +105,10 @@ function TimedToast({
   id,
   toast,
   onClose,
-  closeLabel,
 }: {
   id: number;
   toast: ToastMessage;
   onClose: (id: number) => void;
-  closeLabel: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -154,7 +145,7 @@ function TimedToast({
       onBlur={() => setFocused(false)}
       className="pointer-events-auto motion-safe:animate-[fw-pop-in_var(--fw-duration-base)_var(--fw-ease-out)] data-closing:animate-[fw-pop-out_var(--fw-duration-fast)_var(--fw-ease-out)_forwards] lg:[--fw-pop-y:-4px]"
     >
-      <Toast {...toast} onClose={() => setClosing(true)} closeLabel={closeLabel} />
+      <Toast {...toast} onClose={() => setClosing(true)} closeLabel="Close notification" />
     </li>
   );
 }

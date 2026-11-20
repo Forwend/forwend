@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/activity"
 )
 
-// R-118.
 func TestExportsStayBoundedWithDust(t *testing.T) {
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
 	e := invoiceAPI(t)
@@ -55,7 +54,6 @@ func TestExportsStayBoundedWithDust(t *testing.T) {
 	}
 }
 
-// R-118.
 func TestExportCapIsExact(t *testing.T) {
 	const alice = "did:privy:alice"
 	e := invoiceAPI(t)

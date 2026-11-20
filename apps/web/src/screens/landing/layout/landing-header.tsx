@@ -4,7 +4,6 @@ import { buttonClasses, IconButton, ThemeSwitch } from "@forwend/ui-web";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { SIGN_IN_COPY } from "@/features/auth/constants/sign-in";
 import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 import { APP_ROUTES } from "@/shared/config/routes";
 import styles from "./landing-header.module.css";
@@ -50,7 +49,7 @@ export function LandingHeader() {
   return (
     <SiteBar ref={header} data-section="nav">
       <SiteBarRow>
-        <SiteBrand label={SIGN_IN_COPY.homeLabel} />
+        <SiteBrand />
         <nav aria-label="Main navigation" className={styles.desktopLinks}>
           {links.map((link) => (
             <a key={link.href} href={link.href}>

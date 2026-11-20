@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// inviteToken is the link token the invite email to address carries, from its outbox row.
 func (e invoiceEnv) inviteToken(t *testing.T, address string) string {
 	t.Helper()
 	var token string
@@ -33,7 +32,6 @@ func (e invoiceEnv) memberStores(t *testing.T, profile, user string) []string {
 	return ids
 }
 
-// R-139, D-93, D-63.
 func TestTeamInvitesAndRoles(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -71,7 +69,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 		`{"email": "bob@example.com", "role": "admin"}`); r.status != http.StatusConflict || errorCode(r) != "not_merchant" {
 		t.Errorf("an invite to a freelancer profile: %d %v", r.status, r.body)
 	}
-	// Giving a role needs a fresh sign-in (D-63).
 	if r := e.signedAt(t, "POST", path("/invites"), alice, time.Now().Add(-10*time.Minute),
 		`{"email": "bob@example.com", "role": "admin"}`); errorCode(r) != "reauth_required" {
 		t.Errorf("an invite with an old sign-in: %d %v", r.status, r.body)
@@ -103,7 +100,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 		t.Fatalf("the team: %d %v", team.status, team.body)
 	}
 
-	// Anyone signed in with the link reads it; only the invited address accepts it, once.
 	if r := e.call(t, "GET", "/v1/invites/"+token, carol, "", ""); r.status != http.StatusOK ||
 		r.body["email"] != "bob@example.com" || r.body["role"] != "developer" || r.body["profileName"] != "Alice Shop" {
 		t.Fatalf("read the invite: %d %v", r.status, r.body)
@@ -139,7 +135,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 		t.Fatalf("Bob's stores: %v", got)
 	}
 
-	// An Admin changes a role and stores with a fresh sign-in; the owner stays an Admin.
 	change := `{"role": "finance", "stores": ["` + first + `"]}`
 	if r := e.signedAt(t, "PUT", path("/members/"+bobID), alice, time.Now().Add(-10*time.Minute), change); errorCode(r) !=
 		"reauth_required" {
@@ -170,7 +165,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 		t.Errorf("the owner leaves: %d %v", r.status, r.body)
 	}
 
-	// A member leaves; an Admin removes another.
 	if r := e.call(t, "POST", path("/leave"), bob, "", ""); r.status != http.StatusNoContent {
 		t.Fatalf("Bob leaves: %d %v", r.status, r.body)
 	}
@@ -183,7 +177,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 	if err := e.pool.QueryRow(ctx, "SELECT id::text FROM users WHERE privy_user_id = $1", carol).Scan(&carolID); err != nil {
 		t.Fatal(err)
 	}
-	// An Admin's open invites end with them: a removed Admin can't come back through an address they invited.
 	if r := e.call(t, "POST", path("/invites"), carol, "", `{"email": "erin@example.com", "role": "admin"}`); r.status !=
 		http.StatusCreated {
 		t.Fatalf("Carol invites: %d %v", r.status, r.body)
@@ -199,7 +192,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 		t.Errorf("Carol after removal: %d", r.status)
 	}
 
-	// A new invite to the same address revokes the last; a revoked or expired link opens nothing.
 	invite(`{"email": "dan@example.com", "role": "admin"}`)
 	old := e.inviteToken(t, "dan@example.com")
 	again := invite(`{"email": "dan@example.com", "role": "admin"}`)
@@ -226,7 +218,6 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 	}
 }
 
-// R-139, R-116: invites are emails to strangers, so they share the client email cap.
 func TestInvitesCountTowardTheClientEmailCap(t *testing.T) {
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
@@ -243,9 +234,6 @@ func TestInvitesCountTowardTheClientEmailCap(t *testing.T) {
 	}
 }
 
-// D-93: an Admin taken off the team, or given another role, leaves what they could still use: the API keys they made
-// and the webhook endpoints whose secrets they could reveal. The answer lists them for the owner to roll; a member
-// who never was an Admin leaves nothing.
 func TestARemovedOrDemotedAdminLeavesWhatToRoll(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"

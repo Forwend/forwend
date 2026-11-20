@@ -11,37 +11,38 @@ import {
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Payee } from "@/features/pay/components/payee";
-import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
+import type { TokenSwitch } from "@/features/profiles/types/tokens";
 import { useSaveStoreLogoMutation, useSaveStoreMutation } from "@/features/stores/api/stores-api";
-import { StoreLogo, useObjectUrl } from "@/features/stores/components/store-logo";
+import { Payee } from "@/features/stores/components/payee";
+import { StoreLogo } from "@/features/stores/components/store-logo";
 import {
   BRAND_COLOR_PATTERN,
   COLOR_PICKER_START,
+  STORE_FIELDS,
   STORE_LIMITS,
 } from "@/features/stores/constants/stores";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
-import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
+import { useObjectUrl } from "@/features/stores/hooks/use-object-url";
+import { originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
+import { namedField } from "@/shared/api/api-error";
 import { AssetSelection } from "@/shared/components/chains/asset-selection";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { FieldGroup } from "@/shared/components/field-group";
-import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
+import { FormPreview, StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
+import { offRefs, toggled } from "@/shared/lib/asset-selection";
+import { tokenKey } from "@/shared/lib/chains";
 
 export interface StoreFormProps {
   profileId: string;
   store?: Store;
-  /** When the checkout closes, in seconds: New invoice's choices, which the screen passes in. */
   closeChoices: readonly SelectOption[];
-  /** A new store's close: New invoice's default. */
   defaultClose: number;
-  /** The profile's tokens (R-136): the store narrows the ones on. */
   tokens: readonly TokenSwitch[];
 }
-
-const tokenKey = (t: TokenRef) => `${t.chainId}:${t.token}`;
 
 const STEPS = { store: "store", brand: "brand", assets: "assets" } as const;
 const FIELD_STEPS: Record<StoreField, string> = {
@@ -52,7 +53,7 @@ const FIELD_STEPS: Record<StoreField, string> = {
   tokensOff: STEPS.assets,
 };
 
-// R-134: a new store's id is made once, so a retried save after an error makes one store.
+// A new store's id is made once, so a retried save makes one store.
 export function StoreForm({
   profileId,
   store,
@@ -72,7 +73,6 @@ export function StoreForm({
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(store?.name ?? "");
-  // A new store's logo waits for the store to exist; a saved store's uploads at once.
   const [logo, setLogo] = useState<File | null>(null);
   const logoSrc = useObjectUrl(logo);
   const [saveLogo] = useSaveStoreLogoMutation();
@@ -82,8 +82,8 @@ export function StoreForm({
     ...(shownTokens.length ? [{ id: STEPS.assets, label: COPY.tokensGroup }] : []),
   ]);
   const accepted = shownTokens.filter((t) => !tokensOff.has(tokenKey(t)));
+  const acceptedKeys = new Set(accepted.map(tokenKey));
 
-  // Every problem the form has now, whichever step holds it.
   const problems = (form: HTMLFormElement) => {
     const shown: Partial<Record<StoreField, string>> = {};
     const typedName = String(new FormData(form).get("name") ?? "").trim();
@@ -107,14 +107,12 @@ export function StoreForm({
       defaultExpiresIn: Number(closes),
       allowedOrigins: originLines(String(data.get("allowedOrigins") ?? "")),
       brandColor: color.trim(),
-      // Ones the profile has off stay as the store had them: the store can't turn them on.
+      // Ones the profile has off stay as the store had them.
       tokensOff: [
         ...(store?.tokensOff ?? []).filter(
           (t) => !shownTokens.some((s) => tokenKey(s) === tokenKey(t)),
         ),
-        ...shownTokens
-          .filter((t) => tokensOff.has(tokenKey(t)))
-          .map(({ chainId, token }) => ({ chainId, token })),
+        ...offRefs(shownTokens, acceptedKeys),
       ],
     };
     const shown = problems(form);
@@ -128,16 +126,14 @@ export function StoreForm({
       await save({ profileId, storeId: storeId.current, body }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved(body.name) });
       if (!store && logo) {
-        // The store is saved either way; a refused logo can be added again from its Edit page.
+        // The store is saved either way; the logo can be added again on Edit.
         await saveLogo({ profileId, storeId: storeId.current, logo })
           .unwrap()
           .catch(() => toast({ tone: TONES.danger, title: COPY.errors.logoFailed }));
       }
       router.push(`${APP_ROUTES.stores}/${storeId.current}`);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidStoreField(message);
+      const field = namedField(error, STORE_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         flow.focusError(form);
@@ -240,7 +236,7 @@ export function StoreForm({
             hint={COPY.colorHint}
             error={errors.brandColor}
             action={
-              // The kit has no color picker; the browser's own one fills the field (docs/web/structure.md).
+              // The kit has no color picker (docs/web/structure.md).
               <input
                 type="color"
                 aria-label={COPY.pickColor}
@@ -260,14 +256,9 @@ export function StoreForm({
             <AssetSelection
               label={COPY.tokensGroup}
               options={shownTokens}
-              selected={new Set(accepted.map(tokenKey))}
+              selected={acceptedKeys}
               onChange={(keys, on) => {
-                const next = new Set(tokensOff);
-                for (const key of keys) {
-                  if (on) next.delete(key);
-                  else next.add(key);
-                }
-                setTokensOff(next);
+                setTokensOff(toggled(tokensOff, keys, !on));
                 setErrors((current) => ({ ...current, tokensOff: undefined }));
               }}
             />

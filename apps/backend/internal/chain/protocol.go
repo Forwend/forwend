@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -114,50 +113,4 @@ func safeResponse(raw, request []byte) ([]byte, error) {
 		return json.Marshal(answers)
 	}
 	return json.Marshal(answers[0])
-}
-
-// missing is the safe message for a block or state the endpoint doesn't have: one behind the head, or a pruned node.
-const missing = "block or state not available"
-
-// lacksData reports a lowercase error message saying the endpoint doesn't have the block or state asked for.
-func lacksData(m string) bool {
-	for _, lacks := range []string{"header not found", "unknown block", "block not found", "missing trie node", "historical state",
-		"state not available", "state is not available", "pruned"} {
-		if strings.Contains(m, lacks) {
-			return true
-		}
-	}
-	return false
-}
-
-// tooManyAddresses is the safe message for a log query refused for the number of contracts it names.
-const tooManyAddresses = "too many addresses"
-
-func safeMessage(code int, message string) string {
-	m := strings.ToLower(message)
-	if strings.Contains(m, "execution reverted") {
-		return "execution reverted" // a revert reason is the contract's text, whatever words it holds
-	}
-	if batchLimit(m) {
-		return "batch too large"
-	}
-	if tooLarge(m) {
-		return "log result size too large"
-	}
-	if addressLimit(m) {
-		return tooManyAddresses
-	}
-	if rateLimited(code, m) {
-		return "rate limited"
-	}
-	if lacksData(m) {
-		return missing
-	}
-	for _, known := range []string{"execution reverted", "already known", "already imported", "nonce too low", "replacement transaction underpriced",
-		"insufficient funds", "method not found", "method not supported", "transaction underpriced"} {
-		if strings.Contains(m, known) {
-			return known
-		}
-	}
-	return "RPC execution error"
 }

@@ -3,29 +3,26 @@ package mid
 import (
 	"math"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
+	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// Tabs poll about six routes every 15 s and a page load sends about ten, well under this; a looping script is not.
-// Public routes are limited per IP at the edge (docs/backend/api.md#rate-limits): the api can't trust a payer's IP.
+// Well above what open tabs send. The edge limits public routes per IP: the api can't trust a payer's IP.
 const UserRate, UserBurst = 2, 60
 
 func Everyone(*http.Request) string { return "all" }
 
-// MaxKeys and MaxKeyLen bound one set of buckets: a public route's key comes from its path, which anyone can make up.
-// A longer key, or a new one once MaxKeys are held, shares the overflow bucket. Real keys are far shorter.
+// Anyone can make up a public route's key: a longer key, or a new one past MaxKeys, shares the overflow bucket.
 const MaxKeys, MaxKeyLen = 100_000, 128
 
 const overflow = "\x00overflow"
 
-// Buckets live in each api process, so each replica counts on its own (docs/backend/architecture.md#scaling).
+// Buckets live in each api process, so each replica counts on its own.
 type Buckets struct {
 	rate, burst float64
-	maxKeys     int
 
 	mu    sync.Mutex
 	m     map[string]*bucket
@@ -38,7 +35,7 @@ type bucket struct {
 }
 
 func NewBuckets(rate, burst float64) *Buckets {
-	return &Buckets{rate: rate, burst: burst, maxKeys: MaxKeys, m: map[string]*bucket{}}
+	return &Buckets{rate: rate, burst: burst, m: map[string]*bucket{}}
 }
 
 func (b *Buckets) Wait(key string) time.Duration {
@@ -50,7 +47,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 		key = overflow
 	}
 	k := b.m[key]
-	if k == nil && len(b.m) >= b.maxKeys {
+	if k == nil && len(b.m) >= MaxKeys {
 		key, k = overflow, b.m[overflow]
 	}
 	if k == nil {
@@ -62,8 +59,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 		k.tokens--
 		return 0
 	}
-	// A bucket that never refills, or refills too slowly to count in nanoseconds, waits the longest: converting +Inf or
-	// an overflow to a duration gives the most negative value on amd64, which would let every request through.
+	// On amd64, converting +Inf or an overflow to a Duration gives the most negative value: wait the longest instead.
 	wait := (1 - k.tokens) / b.rate * float64(time.Second)
 	if b.rate <= 0 || wait >= math.MaxInt64 {
 		return time.Duration(math.MaxInt64)
@@ -71,7 +67,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 	return time.Duration(wait)
 }
 
-// Dropping a full bucket loses nothing: a key that comes back starts full. Call it with mu held.
+// Dropping a full bucket loses nothing: a returning key starts full. Call it with mu held.
 func (b *Buckets) sweep(now time.Time) {
 	if now.Sub(b.swept) < time.Minute {
 		return
@@ -87,8 +83,7 @@ func (b *Buckets) sweep(now time.Time) {
 func Limit(b *Buckets, key func(*http.Request) string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if wait := b.Wait(key(r)); wait > 0 {
-			w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
-			httpio.WriteError(w, r, httpio.ErrRateLimited)
+			httpio.WriteError(w, r, &invoice.TooSoonError{Wait: wait})
 			return
 		}
 		next.ServeHTTP(w, r)

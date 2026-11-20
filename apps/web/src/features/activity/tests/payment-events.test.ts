@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { PAYMENT_EVENTS } from "@/features/activity/constants/payment-events";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
 import type { InvoiceEvent } from "@/features/invoices/types/invoices";
 
@@ -31,12 +30,8 @@ describe("newPaymentEvents", () => {
       const { seen } = newPaymentEvents(undefined, []);
       const paid = item(1, "invoice.paid", number);
       const settled = item(2, "invoice.settled", number);
-      expect(newPaymentEvents(seen, [paid]).events).toEqual([
-        { kind: PAYMENT_EVENTS.paid, item: paid },
-      ]);
-      expect(newPaymentEvents(seen, [settled, paid]).events).toEqual([
-        { kind: PAYMENT_EVENTS.settled, item: settled },
-      ]);
+      expect(newPaymentEvents(seen, [paid]).events).toEqual([paid]);
+      expect(newPaymentEvents(seen, [settled, paid]).events).toEqual([settled]);
       expect(newPaymentEvents(seen, [settled, paid]).events).toEqual([]);
     }
   });

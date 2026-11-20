@@ -1,4 +1,3 @@
-// Package jobapi serves the job endpoints of docs/backend/api.md.
 package jobapi
 
 import (
@@ -9,8 +8,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/job"
 )
 
-// Accepting is public and makes an invoice. The shared budget is spent only by an accept that changes a job
-// (R-117); per IP belongs to the edge (Q-8).
+// Accepting is public and makes an invoice; the shared budget is spent only by an accept that changes a job.
 const (
 	AcceptRate, AcceptBurst       = 0.1, 3
 	AcceptAllRate, AcceptAllBurst = 5, 20
@@ -25,7 +23,6 @@ func Routes(mux *http.ServeMux, g mid.Guards, jobs *job.Service) {
 	mux.Handle("POST /v1/profiles/{profileId}/jobs/{jobId}/payments", g.Can(auth.Jobs)(proposeChange(jobs)))
 	mux.Handle("DELETE /v1/profiles/{profileId}/jobs/{jobId}/payments/{position}", g.Can(auth.Jobs)(withdrawChange(jobs)))
 	mux.Handle("GET /v1/jobs/{token}", getPublicJob(jobs))
-	// Accepting the quote and accepting a change share the budget for everyone; each has its own per link.
 	all := mid.NewBuckets(AcceptAllRate, AcceptAllBurst)
 	perJob := func(r *http.Request) string { return r.PathValue("token") }
 	limited := func(h http.Handler) http.Handler {

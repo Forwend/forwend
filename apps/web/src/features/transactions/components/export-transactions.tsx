@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BILLING_THEN } from "@/features/profiles/constants/profile";
+import { billingDetailsHref } from "@/features/profiles/lib/profile";
 import {
   recordsCurrencySaveKey,
   useDownloadStatementMutation,
@@ -16,20 +17,15 @@ import {
 import { RecordsCurrency } from "@/features/transactions/components/records-currency";
 import { TOO_MANY_TRANSACTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
-import { APP_ROUTES } from "@/shared/config/routes";
+import { apiError, notFound } from "@/shared/api/api-error";
 
-const NOT_FOUND = 404;
-// R-118: more transactions in the days than one file holds.
-const tooMany = (failure: unknown) =>
-  (failure as { data?: { error?: { code?: unknown } } }).data?.error?.code ===
-  TOO_MANY_TRANSACTIONS;
+const tooMany = (failure: unknown) => apiError(failure).code === TOO_MANY_TRANSACTIONS;
 
 export interface ExportTransactionsProps {
   profileId: string;
   disabled: boolean;
 }
 
-// R-108, R-109, R-113. Browser date fields: the kit's calendar opens inside its field and the dialog cuts it off.
 export function ExportTransactions({ profileId, disabled }: ExportTransactionsProps) {
   const [exportCsv, { isFetching }] = useLazyExportTransactionsQuery();
   const [statement, statementState] = useDownloadStatementMutation();
@@ -47,7 +43,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
   const [to, setTo] = useState("");
   const [dayError, setDayError] = useState("");
   const [error, setError] = useState("");
-  // Each opening starts the records currency afresh: the dialog keeps its content while closed.
+  // The dialog keeps its content while closed: each opening remounts the currency field.
   const [opened, setOpened] = useState(0);
   const actions = useRef<HTMLFormElement>(null);
   const days = useRef<HTMLDivElement>(null);
@@ -58,7 +54,6 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
     actions.current?.closest("dialog")?.close();
   };
 
-  // The picker keeps From on or before To; a statement needs both.
   const checkDays = (statementDays: boolean) => {
     const shown = statementDays && (!from || !to) ? COPY.statementDays : "";
     flushSync(() => {
@@ -75,9 +70,8 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
     try {
       save(await statement({ profileId, from, to }).unwrap(), COPY.statementFile(from, to));
     } catch (failure) {
-      const { status } = failure as { status?: unknown };
       setError(
-        status === NOT_FOUND
+        notFound(failure)
           ? COPY.statementNeedsBilling
           : tooMany(failure)
             ? COPY.tooManyTransactions
@@ -105,7 +99,6 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
       triggerLabel={COPY.export}
       title={COPY.exportTitle}
       trigger={(open) => (
-        // Phones show only the icon, so the accessible name says what it does.
         <Button
           variant={BUTTON_VARIANTS.secondary}
           aria-label={COPY.export}
@@ -149,7 +142,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
             <>
               {" "}
               <Link
-                href={`${APP_ROUTES.billingDetails}?${BILLING_THEN.param}=${BILLING_THEN.transactions}`}
+                href={billingDetailsHref(BILLING_THEN.transactions)}
                 className="font-medium underline underline-offset-2"
               >
                 {COPY.addBillingDetails}

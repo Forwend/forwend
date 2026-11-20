@@ -18,7 +18,6 @@ var webhookKey = bytes.Repeat([]byte{7}, 32)
 
 var whsec = regexp.MustCompile(`^whsec_[A-Za-z0-9+/]{43}=$`)
 
-// R-146, D-42, D-63.
 func TestWebhookEndpoints(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -34,7 +33,6 @@ func TestWebhookEndpoints(t *testing.T) {
 		made.body["livemode"] != false || strings.Join(toStrings(made.body["events"]), ",") != "invoice.paid,invoice.settled" {
 		t.Fatalf("a new endpoint: %d %v", made.status, made.body)
 	}
-	// The same id again replaces every field.
 	if r := e.call(t, "PUT", hooks+id, alice, "", `{"url": "https://shop.example.com/v2", "storeId": "`+first+`",
 		"events": ["invoice.held"], "enabled": false}`); r.status != http.StatusOK || r.body["storeId"] != first ||
 		r.body["enabled"] != false || r.body["url"] != "https://shop.example.com/v2" {
@@ -61,7 +59,6 @@ func TestWebhookEndpoints(t *testing.T) {
 			t.Errorf("PUT %s: %d %v, want %s", body, r.status, r.body, code)
 		}
 	}
-	// Saving an endpoint, and revealing or rotating its secret, need a fresh sign-in (D-63).
 	for _, c := range []struct{ method, path, body string }{
 		{"PUT", hooks + id, `{"url": "https://a.example/", "events": ["invoice.paid"]}`},
 		{"GET", hooks + id + "/secret", ""},
@@ -85,7 +82,6 @@ func TestWebhookEndpoints(t *testing.T) {
 		t.Errorf("a freelancer's endpoint with a store: %d %v", r.status, r.body)
 	}
 
-	// The secret is kept sealed, and the owner reveals it.
 	shown := e.call(t, "GET", hooks+id+"/secret", alice, "", "")
 	secrets, _ := shown.body["secrets"].([]any)
 	if shown.status != http.StatusOK || len(secrets) != 1 || !whsec.MatchString(secrets[0].(map[string]any)["secret"].(string)) ||
@@ -98,7 +94,6 @@ func TestWebhookEndpoints(t *testing.T) {
 		Scan(&sealed); err != nil || bytes.Contains(sealed, []byte(secret[6:])) {
 		t.Fatalf("the stored secret: %v", err)
 	}
-	// Bound to its endpoint: copied to another one, it doesn't open.
 	other := e.call(t, "PUT", hooks+"cccccccc-0000-4000-8000-000000000004", alice, "",
 		`{"url": "https://a.example/", "events": ["invoice.paid"]}`)
 	e.exec(t, "UPDATE webhook_secrets SET sealed = $1 WHERE endpoint_id = $2", sealed, other.body["endpointId"])
@@ -107,7 +102,6 @@ func TestWebhookEndpoints(t *testing.T) {
 		t.Errorf("a secret moved to another endpoint: %d %v", r.status, r.body)
 	}
 
-	// Rotating keeps the old secret signing for 24 hours.
 	rotated := e.call(t, "POST", hooks+id+"/secret/rotate", alice, "", "")
 	list, _ := rotated.body["secrets"].([]any)
 	if rotated.status != http.StatusCreated || len(list) != 2 || list[1].(map[string]any)["secret"] != secret ||
@@ -118,7 +112,6 @@ func TestWebhookEndpoints(t *testing.T) {
 	if left := time.Until(until); left < 23*time.Hour || left > 25*time.Hour {
 		t.Errorf("the old secret signs %s more, want 24 hours", left)
 	}
-	// Under another WEBHOOK_SECRET_KEY the secrets don't open, and a rotation saves nothing.
 	if _, err := webhook.NewService(e.pool, bytes.Repeat([]byte{8}, 32)).Rotate(context.Background(), shop, alice, id); err == nil {
 		t.Error("a rotation under another key worked")
 	}
@@ -148,8 +141,6 @@ func TestWebhookEndpoints(t *testing.T) {
 
 }
 
-// R-146, R-149: without WEBHOOK_SECRET_KEY no secret can be kept, so the routes that make, show or send with one
-// answer 503.
 func TestWebhooksWithoutAKey(t *testing.T) {
 	e := invoiceAPIWith(t, 0, nil)
 	hooks := "/v1/profiles/" + e.aliceProfile + "/webhooks/cccccccc-0000-4000-8000-000000000001"
@@ -172,7 +163,6 @@ func TestWebhooksWithoutAKey(t *testing.T) {
 	}
 }
 
-// R-146, D-93: only the owner and Admins manage webhooks.
 func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
@@ -187,7 +177,6 @@ func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
 	if r := e.call(t, "GET", hooks, "did:privy:erin", "", ""); errorCode(r) != "forbidden" {
 		t.Errorf("a Developer lists endpoints: %d %v", r.status, r.body)
 	}
-	// R-149: a Developer has invoices.read, which none of these routes may take instead.
 	hook := hooks + "/cccccccc-0000-4000-8000-000000000001"
 	for _, c := range []struct{ method, path, body string }{
 		{"GET", hook + "/deliveries", ""},
@@ -201,8 +190,6 @@ func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
 	}
 }
 
-// R-146: a profile has at most webhook.MaxEndpoints endpoints: each event writes a delivery per endpoint inside the
-// money transaction that raised it. An existing one can still be changed at the cap.
 func TestWebhookEndpointsAreCappedPerProfile(t *testing.T) {
 	e := invoiceAPI(t)
 	shop := e.merchant(t)

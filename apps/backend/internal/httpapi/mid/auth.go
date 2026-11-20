@@ -19,7 +19,7 @@ import (
 
 type tokenKey struct{}
 
-// RequireUser also refuses a token issued before the user signed out everywhere (R-137).
+// RequireUser also refuses a token issued before the user signed out everywhere.
 func RequireUser(v *auth.Verifier, sessions *auth.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bearer, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -44,7 +44,7 @@ type accessKey struct{}
 
 type keyKey struct{}
 
-// RequireKey lets through a request whose bearer is a working secret API key (R-144), for RequireAccess to check.
+// RequireKey lets through a working secret API key; RequireAccess checks what it may do.
 func RequireKey(keys *apikey.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bearer, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -63,10 +63,7 @@ func RequestKey(r *http.Request) string {
 	return caller.KeyID
 }
 
-// RequireAccess lets through the profile's owner and members whose role has p (R-138), and a key of the profile whose
-// scopes have it (R-144). For an invoice or store permission, a Developer's or Finance member's request, or a merchant
-// key's, about another store's invoice, payment link or store is not found, and so is a key's about an invoice of the
-// other mode (D-87).
+// RequireAccess answers not found for records outside a store-scoped caller's stores or a key's mode.
 func RequireAccess(s *auth.Service, p auth.Permission, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var access auth.Access
@@ -134,13 +131,10 @@ func ProfileAccess(r *http.Request) auth.Access {
 	return access
 }
 
-// RequireFreshSignIn lets through a token whose session confirmed Forwend's code within auth.FreshWindow, or a token
-// from a full sign-in within it (D-49, D-63). For the second it asks Privy; when Privy can't answer, nothing passes.
-// With mfaEnough, a user whose MFA methods Forwend recorded passes too: Privy asks for one before it signs, so the
-// emailed code would be a second check of the same send (R-219).
+// RequireFreshSignIn passes a recent code confirm or full sign-in; with mfaEnough, recorded Privy MFA too.
 func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, mfaEnough bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if RequestKey(r) != "" { // only a person signs in (R-144)
+		if RequestKey(r) != "" { // only a person signs in
 			httpio.WriteError(w, r, auth.ErrForbidden)
 			return
 		}
@@ -149,15 +143,11 @@ func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, mfaEnough bo
 			httpio.WriteError(w, r, auth.ErrUnauthorized)
 			return
 		}
-		// A session that confirmed Forwend's code (R-137), else a token from the last full sign-in: a Privy sign-in
-		// made while signed in keeps the session and moves no sign-in time, so it alone proves nothing.
-		fresh, stored := false, reauth.Stored{}
-		if codes != nil {
-			var err error
-			if fresh, stored, err = codes.Fresh(r.Context(), token); err != nil {
-				httpio.WriteError(w, r, err)
-				return
-			}
+		// A Privy sign-in made while signed in keeps the session and moves no sign-in time: it alone proves nothing.
+		fresh, stored, err := codes.Fresh(r.Context(), token)
+		if err != nil {
+			httpio.WriteError(w, r, err)
+			return
 		}
 		if !fresh {
 			signIns, twoStep, err := users.SignInTimes(r.Context(), token.User, stored.LoginEmail)
@@ -165,8 +155,7 @@ func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, mfaEnough bo
 				httpio.WriteError(w, r, err)
 				return
 			}
-			// Only methods Forwend recorded: a stolen session can set up its own at Privy, but can't record it, and adding
-			// one to a recorded method needs that method first.
+			// Only recorded methods: a stolen session can add MFA at Privy but can't record it here.
 			trusted := len(twoStep) > 0 && !slices.ContainsFunc(twoStep, func(m string) bool {
 				return !slices.Contains(stored.TwoStep, m)
 			})
@@ -180,7 +169,6 @@ func RequireFreshSignIn(users *privy.Client, codes *reauth.Service, mfaEnough bo
 	})
 }
 
-// SignedInToken is the verified token of the request, with its Privy session.
 func SignedInToken(r *http.Request) auth.Token {
 	token, _ := r.Context().Value(tokenKey{}).(auth.Token)
 	return token

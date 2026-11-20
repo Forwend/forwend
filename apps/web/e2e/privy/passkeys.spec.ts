@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { blockingViolations } from "./axe";
+import { blockingViolations } from "../axe";
 import { freshCode, session } from "./session";
 
 // R-217: a passkey added through Chrome's virtual authenticator, then removed, on the shared test account. A stale

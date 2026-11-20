@@ -7,7 +7,6 @@ import { handleWebhook } from "@/lib/webhook";
 const SECRET = `whsec_${Buffer.alloc(32, 7).toString("base64")}`;
 const SESSION = `0x${"ab".repeat(32)}`;
 
-// A delivery as Forwend sends it, signed per Standard Webhooks.
 function delivery(type: string, sequence: number, secret = SECRET, invoiceId = SESSION) {
   const id = `msg_${type}_${sequence}`;
   const payload = JSON.stringify({

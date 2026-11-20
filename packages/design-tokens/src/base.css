@@ -51,9 +51,8 @@
     overflow: hidden;
   }
 
-  /* An open select list (Radix, react-remove-scroll) would hide the scrollbar and add its width as a body margin,
-     which the stable gutter already holds, so the page would shift sideways. The library's wheel and touch listeners
-     and SelectField's keys hold the page still. A layered !important beats the library's unlayered one. */
+  /* Radix's scroll lock hides the scrollbar and adds a margin the stable gutter already holds, shifting the page.
+     A layered !important beats the library's unlayered one. */
   body[data-scroll-locked] {
     overflow: visible !important;
     margin-right: 0 !important;
@@ -125,8 +124,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    /* !important: the reduced-motion override has to beat every component style. Loading spinners
-       (data-motion="essential") keep turning: they are the only sign that work is in progress. */
+    /* !important beats every component style; data-motion="essential" spinners keep turning to show work. */
     *:not([data-motion="essential"]),
     *::before,
     *::after,
@@ -272,8 +270,7 @@
   }
 }
 
-/* A sideways-scrolling row fades at the edge that still has more. A row that fits has no scroll timeline, so it
-   never fades. */
+/* A sideways-scrolling row fades at the edge that has more; a row that fits never fades. */
 @property --fw-fade-start {
   syntax: "<length>";
   inherits: false;
@@ -316,15 +313,13 @@
   }
 }
 
-/* Tailwind 4's outline-none also sets --tw-outline-style to none, and focus-visible:outline-2 reads that variable,
-   so the ring a control declares never drew. Unlayered, this beats the utility while focused; a field that sets
-   outline-style: none itself (it shows a ring instead) is unaffected. */
+/* Tailwind 4's outline-none sets --tw-outline-style to none, which focus-visible:outline-2 reads, so no ring drew.
+   Unlayered, this wins while focused. */
 :focus-visible {
   --tw-outline-style: solid;
 }
 
-/* Scroll reveal for marketing sections, driven by the scroll itself. Browsers without scroll timelines, and reduced
-   motion, show everything in place from the start. */
+/* Scroll-driven reveal; without scroll timelines, or with reduced motion, everything shows in place. */
 @keyframes fw-rise {
   from {
     opacity: 0;

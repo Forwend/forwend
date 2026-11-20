@@ -2,7 +2,6 @@ package balance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,30 +9,29 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
 const (
-	// With 3 s the balance label is at most 3 s behind, and any number of users costs one header read per chain per 3 s.
+	// One header read per chain per 3 s, however many users; the balance label is at most 3 s behind.
 	finalizedTTL = 3 * time.Second
 	// A balance at a finalized block never changes; this only frees the memory of blocks no longer finalized.
 	balanceTTL = time.Minute
 )
 
-// ChainReader reads with each chain's RPC pool (D-15); a slow chain never holds up another.
+// ChainReader reads with each chain's RPC pool; a slow chain never holds up another.
 type ChainReader struct {
 	rpcs    map[uint64]chain.RPCs
 	errs    map[uint64]error // chains whose RPC list can't confirm balances
 	clients map[uint64]*ethclient.Client
-	cache   cache
+	cache   *memoryCache
 }
 
 // NewChainReader sends each RPC at most rate calls per second.
-func NewChainReader(specs map[uint64]chain.Spec, rate float64, budgets ...*chain.Budget) *ChainReader {
+func NewChainReader(specs map[uint64]chain.Spec, rate float64, budget *chain.Budget) *ChainReader {
 	c := &ChainReader{rpcs: map[uint64]chain.RPCs{}, errs: map[uint64]error{}, clients: map[uint64]*ethclient.Client{},
 		cache: newMemoryCache()}
 	for id, spec := range specs {
-		r, err := chain.NewRPCs(spec, rate, budgets...)
+		r, err := chain.NewRPCs(spec, rate, budget)
 		if err != nil {
 			c.errs[id] = err
 			continue
@@ -55,49 +53,37 @@ func (c *ChainReader) Client(chainID uint64) (*ethclient.Client, error) {
 	return client, nil
 }
 
-// Read is a ledger.BalanceOf at the selected RPC's finalized block. Requests share one finalized read per chain per
-// finalizedTTL and one balanceOf per block, so a balance is always the one at the block it is returned with.
+// Read is a ledger.BalanceOf at the finalized block, read once per block, so it always matches its block.
 func (c *ChainReader) Read(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
-	if err := c.errs[chainID]; err != nil {
+	client, err := c.Client(chainID)
+	if err != nil {
 		return nil, 0, err
-	}
-	client, ok := c.clients[chainID]
-	if !ok {
-		return nil, 0, fmt.Errorf("no balance RPC for chain %d", chainID)
 	}
 	head, err := c.cache.get(ctx, fmt.Sprintf("finalized/%d", chainID), finalizedTTL,
-		func(ctx context.Context) (string, error) {
+		func(ctx context.Context) (any, error) {
 			final, err := chain.Finalized(ctx, client)
 			if err != nil {
-				return "", fmt.Errorf("chain %d: read finalized block: %w", chainID, err)
+				return nil, fmt.Errorf("chain %d: read finalized block: %w", chainID, err)
 			}
-			encoded, err := json.Marshal(final)
-			return string(encoded), err
+			return final, nil
 		})
 	if err != nil {
 		return nil, 0, err
 	}
-	var final chain.Block
-	if err := json.Unmarshal([]byte(head), &final); err != nil {
-		return nil, 0, err
-	}
-	block := final.Number
-	raw, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%s", chainID, token, holder, final.Hash.Hex()), balanceTTL,
-		func(ctx context.Context) (string, error) {
+	final := head.(chain.Block)
+	balance, err := c.cache.get(ctx, fmt.Sprintf("balance/%d/%s/%s/%s", chainID, token, holder, final.Hash.Hex()), balanceTTL,
+		func(ctx context.Context) (any, error) {
 			balance, err := chain.TokenBalanceAtHash(ctx, client, chainID, token, holder, final.Hash)
-			if errors.Is(err, ledger.ErrNoToken) {
-				balance, err = new(big.Int), nil // a token deployed after that block holds nothing there
+			if errors.Is(err, chain.ErrNoToken) {
+				return new(big.Int), nil // a token deployed after that block holds nothing there
 			}
-			if err != nil {
-				return "", err
-			}
-			return balance.String(), nil
+			return balance, err
 		})
 	if err != nil {
 		return nil, 0, err
 	}
-	balance, _ := new(big.Int).SetString(raw, 10)
-	return balance, block, nil
+	// Each caller gets its own copy: the cached value is shared.
+	return new(big.Int).Set(balance.(*big.Int)), final.Number, nil
 }
 
 func (c *ChainReader) Close() {

@@ -4,11 +4,10 @@ import { BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-we
 import { useEffect, useRef, useState } from "react";
 import { useStopRepeatMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import type { InvoiceRetainer } from "@/features/invoices/types/invoices";
+import { dateTime, formatDueDate } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.repeat;
-const TIME = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 export interface RepeatsMonthlyProps {
   profileId: string;
@@ -16,7 +15,7 @@ export interface RepeatsMonthlyProps {
   retainer: InvoiceRetainer;
 }
 
-// R-99. The button goes once stopped, so focus moves to the line that says so, when the refetch shows it.
+// The button goes once stopped, so focus moves to the line that says so.
 export function RepeatsMonthly({ profileId, invoiceId, retainer }: RepeatsMonthlyProps) {
   const [stop, { isLoading, isError }] = useStopRepeatMutation();
   const toast = useToast();
@@ -44,7 +43,7 @@ export function RepeatsMonthly({ profileId, invoiceId, retainer }: RepeatsMonthl
       <p className="font-medium text-ink">{COPY.title}</p>
       <p ref={line} tabIndex={-1} className="pb-1 text-sm text-muted outline-none">
         {stoppedAt
-          ? COPY.stopped(TIME.format(new Date(stoppedAt)))
+          ? COPY.stopped(dateTime(stoppedAt))
           : nextDueDate && nextOn
             ? `${COPY.next(formatDueDate(nextDueDate), formatDueDate(nextOn))}${
                 endDate ? COPY.last(formatDueDate(endDate)) : ""

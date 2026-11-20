@@ -1,15 +1,14 @@
 "use client";
 
 import { memo, useId } from "react";
-import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { useChart } from "@/features/balances/hooks/use-chart";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { smoothPath, toNumber } from "@/features/balances/lib/chart";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { USD_DECIMALS } from "@/shared/constants/money";
+import { usdText } from "@/shared/lib/money";
 
-// Points are the ends of UTC days (00:00 of the next day); a point is labeled with the day it closes. The last is now.
+// A point is the end of a UTC day (00:00 the next day), labeled with the day it closes.
 const DAY = new Intl.DateTimeFormat(undefined, {
   month: "short",
   day: "numeric",
@@ -24,7 +23,7 @@ function dayLabel(series: HistorySeries, index: number): string {
 }
 
 function amountLabel(series: HistorySeries, index: number): string {
-  return `${formatUsd(series.values[index] ?? 0n)} ${MONEY_COPY.usd}`;
+  return usdText(series.values[index] ?? 0n);
 }
 
 const PAD = { top: 16, right: 10, bottom: 28, left: 10 } as const;
@@ -55,7 +54,7 @@ export function BalanceChart({
   const { width, height, active } = chart;
 
   const numbers = series.values.map((v) => toNumber(v, USD_DECIMALS));
-  // From 0, so the line's height is the real amount; an empty wallet draws along the bottom.
+  // From 0, so the line's height is the real amount.
   const top = Math.max(...numbers, 0) * HEADROOM || 1;
   const y = (n: number) => pad.top + (1 - n / top) * (height - pad.top - pad.bottom);
   const line = smoothPath(numbers.map((n, i) => [x(i, width), y(n)] as const));
@@ -199,10 +198,8 @@ interface ChartReadoutProps {
   active: number | null;
   announce: boolean;
   left: number;
-  /** The chosen point's height in the plot; the readout floats above it. */
   top?: number;
   width: number;
-  dateLabel?: (index: number) => string;
   note?: (index: number) => string;
 }
 
@@ -214,17 +211,14 @@ function ChartReadout({
   left,
   top = 0,
   width,
-  dateLabel: dateLabelProp,
   note,
 }: ChartReadoutProps) {
-  const dateLabel = dateLabelProp ?? ((i: number) => dayLabel(series, i));
   return (
     <>
       {active === null ? null : (
         <div
           aria-hidden
           className="pointer-events-none absolute top-0 left-0 z-10 flex flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2 shadow-lg transition-transform duration-[var(--fw-duration-fast)] ease-[var(--fw-ease-out)] motion-safe:animate-[fw-fade-in_var(--fw-duration-fast)_var(--fw-ease-out)]"
-          // Centered over the point and above it, kept inside the chart; the percentages are the readout's own size.
           style={{
             transform: `translate(clamp(0px, calc(${left}px - 50%), calc(${width}px - 100%)), max(-0.5rem, calc(${top}px - 100% - 0.875rem)))`,
           }}
@@ -233,35 +227,33 @@ function ChartReadout({
             {amountLabel(series, active)}
           </span>
           {note ? <span className="text-xs text-ink">{note(active)}</span> : null}
-          <span className="text-xs text-muted">{dateLabel(active)}</span>
+          <span className="text-xs text-muted">{dayLabel(series, active)}</span>
         </div>
       )}
       <p aria-live="polite" className="sr-only">
         {active === null || !announce
           ? ""
-          : `${dateLabel(active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
+          : `${dayLabel(series, active)}: ${amountLabel(series, active)}${note ? `, ${note(active)}` : ""}`}
       </p>
-      <ChartTable series={series} label={label} dateLabel={dateLabelProp} note={note} />
+      <ChartTable series={series} label={label} note={note} />
     </>
   );
 }
 
-// Every day of the series, for screen readers. Memoized: a pointer move changes the readout, not these rows.
 const ChartTable = memo(function ChartTable({
   series,
   label,
-  dateLabel = (i) => dayLabel(series, i),
   note,
-}: Pick<ChartReadoutProps, "series" | "label" | "dateLabel" | "note">) {
+}: Pick<ChartReadoutProps, "series" | "label" | "note">) {
   return (
-    // A wrapper, because sr-only on a table doesn't clip it: a table grows to its rows.
+    // A wrapper, because sr-only on a table doesn't clip it.
     <div className="sr-only">
       <table>
         <caption>{label}</caption>
         <tbody>
           {series.values.map((_, i) => (
             <tr key={series.dates[i]?.toISOString() ?? i}>
-              <th scope="row">{dateLabel(i)}</th>
+              <th scope="row">{dayLabel(series, i)}</th>
               <td>
                 {amountLabel(series, i)}
                 {note ? `, ${note(i)}` : null}

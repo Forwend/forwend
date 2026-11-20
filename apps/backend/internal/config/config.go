@@ -1,88 +1,43 @@
-// Package config reads every environment variable the binaries use. Locally they come from apps/backend/.env
-// (copy .env.example).
+// Package config reads every environment variable the binaries use; locally from apps/backend/.env.
 package config
 
 import (
 	"crypto/ecdsa"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"math"
 	"math/big"
-	"net"
-	"net/netip"
-	"net/url"
 	"os"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
 type API struct {
-	DatabaseURL  string
-	Addr         string
-	PrivyAppID   string
-	PrivyJWKSURL string
-	// PrivyAppSecret lets the api make profile wallets: never log it.
-	PrivyAppSecret   string
-	RPCSecrets       Secrets `json:"-"`
-	RPCAllowLoopback bool
-	RPCRate          float64
-	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<payToken> page.
-	PublicWebURL string
-	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
-	// whose tests all run as one user, sets it.
-	UserBurst int
-	// TrustProxyHeader: a proxy in front (such as Traefik) sets X-Forwarded-For to the client's address, so public
-	// limits can count per payer. Off, the header is the client's own and is ignored.
-	TrustProxyHeader bool
-	// CodesPerHour is each user's Confirm it's you codes an hour; 0 keeps reauth.MaxPerHour. Only the live e2e, whose
-	// one test account confirms on every run against a lasting database, sets it.
-	CodesPerHour      int
+	DatabaseURL       string
+	Addr              string
+	PrivyAppID        string
+	PrivyJWKSURL      string
+	PrivyAppSecret    string  // never log
+	RPCSecrets        Secrets `json:"-"`
+	RPCAllowLoopback  bool
+	RPCRate           float64
+	PublicWebURL      string
+	UserBurst         int // 0 keeps mid.UserBurst
+	TrustProxyHeader  bool
+	CodesPerHour      int // 0 keeps reauth.MaxPerHour
 	EnableTestnetUSDC bool
-	// EnableMainnets are the live chains API startup switches on (R-222); the owner names each one.
-	EnableMainnets []uint64
-	// Email sends Confirm it's you codes (R-137); without a key no code can be sent, so protected changes need a
-	// full sign-in.
-	Email Email
-	// WebhookKey seals webhook signing secrets (R-146): 32 bytes, or nil to leave webhooks off. Never log it.
-	WebhookKey []byte
-	Fees       Fees
-	OneClick   OneClick
-	// CrossChainOff stops new cross-chain quotes on the whole platform (R-240), as for an incident at NEAR Intents. The
-	// worker still reads the open ones.
-	CrossChainOff bool
+	EnableMainnets    []uint64
+	Email             Email
+	WebhookKey        []byte // 32 bytes; nil leaves webhooks off; never log
+	Fees              Fees
+	OneClick          OneClick
+	CrossChainOff     bool
 }
 
-// OneClick is NEAR Intents' 1Click API for cross-chain payments (D-123). URL is its root, DefaultOneClickURL when unset.
-// Signer replaces the key its quotes must carry, 1Click's own pinned one (D-124), only for a test's fake on a loopback
-// URL: startup refuses it with any other. Key is the optional partner key (Q-18): never log it.
+// OneClick is NEAR Intents' 1Click API. Signer replaces its pinned quote key, only for a loopback test fake.
 type OneClick struct {
-	URL, Key, Signer string
+	URL, Key, Signer string // Key: optional partner key; never log
 }
 
 const DefaultOneClickURL = "https://1click.chaindefuser.com"
 
-func (r *reader) oneClick() OneClick {
-	c := OneClick{URL: os.Getenv("ONECLICK_API_URL"), Key: os.Getenv("ONECLICK_API_KEY"), Signer: os.Getenv("ONECLICK_SIGNER_KEY")}
-	if c.URL == "" {
-		c.URL = DefaultOneClickURL
-	}
-	if u, err := url.Parse(c.URL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
-		r.invalid = append(r.invalid, "ONECLICK_API_URL (an http or https URL)")
-	} else if ip, err := netip.ParseAddr(u.Hostname()); c.Signer != "" && u.Hostname() != "localhost" && (err != nil || !ip.IsLoopback()) {
-		r.invalid = append(r.invalid, "ONECLICK_SIGNER_KEY (only with a test's fake 1Click on a loopback ONECLICK_API_URL)")
-	}
-	return c
-}
-
-// Fees is the platform fee plan (D-122) the api and the worker quote new invoices with: PLATFORM_FEE_BPS of the price,
-// at least PLATFORM_FEE_MIN_USD and at most PLATFORM_FEE_CAP_USD (unset: no cap). Unset, the rate is 0.
+// Fees is the platform fee: RateBps of the price, at least MinUSD, at most CapUSD (nil: no cap).
 type Fees struct {
 	RateBps        int64
 	MinUSD, CapUSD *big.Rat
@@ -92,49 +47,43 @@ type Worker struct {
 	DatabaseURL string
 	Chains      Chains
 	Email       Email
-	// RatesURL is the ECB's reference rates file (R-110); ECB_RATES_URL is set only by tests that run a fake.
-	RatesURL string
-	Prices   Prices
-	Fees     Fees // for a retainer's later months
-	OneClick OneClick
+	RatesURL    string
+	Prices      Prices
+	Fees        Fees // for a retainer's later months
+	OneClick    OneClick
 }
 
-// Prices is CoinGecko for the stablecoins' display prices (R-178). URL is its API root; COINGECKO_API_URL is set only
-// by tests that run a fake. Key is the optional Demo plan key: never log it.
+// Prices is CoinGecko for the stablecoins' display prices.
 type Prices struct {
 	URL   string
-	Key   string
+	Key   string // optional Demo plan key; never log
 	Every time.Duration
 }
 
-// Webhooks is what cmd/webhooks needs (R-148): the database and the key that opens the signing secrets, nothing else.
+// Webhooks is what cmd/webhooks needs: the database and the key that opens the signing secrets, nothing else.
 type Webhooks struct {
 	DatabaseURL string
-	// WebhookKey opens the signing secrets: 32 bytes, or nil, and nothing is sent. Never log it.
-	WebhookKey []byte
+	WebhookKey  []byte // nil: nothing is sent; never log
 }
 
-// Email is the owner's email (R-80, D-65). Without ResendKey the worker sends nothing and the events wait.
+// Email is the owner's email settings; without ResendKey the worker sends nothing and the events wait.
 type Email struct {
-	ResendKey    string // send-only Resend API key; never log it
-	ResendURL    string // Resend's send endpoint; set only by tests that run a fake
-	From         string // the sender, on the domain Resend verified
-	PublicWebURL string
-	// PostalAddress is the sender's address for each email's footer; empty leaves it out (Q-13).
-	PostalAddress string
-	// Support is where readers write with questions, named in each footer; empty leaves the line out.
-	Support string
+	ResendKey     string // send-only Resend API key; never log it
+	ResendURL     string // Resend's send endpoint; set only by tests that run a fake
+	From          string // the sender, on the domain Resend verified
+	PublicWebURL  string
+	PostalAddress string // "" leaves it out of the footer
+	Support       string // "" leaves the line out
 }
 
-// DefaultRatesURL is the ECB's file of the last 90 days of euro reference rates: a wallet made after the worker's first
-// read has no older transfers.
-const DefaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
+// defaultRatesURL has 90 days of ECB rates: a wallet made after the worker's first read has no older transfers.
+const defaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
 
-const DefaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
+const defaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
 
 const (
-	DefaultPricesURL   = "https://api.coingecko.com/api/v3"
-	DefaultPricesEvery = 15 * time.Minute
+	defaultPricesURL   = "https://api.coingecko.com/api/v3"
+	defaultPricesEvery = 15 * time.Minute
 )
 
 type Chains struct {
@@ -144,11 +93,10 @@ type Chains struct {
 	PollInterval  time.Duration
 }
 
-// Signer's ExecutorKey is read from a hex private key: never log it.
 type Signer struct {
 	DatabaseURL string
 	Chains      Chains
-	ExecutorKey *ecdsa.PrivateKey
+	ExecutorKey *ecdsa.PrivateKey // never log
 }
 
 // Ops is what cmd/ops needs to read a support case and queue a return: the database and the chains' RPCs, no key.
@@ -157,21 +105,19 @@ type Ops struct {
 	Chains      Chains
 }
 
-// Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's (R-51).
+// Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's.
 type Canary struct {
-	AllowLoopback   bool
-	APIURL, WebURL  string
-	Factory         string
-	FactoryCodeHash string               // keccak256 of the factory's runtime code, lowercase 0x hex
-	FactoryFees     bool                 // its terms carry the fees (factory v2 on, R-226)
-	RPCURLs         map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
-	PageScript      string               // apps/web/scripts/canary-pay-page.ts, run with node
-	// 1Click's API root and the key its quotes carry (D-124): the canary's own copies, never the api's (R-235).
+	AllowLoopback            bool
+	APIURL, WebURL           string
+	Factory                  string
+	FactoryCodeHash          string               // keccak256 of the factory's runtime code, lowercase 0x hex
+	FactoryFees              bool                 // its terms carry the fees (factory v2)
+	RPCURLs                  map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
+	PageScript               string               // apps/web/scripts/canary-pay-page.ts, run with node
 	OneClickURL, OneClickKey string
 }
 
-// The canary's own copies of 1Click's root and quote key; CANARY_ONECLICK_URL and CANARY_ONECLICK_KEY replace them for
-// a test's fake.
+// The canary's own copies of 1Click's root and quote key; CANARY_ONECLICK_URL and _KEY replace them for a fake.
 const (
 	CanaryOneClickURL = "https://1click.chaindefuser.com"
 	CanaryOneClickKey = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"
@@ -192,25 +138,15 @@ func LoadAPI() (API, error) {
 	return c, r.err()
 }
 
-// email is the optional Resend settings the api and the worker share; an empty key sends nothing.
-func email() Email {
-	e := Email{ResendKey: os.Getenv("RESEND_API_KEY"), ResendURL: os.Getenv("RESEND_API_URL"),
-		PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"), Support: os.Getenv("SUPPORT_EMAIL"), From: os.Getenv("EMAIL_FROM")}
-	if e.From == "" {
-		e.From = DefaultEmailFrom
-	}
-	return e
-}
-
 func LoadWorker() (Worker, error) {
 	var r reader
 	c := Worker{DatabaseURL: r.get("DATABASE_URL"), Chains: r.chains(), Email: email(), Fees: r.fees(), OneClick: r.oneClick()}
 	if c.RatesURL = os.Getenv("ECB_RATES_URL"); c.RatesURL == "" {
-		c.RatesURL = DefaultRatesURL
+		c.RatesURL = defaultRatesURL
 	}
-	c.Prices = Prices{URL: os.Getenv("COINGECKO_API_URL"), Key: os.Getenv("COINGECKO_API_KEY"), Every: DefaultPricesEvery}
+	c.Prices = Prices{URL: os.Getenv("COINGECKO_API_URL"), Key: os.Getenv("COINGECKO_API_KEY"), Every: defaultPricesEvery}
 	if c.Prices.URL == "" {
-		c.Prices.URL = DefaultPricesURL
+		c.Prices.URL = defaultPricesURL
 	}
 	// Keyless calls allow a few a minute and the Demo key 10,000 a month; every 15 minutes is about 3,000.
 	if raw := os.Getenv("COINGECKO_INTERVAL"); raw != "" {
@@ -261,257 +197,14 @@ func LoadCanary() (Canary, error) {
 	if c.OneClickURL == "" {
 		c.OneClickURL = CanaryOneClickURL
 	}
-	// Another key only for a test's fake on loopback, as the api's ONECLICK_SIGNER_KEY (D-124).
-	if u, err := url.Parse(c.OneClickURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
-		r.invalid = append(r.invalid, "CANARY_ONECLICK_URL (an http or https URL)")
-	} else if ip, err := netip.ParseAddr(u.Hostname()); c.OneClickKey != "" && u.Hostname() != "localhost" &&
-		(err != nil || !ip.IsLoopback()) {
-		r.invalid = append(r.invalid, "CANARY_ONECLICK_KEY (only with a test's fake 1Click on a loopback CANARY_ONECLICK_URL)")
-	}
+	r.oneClickFake("CANARY_ONECLICK_URL", c.OneClickURL, "CANARY_ONECLICK_KEY", c.OneClickKey)
 	if c.OneClickKey == "" {
 		c.OneClickKey = CanaryOneClickKey
 	}
 	return c, r.err()
 }
 
-func (r *reader) hex(name string, bytes int) string {
-	raw := r.get(name)
-	if raw == "" {
-		return ""
-	}
-	if !regexp.MustCompile(fmt.Sprintf("^0x[0-9a-fA-F]{%d}$", 2*bytes)).MatchString(raw) {
-		r.invalid = append(r.invalid, fmt.Sprintf("%s (0x and %d hex digits)", name, 2*bytes))
-	}
-	return strings.ToLower(raw)
-}
-
-// rpcPairs never puts the URLs into an error: they may hold keys.
-func (r *reader) rpcPairs(name string, allowLoopback bool) map[uint64][2]string {
-	raw := r.get(name)
-	if raw == "" {
-		return nil
-	}
-	var in map[uint64][]string
-	ok := json.Unmarshal([]byte(raw), &in) == nil && len(in) > 0
-	out := map[uint64][2]string{}
-	for chainID, urls := range in {
-		if len(urls) != 2 {
-			ok = false
-			break
-		}
-		a, b := webURL(urls[0]), webURL(urls[1])
-		if a == nil || b == nil || !outbound.ValidURL(urls[0], allowLoopback) || !outbound.ValidURL(urls[1], allowLoopback) ||
-			strings.EqualFold(strings.TrimSuffix(a.Hostname(), "."), strings.TrimSuffix(b.Hostname(), ".")) {
-			ok = false
-			break
-		}
-		out[chainID] = [2]string(urls)
-	}
-	if !ok {
-		r.invalid = append(r.invalid, name+` (JSON such as {"84532": ["https://rpc-a", "https://rpc-b"]}: two URLs on `+
-			"different hosts per chain ID)")
-	}
-	return out
-}
-
-func webURL(raw string) *url.URL {
-	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return nil
-	}
-	return u
-}
-
-func (r *reader) chains() Chains {
-	c := Chains{RPCSecrets: r.rpcSecrets(), AllowLoopback: r.flag("RPC_ALLOW_LOOPBACK"), RPCRate: r.rate()}
-	if raw := r.get("POLL_INTERVAL"); raw != "" {
-		d, err := time.ParseDuration(raw)
-		if err != nil || d <= 0 {
-			r.invalid = append(r.invalid, "POLL_INTERVAL (a duration such as 5s)")
-		}
-		c.PollInterval = d
-	}
-	return c
-}
-
-// key never puts the value into an error.
-func (r *reader) key(name string) *ecdsa.PrivateKey {
-	raw := r.get(name)
-	if raw == "" {
-		return nil
-	}
-	k, err := crypto.HexToECDSA(strings.TrimPrefix(raw, "0x"))
-	if err != nil {
-		r.invalid = append(r.invalid, name+" (a hex secp256k1 private key)")
-	}
-	return k
-}
-
-func (r *reader) origin(name string) string {
-	raw := r.get(name)
-	if raw == "" {
-		return ""
-	}
-	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		r.invalid = append(r.invalid, name+" (an origin such as https://forwend.app)")
-		return ""
-	}
-	return u.Scheme + "://" + u.Host
-}
-
-// keysURL must be https: anyone on the path of a plain-http key list could sign tokens for any user. Loopback http is
-// for tests.
-func (r *reader) keysURL(name string) string {
-	raw := r.get(name)
-	if raw == "" {
-		return ""
-	}
-	u, err := url.Parse(raw)
-	loopback := err == nil && (u.Hostname() == "localhost" || net.ParseIP(u.Hostname()).IsLoopback())
-	if err != nil || u.Host == "" || !(u.Scheme == "https" || u.Scheme == "http" && loopback) {
-		r.invalid = append(r.invalid, name+" (an https URL)")
-		return ""
-	}
-	return raw
-}
-
-func (r *reader) rate() float64 {
-	raw := r.get("RPC_RATE_PER_SECOND")
-	if raw == "" {
-		return 0
-	}
-	v, err := strconv.ParseFloat(raw, 64)
-	if err != nil || !(v > 0) || math.IsInf(v, 1) {
-		r.invalid = append(r.invalid, "RPC_RATE_PER_SECOND (calls per second, such as 10)")
-	}
-	return v
-}
-
-func (r *reader) flag(name string) bool {
-	raw := os.Getenv(name)
-	if raw != "" && raw != "0" && raw != "1" {
-		r.invalid = append(r.invalid, name+" (0 or 1)")
-	}
-	return raw == "1"
-}
-
-// base64Key is 32 bytes in standard base64, or nil when unset.
-func (r *reader) base64Key(name string) []byte {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return nil
-	}
-	key, err := base64.StdEncoding.DecodeString(raw)
-	if err != nil || len(key) != 32 {
-		r.invalid = append(r.invalid, name+" (32 bytes in base64)")
-	}
-	return key
-}
-
-// chainIDs is a comma-separated list of chain IDs, or nil when unset.
-func (r *reader) chainIDs(name string) []uint64 {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return nil
-	}
-	var ids []uint64
-	for part := range strings.SplitSeq(raw, ",") {
-		id, err := strconv.ParseUint(strings.TrimSpace(part), 10, 64)
-		if err != nil || id == 0 {
-			r.invalid = append(r.invalid, name+" (chain IDs separated by commas, such as 8453,42161)")
-			return nil
-		}
-		ids = append(ids, id)
-	}
-	return ids
-}
-
-// fees reads the platform fee plan. The contract takes at most a tenth of the amount in fees, network fee included, so
-// a rate is at most 500 basis points.
-func (r *reader) fees() Fees {
-	var f Fees
-	if raw := os.Getenv("PLATFORM_FEE_BPS"); raw != "" {
-		v, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil || v < 0 || v > 500 {
-			r.invalid = append(r.invalid, "PLATFORM_FEE_BPS (basis points from 0 to 500, such as 50 for 0.5%)")
-		}
-		f.RateBps = v
-	}
-	usd := func(name string) *big.Rat {
-		raw := os.Getenv(name)
-		if raw == "" {
-			return nil
-		}
-		v, ok := new(big.Rat).SetString(raw)
-		if !ok || v.Sign() < 0 || !regexp.MustCompile(`^\d+(\.\d{1,2})?$`).MatchString(raw) {
-			r.invalid = append(r.invalid, name+" (USD with at most 2 decimals, such as 0.50)")
-			return nil
-		}
-		return v
-	}
-	f.MinUSD, f.CapUSD = usd("PLATFORM_FEE_MIN_USD"), usd("PLATFORM_FEE_CAP_USD")
-	if f.MinUSD != nil && f.CapUSD != nil && f.MinUSD.Cmp(f.CapUSD) > 0 {
-		r.invalid = append(r.invalid, "PLATFORM_FEE_MIN_USD (at most PLATFORM_FEE_CAP_USD)")
-	}
-	return f
-}
-
-func (r *reader) count(name string) int {
-	raw := os.Getenv(name)
-	if raw == "" {
-		return 0
-	}
-	v, err := strconv.Atoi(raw)
-	if err != nil || v < 1 {
-		r.invalid = append(r.invalid, name+" (a whole number above 0)")
-	}
-	return v
-}
-
 type Secrets map[string]string
 
 func (Secrets) String() string   { return "<redacted>" }
 func (Secrets) GoString() string { return "<redacted>" }
-
-func (r *reader) rpcSecrets() Secrets {
-	raw := os.Getenv("RPC_ENDPOINT_SECRETS")
-	if raw == "" {
-		return nil
-	}
-	var secrets Secrets
-	if json.Unmarshal([]byte(raw), &secrets) != nil || secrets == nil {
-		r.invalid = append(r.invalid, "RPC_ENDPOINT_SECRETS (JSON object of secret references to URLs)")
-		return nil
-	}
-	for name, value := range secrets {
-		if !regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`).MatchString(name) || value == "" {
-			r.invalid = append(r.invalid, "RPC_ENDPOINT_SECRETS (invalid reference or empty URL)")
-			return nil
-		}
-	}
-	return secrets
-}
-
-// reader collects every missing or invalid variable, so one run names them all.
-type reader struct{ missing, invalid []string }
-
-func (r *reader) get(name string) string {
-	v := os.Getenv(name)
-	if v == "" {
-		r.missing = append(r.missing, name)
-	}
-	return v
-}
-
-func (r *reader) err() error {
-	var errs []error
-	if len(r.missing) > 0 {
-		errs = append(errs, fmt.Errorf("missing environment variables %s: copy apps/backend/.env.example to apps/backend/.env",
-			strings.Join(r.missing, ", ")))
-	}
-	if len(r.invalid) > 0 {
-		errs = append(errs, fmt.Errorf("invalid environment variables %s", strings.Join(r.invalid, ", ")))
-	}
-	return errors.Join(errs...)
-}

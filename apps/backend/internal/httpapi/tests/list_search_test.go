@@ -38,7 +38,7 @@ type listCase struct {
 	want  []any
 }
 
-// One item per page, so every cursor is used. A user may send 60 requests at once (ratelimit.go): stay under that.
+// checkList walks every cursor, one item per page; keep cases under the 60-request rate limit.
 func checkList(t *testing.T, e invoiceEnv, path string, key func(map[string]any) any, cases []listCase) {
 	t.Helper()
 	for _, c := range cases {
@@ -71,7 +71,7 @@ func (e invoiceEnv) exec(t *testing.T, sql string, args ...any) {
 	}
 }
 
-// Terms never change in production (the invoices_guard trigger), so this lifts it for one update.
+// closeCheckout lifts invoices_guard, which keeps terms fixed, for one update.
 func (e invoiceEnv) closeCheckout(t *testing.T, id string) {
 	t.Helper()
 	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
@@ -101,8 +101,8 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id IN ($1, $2)`, ids[2], ids[3])
 	e.exec(t, `UPDATE invoices SET settlement_status = 'settled' WHERE id = $1`, ids[3])
 	e.exec(t, `UPDATE invoices SET payment_status = 'detected' WHERE id = $1`, ids[4])
-	e.closeCheckout(t, ids[5])                                                                // open, but its checkout has closed
-	e.post(t, "did:privy:alice", e.walletless, "other", body("7000000", `, "title": "Logo"`)) // another profile's
+	e.closeCheckout(t, ids[5])
+	e.post(t, "did:privy:alice", e.walletless, "other", body("7000000", `, "title": "Logo"`))
 
 	path := "/v1/profiles/" + e.aliceProfile + "/invoices"
 	checkList(t, e, path, func(it map[string]any) any { return it["number"] }, []listCase{
@@ -111,8 +111,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"status=confirming", []any{4.0}},
 		{"status=paid", []any{3.0, 2.0}},
 		{"status=settled", []any{3.0}},
-		{"status=expired", []any{5.0, 1.0}}, // expired, and open with its checkout closed
-		// D-114: the Payments list's states, on invoices too.
+		{"status=expired", []any{5.0, 1.0}},
 		{"state=waiting", []any{}},
 		{"state=confirming", []any{4.0}},
 		{"state=paid", []any{3.0, 2.0}},
@@ -120,14 +119,14 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 		{"state=paid&q=kettle", []any{3.0}},
 		{"q=INV-0003", []any{3.0}},
 		{"q=inv-000", []any{5.0, 4.0, 3.0, 2.0, 1.0}},
-		{"q=LOGO", []any{1.0}},          // title
-		{"q=50%25+now", []any{4.0}},     // note
-		{"q=_", []any{4.0}},             // a character, not LIKE's wildcard
-		{"q=kettle", []any{3.0}},        // client name
-		{"q=bob%40example", []any{1.0}}, // client email
-		{"q=po-45000", []any{3.0}},      // reference
+		{"q=LOGO", []any{1.0}},
+		{"q=50%25+now", []any{4.0}},
+		{"q=_", []any{4.0}},
+		{"q=kettle", []any{3.0}},
+		{"q=bob%40example", []any{1.0}},
+		{"q=po-45000", []any{3.0}},
 		{"q=" + strings.ToUpper(receive[10:30]), []any{5.0}},
-		{"q=1%2C250.50", []any{2.0}}, // amount: 1,250.50 USDC exactly
+		{"q=1%2C250.50", []any{2.0}},
 		{"q=1250.5", []any{2.0}},
 		{"q=7.00", []any{3.0}},
 		{"q=7.000001", []any{}},
@@ -137,7 +136,6 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	})
 	checkListErrors(t, e, path, "status=all", "status=refunded", "state=open")
 
-	// Each row names the state and wallet transfer its filters use (D-114); the pay page's answer has neither.
 	want := map[float64][2]any{1: {"expired", "none"}, 2: {"paid", "pending"}, 3: {"paid", "in_wallet"},
 		4: {"confirming", "none"}, 5: {"expired", "none"}}
 	items, _ := e.call(t, "GET", path, "did:privy:alice", "", "").body["items"].([]any)
@@ -152,7 +150,6 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 	}
 }
 
-// R-77.
 func TestClosedCheckoutReadsExpired(t *testing.T) {
 	e := invoiceAPI(t)
 	var ids []string
@@ -167,14 +164,12 @@ func TestClosedCheckoutReadsExpired(t *testing.T) {
 			usdc, id, "0x"+strings.Repeat(fmt.Sprintf("%02x", log), 32), log, aliceWallet, amount, status, after)
 	}
 	onTime := func(id string, log int, amount int64, status string) { transfer(id, log, amount, status, -10) }
-	// 0: nothing paid. 1: 1 of 5 USDC paid on time. 2: 2 more seen on time and still confirming. 3: all 5 paid
-	// on time, the second RPC not yet agreeing, so still partially_paid.
+	// 1: part paid; 2: more confirming; 3: all paid, the second RPC not agreeing; 4: paid late.
 	onTime(ids[1], 1, 1000000, "confirmed")
 	onTime(ids[2], 2, 1000000, "confirmed")
 	onTime(ids[2], 3, 2000000, "detected")
 	onTime(ids[3], 4, 5000000, "confirmed")
 	e.exec(t, `UPDATE invoices SET payment_status = 'partially_paid' WHERE id IN ($1, $2, $3)`, ids[1], ids[2], ids[3])
-	// 4: only money after the close, which reads detected until the chain is final past expiry.
 	transfer(ids[4], 5, 5000000, "confirmed", 10)
 	e.exec(t, `UPDATE invoices SET payment_status = 'detected' WHERE id = $1`, ids[4])
 
@@ -200,7 +195,7 @@ func TestClosedCheckoutReadsExpired(t *testing.T) {
 			t.Fatalf("activity invoice %d: closed %v, want %v", i, it["closed"], closed[i])
 		}
 		return float64(i)
-	}, []listCase{{"status=expired", []any{4.0, "payment", 1.0, 0.0}}}) // 1's deposit: no earlier than 1 was made
+	}, []listCase{{"status=expired", []any{4.0, "payment", 1.0, 0.0}}})
 }
 
 func TestGetActivityFilterAndSearch(t *testing.T) {
@@ -217,7 +212,7 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 			SELECT 84532, 'evm', $1, $2, $3, 0, $3, 1, extract(epoch FROM now())::bigint + 60, $4, receive_address, 1000000, $5
 			FROM invoices WHERE id = $2`, usdc, d[0], d[1], aliceWallet, status)
 	}
-	// Booked as the ledger does before it marks an invoice paid: to the owner, so it is a payment, not held.
+	// Booked to the owner, as the ledger does before marking paid: a payment, not held money.
 	e.exec(t, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
 		           SELECT invoice_id, 'deposit', id FROM chain_transfers WHERE tx_hash = $1 RETURNING id)
 		INSERT INTO ledger_entries (transaction_id, account, amount) SELECT id, 'receiver', 1000000 FROM x
@@ -226,8 +221,7 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 	e.exec(t, `INSERT INTO settlement_intents (invoice_id, status, tx_hash) VALUES ($1, 'confirmed', $2)`, ids[1], settle)
 	e.exec(t, `UPDATE invoices SET payment_status = 'expired' WHERE id = $1`, ids[2])
 
-	// Newest first: the deposits (in a block after the invoices were made), then the invoices. An invoice pays 5 USDC, a
-	// deposit 1 USDC.
+	// Deposits are 1 USDC, in a block after the 5 USDC invoices.
 	dep := func(hash string) any { return "deposit " + hash }
 	inv := func(i int) any { return "invoice " + ids[i] }
 	checkList(t, e, "/v1/profiles/"+e.aliceProfile+"/activity", func(it map[string]any) any {
@@ -242,7 +236,7 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 		{"status=settled", []any{dep(confirmed), inv(1)}},
 		{"status=expired", []any{inv(2)}},
 		{"q=" + strings.ToUpper(confirmed[:12]), []any{dep(confirmed)}},
-		{"q=" + settle[20:40], []any{inv(1)}}, // the settle transaction
+		{"q=" + settle[20:40], []any{inv(1)}},
 		{"q=1.0", []any{dep(detected), dep(confirmed)}},
 		{"q=5", []any{inv(2), inv(1), inv(0)}},
 		{"q=usd", []any{dep(detected), dep(confirmed), inv(2), inv(1), inv(0)}},
@@ -274,8 +268,8 @@ func TestGetTransactionsFilterAndSearch(t *testing.T) {
 		{"", []any{"dd", "cc", "bb", "aa"}},
 		{"direction=in", []any{"cc", "aa"}},
 		{"direction=out", []any{"dd", "bb"}},
-		{"q=0X5555", []any{"dd", "aa"}}, // counterparty, any letter case
-		{"q=cccc", []any{"cc"}},         // transaction hash
+		{"q=0X5555", []any{"dd", "aa"}},
+		{"q=cccc", []any{"cc"}},
 		{"q=usdc", []any{"dd", "cc", "bb", "aa"}},
 		{"q=2.5", []any{"bb"}},
 		{"q=1", []any{"cc", "aa"}},

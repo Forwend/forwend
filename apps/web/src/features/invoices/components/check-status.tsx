@@ -10,12 +10,10 @@ import {
 
 export interface CheckStatusProps extends Omit<CheckStatusInput, "payToken"> {
   payToken: string;
-  /** The wrapper's layout; "contents" hands the button and the message to the caller's grid. */
   className?: string;
   messageClassName?: string;
 }
 
-/** R-55: the Check status button and what it found. */
 export function CheckStatus({
   className = "flex flex-wrap items-center gap-x-3 gap-y-2",
   messageClassName = "",
@@ -38,8 +36,7 @@ export function CheckStatus({
   );
 }
 
-/** What a check found, and when the next one is allowed. Always rendered, so the live region exists before the
- * first answer. */
+/** Always rendered, so the live region exists before the first answer. */
 export function CheckStatusNote({
   status,
   className = "",

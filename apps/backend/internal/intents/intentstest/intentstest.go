@@ -1,5 +1,4 @@
-// Package intentstest is a fake 1Click for tests: it answers token lists and quotes, signed with its own key, so no
-// test reaches the real API.
+// Package intentstest is a fake 1Click for tests, signing with its own key, so no test reaches the real API.
 package intentstest
 
 import (
@@ -19,35 +18,25 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/intents"
 )
 
-// Fake is a 1Click. Key is its public key, for intents.Client.Signer. Minimum is the least Base USDC its routes
-// deliver. Quotes counts the quotes it made, dry ones too.
+// Fake is a 1Click; Key is its public key, for intents.Client.Signer.
 type Fake struct {
-	URL     string
-	Key     string
-	Tokens  []map[string]any
-	Minimum *big.Int
-	// Limits gives a token, by asset id, 1Click's temporary USD minimum, which it names in dollars.
-	Limits map[string]int64
-	// Refuse makes 1Click refuse a token's quotes, by asset id, for a reason that names no minimum.
-	Refuse map[string]bool
-	// Dry makes 1Click refuse a token's quotes, by asset id, as it does when no solver quotes the route.
-	Dry map[string]bool
-	// Unpaired makes 1Click refuse a token's quotes, by asset id, as it does for a pair it can't quote now.
-	Unpaired map[string]bool
+	URL      string
+	Key      string
+	Tokens   []map[string]any
+	Minimum  *big.Int         // least Base USDC its routes deliver
+	Limits   map[string]int64 // asset id -> 1Click's USD minimum
+	Refuse   map[string]bool  // refusals that name no minimum
+	Dry      map[string]bool  // no solver quotes the route
+	Unpaired map[string]bool  // a pair 1Click can't quote now
 	private  ed25519.PrivateKey
 	mu       sync.Mutex
 	quotes   int
-	// Down makes every call answer 503.
-	Down bool
-	// Tamper changes a quote's answer before the fake signs it, as a 1Click that quotes something else would.
-	Tamper func(answer map[string]any)
-	// statuses is what /v0/status answers per deposit address; PENDING_DEPOSIT without one. Each carries the
-	// quote's signed answer, as 1Click's does.
-	statuses map[string]map[string]any
+	Down     bool
+	Tamper   func(answer map[string]any) // edits a quote before the fake signs it
+	statuses map[string]map[string]any   // per deposit address; none: PENDING_DEPOSIT
 	answers  map[string]map[string]any
 }
 
-// SetStatus makes the fake answer status with swapDetails for depositAddress, as 1Click's /v0/status does.
 func (f *Fake) SetStatus(depositAddress, status string, swapDetails map[string]any) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -58,8 +47,7 @@ func (f *Fake) SetStatus(depositAddress, status string, swapDetails map[string]a
 		"correlationId": "status", "swapDetails": swapDetails}
 }
 
-// Tokens is the fake's default list: Base and Arbitrum USDC, Tron USDT, Ethereum ETH, Stellar USDC (a memo chain) and
-// Solana SOL without a price.
+// Tokens is the fake's list: Base and Arbitrum USDC, Tron USDT, ETH, Stellar USDC (memo), SOL without a price.
 var Tokens = []map[string]any{
 	{"assetId": intents.BaseUSDCAsset, "blockchain": "base", "symbol": "USDC", "decimals": 6, "price": 0.9998,
 		"contractAddress": intents.BaseUSDC},
@@ -85,14 +73,12 @@ func New(t *testing.T) *Fake {
 	return f
 }
 
-// Client is an intents.Client for the fake.
 func (f *Fake) Client() *intents.Client {
 	c := intents.NewClient(f.URL, "", true)
 	c.Signer = f.Key
 	return c
 }
 
-// QuoteCount is how many quotes the fake made.
 func (f *Fake) QuoteCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

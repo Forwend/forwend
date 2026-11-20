@@ -4,9 +4,7 @@ import { formatTokenAmount, type TokenAmountInput } from "./token-amount";
 
 export interface MoneyProps extends TokenAmountInput {
   token?: string;
-  /** Set before the figures, such as + or − for money in or out. */
   sign?: string;
-  /** Keeps the figures and the token on one line, as a table cell needs. */
   nowrap?: boolean;
   className?: string;
 }

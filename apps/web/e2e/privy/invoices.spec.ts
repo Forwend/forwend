@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { blockingViolations } from "../axe";
 import { sidewaysScroll } from "../sideways";
-import { blockingViolations } from "./axe";
 import { session } from "./session";
 
 // Made once for the test account, then reused: each profile gets a real Privy wallet.

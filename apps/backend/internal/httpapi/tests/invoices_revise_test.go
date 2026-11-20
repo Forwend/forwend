@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/history/historytest"
 )
 
-// R-129.
 func TestReviseReplacesTheInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -50,7 +49,6 @@ func TestReviseReplacesTheInvoice(t *testing.T) {
 		t.Fatalf("the same key again: %d %v", again.status, again.body)
 	}
 
-	// Money seen: nothing is made, and the invoice stays as it is.
 	paid := e.post(t, alice, e.aliceProfile, "key-3", basicBody).body["invoiceId"].(string)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
@@ -71,7 +69,6 @@ func TestReviseReplacesTheInvoice(t *testing.T) {
 		t.Fatalf("an unknown invoice: %d %v, want 404", r.status, r.body)
 	}
 
-	// Another user's invoice, and the same user's other profile's: not found, and left open.
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		VALUES ($1, 'privy', 'bob-wallet', 'evm', '0x3333333333333333333333333333333333333333')`, e.bobProfile)
 	bobs := e.post(t, "did:privy:bob", e.bobProfile, "key-1", basicBody).body["invoiceId"].(string)

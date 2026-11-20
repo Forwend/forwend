@@ -4,11 +4,12 @@ import { STOP_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { STOP_REMINDERS_COPY } from "@/features/invoices/constants/invoices-copy";
 import { PublicStoreProvider } from "@/providers/public-store-provider";
 import { StopRemindersScreen } from "@/screens/stop-reminders/stop-reminders-screen";
+import { NO_INDEX } from "@/shared/config/site";
 
-// Outside the (app) group: the client follows it from a reminder email, with no account. The token is a secret link.
+// Outside the (app) group: opened from a reminder email with no account; the token is a secret link.
 export const metadata: Metadata = {
   title: STOP_REMINDERS_COPY.title,
-  robots: { index: false, follow: false },
+  robots: NO_INDEX,
 };
 
 export default async function StopRemindersPage({ params }: PageProps<"/reminders/[token]">) {

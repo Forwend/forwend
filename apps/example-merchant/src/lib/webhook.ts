@@ -7,11 +7,7 @@ export interface WebhookDeps {
   readSession(sessionId: string): Promise<CheckoutSession>;
 }
 
-/**
- * Handles one delivery and returns the status to answer Forwend with. The event only says the payment changed: the
- * API's answer decides whether the order is paid, so a duplicate, old or reordered event can't ship it twice or early.
- * A failed read throws, so the route answers 500 and Forwend sends the event again.
- */
+/** Ships an order only when the API says it is paid; a failed read throws so Forwend sends again. */
 export async function handleWebhook(
   payload: string,
   headers: Headers,

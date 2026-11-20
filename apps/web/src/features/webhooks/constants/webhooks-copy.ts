@@ -1,9 +1,12 @@
-import type { FAILED_SINCE_HOURS } from "@/features/webhooks/constants/webhooks";
+import {
+  DESCRIPTION_MAX,
+  type FAILED_SINCE_HOURS,
+  URL_MAX,
+} from "@/features/webhooks/constants/webhooks";
 import type { DeliveryStatus, WebhookEvent } from "@/features/webhooks/types/webhooks";
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 
-/** R-149: the Developers page's webhooks. */
 export const WEBHOOKS_COPY = {
   title: "Webhooks",
   intro: "Signed messages to your server when an invoice changes.",
@@ -112,8 +115,8 @@ export const WEBHOOKS_COPY = {
   noDeliveriesBody: "Events and test events sent to this endpoint show here.",
   deliveriesFailed: "We could not load the deliveries.",
   errors: {
-    url: "Enter an https address of up to 2048 characters.",
-    description: "Use up to 200 characters.",
+    url: `Enter an https address of up to ${URL_MAX} characters.`,
+    description: `Use up to ${DESCRIPTION_MAX} characters.`,
     events: "Pick at least one.",
     failed: "Could not save. Try again.",
     refused:

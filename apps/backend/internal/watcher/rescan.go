@@ -8,19 +8,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 )
 
-// RescanLimit bounds rescans per chain per round, so Check status calls take a bounded share of RPC budget (R-55).
+// RescanLimit bounds rescans per chain per round, so Check status calls take a bounded share of RPC budget.
 const RescanLimit = 5
 
 // rescanChunks log ranges at most per invoice per round.
 const rescanChunks = 5
 
-// Rescans never moves the chain's cursor: that would let the regular scan skip blocks for the other invoices. An
-// invoice past watchedAfterDeadline is not rescanned: its money is the refund authority's.
+// Rescans never moves the chain's cursor, so the regular scan skips no blocks; past watchedAfterDeadline, none run.
 func (c *Chain) Rescans(ctx context.Context) error {
 	if _, err := c.pool.Exec(ctx, `UPDATE invoice_rechecks r SET rescan_requested_at = NULL, rescan_from_block = NULL,
 		    rescanned_at = now()
@@ -80,7 +78,7 @@ func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved 
 	}
 	next, done, err := c.rescan(ctx, common.HexToAddress(receive), receiver{id, token}, from)
 	if chain.Missing(err) {
-		// An invoice older than the history the RPCs keep: its rescan moves past the pruned blocks (R-191).
+		// An invoice older than the history the RPCs keep: its rescan moves past the pruned blocks.
 		kept, ok, prunedErr := c.pruned(ctx, from)
 		if prunedErr != nil || !ok {
 			return errors.Join(err, prunedErr)
@@ -110,7 +108,7 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 	}
 	hi := min(latest, from+rescanChunks*c.span-1)
 	invoices := map[common.Address]receiver{addr: inv}
-	found, err := c.logsIn(ctx, from, hi, invoices)
+	found, _, _, _, err := c.scanLogs(ctx, from, hi, from, hi, invoices, nil, wallets{})
 	if err != nil {
 		return 0, false, err
 	}
@@ -135,23 +133,6 @@ func (c *Chain) rescan(ctx context.Context, addr common.Address, inv receiver, f
 		return 0, false, fmt.Errorf("record invoice %s rescan: %w", inv.invoiceID, err)
 	}
 	return hi + 1, hi >= latest, nil
-}
-
-func (c *Chain) logsIn(ctx context.Context, lo, hi uint64, invoices map[common.Address]receiver) ([]types.Log, error) {
-	var out []types.Log
-	for lo <= hi {
-		top := min(lo+c.span-1, hi)
-		found, err := c.logs(ctx, lo, top, invoices)
-		if c.narrow(err) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, found...)
-		lo = top + 1
-	}
-	return out, nil
 }
 
 // blockAt is the first block at or after Unix time t: about log2(latest) header reads, done once per rescan.

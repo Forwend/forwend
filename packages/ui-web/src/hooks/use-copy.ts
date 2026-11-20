@@ -8,7 +8,7 @@ export const COPY_STATUS = {
   failed: "failed",
 } as const;
 
-export const COPIED_LABEL_MS = 1600;
+const COPIED_LABEL_MS = 1600;
 
 export type CopyStatus = (typeof COPY_STATUS)[keyof typeof COPY_STATUS];
 

@@ -27,7 +27,6 @@ export interface BalanceHeroProps {
   onTransfer: (() => void) | null;
 }
 
-/** The personal balance card: the total and its change over the past month, then the round money actions. */
 export function BalanceHero({
   profileId,
   balances,
@@ -38,7 +37,6 @@ export function BalanceHero({
   onSend,
   onTransfer,
 }: BalanceHeroProps) {
-  // The same read as the chart card's default range, so it comes from the cache.
   const history = usePricedHistory(profileId, HISTORY_RANGES[DEFAULT_RANGE]);
   const series = history.currentData
     ? historySeries(history.currentData, HISTORY_FIELDS.balances, history.prices)
@@ -47,10 +45,8 @@ export function BalanceHero({
   return (
     <section
       aria-labelledby="balance-title"
-      // self-start: a taller My assets beside it doesn't stretch it; a shorter one still stretches to it.
       className="relative isolate -mx-4 -mt-4 flex min-h-80 flex-col overflow-hidden border-b border-line bg-surface sm:mx-0 sm:mt-0 sm:min-h-64 sm:rounded-lg sm:border xl:self-start"
     >
-      {/* One artwork in both themes; dark mode mutes it toward the near-black ground (D-113). */}
       <Image
         src={HERO_IMAGE.src}
         alt=""
@@ -59,8 +55,6 @@ export function BalanceHero({
         sizes="(min-width: 64rem) 60vw, 100vw"
         className="-z-10 object-cover object-right saturate-[.8] dark:brightness-[.45] dark:contrast-[1.1] dark:grayscale-[.7] dark:saturate-100"
       />
-      {/* The veil keeps the figures on the surface: on phones over the whole card, from small screens the art shows
-          only on the right. */}
       <div className="absolute inset-0 -z-10 bg-[color-mix(in_oklab,var(--fw-surface)_78%,transparent)] sm:bg-transparent sm:bg-[linear-gradient(90deg,var(--fw-surface)_30%,color-mix(in_oklab,var(--fw-surface)_55%,transparent)_62%,transparent)] dark:sm:bg-[linear-gradient(90deg,var(--fw-surface)_30%,color-mix(in_oklab,var(--fw-surface)_60%,transparent)_62%,color-mix(in_oklab,var(--fw-surface)_15%,transparent))]" />
 
       <div className="flex flex-1 flex-col items-center gap-6 px-4 py-8 sm:items-start sm:p-6">

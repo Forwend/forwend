@@ -3,7 +3,6 @@ import { AlertTriangle } from "lucide-react";
 export interface NetworkWarningProps {
   network: string;
   token: string;
-  /** A bridged token with the same name on this network, such as USDC.e for USDC on Arbitrum. */
   lookalike?: string;
 }
 

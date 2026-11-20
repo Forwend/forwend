@@ -6,7 +6,7 @@ import { CATALOG, type ItemId, MAX_QUANTITY, usd } from "@/lib/catalog";
 
 const ITEMS = Object.entries(CATALOG) as [ItemId, (typeof CATALOG)[ItemId]][];
 
-/** The cart. Its total is for show: the server prices the order again from the catalog. */
+/** The cart; its total is for show, the server prices the order again. */
 export function Cart() {
   const router = useRouter();
   const [quantities, setQuantities] = useState<Partial<Record<ItemId, number>>>({});
@@ -28,7 +28,6 @@ export function Cart() {
     }).catch(() => null);
     if (!answer?.ok) {
       setBusy(false);
-      // The server's own reason, such as its order limit; any other failure gets the general one.
       const reason = await answer?.json().then(
         (b) => b?.error,
         () => null,

@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -254,7 +253,6 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 	if found[paid]["refund_pending"] {
 		t.Fatal("invented a refund claim")
 	}
-	// A return support queued (PLAN 11.10.3) keeps a payment listed while held money is its only problem.
 	canceled := makePayment("canceled")
 	e.exec(t, "UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE id = $1", canceled)
 	e.deposit(t, canceled, "2500000")
@@ -280,7 +278,6 @@ func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTo
 		t.Fatalf("checkout: %d %v", made.status, made.body)
 	}
 	id := made.body["sessionId"].(string)
-	// These are observer and journal inputs. The binary integration test checks actual chain records.
 	e.exec(t, `WITH source AS (
   INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status,created_at)
   SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint-86400,$2,receive_address,3000000,'confirmed',current_date-interval '1 day' FROM invoices WHERE id = $1 RETURNING id,invoice_id
@@ -294,7 +291,6 @@ func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTo
  SELECT i.id,i.chain_id,i.receive_address,i.token_contract,'refund',$2,500000,'0x'||repeat('a',64),1,0,i.id,91,extract(epoch FROM now())::bigint,100,j.id,'' FROM invoices i JOIN ledger_transactions j ON j.invoice_id = i.id AND j.kind = 'refund' WHERE i.id = $1`, id, aliceWallet)
 	e.exec(t, `INSERT INTO receiver_outflows (invoice_id,chain_id,receiver_address,token_contract,kind,destination,amount,tx_hash,log_index,transfer_log_index,block_hash,block_number,block_time,verified_block,reconciliation_error)
  SELECT id,chain_id,receive_address,token_contract,'refund',$2,200000,'0x'||repeat('b',64),1,0,'0x'||repeat('b',64),92,extract(epoch FROM now())::bigint,100,'awaiting_booking' FROM invoices WHERE id = $1`, id, aliceWallet)
-	// The payment page lists each booked return as a transfer (PLAN 11.10.3); one not booked yet waits for it.
 	detail := e.call(t, "GET", base+"/payments/"+id, alice, "", "")
 	returns, _ := detail.body["options"].([]any)[0].(map[string]any)["returns"].([]any)
 	if len(returns) != 1 {
@@ -518,8 +514,6 @@ func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testi
 	check("review")
 }
 
-// The report counts a receiver as verified only with nothing unbooked or unexplained, and says when the chain holds a
-// deposit no record explains or the scan no longer reads the address's deposits.
 func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -555,11 +549,31 @@ func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *tes
 		coverage["historyComplete"] != false || coverage["unprovedDeposits"] != float64(1) {
 		t.Fatalf("a receiver holding a deposit the scan missed, past its watch window: %v, coverage %v", asset, coverage)
 	}
-	// The scan still reads it while a deposit to it is detected, until that deposit confirms.
 	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
  SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,1,'detected' FROM invoices WHERE id = $1`, id, aliceWallet)
 	if _, coverage = read(); coverage["historyComplete"] != true {
 		t.Fatalf("past its watch window with a detected deposit: coverage %v, want historyComplete", coverage)
+	}
+}
+
+func TestPaymentReconciliationReportsAScanThatLagsTheClock(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	made := e.post(t, alice, shop, "report-scan-lag", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	path := "/v1/profiles/" + shop + "/payments/" + made.body["invoiceId"].(string) + "/reconciliation"
+	for behind, want := range map[time.Duration]bool{time.Minute: true, invoice.ScanStalledAfter + time.Minute: false} {
+		e.exec(t, "UPDATE chain_cursors SET last_finalized_time = extract(epoch FROM now())::bigint - $1 WHERE chain_id = 84532", int64(behind/time.Second))
+		report := e.call(t, "GET", path, alice, "", "")
+		if report.status != http.StatusOK {
+			t.Fatalf("report: %d %v", report.status, report.body)
+		}
+		if got := report.body["assets"].([]any)[0].(map[string]any)["scanCurrent"]; got != want {
+			t.Fatalf("scan %v behind: scanCurrent %v, want %v", behind, got, want)
+		}
 	}
 }
 
@@ -578,10 +592,7 @@ func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testin
  expires_at,settle_deadline,recipient_address,receive_method,factory_address,'0x'||lpad(to_hex(n),40,'0'),idempotency_key,request_hash
  FROM invoices i CROSS JOIN generate_series(1,299) n WHERE i.id=$1`, id)
 	path := "/v1/profiles/" + shop + "/payments/" + id
-	start := time.Now()
 	full := e.call(t, "GET", path, alice, "", "")
-	fullElapsed := time.Since(start)
-	start = time.Now()
 	summary := e.call(t, "GET", path+"?view=summary", alice, "", "")
 	if full.status != http.StatusOK || summary.status != http.StatusOK {
 		t.Fatalf("full=%d summary=%d: %v", full.status, summary.status, summary.body)
@@ -593,9 +604,6 @@ func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testin
 	if len(full.body["options"].([]any)) != 300 || len(summary.body["options"].([]any)) != 1 {
 		t.Fatal("summary still includes unused option diagnostics")
 	}
-	fullJSON, _ := json.Marshal(full.body)
-	summaryJSON, _ := json.Marshal(summary.body)
-	t.Logf("300 options: full bytes=%d elapsed=%s; summary bytes=%d elapsed=%s", len(fullJSON), fullElapsed, len(summaryJSON), time.Since(start))
 	amounts := summary.body["amounts"].(map[string]any)
 	if amounts["reconciliationStatus"] != "verified" || amounts["unreconciled"] != false {
 		t.Fatalf("a payment with no movement has nothing to reconcile: %v", amounts)
@@ -692,7 +700,6 @@ func TestPaymentSearchKeepsPaginationAndProfileScope(t *testing.T) {
 	}
 }
 
-// D-114: one state and one wallet vocabulary for list, detail and both filters.
 func TestPaymentStateAndWalletAgreeAcrossReadsAndFilters(t *testing.T) {
 	e := invoiceAPIWith(t, 200, webhookKey)
 	const alice = "did:privy:alice"
@@ -724,7 +731,7 @@ func TestPaymentStateAndWalletAgreeAcrossReadsAndFilters(t *testing.T) {
 	partial := paid("partial", "1000000")
 	want[partial] = [2]string{"partially_paid", "none"}
 
-	// The rest arrives and is credited, but the finalized balance shows only the first half: not paid yet.
+	// The rest is credited, but the finalized balance shows only half: not paid yet.
 	awaiting := paid("awaiting", "1000000")
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
   block_hash, block_number, block_time, from_address, to_address, amount, status)
@@ -737,7 +744,6 @@ func TestPaymentStateAndWalletAgreeAcrossReadsAndFilters(t *testing.T) {
 	if err := ledger.NewService(e.pool, short, notDeployed).Process(t.Context(), awaiting); err != nil {
 		t.Fatal(err)
 	}
-	// Verified history leaves only the balance check, a normal wait.
 	want[awaiting] = [2]string{"confirming", "none"}
 
 	want[paid("paid", "2000000")] = [2]string{"paid", "pending"}
@@ -845,7 +851,6 @@ func containsPayment(r reply, id string) bool {
 	return false
 }
 
-// Money held on an option the payer did not choose makes a paid payment overpaid, though the chosen option holds none.
 func TestPaymentHeldOnAnotherOptionAndLookupByNumberHashAddressOrReference(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

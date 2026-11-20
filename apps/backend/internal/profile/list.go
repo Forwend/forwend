@@ -8,7 +8,6 @@ import (
 )
 
 func (s *Service) List(ctx context.Context, privyUserID string) ([]Profile, error) {
-	// The user's own profiles first, then the merchant profiles they are a member of.
 	rows, err := s.pool.Query(ctx, `
 		SELECT p.id::text, p.kind, coalesce(p.name, ''), coalesce(w.address, ''), p.created_at, a.role, p.livemode,
 		    p.fees_paid_by

@@ -1,8 +1,3 @@
-export const NAV_VARIANTS = {
-  pill: "pill",
-  bar: "bar",
-} as const;
-
 // UI colors used only by the three direction comps, not tokens.
 export const COMP_UI = {
   dawn: {

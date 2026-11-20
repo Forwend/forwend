@@ -1,4 +1,4 @@
-export interface SampleInvoice {
+interface SampleInvoice {
   id: string;
   client: string;
   service: string;

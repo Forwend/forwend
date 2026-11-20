@@ -10,8 +10,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/intents"
 )
 
-// CrossChainPayment is an invoice's shown cross-chain quote (R-235): the newest one 1Click saw a deposit for, else
-// the newest one. Deposited, Delivered and Refunded are nil until 1Click says.
+// CrossChainPayment is the newest quote 1Click saw a deposit for, else the newest one.
 type CrossChainPayment struct {
 	QuoteID, OptionID, Asset, Blockchain, Symbol, DepositAddress, RefundTo, Status, RefundReason string
 	Decimals                                                                                     int
@@ -19,7 +18,7 @@ type CrossChainPayment struct {
 	ShownUntil, Deadline, CreatedAt                                                              time.Time
 	DepositSeenAt, ConvertedAt                                                                   *time.Time
 	OriginTxs, DestinationTxs                                                                    []intents.Tx
-	Signed                                                                                       []byte // 1Click's answer, for the pay page's check (D-124)
+	Signed                                                                                       []byte // 1Click's answer, for the pay page's check
 }
 
 func readCrossChain(ctx context.Context, db paymentReader, mainID string) (*CrossChainPayment, error) {
@@ -27,9 +26,7 @@ func readCrossChain(ctx context.Context, db paymentReader, mainID string) (*Cros
 	return found[mainID], err
 }
 
-// readCrossChainFor reads each invoice's shown quote, by main invoice id. paying keeps only a deposit 1Click converts
-// or converted, as a list needs: one it returned didn't pay the invoice, nor did one beaten by money another option
-// recorded first.
+// readCrossChainFor maps main invoice id to its shown quote; paying keeps only deposits that pay the invoice.
 func readCrossChainFor(ctx context.Context, db paymentReader, mainIDs []string, paying bool) (map[string]*CrossChainPayment, error) {
 	rows, err := db.Query(ctx, `SELECT DISTINCT ON (invoice_id) invoice_id, id::text, option_id, origin_asset, origin_blockchain,
 		    origin_symbol, origin_decimals, deposit_address, refund_to, status, amount_in::text, min_amount_in::text,

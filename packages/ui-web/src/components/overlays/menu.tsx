@@ -7,14 +7,15 @@ import { cx } from "../../lib/cx";
 
 export type MenuContentProps = RadixMenu.DropdownMenuContentProps;
 
-export type MenuItemProps = RadixMenu.DropdownMenuItemProps;
+export interface MenuItemProps extends RadixMenu.DropdownMenuItemProps {
+  danger?: boolean;
+}
 
 export type MenuRadioItemProps = RadixMenu.DropdownMenuRadioItemProps;
 
 export type MenuCheckboxItemProps = RadixMenu.DropdownMenuCheckboxItemProps;
 
-// Menus close at once: a fade-out would hand focus back to the trigger late, and so close a menu opened again in
-// the meantime.
+// No exit fade: it would return focus late and close a menu opened again meanwhile.
 
 /** Not modal: the page stays readable behind an open menu; Escape and a click outside still close it. */
 export function Menu(props: RadixMenu.DropdownMenuProps) {
@@ -22,8 +23,6 @@ export function Menu(props: RadixMenu.DropdownMenuProps) {
 }
 
 export const MenuTrigger = RadixMenu.Trigger;
-
-export const MenuGroup = RadixMenu.Group;
 
 export const MenuRadioGroup = RadixMenu.RadioGroup;
 
@@ -37,8 +36,7 @@ export function MenuContent({
   onKeyDown,
   ...props
 }: MenuContentProps) {
-  // Closed by a pointer, focus stays where the pointer left it: returning it to the trigger would draw the
-  // keyboard focus ring on a control the person only clicked. A keyboard close still returns focus.
+  // After a pointer close focus stays put: returning it would draw a focus ring on a mere click.
   const byPointer = useRef(false);
   return (
     <RadixMenu.Portal>
@@ -78,8 +76,13 @@ export function MenuContent({
 const ITEM =
   "flex min-h-9 cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-sm pointer-coarse:min-h-11 outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2";
 
-export function MenuItem({ className, ...props }: MenuItemProps) {
-  return <RadixMenu.Item className={cx(ITEM, className)} {...props} />;
+export function MenuItem({ danger, className, ...props }: MenuItemProps) {
+  return (
+    <RadixMenu.Item
+      className={cx(ITEM, danger && "text-danger data-[highlighted]:bg-danger-soft", className)}
+      {...props}
+    />
+  );
 }
 
 export function MenuRadioItem({ className, children, ...props }: MenuRadioItemProps) {

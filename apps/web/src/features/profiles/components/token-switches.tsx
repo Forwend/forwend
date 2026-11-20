@@ -1,34 +1,28 @@
 "use client";
 
 import { useSaveProfileTokensMutation } from "@/features/profiles/api/profiles-api";
+import { SaveStatus } from "@/features/profiles/components/save-status";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import type { TokenSwitch } from "@/features/profiles/types/tokens";
-import { AssetSelection, assetKey } from "@/shared/components/chains/asset-selection";
+import { AssetSelection } from "@/shared/components/chains/asset-selection";
+import { offRefs, toggled } from "@/shared/lib/asset-selection";
+import { tokenKey } from "@/shared/lib/chains";
 
 export interface TokenSwitchesProps {
   profileId: string;
   saved: readonly TokenSwitch[];
 }
 
-// R-136: each change saves at once, said by one quiet line rather than a toast per box. The last token on can't be
-// turned off, as the API refuses it.
 export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
   const [save, { isLoading, isError, isSuccess }] = useSaveProfileTokensMutation();
-  const selected = new Set(saved.filter((t) => t.on).map(assetKey));
+  const selected = new Set(saved.filter((t) => t.on).map(tokenKey));
   const change = async (keys: readonly string[], on: boolean) => {
-    const next = new Set(selected);
-    for (const key of keys) {
-      if (on) next.add(key);
-      else next.delete(key);
-    }
+    const next = toggled(selected, keys, on);
     if (next.size === 0) return;
-    const off = saved
-      .filter((t) => !next.has(assetKey(t)))
-      .map(({ chainId, token }) => ({ chainId, token }));
     try {
-      await save({ profileId, off }).unwrap();
+      await save({ profileId, off: offRefs(saved, next) }).unwrap();
     } catch {
-      // Said below; the boxes stay as saved.
+      // Shown below.
     }
   };
   return (
@@ -40,14 +34,7 @@ export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
         onChange={(keys, on) => void change(keys, on)}
         lockedReason={() => (selected.size === 1 ? COPY.lastOn : null)}
       />
-      <p role="status" className="min-h-5 text-sm text-muted">
-        {isLoading ? COPY.saving : isError ? null : isSuccess ? COPY.savedAll : null}
-      </p>
-      {isError ? (
-        <p role="alert" className="text-sm text-danger">
-          {COPY.saveFailed}
-        </p>
-      ) : null}
+      <SaveStatus saving={isLoading} saved={isSuccess} failed={isError} />
     </div>
   );
 }

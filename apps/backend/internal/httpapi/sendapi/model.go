@@ -8,15 +8,13 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/send"
 )
 
-// The status the app shows: a submitted send is sending until its transfer is in a block, then sent; final says the
-// block can no longer change.
+// A submitted send is sending until its transfer is in a block, then sent.
 const (
 	statusSending = "sending"
 	statusSent    = "sent"
 )
 
-// How the wallet pays its network fee from the token itself (D-121): as the chain's gas coin, signed with gas caps
-// (R-216), or taken by a paymaster from a Privy request the server sends (R-225). Forwend paid for sends before D-121.
+// Who paid a send's network fee: the wallet (gas coin, capped), a paymaster, or Forwend for old sends.
 const (
 	paidByForwend   = "forwend"
 	paidByWallet    = "wallet"
@@ -24,8 +22,7 @@ const (
 )
 
 type feeJSON struct {
-	// In the token's base units: the most a wallet-paid send costs, the estimate a paymaster send shows.
-	Amount string `json:"amount"`
+	Amount string `json:"amount"` // token base units; a cap for wallet-paid sends
 	PaidBy string `json:"paidBy"`
 }
 
@@ -37,27 +34,25 @@ type gasJSON struct {
 }
 
 type sendJSON struct {
-	SendID      string  `json:"sendId"`
-	ChainID     uint64  `json:"chainId"`
-	Token       string  `json:"token"`
-	Symbol      string  `json:"symbol"`
-	Decimals    int     `json:"decimals"`
-	From        string  `json:"from"`
-	To          string  `json:"to"`
-	ToProfileID *string `json:"toProfileId"`
-	Amount      string  `json:"amount"`
-	Status      string  `json:"status"`
-	Final       bool    `json:"final"`
-	TxHash      *string `json:"txHash"`
-	Failure     *string `json:"failure"`
-	NetworkFee  feeJSON `json:"networkFee"`
-	// FeePaid is what the wallet really paid once mined, in the token's base units; null until known (R-224).
-	FeePaid   *string        `json:"feePaid"`
-	Gas       *gasJSON       `json:"gas"`
-	Warnings  []send.Warning `json:"warnings"`
-	CreatedAt string         `json:"createdAt"`
-	// PrivyRequest is set by approve on a paymaster send: what the user's key signs for submit.
-	PrivyRequest *privy.Request `json:"privyRequest,omitempty"`
+	SendID       string         `json:"sendId"`
+	ChainID      uint64         `json:"chainId"`
+	Token        string         `json:"token"`
+	Symbol       string         `json:"symbol"`
+	Decimals     int            `json:"decimals"`
+	From         string         `json:"from"`
+	To           string         `json:"to"`
+	ToProfileID  *string        `json:"toProfileId"`
+	Amount       string         `json:"amount"`
+	Status       string         `json:"status"`
+	Final        bool           `json:"final"`
+	TxHash       *string        `json:"txHash"`
+	Failure      *string        `json:"failure"`
+	NetworkFee   feeJSON        `json:"networkFee"`
+	FeePaid      *string        `json:"feePaid"` // token base units; null until mined
+	Gas          *gasJSON       `json:"gas"`
+	Warnings     []send.Warning `json:"warnings"`
+	CreatedAt    string         `json:"createdAt"`
+	PrivyRequest *privy.Request `json:"privyRequest,omitempty"` // set by approve on a paymaster send
 }
 
 func toSendJSON(s send.Send) sendJSON {

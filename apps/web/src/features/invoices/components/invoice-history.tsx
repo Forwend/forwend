@@ -16,7 +16,7 @@ import {
   HISTORY_KINDS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate, invoiceNumber } from "@/features/invoices/lib/invoices";
+import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import type {
   HistoryCategory,
   HistoryFilter,
@@ -24,18 +24,9 @@ import type {
   InvoiceHistoryEvent,
   InvoiceViews,
 } from "@/features/invoices/types/invoices";
+import { dateTime, formatDueDate, monthDayTime } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.history;
-const TIME = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
-const TIME_WITH_YEAR = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 const FILTERS = Object.values(HISTORY_FILTERS)
   .filter((value) => value !== HISTORY_FILTERS.payment)
   .map((value) => ({
@@ -62,7 +53,7 @@ export interface InvoiceHistoryProps {
   views: InvoiceViews | null;
 }
 
-/** R-124: every change to the invoice, newest first; each time is the server's. */
+/** Newest first; each time is the server's. */
 export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps) {
   const [filter, setFilter] = useState<HistoryFilter>(HISTORY_FILTERS.all);
   const lines = history
@@ -90,7 +81,7 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
         <EmptyState compact icon={History} title={COPY.none} />
       ) : (
         <>
-          {/* The panel's width decides, not the screen's: it is two thirds of a wide page. */}
+          {/* The panel's width decides, not the screen's. */}
           <div className="hidden overflow-x-auto @xl:block">
             <table className="w-full text-sm">
               <thead>
@@ -140,7 +131,6 @@ export function InvoiceHistory({ invoice, history, views }: InvoiceHistoryProps)
           </ul>
         </>
       )}
-      {/* An invoice made before pay links (R-114) has none to open. */}
       {views && invoice.payToken ? (
         <p className="border-t border-line px-4 py-3 text-sm text-muted sm:px-5">
           {views.firstAt && views.lastAt ? (
@@ -197,9 +187,9 @@ function detailsOf(row: InvoiceHistoryEvent): ReactNode {
     case HISTORY_KINDS.created:
       return row.related ? COPY.replaces(invoiceNumber(row.related.number)) : null;
     case HISTORY_KINDS.checkoutCloseChanged:
-      return row.until ? COPY.closeChanged(TIME_WITH_YEAR.format(new Date(row.until))) : null;
+      return row.until ? COPY.closeChanged(dateTime(row.until)) : null;
     case HISTORY_KINDS.reopened:
-      return row.until ? COPY.reopenedUntil(TIME_WITH_YEAR.format(new Date(row.until))) : null;
+      return row.until ? COPY.reopenedUntil(dateTime(row.until)) : null;
     case HISTORY_KINDS.edited: {
       const field = row.field ? (FIELDS[row.field] ?? row.field) : null;
       const day = (date: string | null) => (date ? formatDueDate(date) : COPY.noDate);
@@ -221,9 +211,11 @@ function Event({ line }: { line: Line }) {
 }
 
 function Time({ at }: { at: string }) {
-  const when = new Date(at);
-  const format = when.getFullYear() === new Date().getFullYear() ? TIME : TIME_WITH_YEAR;
-  return <time dateTime={at}>{format.format(when)}</time>;
+  return (
+    <time dateTime={at}>
+      {new Date(at).getFullYear() === new Date().getFullYear() ? monthDayTime(at) : dateTime(at)}
+    </time>
+  );
 }
 
 function None() {

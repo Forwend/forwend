@@ -3,13 +3,13 @@
 import { BUTTON_VARIANTS, Button, Dialog, TextField, TONES, useToast } from "@forwend/ui-web";
 import { Plus } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
-import { useFreshSignIn } from "@/features/auth/components/fresh-sign-in";
+import { useFreshSignIn } from "@/features/auth/hooks/use-fresh-sign-in";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Store } from "@/features/stores/types/stores";
 import { useInviteMutation } from "@/features/team/api/team-api";
 import { GrantFields } from "@/features/team/components/grant-fields";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
-import { grantError } from "@/features/team/lib/team";
+import { grant, grantError } from "@/features/team/lib/team";
 import type { MemberRole } from "@/features/team/types/team";
 
 export interface InviteDialogProps {
@@ -17,14 +17,12 @@ export interface InviteDialogProps {
   stores: readonly Store[];
 }
 
-// R-139: the API asks for a fresh sign-in first when the last one is older than 15 minutes (D-63).
 export function InviteDialog({ profileId, stores }: InviteDialogProps) {
   const [invite, { isLoading }] = useInviteMutation();
   const fresh = useFreshSignIn();
   const toast = useToast();
   const form = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
-  // The role with the least reach comes first, so giving more is a choice.
   const [role, setRole] = useState<MemberRole>(ROLES.developer);
   const [chosen, setChosen] = useState<string[]>([]);
   const [errors, setErrors] = useState<ReturnType<typeof grantError>>({});
@@ -36,16 +34,11 @@ export function InviteDialog({ profileId, stores }: InviteDialogProps) {
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (role !== ROLES.admin && chosen.length === 0)
-      return setErrors({ stores: COPY.errors.stores });
+    const body = grant(role, chosen);
+    if (!body) return setErrors({ stores: COPY.errors.stores });
     setErrors({});
     try {
-      const made = await fresh.run(() =>
-        invite({
-          profileId,
-          body: { email, role, stores: role === ROLES.admin ? [] : chosen },
-        }).unwrap(),
-      );
+      const made = await fresh.run(() => invite({ profileId, body: { ...body, email } }).unwrap());
       toast({ tone: TONES.success, title: COPY.sent(made.email) });
       form.current?.closest("dialog")?.close();
     } catch (failure) {

@@ -3,7 +3,6 @@ import { LOGO_MARK } from "./logo-data";
 
 export interface LogoMarkProps {
   className?: string;
-  /** Accessible name when the mark stands alone; omit next to a visible wordmark. */
   label?: string;
 }
 

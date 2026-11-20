@@ -11,15 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const StartupTimeout = 30 * time.Second
+const startupTimeout = 30 * time.Second
 
 // errUnavailable marks a chain whose RPC hosts don't answer at startup: an outage, not a mistake.
 var errUnavailable = errors.New("its RPCs did not answer")
 
-// CheckEnabled checks every enabled chain at startup (D-15); also, when not nil, adds a check per chain.
-// A mistake stops the process; a chain whose hosts don't answer is logged and skipped (D-71).
+// CheckEnabled checks every enabled chain at startup, and also when not nil; an unreachable one is logged.
 func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, rate float64,
-	also func(ctx context.Context, chainID uint64, r RPCs) error, budgets ...*Budget) error {
+	also func(ctx context.Context, chainID uint64, r RPCs) error, budget *Budget) error {
 	ids, err := Enabled(ctx, db)
 	if err != nil {
 		return err
@@ -29,7 +28,7 @@ func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, 
 		if !ok {
 			return fmt.Errorf("chain %d is enabled in the database but not in the RPC configuration snapshot", id)
 		}
-		r, err := NewRPCs(spec, rate, budgets...)
+		r, err := NewRPCs(spec, rate, budget)
 		if err != nil {
 			return err
 		}
@@ -46,13 +45,13 @@ func CheckEnabled(ctx context.Context, db *pgxpool.Pool, specs map[uint64]Spec, 
 }
 
 func (r RPCs) check(ctx context.Context, also func(context.Context, uint64, RPCs) error) error {
-	ctx, cancel := context.WithTimeout(ctx, StartupTimeout)
+	ctx, cancel := context.WithTimeout(ctx, startupTimeout)
 	defer cancel()
 	var block hexutil.Uint64
 	if err := r.Client.CallContext(ctx, &block, "eth_blockNumber"); err != nil {
 		answered, hosts := r.pool.answered()
 		err := fmt.Errorf("chain %d: %d of %d RPC hosts answered: %s", r.pool.chainID, answered, hosts, Redact(err))
-		if !r.pool.serves() {
+		if r.pool.serving() == 0 {
 			return err
 		}
 		return fmt.Errorf("%w: %w", err, errUnavailable)

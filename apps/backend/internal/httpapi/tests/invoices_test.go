@@ -47,16 +47,14 @@ type invoiceEnv struct {
 	aliceProfile string // has an EVM wallet
 	walletless   string // Alice's second profile, without a wallet
 	bobProfile   string
-	codes        *codeMailbox // the Confirm it's you emails the api sent
+	codes        *codeMailbox
 }
 
-// codeMailbox keeps the emails a test's api sends, as Resend would deliver them.
 type codeMailbox struct {
 	sync.Mutex
-	sent []email.Message
-	down bool // Resend refuses every email
-	// during runs while an email is on its way, before it is accepted.
-	during func(ctx context.Context, msg email.Message)
+	sent   []email.Message
+	down   bool                                         // Resend refuses every email
+	during func(ctx context.Context, msg email.Message) // runs while an email is on its way
 }
 
 func (m *codeMailbox) Send(ctx context.Context, msg email.Message) error {
@@ -85,7 +83,6 @@ func (m *codeMailbox) count() int {
 	return len(m.sent)
 }
 
-// last is the code of the newest email to address, from its subject.
 func (m *codeMailbox) last(address string) string {
 	m.Lock()
 	defer m.Unlock()
@@ -103,27 +100,22 @@ func invoiceAPI(t *testing.T) invoiceEnv {
 	return invoiceAPIWith(t, 0, webhookKey)
 }
 
-// invoiceAPIWith is invoiceAPI with each user's burst of requests (0 keeps mid.UserBurst) and a webhook key (nil for
-// none).
 func invoiceAPIWith(t *testing.T, userBurst int, webhookKey []byte) invoiceEnv {
 	t.Helper()
 	return invoiceAPIChains(t, userBurst, webhookKey, nil)
 }
 
-// invoiceAPIChains is invoiceAPIWith whose sends read chains through clients.
 func invoiceAPIChains(t *testing.T, userBurst int, webhookKey []byte, clients send.Clients) invoiceEnv {
 	t.Helper()
 	return invoiceAPIPriced(t, userBurst, webhookKey, clients, invoice.Pricing{})
 }
 
-// invoiceAPIPriced is invoiceAPIChains whose new invoices are given fees by pricing (R-227).
 func invoiceAPIPriced(t *testing.T, userBurst int, webhookKey []byte, clients send.Clients,
 	pricing invoice.Pricing) invoiceEnv {
 	t.Helper()
 	return invoiceAPICrossChain(t, userBurst, webhookKey, clients, pricing, nil)
 }
 
-// invoiceAPICrossChain is invoiceAPIPriced whose payers can pay from other chains through crossChain (D-123).
 func invoiceAPICrossChain(t *testing.T, userBurst int, webhookKey []byte, clients send.Clients,
 	pricing invoice.Pricing, crossChain *intents.Client) invoiceEnv {
 	t.Helper()
@@ -205,8 +197,7 @@ func (e invoiceEnv) get(t *testing.T, id string) reply {
 	return e.do(t, req)
 }
 
-// link returns the pay token of the invoice with this id (D-86). An id without one stays as it is, so a test can
-// show that the public routes refuse it.
+// link returns the invoice's pay token, or the id itself when it has none.
 func (e invoiceEnv) link(t *testing.T, id string) string {
 	t.Helper()
 	var token *string
@@ -266,7 +257,6 @@ func TestCreateInvoice(t *testing.T) {
 	if b["recipient"] != aliceWallet || b["amount"] != "5000000" || b["token"] != usdc || b["chainId"] != float64(84532) {
 		t.Fatalf("terms %v", b)
 	}
-	// R-228: the fees in the terms, who pays them and what the owner receives; the public GET below gives them too.
 	if b["networkFee"] != "0" || b["platformFee"] != "0" || b["netAmount"] != "5000000" || b["feesPaidBy"] != "owner" {
 		t.Fatalf("fees %v %v %v %v", b["networkFee"], b["platformFee"], b["netAmount"], b["feesPaidBy"])
 	}
@@ -284,11 +274,10 @@ func TestCreateInvoice(t *testing.T) {
 	if d := expiresAt.Sub(before); d < time.Hour || d > time.Hour+5*time.Second {
 		t.Fatalf("expiresAt %v is not now + 1h", expiresAt)
 	}
-	if settleDeadline.Sub(expiresAt) != 7*24*time.Hour { // D-18
+	if settleDeadline.Sub(expiresAt) != 7*24*time.Hour {
 		t.Fatalf("settleDeadline %v is not expiresAt + 7 days", settleDeadline)
 	}
 
-	// The stored terms recompute to the receive address the API returned.
 	var id, recipient, token, amount string
 	var chainID, exp, deadline uint64
 	err := e.pool.QueryRow(context.Background(), `SELECT id, recipient_address, token_contract, amount::text, chain_id,
@@ -325,8 +314,7 @@ func TestCreateInvoice(t *testing.T) {
 	}
 }
 
-// The due date sits far ahead so the invoice is never overdue on the day the tests run; the PDF prints Overdue
-// for a due date before today.
+// The due date sits far ahead so the invoice is never overdue when the tests run.
 const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000", "title": "Logo design",
 	"note": "Thanks!\nPay within 14 days.", "dueDate": "2099-11-01", "supplyDate": "2026-10-31",
 	"reference": "PO-4500012345", "agreedValue": {"currency": "EUR", "amount": "1000.5", "date": "2026-10-01"},
@@ -349,7 +337,6 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 			t.Fatalf("%s = %v, want %v", k, r.body[k], v)
 		}
 	}
-	// "1000.50" is the same price as "1000.5": the hash reads minor units.
 	again := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", strings.Replace(detailsBody, `"1000.5"`, `"1000.50"`, 1))
 	if again.status != http.StatusOK || again.body["invoiceId"] != r.body["invoiceId"] || again.body["number"] != float64(1) {
 		t.Fatalf("same key and body: %d %v", again.status, again.body)
@@ -373,7 +360,6 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 	}
 }
 
-// R-43.
 func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -409,7 +395,6 @@ func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 	}
 }
 
-// R-92, D-52.
 func TestBusinessInvoiceNeedsBillingDetails(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -423,7 +408,6 @@ func TestBusinessInvoiceNeedsBillingDetails(t *testing.T) {
 	if r := e.call(t, "PUT", "/v1/profiles/"+e.walletless+"/billing-details", alice, "", billingBody); r.status != http.StatusOK {
 		t.Fatalf("PUT: %d %v", r.status, r.body)
 	}
-	// The refused request stored nothing and used no number.
 	if r := e.post(t, alice, e.walletless, "key-1", basicBody); r.status != http.StatusCreated ||
 		r.body["number"] != float64(1) || r.body["issuer"] == nil {
 		t.Fatalf("after saving them: %d %v", r.status, r.body)
@@ -449,7 +433,6 @@ func unhex(t *testing.T, s string) []byte {
 func TestCreateInvoiceIsIdempotent(t *testing.T) {
 	e := invoiceAPI(t)
 	first := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
-	// Same values, other spacing and field order: the same request.
 	again := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
 		`{"amount":"5000000","token":"0x`+strings.ToUpper(usdc[2:])+`","chainId":84532}`)
 	if first.status != http.StatusCreated {
@@ -582,7 +565,6 @@ func TestGetInvoiceNotFound(t *testing.T) {
 	}
 }
 
-// R-73. A row without detected_finalized_block counts from what is left.
 func TestGetInvoiceKeepsTheConfirmingTotal(t *testing.T) {
 	e := invoiceAPI(t)
 	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
@@ -672,7 +654,6 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 	if !reflect.DeepEqual(owner.body["deposits"], r.body["deposits"]) {
 		t.Fatalf("owner deposits %v, public %v", owner.body["deposits"], r.body["deposits"])
 	}
-	// R-69: a detected payment before expiry is confirming.
 	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices", "did:privy:alice", "", "")
 	items, _ := list.body["items"].([]any)
 	if r.body["confirming"] != true || owner.body["confirming"] != true || len(items) != 1 ||
@@ -767,7 +748,6 @@ func TestListInvoices(t *testing.T) {
 	}
 }
 
-// R-54.
 func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -814,7 +794,6 @@ func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
 	if _, ok := e.get(t, id).body["settlementWait"]; ok {
 		t.Fatal("the public read shows settlementWait")
 	}
-	// A wait whose time has passed reads as the intent's status: a sent settle is finalizing again.
 	if _, err := e.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', wait = 'unresolved',
 		next_attempt_at = now() - interval '1 minute' WHERE invoice_id = $1`, id); err != nil {
 		t.Fatal(err)

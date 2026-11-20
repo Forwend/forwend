@@ -8,11 +8,9 @@ import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface LeaveTeamProps {
   profileId: string;
-  /** The team's name, as the profile switcher shows it. */
   team: string;
 }
 
-// D-93: any member may leave; the owner can't, so the app offers it only to members.
 export function LeaveTeam({ profileId, team }: LeaveTeamProps) {
   const [leave, { isLoading, isError, reset }] = useLeaveTeamMutation();
   const toast = useToast();
@@ -23,7 +21,7 @@ export function LeaveTeam({ profileId, team }: LeaveTeamProps) {
       toast({ tone: TONES.success, title: COPY.left(team) });
       router.push(APP_ROUTES.home);
     } catch {
-      // The dialog shows the error.
+      // Shown by the dialog.
     }
   };
   return (

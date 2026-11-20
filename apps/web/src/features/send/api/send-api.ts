@@ -1,8 +1,8 @@
 import { pendingSendsSchema, sendFeeSchema, sendSchema } from "@/features/send/schemas/send";
 import type { Send, SendFee, SendRequest } from "@/features/send/types/send";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
-const sends = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/sends`;
+const sends = (profileId: string) => profilePath(profileId, "sends");
 
 export const sendApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -10,7 +10,6 @@ export const sendApi = apiSlice.injectEndpoints({
       query: ({ profileId, ...body }) => ({ url: sends(profileId), method: "POST", body }),
       responseSchema: sendSchema,
     }),
-    // Needs a fresh sign-in (D-49): the sheet shows Confirm it's you as its own step. The answer is the send as GET reads it.
     approveSend: build.mutation<Send, { profileId: string; sendId: string }>({
       query: ({ profileId, sendId }) => ({
         url: `${sends(profileId)}/${encodeURIComponent(sendId)}/approve`,
@@ -18,7 +17,6 @@ export const sendApi = apiSlice.injectEndpoints({
       }),
       responseSchema: sendSchema,
     }),
-    // The hash of a send the browser signed, or the signature over a paymaster send's Privy request (R-225).
     submitSend: build.mutation<
       Send,
       { profileId: string; sendId: string } & ({ txHash: string } | { signature: string })
@@ -29,7 +27,6 @@ export const sendApi = apiSlice.injectEndpoints({
         body,
       }),
       responseSchema: sendSchema,
-      // The money lists show it as Sending at once (R-215).
       invalidatesTags: ["PendingSends"],
     }),
     cancelSend: build.mutation<void, { profileId: string; sendId: string }>({

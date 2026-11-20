@@ -9,7 +9,6 @@ import (
 const clientBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000",
 	"client": {"name": "Client Ltd", "email": "ap@client.example"}}`
 
-// R-94.
 func TestSendInvoiceToClient(t *testing.T) {
 	e := invoiceAPI(t)
 	send := func(profile, id, key string) reply {
@@ -95,7 +94,6 @@ func TestSendInvoiceToClient(t *testing.T) {
 	}
 }
 
-// R-116.
 func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
@@ -119,7 +117,6 @@ func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
 	if got := send(e.walletless, second.body["invoiceId"].(string), "send-1"); got != http.StatusCreated {
 		t.Fatalf("the user's 20th client email: %d, want 201", got)
 	}
-	// A first send of an invoice: only the user's cap can refuse it.
 	if got := send(e.aliceProfile, first, "send-2"); got != http.StatusTooManyRequests {
 		t.Fatalf("the 21st, from the other profile: %d, want 429", got)
 	}

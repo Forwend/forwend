@@ -25,8 +25,7 @@ const (
 	invoice = "0xab00000000000000000000000000000000000000000000000000000000000001"
 )
 
-// setup's invoice has 1.0 detected (pending), 0.5 reorged (ignored), and 3.0 confirmed and booked as 2.0 owed to
-// the creator (pending) and 1.0 held for the payer.
+// setup's invoice: 1.0 detected, 0.5 reorged, and 3.0 booked as 2.0 owed and 1.0 held.
 func setup(t *testing.T, token string) (pool *pgxpool.Pool, profile, walletless string) {
 	t.Helper()
 	ctx := context.Background()
@@ -92,8 +91,8 @@ func TestBalancesOnAnvil(t *testing.T) {
 	token := anvil.DeployToken()
 	anvil.Mint(token, "1000000000")
 	anvil.Transfer(token, wallet, "2500000")
-	anvil.Mine(2)                      // the transfer's block becomes final
-	anvil.Transfer(token, wallet, "1") // not final yet: not counted
+	anvil.Mine(2)
+	anvil.Transfer(token, wallet, "1")
 	pool, profile, walletless := setup(t, token)
 	s := NewService(pool, ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(anvil.RPC)}))
 	ctx := context.Background()
@@ -121,7 +120,6 @@ func TestBalancesOnAnvil(t *testing.T) {
 		t.Fatalf("estimated USD %q, want 2.50", got.EstimatedUSD)
 	}
 
-	// A profile without a wallet yet, and an RPC that fails: no balance and no total, never a made-up 0.
 	if got, err := s.Of(ctx, walletless); err != nil || got.Tokens[0].Wallet != nil || got.EstimatedUSD != "" {
 		t.Fatalf("walletless: %+v, %v", got, err)
 	}
@@ -134,20 +132,18 @@ func TestBalancesOnAnvil(t *testing.T) {
 	}
 }
 
-// D-114: pending splits into exact parts by what each part waits for; held stays apart from all of them.
 func TestPendingParts(t *testing.T) {
 	const token = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
-	pool, profile, _ := setup(t, token) // open, its whole amount booked (2.0, confirming), 1.0 detected, 1.0 held
+	pool, profile, _ := setup(t, token)
 	ctx := context.Background()
-	// Each option's status, amount and one booked deposit: its part for the creator and its part held for the payer.
 	for i, o := range []struct {
 		status                   string
 		amount, owner, held, fee int64
 	}{
-		{"paid", 3000000, 3000000, 500000, 30000},  // settling; its network fee never reaches the wallet (R-228)
-		{"paid", 1000000, 1000000, 0, 0},           // settling
-		{"partially_paid", 5000000, 700000, 0, 0},  // partial: it can still close and be held
-		{"partially_paid", 2000000, 2000000, 0, 0}, // paid in full after a part, waiting for the balance check: confirming
+		{"paid", 3000000, 3000000, 500000, 30000},
+		{"paid", 1000000, 1000000, 0, 0},
+		{"partially_paid", 5000000, 700000, 0, 0},
+		{"partially_paid", 2000000, 2000000, 0, 0},
 		{"expired_partially_paid", 5000000, 0, 1500000, 0},
 	} {
 		id := fmt.Sprintf("0xab%062x", i+2)
@@ -181,7 +177,6 @@ func TestPendingParts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Base mainnet is on beside the test chain: the profile sees only its own mode's tokens (D-120).
 	if _, err := pool.Exec(ctx, `UPDATE chains SET enabled = true WHERE chain_id = 8453`); err != nil {
 		t.Fatal(err)
 	}
@@ -215,13 +210,10 @@ func TestPendingParts(t *testing.T) {
 	}
 }
 
-// Balances read only the invoices that can still owe or hold money, through their index. A settled invoice with
-// money held for the payer is one of them.
 func TestBalancesReadOnlyInvoicesThatCanHoldMoney(t *testing.T) {
 	const token = "0x036cbd53842c5426634e7929541ec2318f3dcf7e"
-	pool, profile, _ := setup(t, token) // 2.0 owed, 1.0 held, 1.0 detected
+	pool, profile, _ := setup(t, token)
 	ctx := context.Background()
-	// The owed 2.0 is settled; the held 1.0 stays the payer's.
 	if _, err := pool.Exec(ctx, `
 		WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind) VALUES ($1, 'settlement') RETURNING id),
 		     e AS (INSERT INTO ledger_entries (transaction_id, account, amount)
@@ -249,7 +241,7 @@ func TestBalancesReadOnlyInvoicesThatCanHoldMoney(t *testing.T) {
 func TestHungChainLeavesTheOthers(t *testing.T) {
 	anvil := chaintest.Start(t)
 	token := anvil.DeployToken()
-	anvil.Mine(2) // the token exists at the finalized block the read uses
+	anvil.Mine(2)
 	pool, profile, _ := setup(t, token)
 	if _, err := pool.Exec(context.Background(), `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (1, 'evm', 'hung', true))
@@ -257,23 +249,22 @@ func TestHungChainLeavesTheOthers(t *testing.T) {
 		VALUES (1, 'evm', '0x0000000000000000000000000000000000000001', 'USDC', 6, true)`); err != nil {
 		t.Fatal(err)
 	}
-	defer func(old time.Duration) { ReadTimeout = old }(ReadTimeout)
-	ReadTimeout = 300 * time.Millisecond
 	anvilRead := ledger.BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(anvil.RPC)})
 	s := NewService(pool, func(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
-		if chainID == 1 { // listed first
+		if chainID == 1 {
 			<-ctx.Done()
 			return nil, 0, ctx.Err()
 		}
 		return anvilRead(ctx, chainID, token, holder)
 	})
+	s.readTimeout = 300 * time.Millisecond
 	start := time.Now()
 	got, err := s.Of(context.Background(), profile)
 	if err != nil || len(got.Tokens) != 2 || got.Tokens[0].Wallet != nil || got.Tokens[1].Wallet == nil ||
 		got.EstimatedUSD != "" {
 		t.Fatalf("got %+v, %v; want the hung chain's balance missing, Anvil's read, and no total", got, err)
 	}
-	if d := time.Since(start); d > 2*ReadTimeout {
-		t.Fatalf("took %v, want about one ReadTimeout (%v)", d, ReadTimeout)
+	if d := time.Since(start); d > 2*s.readTimeout {
+		t.Fatalf("took %v, want about one read timeout (%v)", d, s.readTimeout)
 	}
 }

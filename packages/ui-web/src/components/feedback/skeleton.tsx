@@ -4,9 +4,7 @@ export interface SkeletonProps {
   className?: string;
 }
 
-// A placeholder shows at once, so a page answers the tap right away, and pulses while the wait goes on (base.css).
-// It takes the line color: on a surface-2 placeholder a half-opacity pulse spans only a few shades in either theme,
-// so it stepped instead of breathing.
+// The line color: a pulse on surface-2 spans too few shades to read (the animation is in base.css).
 export function Skeleton({ className }: SkeletonProps) {
   return (
     <span

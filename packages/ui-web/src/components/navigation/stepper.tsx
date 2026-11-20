@@ -10,16 +10,12 @@ export interface StepperStep {
 
 export interface StepperProps {
   steps: readonly StepperStep[];
-  /** The index of the step on screen. */
   current: number;
   label: string;
-  /** Going back to a finished step; steps ahead open only through the form's own Continue. */
   onStepClick?: (index: number) => void;
-  /** Editing a saved record: every step already holds valid data, so each one opens from here. */
   free?: boolean;
 }
 
-/** The steps of a form: a check on finished ones (a button back to them), the current one ringed, the rest muted. */
 export function Stepper({ steps, current, label, onStepClick, free = false }: StepperProps) {
   return (
     <nav aria-label={label}>

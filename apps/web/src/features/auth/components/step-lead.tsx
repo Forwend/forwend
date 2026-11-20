@@ -1,7 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 
-/** The head of a confirm or two-step view: the method's mark, as on the passkey step of the first run, a headline and
- * one line. */
 export function StepLead({
   icon: Icon,
   title,

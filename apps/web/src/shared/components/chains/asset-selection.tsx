@@ -14,7 +14,7 @@ import { useId, useState } from "react";
 import { NoMatch } from "@/shared/components/no-match";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { assetGroups, selectionSummary } from "@/shared/lib/asset-selection";
-import { TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
+import { chainName, TOKEN_SEARCH_FROM, tokenKey } from "@/shared/lib/chains";
 import type { AssetOption } from "@/shared/types/asset-selection";
 
 // Bounded: thousands of tokens render a page of assets at a time, and a search narrows the rest.
@@ -36,22 +36,16 @@ const COPY = {
   contract: (network: string, address: string) => `${network}, contract ${address}`,
 } as const;
 
-export const assetKey = (option: { chainId: number; token: string }) =>
-  `${option.chainId}:${option.token}`;
-
 export interface AssetSelectionProps {
   label: string;
   options: readonly AssetOption[];
   selected: ReadonlySet<string>;
-  /** Several keys at once when a whole asset is turned on or off. */
   onChange: (keys: readonly string[], on: boolean) => void;
   disabled?: boolean;
-  /** Why this option can't be turned off right now (the last one on), shown under it. */
-  lockedReason?: (key: string) => string | null;
+  lockedReason?: (key: string) => string | null; // null when it can be turned off
 }
 
-/** Which assets and networks are accepted: grouped by asset, each network its own exact contract, so USDC on Base
- * and USDC on Arbitrum read as one asset without ever becoming interchangeable. */
+/** Accepted assets, grouped by symbol, yet each network stays its own exact contract. */
 export function AssetSelection({
   label,
   options,
@@ -109,9 +103,8 @@ export function AssetSelection({
       ) : (
         <ul aria-label={label} aria-describedby={summaryId} className="divide-y divide-line">
           {groups.slice(0, groupsShown).map((group) => {
-            const keys = group.options.map(assetKey);
+            const keys = group.options.map(tokenKey);
             const on = keys.filter((key) => selected.has(key)).length;
-            // A search shows the networks it matched; otherwise a group opens on demand, or when it has only one.
             const expanded = searching || open.has(group.symbol) || group.options.length === 1;
             const locked = keys.map((key) => (selected.has(key) ? lockedReason?.(key) : null));
             return (
@@ -198,8 +191,8 @@ function NetworkRows({
   return (
     <ul className="border-t border-line bg-sunken/40 py-1">
       {options.slice(0, shown).map((option) => {
-        const key = assetKey(option);
-        const network = CHAINS[option.chainId]?.name ?? `Chain ${option.chainId}`;
+        const key = tokenKey(option);
+        const network = chainName(option.chainId);
         const reason = selected.has(key) ? (lockedReason?.(key) ?? null) : null;
         return (
           <li key={key} className="flex flex-col pr-4 pl-11 sm:pr-5 sm:pl-12">
@@ -213,7 +206,6 @@ function NetworkRows({
                 onChange={(event) => onChange([key], event.target.checked)}
                 className="min-h-0"
               />
-              {/* The row's text opens the same box, as a label would. */}
               <label
                 htmlFor={key}
                 className="flex min-w-0 flex-1 cursor-pointer items-center gap-3"

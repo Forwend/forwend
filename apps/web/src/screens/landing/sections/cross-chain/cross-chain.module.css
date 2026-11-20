@@ -37,7 +37,7 @@
   text-wrap: balance;
 }
 
-/* The sample route. --p moves the travelling token along the rail and --f fills the rail behind it. */
+/* --p moves the travelling token along the rail; --f fills the rail behind it. */
 .show {
   --p: 0;
   --f: 0;
@@ -370,7 +370,6 @@
   }
 }
 
-/* Below the width that fits two cards and a rail, the route turns down the page. */
 @media (max-width: 60rem) {
   .route,
   .steps,

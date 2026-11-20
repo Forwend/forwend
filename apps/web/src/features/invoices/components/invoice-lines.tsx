@@ -1,29 +1,26 @@
 "use client";
 
-import { Button, formatTokenAmount } from "@forwend/ui-web";
+import { Button } from "@forwend/ui-web";
 import { useState } from "react";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { shortQuantity } from "@/features/invoices/lib/invoices";
 import type { InvoiceLine, OptionFees } from "@/features/invoices/types/invoices";
-import { exactDigits } from "@/shared/lib/money";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { amountText } from "@/shared/lib/money";
 
 export interface InvoiceLinesProps {
   lines: readonly InvoiceLine[];
-  /** The decimals of the option whose id is the invoice's: the lines are in its base units. */
-  decimals: number;
+  decimals: number; // of the option whose id is the invoice's
   unit: string;
   total: bigint;
-  /** Rows on the page's own ground, as a checkout lists them, not a panel. */
   plain?: boolean;
-  /** The option's fees (R-228). The client's fees show before the total; owner adds what the owner receives. */
   fees?: OptionFees;
   owner?: boolean;
 }
 
-// An invoice can list up to 100 lines: past these, the rest wait behind Show all so the total stays in reach.
+// Up to 100 lines: past these, the rest wait behind Show all so the total stays in reach.
 const SHOWN = 10;
 
-// R-88: the same rows on every width, as the PDF lists them.
 export function InvoiceLines({
   lines,
   decimals,
@@ -35,19 +32,12 @@ export function InvoiceLines({
 }: InvoiceLinesProps) {
   const inset = plain ? "" : "px-4 sm:px-5";
   const [all, setAll] = useState(lines.length <= SHOWN);
-  const money = (units: string | bigint) => {
-    const baseUnits = BigInt(units);
-    return `${formatTokenAmount({ baseUnits, decimals, fractionDigits: exactDigits(baseUnits, decimals) })} ${unit}`;
-  };
+  const money = (units: string | bigint) => amountText(BigInt(units), { decimals, symbol: unit });
   return (
     <section aria-labelledby="invoice-items" className={plain ? "flex flex-col" : "fw-panel"}>
       <h2
         id="invoice-items"
-        className={
-          plain
-            ? "border-b border-line pb-2 text-sm font-medium text-muted"
-            : "fw-panel-head text-base font-semibold text-ink"
-        }
+        className={plain ? "border-b border-line pb-2 text-sm font-medium text-muted" : PANEL_TITLE}
       >
         {lines.length ? COPY.items : COPY.summary}
       </h2>
@@ -106,7 +96,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-// A fee of 0 shows no line (R-228); minus: deducted from what the owner receives.
+// A fee of 0 shows no line; minus: taken from what the owner receives.
 function FeeRows({
   fees,
   money,

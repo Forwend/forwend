@@ -16,7 +16,7 @@ type Deposit struct {
 	BlockTime   string  `json:"blockTime"`
 	Status      string  `json:"status"`
 	Late        bool    `json:"late"`
-	Paid        *string `json:"paid"` // the part booked to the creator (R-121); null until the ledger books it
+	Paid        *string `json:"paid"` // booked to the creator; null until booked
 	BlocksLeft  uint64  `json:"blocksLeft"`
 	BlocksTotal uint64  `json:"blocksTotal"`
 	SecondsLeft int64   `json:"secondsLeft"`

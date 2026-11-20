@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -22,12 +23,11 @@ type chainEnv struct {
 	anvil   *chaintest.Anvil
 	pool    *pgxpool.Pool
 	token   string
-	factory string // no code there until a test deploys the factory
+	factory string
 	watch   *watcher.Chain
 	service *Service
 }
 
-// The second RPC for balances is its own client to the same Anvil.
 func newChainEnv(t *testing.T) chainEnv {
 	t.Helper()
 	ctx := context.Background()
@@ -77,7 +77,6 @@ func (e chainEnv) invoice(t *testing.T, n int, amount int64, expiresAt int64) (i
 	return id, receive
 }
 
-// run is one worker round.
 func (e chainEnv) run(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
@@ -145,17 +144,15 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 	}
 }
 
-// D-15, D-45: the primary RPC calls the deposit final too early; the second RPC's finalized block lacks it.
 func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
 	e.anvil.Transfer(e.token, receive, "5000000")
-	e.run(t) // seen, not final
+	e.run(t)
 	if _, err := e.pool.Exec(context.Background(), "UPDATE chain_transfers SET status = 'confirmed'"); err != nil {
 		t.Fatal(err)
 	}
 	e.run(t)
-	// Owed in full but the finalized balance does not hold it yet: money seen, not a partial payment (F145).
 	want(t, "booked on the scan's word, not final in the balance", e.state(t, id),
 		state{payment: Detected, refund: "none", receiver: 5000000, owed: 5000000})
 
@@ -166,10 +163,9 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 	}
 }
 
-// Expiry follows chain time.
 func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	e := newChainEnv(t)
-	e.factory = e.anvil.DeployFactory() // the partial close reads it
+	e.factory = e.anvil.DeployFactory()
 	e.endpoint(t, "all", allEvents, true, false)
 	expires := e.anvil.Now() + 1000
 	partial, receive := e.invoice(t, 1, 5000000, expires)
@@ -181,17 +177,16 @@ func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 	want(t, "2 of 5 before expiry", e.state(t, partial), state{payment: PartiallyPaid, refund: "none", receiver: 2000000, owed: 2000000})
 
 	e.anvil.Wait(2000)
-	e.anvil.Mine(3) // a finalized block is now past expiresAt
+	e.anvil.Mine(3)
 	e.run(t)
 	want(t, "expired", e.state(t, partial), state{payment: ExpiredPartiallyPaid, refund: "held", receiver: 2000000, held: 2000000})
 	want(t, "expired unpaid", e.state(t, unpaid), state{payment: Expired, refund: "none"})
 
-	e.anvil.Transfer(e.token, receive, "1000000") // late: never owed to the creator
+	e.anvil.Transfer(e.token, receive, "1000000")
 	e.anvil.Mine(2)
 	e.run(t)
 	want(t, "late deposit", e.state(t, partial), state{payment: ExpiredPartiallyPaid, refund: "held", receiver: 3000000, held: 3000000})
 
-	// R-147: the part paid is held as expired, and the late deposit as late.
 	for id, events := range map[string][]string{
 		partial: {"1 invoice.partially_paid to all", "2 invoice.expired to all", "3 invoice.held expired to all",
 			"4 invoice.held late to all"},
@@ -213,7 +208,6 @@ func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
 	want(t, "paid", e.state(t, id), state{payment: Paid, refund: "none", receiver: 5000000, owed: 5000000})
 }
 
-// D-26.
 func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	e := newChainEnv(t)
 	e.endpoint(t, "all", allEvents, true, false)
@@ -223,14 +217,12 @@ func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 	e.anvil.Mine(2)
 	e.run(t)
 	want(t, "late full payment", e.state(t, id), state{payment: Expired, refund: "held", receiver: 5000000, held: 5000000})
-	// Booked while the invoice was still open: held as late.
 	events := []string{"1 invoice.expired to all", "2 invoice.held late to all"}
 	if got := historytest.Webhooks(t, e.pool, id); !reflect.DeepEqual(got, events) {
 		t.Fatalf("webhook events\n got %q\nwant %q", got, events)
 	}
 }
 
-// D-27: a later deposit confirmed first waits for an earlier one still detected.
 func TestDepositsBookInChainOrder(t *testing.T) {
 	e := newChainEnv(t)
 	ctx := context.Background()
@@ -260,23 +252,16 @@ func TestDepositsBookInChainOrder(t *testing.T) {
 	}
 }
 
-// A 0 balance could let an invoice expire with money in it.
 func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
 	e := newChainEnv(t)
-	client := ethclient.NewClient(e.anvil.RPC)
-	block, err := client.BlockNumber(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = BalanceAt(context.Background(), client, chaintest.ChainID, "0x00000000000000000000000000000000000000c0",
-		"0x1111111111111111111111111111111111111111", block)
-	if !errors.Is(err, ErrNoToken) {
-		t.Fatalf("got %v, want ErrNoToken", err)
+	read := BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(e.anvil.RPC)})
+	_, _, err := read(context.Background(), chaintest.ChainID, "0x00000000000000000000000000000000000000c0",
+		"0x1111111111111111111111111111111111111111")
+	if !errors.Is(err, chain.ErrNoToken) {
+		t.Fatalf("got %v, want chain.ErrNoToken", err)
 	}
 }
 
-// The read a partial close makes (R-130): the block time the factory deployed a receiver, once that block is final;
-// 0 for a receiver not deployed; an error where no factory answers.
 func TestDeployedFromReadsTheFactory(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -287,7 +272,6 @@ func TestDeployedFromReadsTheFactory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The refund authority deploys early, as a recovery does.
 	a.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))",
 		fmt.Sprintf("(0x%x,0x%x,0x%x,5,1800000000,1800086400,%d,0,0)", terms.InvoiceID, terms.Recipient, terms.Token,
 			chaintest.ChainID))
@@ -341,8 +325,6 @@ func TestRecordedDepositTheChainDoesNotHoldIsNeverPaid(t *testing.T) {
 	}
 }
 
-// R-230: the ledger books a settlement only as the amount less the option's fees, and each fee only as the option's
-// own, whatever an outflow record says.
 func TestSettlementAndFeesMustMatchTheTerms(t *testing.T) {
 	e := newChainEnv(t)
 	ctx := context.Background()
@@ -384,10 +366,8 @@ func TestSettlementAndFeesMustMatchTheTerms(t *testing.T) {
 	}
 	e.anvil.Mine(2)
 	e.run(t)
-	after := uint64(e.anvil.Now()) // any block number after the deposits'
-	// The full amount to the recipient, as if no fees were taken.
+	after := uint64(e.anvil.Now())
 	outflow(invoices[0][0], invoices[0][1], "settlement", recipient, 5000000, after)
-	// The net is right, but the network fee is not the option's.
 	outflow(invoices[1][0], invoices[1][1], "settlement", recipient, 4950000, after+1)
 	outflow(invoices[1][0], invoices[1][1], "network_fee", chaintest.Sender, 40000, after+1)
 	e.run(t)

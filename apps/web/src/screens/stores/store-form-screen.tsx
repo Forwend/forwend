@@ -10,14 +10,14 @@ import { useGetStoreQuery } from "@/features/stores/api/stores-api";
 import { StoreForm } from "@/features/stores/components/store-form";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { CLOSE_CHOICES, DEFAULT_CLOSE } from "@/screens/stores/lib/close-choices";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface StoreFormScreenProps {
-  /** The store to edit; a new store without one. */
-  storeId?: string;
+  storeId?: string; // none: a new store
 }
 
 export function StoreFormScreen({ storeId }: StoreFormScreenProps) {
@@ -38,13 +38,11 @@ export function StoreFormScreen({ storeId }: StoreFormScreenProps) {
   return (
     <div className="flex max-w-6xl flex-col gap-6">
       <div className="flex min-w-0 flex-col gap-2">
-        {/* The header's breadcrumb names the page on desktop, so the heading shows only on phones. */}
-        <h1 className="text-2xl font-semibold tracking-tight break-words text-ink lg:sr-only">
+        <PageTitle className="break-words">
           {storeId ? (store?.name ?? COPY.editTitle) : COPY.newTitle}
-        </h1>
+        </PageTitle>
         <p className="text-sm text-muted">{COPY.intro}</p>
       </div>
-      {/* The API refuses the save too; this spares a form a Finance member could not save (D-93). */}
       {!can(profile, PERMISSIONS.storesWrite) ? (
         <p className="text-muted">
           {COPY.readOnly}{" "}
