@@ -161,7 +161,9 @@ func TestADeliveryThatCantBeBuiltFailsOnTheSchedule(t *testing.T) {
 	if state, next := h.delivery(t, h.endpoint, broken); state != "pending 1" || next <= 0 || next > webhook.Retries[0] {
 		t.Fatalf("the unbuildable delivery: %s, next in %v; want pending 1 on the schedule", state, next)
 	}
-	if got := h.attempts(t, h.endpoint); !slices.Equal(got, []string{"- not sent: Forwend could not prepare the request"}) {
+	// Once the failed attempt frees the endpoint, the delivery behind it may go out in the same round.
+	notSent := "- not sent: Forwend could not prepare the request"
+	if got := h.attempts(t, h.endpoint); !slices.Equal(got, []string{notSent}) && !slices.Equal(got, []string{notSent, "200"}) {
 		t.Fatalf("attempts %q", got)
 	}
 	if err := h.hooks.Deliver(context.Background(), h.client, body); err != nil {

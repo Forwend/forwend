@@ -58,8 +58,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Both lanes: web e2e in main, and the canary's pay-page check in the Go tests of unit.
       - name: Install Playwright browser
-        if: matrix.lane == 'main'
         run: pnpm --filter @forwend/web exec playwright install --with-deps chromium
       - name: Repository checks
         run: python3 scripts/harness.py check --ci --lane ${{ matrix.lane }}
