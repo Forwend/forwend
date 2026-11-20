@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/address"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
@@ -257,7 +258,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	if block != nil {
 		// At the deploy's block a node that answers has seen the receiver's code; on Arbitrum it adds L1 data gas.
 		gas, err = client.EstimateGasAtBlock(ctx, msg, block)
-		if err != nil && reverted(err) { // a revert fails at latest too
+		if rpcErr := rpc.Error(nil); errors.As(err, &rpcErr) && rpcErr.ErrorCode() == 3 { // a revert fails at latest too
 			return nil, fmt.Errorf("estimate gas at block %s: %w", block, err)
 		}
 		if err != nil {

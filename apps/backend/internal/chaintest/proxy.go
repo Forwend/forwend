@@ -28,9 +28,10 @@ const (
 	TooManyResults // as Infura answers a big log query
 	TooManyTopics  // as go-ethereum nodes answer over 1,000 topic values
 	InternalError
-	Hang   // no answer until the client gives up
-	Stale  // answered with the result of the proxy's Stale rule, as a lagging node would
-	Pruned // as a node answers for history it no longer keeps (PublicNode and Blockdaemon on Arc)
+	Hang     // no answer until the client gives up
+	Stale    // answered with the result of the proxy's Stale rule, as a lagging node would
+	Pruned   // as a node answers for history it no longer keeps (PublicNode and Blockdaemon on Arc)
+	Reverted // a revert without code 3, as some nodes answer
 )
 
 type Proxy struct {
@@ -99,6 +100,8 @@ func (a *Anvil) Proxy() *Proxy {
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32603,"message":"Internal error"}}`, id)
 		case Pruned:
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":4444,"message":"pruned history unavailable"}}`, id)
+		case Reverted:
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"error":{"code":-32000,"message":"execution reverted"}}`, id)
 		case Stale:
 			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%s,"result":%s}`, id, result)
 		case Hang:

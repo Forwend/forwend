@@ -1389,8 +1389,13 @@ func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 
 func TestSettleGasIsEstimatedAtTheDeployBlock(t *testing.T) {
 	const arbitrum = 400_000
-	for name, refuse := range map[string]bool{"at the deploy block": false, "node refuses a block": true} {
+	for name, fault := range map[string]chaintest.Fault{
+		"at the deploy block":         chaintest.Forward,
+		"node refuses a block":        chaintest.RateLimited,
+		"node reverts without code 3": chaintest.Reverted,
+	} {
 		t.Run(name, func(t *testing.T) {
+			refuse := fault != chaintest.Forward
 			e := setup(t)
 			ctx := context.Background()
 			id, receive := e.paidInvoice(t)
@@ -1410,7 +1415,7 @@ func TestSettleGasIsEstimatedAtTheDeployBlock(t *testing.T) {
 			if refuse {
 				proxy.Fail(func(c chaintest.Call) chaintest.Fault {
 					if atBlock(c) {
-						return chaintest.RateLimited
+						return fault
 					}
 					return chaintest.Forward
 				})
