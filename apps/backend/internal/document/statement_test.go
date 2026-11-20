@@ -123,4 +123,9 @@ func checkStatementPages(t *testing.T, n int, s Statement) {
 	if listed != n || totals != 1 {
 		t.Fatalf("%d lines: %d listed, %d totals", n, listed, totals)
 	}
+	for i, page := range pages(t, pdf) {
+		if strings.HasSuffix(strings.TrimSpace(page[:strings.LastIndex(page, "Statement ")]), "Notes") {
+			t.Fatalf("%d lines: page %d ends with the notes' heading alone:\n%s", n, i+1, page)
+		}
+	}
 }

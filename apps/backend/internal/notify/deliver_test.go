@@ -104,6 +104,39 @@ func count(t *testing.T, pool *pgxpool.Pool, where string) int {
 	return n
 }
 
+func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
+	pool, id := setup(t, "owner@example.com")
+	queue(t, pool, outbox.Paid, id, nil)
+	queue(t, pool, outbox.Settled, id, nil)
+	queue(t, pool, outbox.Held, id, big.NewInt(1500000))
+	f := &fake{}
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
+		t.Fatal(err)
+	}
+	if err := Deliver(context.Background(), pool, f, site); err != nil { // nothing left: nothing sent twice
+		t.Fatal(err)
+	}
+	if len(f.sent) != 3 || count(t, pool, "published_at IS NULL") != 0 {
+		t.Fatalf("sent %d, unpublished %d", len(f.sent), count(t, pool, "published_at IS NULL"))
+	}
+	for i, want := range []struct{ subject, text string }{
+		{"INV-0001 paid: 5.00 USDC", "INV-0001 was paid\n5.00 USDC\n"},
+		{"INV-0001: 5.00 USDC is in your wallet", "Money for INV-0001 is in your wallet\n5.00 USDC\n"},
+		{"INV-0001: 1.50 USDC held for the payer", "INV-0001: money held for the payer\n1.50 USDC\n"},
+	} {
+		m := f.sent[i]
+		if m.To != "owner@example.com" || m.Subject != want.subject || !strings.Contains(m.Text, want.text) ||
+			!strings.Contains(m.Text, "Network: Base Sepolia") ||
+			!strings.Contains(m.Text, web+"/app/invoices/"+id) || !strings.Contains(m.Text, web+"/app/notifications") ||
+			!strings.HasPrefix(m.Key, fmt.Sprintf("forwend-%s-%d-", id, i+1)) {
+			t.Fatalf("email %d: %+v", i, m)
+		}
+	}
+	if !strings.Contains(f.sent[2].Text, "Forwend support handles any return to the payer") {
+		t.Fatalf("held email doesn't say who handles the return: %s", f.sent[2].Text)
+	}
+}
+
 func TestDeliverSendsCheckoutNotificationsWithoutInvoiceNumbers(t *testing.T) {
 	pool, original := setup(t, "owner@example.com")
 	id := "0x" + strings.Repeat("ac", 32)

@@ -353,11 +353,14 @@ func TestStatement(t *testing.T) {
 		t.Fatalf("statement: %d %.40q", got.status, got.raw)
 	}
 	text := pdfText(t, []byte(got.raw))
-	mustContain(t, text, "2025-10-01 to 2025-10-31", "Alice Design GmbH", "Tax ID DE123456789", "EUR",
+	mustContain(t, text, "Statement", "2025-10-01 to 2025-10-31", "Account holder", "Alice Design GmbH",
+		"Tax ID DE123456789", "EUR",
 		"2025-10-09 10:00", "INV-0001 · Bob Ltd", "5.00", "4.00", "5.00 USDC on Base Sepolia", paid,
 		"2025-10-09 12:00", "Income", "1.23", "0.99", "1.234567 USDC on Base Sepolia", income,
 		"2025-10-20 09:00", "no rate", late,
-		"Total", "9.25", "—")
+		"Total", "9.25", "—",
+		"no EUR value, so the EUR total is left out", "1 payment in is unclassified and not listed",
+		"Test mode: testnet tokens have no value")
 	for _, never := range []string{fmt.Sprintf("0x%064x", 3), fmt.Sprintf("0x%064x", 4), fmt.Sprintf("0x%064x", 5),
 		fmt.Sprintf("0x%064x", 7)} {
 		if strings.Contains(text, never) {
@@ -370,7 +373,7 @@ func TestStatement(t *testing.T) {
 
 	half := pdfText(t, []byte(e.call(t, "GET", path+"?from=2025-10-11&to=2025-10-11", alice, "", "").raw))
 	mustContain(t, half, "2025-10-11 to 2025-10-11", "1.01", "0.80", "Total", "2.02", "1.60")
-	if strings.Contains(half, "—") || strings.Contains(half, income) {
+	if strings.Contains(half, "—") || strings.Contains(half, "left out") || strings.Contains(half, income) {
 		t.Fatalf("one day with rates:\n%s", half)
 	}
 

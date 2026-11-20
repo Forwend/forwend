@@ -202,15 +202,18 @@ func TestInvoicePDF(t *testing.T) {
 	}
 	text := pdfText(t, r.body)
 	link := webURL + "/pay/" + e.link(t, id)
-	mustContain(t, text, "INV-0002\nReference PO-4500012345", "Amount due\n5.00 USDC",
+	mustContain(t, text, "Forwend\nInvoice\nINV-0002\nReference PO-4500012345\nTestnet\nTest mode: testnet tokens have no value\n"+
+		"Waiting for payment\nAmount due\n5.00 USDC",
 		"From\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"Billed to\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
 		"Issued\n"+created.UTC().Format("2 Jan 2006")+"\nSupply date\n31 Oct 2026\nDue date\n1 Nov 2099\nPayment window closes\n"+
 			expires.UTC().Format("2 Jan 2006, 15:04")+" UTC",
 		"Description\nAmount\nLogo design\n5.00 USDC\nTotal\n5.00 USDC\n"+
 			"Agreed value 1,000.50 EUR on 2026-10-01",
+		"Invoice INV-0002 · Test mode · Page 1 of 1",
 		"Note\nThanks!\nPay within 14 days.",
-		"Send exactly 5.00 USDC on Base Sepolia (chain ID 84532).\nUSDC contract "+usdc,
+		"Pay this invoice\nSend exactly 5.00 USDC on Base Sepolia (chain ID 84532).\nUSDC contract "+usdc+
+			"\nScan the code or open the link. Send only USDC on Base Sepolia.\n"+webURL+"/pay/",
 		"ID "+id)
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), link) // wrapped to fit
 	if !qrDrawn(t, r.body) {
@@ -236,6 +239,9 @@ func TestInvoicePDF(t *testing.T) {
 
 	requestText := pdfText(t, e.pdf(t, request, "invoice.pdf", "").body)
 	mustContain(t, requestText, "From\n", "Mara Ilić")
+	if strings.Contains(requestText, "not checked") {
+		t.Fatalf("a request's PDF still says its name is not checked:\n%s", requestText)
+	}
 	for _, block := range []string{"Billed to\n", "Reference", "Supply date", "Due date", "Agreed value", "Note\n"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without a client or details says %q:\n%s", block, text)
@@ -332,9 +338,12 @@ func TestReceiptPDF(t *testing.T) {
 	stamp := func(at time.Time) string { return at.UTC().Format("2 Jan 2006, 15:04") + " UTC" }
 	text := pdfText(t, r.body)
 	row := func(at time.Time) string { return at.UTC().Format("2 Jan 2006, 15:04") }
-	mustContain(t, text, "INV-0001\nReference PO-7", "Amount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
+	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\nTestnet\nTest mode: testnet tokens have no value\n"+
+		"Paid\nAmount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
 		"Payment\n2.00 USDC\nTotal\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
-		row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+first, row(paidAt)+"\nBase Sepolia\n0.50 USDC\n"+second)
+		"Payments received\nDate (UTC)\nNetwork\nAmount\n"+row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+
+			first+"\nView on Basescan\n"+row(paidAt)+"\nBase Sepolia\n0.50 USDC\n"+second+"\nView on Basescan\n"+
+			"Check this receipt\nA PDF can be edited.")
 	if strings.Count(text, stamp(paidAt)) != 1 || strings.Contains(text, "Applied") || strings.Contains(text, "\nReceived\n") {
 		t.Fatalf("the receipt repeats the paid date or applied amounts:\n%s", text)
 	}

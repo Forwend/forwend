@@ -91,6 +91,49 @@ func TestEmailEscapesTypedNames(t *testing.T) {
 	}
 }
 
+func TestKeepHoldsNumbersDatesAndAmountsTogether(t *testing.T) {
+	got := string(keep("INV-0001 for 1,250.00 USDC is due 30 Nov 2026 & paid"))
+	want := `<span style="white-space:nowrap">INV-0001</span> for 1,250.00&nbsp;USDC is due 30&nbsp;Nov&nbsp;2026 &amp; paid`
+	if got != want {
+		t.Fatalf("got %s, want %s", got, want)
+	}
+}
+
+func TestHeldEmailNamesEveryReasonMoneyIsHeld(t *testing.T) {
+	note := samples()["held"].Note
+	for _, reason := range []string{
+		"over the amount due",
+		"part of a payment when checkout closed",
+		"after checkout closed",
+		"canceled",
+		"another payment option",
+	} {
+		if !strings.Contains(note, reason) {
+			t.Errorf("held note %q leaves out %q", note, reason)
+		}
+	}
+}
+
+func TestFooterNamesTheConfiguredSupportAddress(t *testing.T) {
+	for _, v := range samples() {
+		m, err := message(Site{WebURL: "https://forwend.com", Support: "help@example.test"}, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(m.HTML, `href="mailto:help@example.test"`) || !strings.Contains(m.Text, "Questions? help@example.test") {
+			t.Fatalf("%s: the footer lacks the configured support address", v.Subject)
+		}
+		m, err = message(Site{WebURL: "https://forwend.com"}, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(m.HTML, "Questions?") || strings.Contains(m.Text, "Questions?") {
+			t.Fatalf("%s: a footer with no support address still asks for questions", v.Subject)
+		}
+	}
+}
+
+// The header's logo is a file the web app serves, so moving it would break every email's header.
 func TestTheLogoIsInTheWebApp(t *testing.T) {
 	if _, err := os.Stat(webPublic + logo); err != nil {
 		t.Fatal(err)

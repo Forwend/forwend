@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -62,6 +63,32 @@ func TestProfileWalletLosesTheCreateRace(t *testing.T) {
 	ours, err := c.ProfileWallet(ctx, user, profile)
 	if err != nil || ours != theirs || f.Wallets() != 1 {
 		t.Fatalf("got %+v, %v with %d wallets; want the existing wallet", ours, err, f.Wallets())
+	}
+}
+
+func TestProfileWalletConcurrentCallsMakeOneWallet(t *testing.T) {
+	f, c := newFake(t)
+	var wg sync.WaitGroup
+	got := make([]Wallet, 10)
+	for i := range got {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			w, err := c.ProfileWallet(context.Background(), user, profile)
+			if err != nil {
+				t.Error(err)
+			}
+			got[i] = w
+		}()
+	}
+	wg.Wait()
+	for _, w := range got {
+		if w != got[0] {
+			t.Fatalf("two wallets for one profile: %+v and %+v", w, got[0])
+		}
+	}
+	if f.Wallets() != 1 {
+		t.Fatalf("%d wallets in Privy, want 1", f.Wallets())
 	}
 }
 

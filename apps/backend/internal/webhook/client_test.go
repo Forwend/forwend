@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
@@ -42,5 +43,31 @@ func TestReasonLeavesOutTheURL(t *testing.T) {
 		Err: errors.New("connection refused")}
 	if got := reason(err); got != "connection refused" {
 		t.Fatalf("reason %q", got)
+	}
+}
+
+func TestReasonIsValidUTF8(t *testing.T) {
+	got := reason(&url.Error{Op: "Post", URL: "https://shop.example.com/", Err: errors.New("malformed HTTP status code " +
+		strings.Repeat("é", 200))})
+	if !utf8.ValidString(got) || len(got) > 300 || !strings.HasPrefix(got, "malformed HTTP status code é") {
+		t.Fatalf("reason %q: %d bytes, valid UTF-8 %v", got, len(got), utf8.ValidString(got))
+	}
+}
+
+func TestClientFollowsNoRedirect(t *testing.T) {
+	client := Client()
+	client.Transport = nil // the test server is on this machine: only the redirect rule is under test
+	followed := false
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { followed = true }))
+	defer target.Close()
+	srv := httptest.NewServer(http.RedirectHandler(target.URL, http.StatusTemporaryRedirect))
+	defer srv.Close()
+	resp, err := client.Post(srv.URL, "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusTemporaryRedirect || followed {
+		t.Fatalf("status %d, followed %v; want the 307 itself", resp.StatusCode, followed)
 	}
 }

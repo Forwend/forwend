@@ -67,3 +67,15 @@ func TestPayerChoosesDropsANetworkWhoseFeeItsPriceCantCarry(t *testing.T) {
 		t.Fatalf("a price no network's fee fits: %v, want ErrInvalid", err)
 	}
 }
+
+func TestAFixedInvoiceOnAChainThatCantBePricedFails(t *testing.T) {
+	s := &Service{}
+	s.SetPricing(Pricing{Quotes: chainQuotes{1: big.NewRat(1, 100)}})
+	_, err := s.withFees(context.Background(), []accepted{
+		{chainID: 1, decimals: 6, amount: big.NewInt(45_000_000)},
+		{chainID: 9, decimals: 6, amount: big.NewInt(45_000_000)},
+	}, false, false)
+	if !errors.Is(err, ErrFeeQuote) {
+		t.Fatalf("got %v, want ErrFeeQuote", err)
+	}
+}
