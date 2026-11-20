@@ -1,8 +1,9 @@
 # Web architecture
 
 One Next.js app (App Router, TypeScript strict) for every surface: landing `/`, private `/kit`, the signed-in
-app `/app`, the public checkout `/pay/<token>` and its embed `/embed/<token>`, the public stop reminders page `/reminders/<token>`, the public
-quote page `/w/<token>` and the public API docs `/docs` (PROJECT D-2, R-96, R-102, R-155). Rules: [rules.md](rules.md).
+app `/app`, the public checkout `/pay/<token>` and its embed `/embed/<token>`, the public payment link page `/l/<slug>`,
+the public stop reminders page `/reminders/<token>`, the public quote page `/w/<token>` and the public API docs `/docs`
+(PROJECT D-2, R-96, R-102, R-142, R-155). Rules: [rules.md](rules.md).
 Whole system: [architecture.md](../architecture.md).
 
 ## Parts
@@ -11,7 +12,7 @@ Whole system: [architecture.md](../architecture.md).
 |---|---|
 | `packages/design-tokens` | Every color, type size, space, radius, shadow, blur and duration as CSS variables, light and dark (D-4). Tailwind v4 reads them; a unit test checks contrast (R-2). |
 | `packages/ui-web` | Shared React components built only on the tokens: buttons, fields, address, payment status and money display, motion, theme switch. Money is `bigint` base units plus decimals (D-6). |
-| `apps/web` | Routes, screens and features: landing, kit, `/app`, `/pay`, `/reminders`, `/w`. Imports tokens and components; adds no raw colors or sizes. |
+| `apps/web` | Routes, screens and features: landing, kit, `/app`, `/pay`, `/embed`, `/l`, `/reminders`, `/w`, `/docs`. Imports tokens and components; adds no raw colors or sizes. |
 | `/kit` | Shows every token and component with all states; private (`KIT_ENABLED=1`, `noindex`, not in the sitemap) (D-5, R-4). |
 
 The source layout and naming rules are in [structure.md](structure.md): routes assemble screens,
@@ -37,7 +38,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
 - Users sign in on `/sign-in` with our own forms (email code with the `CodeInput` boxes, Google, passkey; D-21) on the Privy
   React SDK's headless hooks; Privy's modal is not used. With no wallet login, Privy's wallet list is empty and its
   WalletConnect is off, so no page fetches WalletConnect's registry or loads its code. Users add a passkey from the
-  overview checklist, the onboarding step or Security in Settings, all through `useAddPasskey`. It asks
+  setup guide, the onboarding step, two-step setup or Security in Settings, all through `useAddPasskey`. It asks
   `GET /v1/me/fresh-sign-in` first, then calls Privy's `useLinkWithPasskey`; they sign in with `useLoginWithPasskey`.
   The Wallet settings page opens Privy's `useExportWallet` for the profile's wallet, after the same check (R-218).
   Like the passkey check, it binds Forwend's page only, not Privy's API (Q-13). Privy loads only in the
@@ -46,7 +47,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - The signed-in redirect follows query changes, so Privy's Google callback cleanup cannot leave users waiting on `/sign-in`.
 - A fresh sign-in (R-137): when the API answers 401 `reauth_required`, `shared/api/fresh-sign-in.ts` holds the request.
   - `providers/store-provider.tsx` mounts `FreshSignInProvider` (`features/auth/components/fresh-sign-in-provider.tsx`) once.
-  - A form sends its request through `useFreshSignIn().run`, which claims the ask: its `step` shows in the form.
+  - A form sends its request through `useFreshSignIn().run` (`features/auth/hooks/use-fresh-sign-in.ts`), which claims
+    the ask: its `step` shows in the form.
   - A request no form claimed asks in the provider's own dialog.
   - The step asks the api for Forwend's emailed code and confirms it (`/v1/me/fresh-sign-in`), then repeats the request.
     A Privy sign-in made while signed in keeps the session and its sign-in time, so it can't prove a confirm (D-49).
@@ -96,9 +98,9 @@ features own product behavior, and shared UI components are grouped by purpose. 
     read needs the pay link's token (D-86). Its 404 also means another profile made the invoice.
 - Invoices, Activity and Transactions (also the business overview's payments) send their filter and search to the API
   (`?status=` or `?direction=`, `?q=`) and show only its answer for the current pair, so a match on an older page shows
-  at once and "Show more" continues the filtered list. `shared/hooks/use-list-filters.ts` keeps both in the page URL
-  (`history.replaceState`, so reload and Back keep them); the search reaches the URL and the request 300 ms after the
-  last key. ⌘K and notifications open a transaction as `/app/transactions?q=<hash>`.
+  at once and "Show more" continues the filtered list. `useListFilters` and `useListSearch` (`shared/hooks/`) keep both
+  in the page URL (`setParam`, through `history.replaceState`, so reload and Back keep them); the search reaches the URL
+  and the request 300 ms after the last key. ⌘K and notifications open a transaction as `/app/transactions?q=<hash>`.
 - API data lives in an RTK Query cache (D-47): one store per tab (`store/store.ts`, mounted by
   `providers/store-provider.tsx` inside Privy), one `apiSlice` that adds the Privy access token, and endpoints
   injected by each feature (`features/*/api/*-api.ts`). On a 429 the slice waits `Retry-After` and sends the request once
@@ -114,54 +116,11 @@ features own product behavior, and shared UI components are grouped by purpose. 
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Requests and responses are Zod schemas written from `apps/backend/api/openapi.yaml`
   in their feature's `schemas/` (`features/invoices/schemas/invoices.ts`), on shared blocks in `shared/schemas/api.ts`
-  (base units, addresses, hashes, times); the types in `types/` are inferred from them (F170). Every RTK Query endpoint
+  (base units, addresses, hashes, times); the types in `types/` are inferred from them. Every RTK Query endpoint
   checks its response (`responseSchema`) and its request body (`argSchema`): a response that breaks its schema is a
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
-- Features import each other only through the edges listed here; the edges form no cycle ([structure.md](structure.md)).
-  - Add no new edge without listing it here.
-  - Money, dates, chain and API error helpers several features use live in `shared/` (`shared/lib/money.ts`,
-    `shared/api/api-error.ts`).
-- receive → balances: the balances type.
-- send → auth (the in-place fresh sign-in), balances and profiles.
-- transactions → send: the Sending rows (R-215).
-- transactions → invoices: the bell's invoice events (R-81), invoice numbers (R-109) and the ECB currencies (R-111).
-- transactions → profiles: the statement's way back from billing details (R-113).
-- invoices → balances (the token balance type) and clients (the client block an invoice copies, R-86).
-- activity → invoices: the invoice events and numbers that its rows and toasts show.
-- pay → invoices, including the `check-status` and `invoice-progress` components.
-- jobs → clients and invoices (the pay link's token pattern, Send to client).
-- jobs → pay (the public page's backdrop and padding) and stores (the payee header).
-- onboarding → auth (adding a passkey), invoices, profiles, stores (the website) and transactions.
-- team and api-keys → auth: the in-place fresh sign-in.
-- webhooks → auth, invoices (the invoice number) and stores.
-- stores → profiles: the token list.
-- Payments imports invoice purpose, document and money schemas, plus its compact confirmation component.
-  - It also imports the invoices cache tag.
-- Shared financial representation stays with its existing owner.
-- Payment verification classification lives with invoice money readers; checkout reuses it without changing financial safety gates.
-- Payments owns operational queries, snapshots, problems, exports and reconciliation; link screens compose payments alongside offer details.
-- Payment routes preserve profile identity in cache arguments and filter stores, sources, links and statuses through the API.
-- Billing events retain their existing names; numberless checkout events navigate to Payments instead of invoice-only reads.
-- Payment links' checkout (R-142) adds pay → links and links → invoices.
-  - pay: the public link read and Pay, the link states, the USD and offer version patterns and the amount label.
-  - links: the pay token's pattern in Pay's answer.
-- Two more edges lead to stores: invoices → stores and pay → stores.
-  - invoices: the store a merchant invoice records, its return-link origins and the brand's schema (R-134, R-135).
-  - pay: the payee header with the store's logo (R-135).
-- invoices → profiles and stores → profiles: the token switches and their types (R-136), and who pays the fees (D-122).
-- links → profiles: who pays a link's fees, the profile's choice unless the link makes its own (D-122).
-- Team (R-139) leads to profiles (roles, permissions and the profile list) and to stores (the store names it offers).
-- API keys (R-145) lead to profiles (the permission names its scopes reuse) and to stores (a merchant key's store).
-- Links (R-140) lead to stores: a merchant's link names one of its stores, and the payer's read has its brand (R-142).
-  - The link form's preview shows that brand with the stores' payee header.
-- balances → prices: My assets values each token at its market price (R-178).
-- transactions → payments: the bell names a payment as the Payments list does.
-- In-person checkout (`features/checkout`) leads to:
-  - payments: the payment schema, its status words and the cache tag a new checkout refreshes.
-  - stores: the stores a sale can belong to.
-  - invoices: the confirming count of a payment seen (`ConfirmingStatus`).
 - `/l/<slug>` and `/pay/<token>` share the `(checkout)` group, whose layout mounts one public store.
   - Pay on a link reads the new invoice into it, then opens the checkout, so it renders at once.
 - `/embed/<token>?layout=full|element&origin=…&theme=light|dark` (R-168) is `/pay/<token>` in a merchant's page.
@@ -201,9 +160,39 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - A test build's `NEXT_PUBLIC_ONECLICK_TEST_KEY` counts only when the page itself runs on loopback.
   - WebCrypto Ed25519 needs a current browser; an older one shows no address and says so.
 
+## Feature dependencies
+
+Features import each other only through the edges below; the edges form no cycle ([structure.md](structure.md)).
+Add no new edge without listing it here.
+A helper that several features use lives in `shared/` instead ([shared owners](structure.md#shared-owners)).
+
+| Feature | Imports | For |
+|---|---|---|
+| activity | invoices | The invoice events and numbers its rows and toasts show |
+| api-keys | auth, profiles, stores | The in-place fresh sign-in; the permission names its scopes reuse (R-145); a merchant key's store |
+| balances | prices | My assets values each token at its market price (R-178) |
+| checkout | invoices, payments, stores | `ConfirmingStatus`; the payment schema, status words and the cache tag a new checkout refreshes; the stores a sale can belong to |
+| invoices | balances, clients, profiles, stores | The token balance type; the client block an invoice copies (R-86) and the client search; the token switches and who pays the fees (R-136, D-122); the store a merchant invoice records, its return-link origins and the brand's schema (R-134, R-135) |
+| jobs | clients, invoices, pay, stores | The client fields and search; the pay link's token pattern, invoice numbers and Send to client; the public page's backdrop and padding; the payee header |
+| links | invoices, profiles, stores | `FeeSummary` and the pay link's token pattern; who pays a link's fees (D-122); the link's store and its payee header in the preview (R-140, R-142) |
+| onboarding | auth, invoices, profiles, stores, transactions | Adding a passkey; the details step's invoice preview and the setup guide's first invoice; the profiles it makes, their billing details and tokens; the website; the setup guide's first payment |
+| pay | invoices, links, stores | The public invoice read, `CheckStatus`, `InvoiceLines` and `PaymentAmountsNotice`; the public link read, Pay, the offer version pattern and the amount label (R-142); the payee header with the store's logo (R-135) |
+| payments | invoices | The invoice purpose, document and money schemas, invoice numbers, `InvoiceLines`, `ConfirmingStatus` and the invoices cache tag |
+| receive | balances | The balances type |
+| send | auth, balances, profiles | The in-place fresh sign-in, two-step and Privy's chains; the balances type; profile names and roles |
+| stores | profiles | The token list |
+| team | auth, profiles, stores | The in-place fresh sign-in and the login email; roles, permissions and the profile list (R-139); the store names it offers |
+| transactions | invoices, payments, profiles, send | The bell's invoice events (R-81), invoice numbers (R-109) and the ECB currencies (R-111); a payment's name in the bell; the statement's way back from billing details (R-113); the Sending rows (R-215) |
+| webhooks | auth, invoices, stores | The in-place fresh sign-in; the invoice number; the store names |
+
+- Payments owns the payment list, detail, problems, exports and reconciliation.
+  - The link and store screens show their payments through it.
+  - The Payments list sends its store, source, link and status filters to the API.
+
 ## Tests
 
 Vitest for logic, Playwright for flows, axe for accessibility, Lighthouse for performance (D-10, R-10, R-11).
+- Browser specs, live ones too, check pages with `blockingViolations` from `e2e/axe.ts`.
 - `pnpm e2e` runs deterministic browser tests without contacting Privy.
   - It also starts a stub api (`e2e/stub-api.mjs`) for the embed check and checkout sessions.
   - The build and the server both get the stub's `API_URL`, so no request reaches another api.
