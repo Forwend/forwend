@@ -58,17 +58,14 @@ async function requireFunds(page: Page) {
     );
 }
 
-/** The first network and token the wallet can send; with only one, the sheet skips the choice. */
-async function pickMoney(page: Page, screenshot?: string) {
+/** The network named, or else the first the wallet can send; with only one, the sheet skips the choice. */
+async function pickMoney(page: Page, screenshot?: string, network?: RegExp) {
   await expect(sheet(page)).toHaveAccessibleName(/^(What to send|Amount)$/);
   if ((await sheet(page).getAttribute("aria-label")) === "What to send") {
     await requireFunds(page);
     if (screenshot) await shot(page, screenshot);
-    await sheet(page)
-      .getByRole("region", { name: "What to send" })
-      .getByRole("button")
-      .first()
-      .click();
+    const choices = sheet(page).getByRole("region", { name: "What to send" }).getByRole("button");
+    await (network ? choices.filter({ hasText: network }) : choices).first().click();
   }
   await expect(sheet(page)).toHaveAccessibleName("Amount");
 }
@@ -265,12 +262,7 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
     .getByRole("region", { name: "Your profiles" })
     .getByRole("button", { name: /^Personal/ })
     .click();
-  await expect(sheet(page)).toHaveAccessibleName("What to send");
-  await requireFunds(page);
-  await sheet(page)
-    .getByRole("button", { name: /Arc Testnet/ })
-    .click();
-  await expect(sheet(page)).toHaveAccessibleName("Amount");
+  await pickMoney(page, undefined, /Arc Testnet/);
   // The fee is the wallet's own, an estimate in USDC; the review adds the total.
   await expect(sheet(page).getByText(/^≈ \d+\.\d{4} USDC$/)).toBeVisible({ timeout: 20_000 });
   await sheet(page).getByRole("textbox", { name: "Amount" }).fill("0.01");
