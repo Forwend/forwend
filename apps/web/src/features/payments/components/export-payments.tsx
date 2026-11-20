@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useLazyExportPaymentsQuery } from "@/features/payments/api/payments-api";
 import { PAYMENTS_COPY, RECONCILIATION_COPY } from "@/features/payments/constants/payments-copy";
 import type { PaymentFilters } from "@/features/payments/types/payments";
+import { apiError } from "@/shared/api/api-error";
 
 const COPY = PAYMENTS_COPY.export;
 
@@ -48,12 +49,7 @@ export function ExportPayments({
       URL.revokeObjectURL(url);
       form.current?.closest("dialog")?.close();
     } catch (failure) {
-      setError(
-        (failure as { data?: { error?: { code?: string } } }).data?.error?.code ===
-          "too_many_movements"
-          ? COPY.tooMany
-          : COPY.failed,
-      );
+      setError(apiError(failure).code === "too_many_movements" ? COPY.tooMany : COPY.failed);
     }
   };
   return (

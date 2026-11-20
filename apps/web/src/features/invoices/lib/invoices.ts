@@ -1,7 +1,5 @@
 import { PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
-import { USD_DECIMALS } from "@/features/balances/constants/balances";
 import {
-  AMOUNT_ERRORS,
   INVOICE_EXCEPTIONS,
   INVOICE_FIELDS,
   INVOICE_TIMELINE,
@@ -14,7 +12,6 @@ import {
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import type {
   AgreedValue,
-  AmountError,
   Deposit,
   FeeTerms,
   Invoice,
@@ -34,14 +31,16 @@ import type {
   RecordStepState,
 } from "@/features/invoices/types/invoices";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
-import type { TokenRef } from "@/features/profiles/types/tokens";
+import { apiError, namedField } from "@/shared/api/api-error";
 import { API_BASE } from "@/shared/config/api";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { USD_DECIMALS } from "@/shared/constants/money";
 import {
   API_DEPOSIT_STATUSES,
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
+import { tokenKey } from "@/shared/lib/chains";
 import { paymentStatusOf } from "@/shared/lib/payment-state";
 
 const DAY_MS = 86_400_000;
@@ -66,10 +65,6 @@ export function invoicePdfUrl(payToken: string, pdf: InvoicePdf): string {
 /** "" while rendered on the server. */
 export function payLinkUrl(payToken: string): string {
   return typeof window === "undefined" ? "" : `${window.location.origin}/pay/${payToken}`;
-}
-
-export function tokenKey(t: { chainId: number; token: string }): string {
-  return `${t.chainId}:${t.token.toLowerCase()}`;
 }
 
 /** Partly paid with a payment still confirming reads Confirming; open past its due date, Overdue. */
@@ -98,15 +93,6 @@ export function daysUntilDue(dueDate: string, now: Date): number {
   return Math.round((Date.parse(`${dueDate}T00:00:00Z`) - today) / DAY_MS);
 }
 
-/** Exact, never through a float. A comma is refused: "12,50" could mean 12.50 or 1250. */
-export function parseTokenAmount(text: string, decimals: number): bigint | AmountError {
-  const match = /^(\d*)\.?(\d*)$/.exec(text.trim());
-  if (!match || (!match[1] && !match[2])) return AMOUNT_ERRORS.format;
-  const [, whole = "", fraction = ""] = match;
-  if (fraction.length > decimals) return AMOUNT_ERRORS.decimals;
-  const units = BigInt(whole + fraction.padEnd(decimals, "0"));
-  return units === 0n ? AMOUNT_ERRORS.zero : units;
-}
 export function formatAgreed(agreed: AgreedValue): string {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
@@ -138,23 +124,12 @@ export function isReturnLink(text: string): boolean {
   }
 }
 
-/** An empty result stays empty: disabled tokens never come back. */
-export function tokensOn<T extends TokenRef>(
-  tokens: readonly T[],
-  off: readonly TokenRef[],
-): readonly T[] {
-  return tokens.filter(
-    (t) => !off.some((o) => o.chainId === t.chainId && o.token === t.token.toLowerCase()),
-  );
-}
-
-/** The API names a refused field only in its 422 message: "invalid invoice request: client.email …". */
-export function refusedField(message: string): { field: InvoiceField; message: string } | null {
-  const name = message.split(": ")[1]?.split(" ")[0];
-  const field = Object.values(INVOICE_FIELDS).find((f) => f === name);
+export function refusedField(error: unknown): { field: InvoiceField; message: string } | null {
+  const field = namedField(error, Object.values(INVOICE_FIELDS));
   if (!field) return null;
   // A well-formed link outside the store's allowed origins.
-  const offStore = field === INVOICE_FIELDS.returnUrl && message.includes("allowed origins");
+  const offStore =
+    field === INVOICE_FIELDS.returnUrl && apiError(error).message?.includes("allowed origins");
   return {
     field,
     message: offStore ? NEW_INVOICE_COPY.returnOriginError : NEW_INVOICE_COPY.fieldErrors[field],
@@ -257,25 +232,6 @@ function slowest(deposits: readonly Deposit[]) {
 /** Null until a block passes, so the bar never shows progress nobody saw. */
 export function confirmingProgress(blocksLeft: number, blocksTotal: number): number | null {
   return blocksLeft < blocksTotal ? 1 - blocksLeft / blocksTotal : null;
-}
-
-const DUE_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });
-
-/** A YYYY-MM-DD date as that same day wherever the reader is. */
-export function formatDueDate(date: string): string {
-  return DUE_DATE.format(new Date(`${date}T00:00:00Z`));
-}
-
-const DUE_DAY = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  timeZone: "UTC",
-});
-
-export function formatDueDateShort(date: string, now: Date): string {
-  return date.startsWith(`${now.getFullYear()}-`)
-    ? DUE_DAY.format(new Date(`${date}T00:00:00Z`))
-    : formatDueDate(date);
 }
 
 const EXCEPTIONS: Partial<Record<PaymentStatus, InvoiceException["kind"]>> = {

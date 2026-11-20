@@ -5,7 +5,7 @@ import { Wallet } from "lucide-react";
 import { useState } from "react";
 import { BALANCE_FIELDS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { fieldUnits, formatUsd } from "@/features/balances/lib/balances";
+import { fieldUnits } from "@/features/balances/lib/balances";
 import type { Balances, TokenBalance } from "@/features/balances/types/balances";
 import { findPrice, latestUsd, usdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
@@ -13,8 +13,8 @@ import { TokenMark } from "@/shared/components/chains/token-mark";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { TOKEN_SEARCH_FROM, tokenMatches } from "@/shared/lib/chains";
+import { usdText } from "@/shared/lib/money";
 
 export interface BalancesListProps {
   balances: Balances | null;
@@ -108,7 +108,7 @@ export function BalancesList({ balances, prices, failed, onRetry }: BalancesList
                       />
                       {usd ? (
                         <span className="text-xs text-muted tabular-nums">
-                          {formatUsd(usdCents(BigInt(t.wallet), t.decimals, usd))} {MONEY_COPY.usd}
+                          {usdText(usdCents(BigInt(t.wallet), t.decimals, usd))}
                         </span>
                       ) : null}
                     </>

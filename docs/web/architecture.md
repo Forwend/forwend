@@ -119,15 +119,25 @@ features own product behavior, and shared UI components are grouped by purpose. 
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7
   does not have.
-- Features import each other only here: receive → balances; send → auth (the in-place fresh sign-in), balances,
-  invoices (the exact amount parser), profiles; transactions → send (the Sending rows, R-215); invoices → activity, balances, clients (the client block
-  an invoice copies, R-86); clients → profiles (the country list); pay → activity, invoices
-  (including the `check-status` and `invoice-progress` components); jobs → clients, invoices (the pay link's token
-  pattern, Send to client); onboarding → auth (adding a passkey), invoices, profiles, stores (the website),
-  transactions; team, api-keys → auth (the in-place fresh sign-in), profiles, stores; webhooks → auth, invoices (the
-  invoice number), stores; stores → pay (the payee preview), profiles (the token list); transactions → invoices (the bell's invoice events, R-81, the invoice numbers on Transactions, R-109, and the ECB currencies, R-111); transactions → profiles (the statement's way back from billing details, R-113). No cycles ([structure.md](structure.md)); money helpers and words that several features show live in
-  `shared/lib/money.ts` and `shared/constants/money-copy.ts`. Add no new edge without listing it here.
-- Payments imports invoice purpose, document and money schemas, plus its compact confirmation component and activity status constants.
+- Features import each other only through the edges listed here; the edges form no cycle ([structure.md](structure.md)).
+  - Add no new edge without listing it here.
+  - Money, dates, chain and API error helpers several features use live in `shared/` (`shared/lib/money.ts`,
+    `shared/api/api-error.ts`).
+- receive → balances: the balances type.
+- send → auth (the in-place fresh sign-in), balances and profiles.
+- transactions → send: the Sending rows (R-215).
+- transactions → invoices: the bell's invoice events (R-81), invoice numbers (R-109) and the ECB currencies (R-111).
+- transactions → profiles: the statement's way back from billing details (R-113).
+- invoices → balances (the token balance type) and clients (the client block an invoice copies, R-86).
+- activity → invoices: the invoice events and numbers that its rows and toasts show.
+- pay → invoices, including the `check-status` and `invoice-progress` components.
+- jobs → clients and invoices (the pay link's token pattern, Send to client).
+- jobs → pay (the public page's backdrop and padding) and stores (the payee header).
+- onboarding → auth (adding a passkey), invoices, profiles, stores (the website) and transactions.
+- team and api-keys → auth: the in-place fresh sign-in.
+- webhooks → auth, invoices (the invoice number) and stores.
+- stores → profiles: the token list.
+- Payments imports invoice purpose, document and money schemas, plus its compact confirmation component.
   - It also imports the invoices cache tag.
 - Shared financial representation stays with its existing owner.
 - Payment verification classification lives with invoice money readers; checkout reuses it without changing financial safety gates.
@@ -139,19 +149,18 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - links: the pay token's pattern in Pay's answer.
 - Two more edges lead to stores: invoices → stores and pay → stores.
   - invoices: the store a merchant invoice records, its return-link origins and the brand's schema (R-134, R-135).
-  - pay: the logo's address (R-135).
+  - pay: the payee header with the store's logo (R-135).
 - invoices → profiles and stores → profiles: the token switches and their types (R-136), and who pays the fees (D-122).
 - links → profiles: who pays a link's fees, the profile's choice unless the link makes its own (D-122).
 - Team (R-139) leads to profiles (roles, permissions and the profile list) and to stores (the store names it offers).
 - API keys (R-145) lead to profiles (the permission names its scopes reuse) and to stores (a merchant key's store).
 - Links (R-140) lead to stores: a merchant's link names one of its stores, and the payer's read has its brand (R-142).
+  - The link form's preview shows that brand with the stores' payee header.
 - balances → prices: My assets values each token at its market price (R-178).
 - transactions → payments: the bell names a payment as the Payments list does.
 - In-person checkout (`features/checkout`) leads to:
   - payments: the payment schema, its status words and the cache tag a new checkout refreshes.
-  - links: the USD amount pattern.
   - stores: the stores a sale can belong to.
-  - balances: the USD formatting of the amount shown to the customer.
   - invoices: the confirming count of a payment seen (`ConfirmingStatus`).
 - `/l/<slug>` and `/pay/<token>` share the `(checkout)` group, whose layout mounts one public store.
   - Pay on a link reads the new invoice into it, then opens the checkout, so it renders at once.

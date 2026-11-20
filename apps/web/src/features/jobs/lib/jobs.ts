@@ -1,30 +1,19 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { JOB_LIMITS, PAYMENT_STEPS, RECORD_EVENTS } from "@/features/jobs/constants/jobs";
 import type { JobPayment, PaymentStep, PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { LEAST_USD_CENTS } from "@/shared/constants/money";
 import { usdCents } from "@/shared/lib/money";
 
 // Exact cents as the API takes them; null below 1.00 or for anything else.
 export function paymentCents(text: string): bigint | null {
   if (!/^\d{1,10}(?:\.\d{1,2})?$/.test(text.trim())) return null;
   const cents = usdCents(text.trim());
-  return cents < 100n ? null : cents;
+  return cents < LEAST_USD_CENTS ? null : cents;
 }
 
 export function dueDays(text: string): number | null {
   const days = /^\d{1,2}$/.test(text.trim()) ? Number(text.trim()) : Number.NaN;
   return days >= 0 && days <= JOB_LIMITS.dueDays ? days : null;
-}
-
-export function usdText(amountUsd: string): string {
-  return `${formatUsd(usdCents(amountUsd))} ${MONEY_COPY.usd}`;
-}
-
-// A 422 names its field only in the message: "invalid job request: email must be …".
-export function namedField<F extends string>(message: string, fields: readonly F[]): F | null {
-  const name = message.split(": ")[1]?.split(" ")[0];
-  return fields.find((field) => field === name) ?? null;
 }
 
 const RECORD_ORDER = Object.values(RECORD_EVENTS);

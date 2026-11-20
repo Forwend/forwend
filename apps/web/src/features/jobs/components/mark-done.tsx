@@ -7,12 +7,17 @@ import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useMarkPaymentDoneMutation } from "@/features/jobs/api/jobs-api";
 import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { namedField, usdText } from "@/features/jobs/lib/jobs";
 import type { Job, JobPayment } from "@/features/jobs/types/jobs";
+import {
+  apiError,
+  errorStatus,
+  HTTP_STATUS,
+  invalidValue,
+  namedField,
+} from "@/shared/api/api-error";
+import { usdCents, usdText } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.detail;
-const CONFLICT = 409;
-const INVALID_VALUE = 422;
 
 export interface MarkDoneProps {
   profileId: string;
@@ -42,18 +47,17 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
         deliveryLink: link.trim(),
       }).unwrap();
     } catch (failure) {
-      const { status, data } = failure as {
-        status?: unknown;
-        data?: { error?: { code?: string; message?: string } };
-      };
       // Invoice limits also answer 422: only a message naming the link is a link error.
-      if (status === INVALID_VALUE && namedField(data?.error?.message ?? "", ["deliveryLink"]))
+      if (invalidValue(failure) && namedField(failure, ["deliveryLink"]))
         setLinkError(COPY.markDoneLinkError);
-      else if (data?.error?.code === CHANGE_ERRORS.pending) {
+      else if (apiError(failure).code === CHANGE_ERRORS.pending) {
         actions.current?.closest("dialog")?.close();
         document.getElementById("job-payments")?.focus();
         toast({ tone: TONES.warning, title: COPY.markDoneChangeWaits });
-      } else setError(status === CONFLICT ? COPY.markDoneOrder : COPY.markDoneFailed);
+      } else
+        setError(
+          errorStatus(failure) === HTTP_STATUS.conflict ? COPY.markDoneOrder : COPY.markDoneFailed,
+        );
       return;
     }
     const invoice = made.payments[payment.position - 1];
@@ -84,7 +88,7 @@ export function MarkDone({ profileId, job, payment, onDone }: MarkDoneProps) {
     >
       <p>
         {COPY.markDoneBody(
-          usdText(payment.amountUsd),
+          usdText(usdCents(payment.amountUsd)),
           COPY.dueDays(payment.dueDays),
           job.client.email,
         )}

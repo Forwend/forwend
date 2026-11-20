@@ -13,7 +13,8 @@ import {
 } from "@/features/transactions/constants/transactions";
 import { sendingRows } from "@/features/transactions/lib/transactions";
 import { LIVE_QUERY } from "@/shared/config/refresh";
-import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
+import { useListFilters } from "@/shared/hooks/use-list-filters";
+import { useShownData } from "@/shared/hooks/use-shown-data";
 
 const SENDING_POLL_MS = 3000;
 

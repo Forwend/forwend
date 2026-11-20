@@ -5,16 +5,17 @@ import { BriefcaseBusiness, Plus } from "lucide-react";
 import Link from "next/link";
 import { useListJobsInfiniteQuery } from "@/features/jobs/api/jobs-api";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { usdText } from "@/features/jobs/lib/jobs";
 import type { JobSummary } from "@/features/jobs/types/jobs";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
+import { PageTitle } from "@/shared/components/page-title";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { useListSearch } from "@/shared/hooks/use-list-filters";
+import { useListSearch } from "@/shared/hooks/use-list-search";
 import { shortDate } from "@/shared/lib/dates";
+import { usdCents, usdText } from "@/shared/lib/money";
 
 const jobHref = (job: JobSummary) => `${APP_ROUTES.jobs}/${job.jobId}`;
 const state = (job: JobSummary) =>
@@ -48,9 +49,7 @@ export function JobsTable({ profileId }: JobsTableProps) {
       className="flex flex-col gap-4"
     >
       <div className="flex items-center justify-between gap-3 lg:contents">
-        <h1 id="jobs-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {COPY.title}
-        </h1>
+        <PageTitle id="jobs-title">{COPY.title}</PageTitle>
         {noJobs ? null : <NewJobLink size="sm" className="lg:hidden" />}
       </div>
       {!noJobs ? (
@@ -115,7 +114,7 @@ export function JobsTable({ profileId }: JobsTableProps) {
                 key: "total",
                 header: COPY.columns.total,
                 align: "end",
-                cell: (job) => usdText(job.totalUsd),
+                cell: (job) => usdText(usdCents(job.totalUsd)),
               },
               {
                 key: "state",
@@ -134,7 +133,7 @@ export function JobsTable({ profileId }: JobsTableProps) {
             phone={(job) => ({
               title: job.title,
               detail: `${job.clientName} · ${state(job)}`,
-              value: usdText(job.totalUsd),
+              value: usdText(usdCents(job.totalUsd)),
             })}
             footer={
               list.hasNextPage ? (

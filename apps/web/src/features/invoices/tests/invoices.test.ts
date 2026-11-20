@@ -1,6 +1,5 @@
 import { PAYMENT_STATUS } from "@forwend/ui-web";
 import { describe, expect, it } from "vitest";
-import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
 import {
   canStillBePaid,
   decimalText,
@@ -9,16 +8,15 @@ import {
   invoiceStatus,
   isReturnLink,
   owedCents,
-  parseTokenAmount,
   restartFrom,
-  tokensOn,
 } from "@/features/invoices/lib/invoices";
 import {
   invoiceHistoryEventSchema,
   invoiceSummarySchema,
 } from "@/features/invoices/schemas/invoices";
 import type { Deposit, Invoice, Owed } from "@/features/invoices/types/invoices";
-import { FACTORY } from "@/features/pay/constants/receive-address";
+import { AMOUNT_ERRORS } from "@/shared/constants/money";
+import { parseTokenAmount } from "@/shared/lib/money";
 
 describe("parseTokenAmount", () => {
   it("turns typed USDC amounts into exact base units", () => {
@@ -73,7 +71,7 @@ const open: Invoice = {
   purpose: "invoice",
   documentKind: "invoice",
   recipient: `0x${"4".repeat(40)}`,
-  factory: `0x${FACTORY}`,
+  factory: `0x${"6".repeat(40)}`,
   receiveAddress: `0x${"2".repeat(40)}`,
   expiresAt: "2026-10-17T10:00:00Z",
   closesAt: "2026-10-17T10:00:00Z",
@@ -454,16 +452,6 @@ describe("owedCents", () => {
     expect(owedCents([row("held", "9000000", 6)])).toBe(0n);
     expect(owedCents([])).toBe(0n);
   });
-});
-
-it("leaves out the tokens off by chain and contract, whatever the letter case, and never restores them", () => {
-  const base = { chainId: 84532, token: "0x036CBD53842c5426634e7929541eC2318f3dCF7e" };
-  const arb = { chainId: 421614, token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d" };
-  expect(tokensOn([base, arb], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([
-    arb,
-  ]);
-  expect(tokensOn([base, arb], [{ chainId: 1, token: arb.token }])).toEqual([base, arb]);
-  expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([]);
 });
 
 it("offers the pay link only while the invoice can be paid and its checkout is open", () => {

@@ -7,12 +7,12 @@ import {
   publicJobSchema,
 } from "@/features/jobs/schemas/jobs";
 import type { CreateJobBody, Job, JobsPage, PublicJob } from "@/features/jobs/types/jobs";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const JOBS_TAG = "Jobs";
 const PUBLIC_JOB_TAG = "PublicJob";
 
-const jobsUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/jobs`;
+const jobsUrl = (profileId: string) => profilePath(profileId, "jobs");
 const jobUrl = (profileId: string, jobId: string) =>
   `${jobsUrl(profileId)}/${encodeURIComponent(jobId)}`;
 

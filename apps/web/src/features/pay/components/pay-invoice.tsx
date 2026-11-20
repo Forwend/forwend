@@ -21,7 +21,6 @@ import { PayTerms } from "@/features/pay/components/pay-terms";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
-import { useNow } from "@/features/pay/hooks/use-now";
 import { crossChainTarget } from "@/features/pay/lib/crosschain";
 import {
   clockRuns,
@@ -34,10 +33,10 @@ import {
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
 import { readTab, shownKey } from "@/features/pay/lib/tab-memory";
 import type { EmbedLayout } from "@/features/pay/types/pay";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { ServerStrip } from "@/shared/components/server-strip";
 import { LIVE_QUERY, REFRESH_MS } from "@/shared/config/refresh";
-
-const NOT_FOUND = 404;
+import { useNow } from "@/shared/hooks/use-now";
 
 export interface PayInvoiceProps {
   linkToken: string;
@@ -81,7 +80,7 @@ export function PayInvoice({ linkToken, option, preview = false, embed }: PayInv
       />
     );
   }
-  if ((invoice.error as { status?: unknown } | undefined)?.status === NOT_FOUND) notFound();
+  if (errorStatus(invoice.error) === HTTP_STATUS.notFound) notFound();
   if (invoice.isError) return <LoadFailed onRetry={invoice.refetch} />;
   return <PaySkeleton />;
 }
@@ -116,7 +115,7 @@ function Loaded({
       : undefined;
   const invoice = useMemo(() => withOption(answer, picked), [answer, picked]);
   // The shown option's clock, not the invoice's.
-  const now = useNow(clockRuns(invoice));
+  const now = useNow(clockRuns(invoice) ? Number.POSITIVE_INFINITY : 0);
   const address = useMemo(() => checkedReceiveAddress(invoice, linkToken), [invoice, linkToken]);
   const crossTarget = useMemo(() => crossChainTarget(answer, linkToken), [answer, linkToken]);
   const token = payToken(invoice);

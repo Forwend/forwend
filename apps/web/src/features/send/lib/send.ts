@@ -1,13 +1,13 @@
 import { formatTokenAmount } from "@forwend/ui-web";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
-import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import type { Balances } from "@/features/balances/types/balances";
 import { ROLES } from "@/features/profiles/constants/profile";
 import type { Profile } from "@/features/profiles/types/profile";
 import { FEE_DECIMALS, FEE_PAYERS, NATIVE_DECIMALS } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Send, SendOption, SendRequest } from "@/features/send/types/send";
+import { apiError } from "@/shared/api/api-error";
 import { evmAddress } from "@/shared/schemas/api";
 
 // One case, or mixed case with a valid EIP-55 checksum, as the server takes it.
@@ -37,11 +37,10 @@ export function sendOptions(balances: Balances | null): SendOption[] {
 }
 
 export function sendError(error: unknown): string {
-  const e = error as FetchBaseQueryError | undefined;
-  const body = (e?.data as { error?: { code?: string; message?: string } } | undefined)?.error;
-  if (body?.code === "send_in_progress") return SEND_COPY.busy;
-  if (body?.code === "send_approved") return SEND_COPY.alreadyApproved;
-  if ((body?.code === "invalid_value" || body?.code === "transfer_refused") && body.message) {
+  const body = apiError(error);
+  if (body.code === "send_in_progress") return SEND_COPY.busy;
+  if (body.code === "send_approved") return SEND_COPY.alreadyApproved;
+  if ((body.code === "invalid_value" || body.code === "transfer_refused") && body.message) {
     const text = body.message.replace(/^invalid send: /, "");
     return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
   }

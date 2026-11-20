@@ -4,12 +4,11 @@ import { Button, Checkbox, IconButton, TextField } from "@forwend/ui-web";
 import { Plus, X } from "lucide-react";
 import { useId, useRef } from "react";
 import { flushSync } from "react-dom";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import type { PaymentDraft, PaymentField } from "@/features/jobs/types/jobs";
 import { FieldGroup } from "@/shared/components/field-group";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { usdText } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.form;
 const GRID =
@@ -116,9 +115,7 @@ export function PaymentScheduleFields({
           </Button>
           <p className="flex items-baseline gap-3 text-ink">
             <span className="text-sm text-muted">{COPY.total}</span>
-            <span className="text-lg font-semibold tabular-nums">
-              {formatUsd(total)} {MONEY_COPY.usd}
-            </span>
+            <span className="text-lg font-semibold tabular-nums">{usdText(total)}</span>
           </p>
         </div>
         {error ? (

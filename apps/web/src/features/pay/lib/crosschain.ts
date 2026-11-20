@@ -11,6 +11,7 @@ import {
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { withOption } from "@/features/pay/lib/pay";
 import { checkedReceiveAddress } from "@/features/pay/lib/receive-address";
+import { apiError } from "@/shared/api/api-error";
 import { CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { blockchainName, isCrossChainTarget } from "@/shared/lib/chains";
 
@@ -289,11 +290,8 @@ export function bufferLine(send: bigint, minAmountIn: bigint, refundFee: bigint)
     : PAY_COPY.crossChain.bufferUnderFee;
 }
 
-const errorCode = (error: unknown) =>
-  (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
-
 export function quoteProblem(error: unknown): string {
-  switch (errorCode(error)) {
+  switch (apiError(error).code) {
     case "below_minimum":
       return PAY_COPY.crossChain.belowMinimum;
     case "no_liquidity":
@@ -313,7 +311,7 @@ export function quoteProblem(error: unknown): string {
 }
 
 export function priceProblem(error: unknown): string {
-  return errorCode(error) === "invalid_value"
+  return apiError(error).code === "invalid_value"
     ? PAY_COPY.crossChain.cantConvert
     : quoteProblem(error);
 }

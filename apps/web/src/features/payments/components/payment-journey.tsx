@@ -35,6 +35,7 @@ import {
   CROSS_CHAIN_TOKEN_ICONS,
   TOKEN_ICONS,
 } from "@/shared/constants/chains";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import {
   API_DEPOSIT_STATUSES,
   API_PAYMENT_STATUSES,
@@ -58,7 +59,7 @@ export function PaymentJourney({ payment, steps }: PaymentJourneyProps) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="fw-panel overflow-hidden">
-      <h2 id={id} className="fw-panel-head text-base font-semibold text-ink">
+      <h2 id={id} className={PANEL_TITLE}>
         {COPY.journey.title}
       </h2>
       <ol className="flex flex-col px-4 py-1.5 sm:px-5">

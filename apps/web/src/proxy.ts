@@ -5,9 +5,8 @@ import { contentSecurityPolicy } from "@/shared/config/security-headers";
 
 const CHECK_MS = 5000;
 
-// R-168: an embed may be framed only by the origin it names, when the invoice's store allows it. The api answers
-// yes only for an origin exactly as a browser writes it, so it goes into the header as it is. Anything else, a
-// failed check included, is framed by no one.
+// Only the origin the embed names may frame it, and only when the api allows that origin, as a browser writes it.
+// Anything else, a failed check included, is framed by no one.
 export async function proxy(request: NextRequest) {
   const token = request.nextUrl.pathname.split("/")[2] ?? "";
   const origin = request.nextUrl.searchParams.get(EMBED_PARAMS.origin) ?? "";

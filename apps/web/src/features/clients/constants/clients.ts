@@ -1,3 +1,5 @@
+import type { ClientTextField } from "@/features/clients/types/clients";
+
 /** The API's limits in characters. */
 export const CLIENT_LIMITS = {
   name: 200,
@@ -12,3 +14,12 @@ export const CLIENT_PICKER_SIZE = 20;
 
 /** Only how the form reads: the API stores the same fields for both. */
 export const CLIENT_KINDS = { business: "business", person: "person" } as const;
+
+export const CLIENT_FIELDS: readonly ClientTextField[] = [
+  "name",
+  "email",
+  "address",
+  "country",
+  "taxId",
+  "reference",
+];

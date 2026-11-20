@@ -1,7 +1,7 @@
 import { ACTIVITY_PAGE_SIZE } from "@/features/activity/constants/activity";
 import { activityPageSchema } from "@/features/activity/schemas/activity";
 import type { ActivityPage } from "@/features/activity/types/activity";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 export const activityApi = apiSlice.injectEndpoints({
@@ -13,7 +13,7 @@ export const activityApi = apiSlice.injectEndpoints({
     >({
       infiniteQueryOptions: { initialPageParam: null, getNextPageParam: (last) => last.nextCursor },
       query: ({ queryArg: { profileId, ...params }, pageParam }) => ({
-        url: `/v1/profiles/${encodeURIComponent(profileId)}/activity`,
+        url: profilePath(profileId, "activity"),
         params: {
           ...params,
           limit: ACTIVITY_PAGE_SIZE,

@@ -4,9 +4,8 @@ import { BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-we
 import { useEffect, useRef, useState } from "react";
 import { useStopRepeatMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import type { InvoiceRetainer } from "@/features/invoices/types/invoices";
-import { dateTime } from "@/shared/lib/dates";
+import { dateTime, formatDueDate } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.repeat;
 

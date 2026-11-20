@@ -11,13 +11,13 @@ import {
 } from "@/features/pay/components/pay-progress";
 import { OriginMark, PayTokenMark } from "@/features/pay/components/token-marks";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
-import { amountText } from "@/features/pay/lib/pay";
 import type { CrossChain } from "@/features/pay/types/crosschain";
 import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
 import { CROSS_CHAIN_STATUSES, CROSS_CHAIN_TARGET } from "@/shared/constants/chains";
 import { ENTER } from "@/shared/constants/motion";
 import { blockchainName, blockchainTxLink, chainName } from "@/shared/lib/chains";
 import { timeNear, timeOfDay } from "@/shared/lib/dates";
+import { amountText } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
 

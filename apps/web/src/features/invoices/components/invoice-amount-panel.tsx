@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  BigAmount,
-  buttonClasses,
-  cx,
-  formatTokenAmount,
-  PAYMENT_STATUS,
-  type PaymentStatus,
-} from "@forwend/ui-web";
+import { BigAmount, buttonClasses, cx, PAYMENT_STATUS, type PaymentStatus } from "@forwend/ui-web";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { CheckStatusNote } from "@/features/invoices/components/check-status";
@@ -20,23 +13,18 @@ import { InvoiceSteps } from "@/features/invoices/components/invoice-steps";
 import { AMOUNT_BODY, ICON, PHONE_ROW } from "@/features/invoices/constants/invoice-detail";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { CheckStatusState } from "@/features/invoices/hooks/use-check-status";
-import {
-  daysUntilDue,
-  formatDueDateShort,
-  optionFees,
-  type overpaid,
-} from "@/features/invoices/lib/invoices";
+import { daysUntilDue, optionFees, type overpaid } from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoiceOption, RecordStep } from "@/features/invoices/types/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { MarkIcon } from "@/shared/components/chains/token-mark";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { FADE_IN } from "@/shared/constants/motion";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { chainName } from "@/shared/lib/chains";
-import { shortDate, timeOfDay } from "@/shared/lib/dates";
-import { exactDigits } from "@/shared/lib/money";
+import { formatDueDateShort, shortDate, timeOfDay } from "@/shared/lib/dates";
+import { amountText, exactAmount } from "@/shared/lib/money";
 
-const FADE_IN = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
 const AMOUNT = "max-w-full flex-wrap text-4xl [overflow-wrap:anywhere] sm:text-5xl";
 
 export interface InvoiceAmountPanelProps {
@@ -78,8 +66,7 @@ export function InvoiceAmountPanel({
   // While the client picks, every option carries the same fees, so the sum reads in USD.
   const lineMoney =
     choosing && shown
-      ? (units: bigint) =>
-          `${formatTokenAmount({ baseUnits: units, decimals: shown.decimals, fractionDigits: exactDigits(units, shown.decimals) })} ${MONEY_COPY.usd}`
+      ? (units: bigint) => amountText(units, { decimals: shown.decimals, symbol: MONEY_COPY.usd })
       : money;
   const label =
     paidAt && settled
@@ -163,11 +150,7 @@ export function InvoiceAmountPanel({
           <p className={cx("mt-1 max-w-full", canceled && "opacity-50")}>
             {shown ? (
               <BigAmount
-                value={formatTokenAmount({
-                  baseUnits: figure,
-                  decimals: shown.decimals,
-                  fractionDigits: exactDigits(figure, shown.decimals),
-                })}
+                value={exactAmount(figure, shown.decimals)}
                 unit={choosing ? MONEY_COPY.usd : shown.symbol}
                 className={AMOUNT}
               />

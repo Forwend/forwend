@@ -9,6 +9,10 @@ export interface ApiExtra {
   freshSignIn?: AskFreshSignIn;
 }
 
+export function profilePath(profileId: string, path = ""): string {
+  return `/v1/profiles/${encodeURIComponent(profileId)}${path && `/${path}`}`;
+}
+
 // One slice for our backend; each feature adds its endpoints with injectEndpoints.
 export const apiSlice = createApi({
   reducerPath: "api",

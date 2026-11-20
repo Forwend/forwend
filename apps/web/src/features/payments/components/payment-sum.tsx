@@ -5,11 +5,11 @@ import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { SUM_CELLS } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY as COPY } from "@/features/payments/constants/payments-copy";
 import { crossChainOf } from "@/features/payments/lib/payment-journey";
-import { amountText } from "@/features/payments/lib/payments";
 import type { PaymentDetail, PaymentMoney, SumCell } from "@/features/payments/types/payments";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { blockchainName, chainName } from "@/shared/lib/chains";
 import { timeNear } from "@/shared/lib/dates";
+import { amountText } from "@/shared/lib/money";
 
 export interface PaymentSumProps {
   payment: PaymentDetail;

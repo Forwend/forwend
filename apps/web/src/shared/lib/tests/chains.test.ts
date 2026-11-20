@@ -3,6 +3,7 @@ import {
   addressLink,
   blockchainTxLink,
   crossChainOptionRecorded,
+  tokensOn,
   txLink,
 } from "@/shared/lib/chains";
 
@@ -84,4 +85,14 @@ describe("blockchainTxLink", () => {
     expect(blockchainTxLink("sol", { hash: "../../../evil?x=1&y=2", explorerUrl: "" })).toBeNull();
     expect(blockchainTxLink("zec", { hash: "ab", explorerUrl: "javascript:alert(1)" })).toBeNull();
   });
+});
+
+it("leaves out the tokens off by chain and contract, whatever the letter case, and never restores them", () => {
+  const base = { chainId: 84532, token: "0x036CBD53842c5426634e7929541eC2318f3dCF7e" };
+  const arb = { chainId: 421614, token: "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d" };
+  expect(tokensOn([base, arb], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([
+    arb,
+  ]);
+  expect(tokensOn([base, arb], [{ chainId: 1, token: arb.token }])).toEqual([base, arb]);
+  expect(tokensOn([base], [{ chainId: 84532, token: base.token.toLowerCase() }])).toEqual([]);
 });

@@ -3,7 +3,6 @@
 import {
   ChoiceCard,
   DatePicker,
-  formatTokenAmount,
   SelectField,
   SwitchCard,
   TextField,
@@ -15,17 +14,16 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { FeeSummary } from "@/features/invoices/components/fee-summary";
-import { parseTokenAmount } from "@/features/invoices/lib/invoices";
 import { useSaveLinkMutation } from "@/features/links/api/links-api";
 import { LinkPreview } from "@/features/links/components/link-preview";
 import {
   AMOUNT_KINDS,
+  LINK_FIELDS,
   LINK_LIMITS,
   LINK_SETUP_REQUIRED_CODE,
-  USD_PATTERN,
 } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
-import { endsAtOf, invalidLinkField, linkAddress } from "@/features/links/lib/links";
+import { endsAtOf, linkAddress } from "@/features/links/lib/links";
 import type {
   AmountKind,
   LinkBody,
@@ -35,12 +33,15 @@ import type {
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import type { Store } from "@/features/stores/types/stores";
+import { apiError, namedField } from "@/shared/api/api-error";
 import { CopyValue } from "@/shared/components/copy-value";
 import { FieldGroup } from "@/shared/components/field-group";
-import { StepForm, useFormSteps } from "@/shared/components/step-form";
+import { StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { LEAST_USD_CENTS, USD_PATTERN } from "@/shared/constants/money";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { exactDigits } from "@/shared/lib/money";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
+import { amountText, parseTokenAmount, usdCents } from "@/shared/lib/money";
 
 export interface LinkFormProps {
   profileId: string;
@@ -135,7 +136,7 @@ export function LinkForm({
     if (kind === AMOUNT_KINDS.fixed && !body.amountUsd) shown.amountUsd = COPY.errors.amount;
     for (const field of ["amountUsd", "minUsd", "maxUsd"] as const) {
       const value = body[field];
-      if (value !== null && (!USD_PATTERN.test(value) || Number(value) < 1))
+      if (value !== null && (!USD_PATTERN.test(value) || usdCents(value) < LEAST_USD_CENTS))
         shown[field] = COPY.errors.amount;
     }
     if (body.minUsd && body.maxUsd && !shown.minUsd && Number(body.minUsd) > Number(body.maxUsd))
@@ -166,16 +167,11 @@ export function LinkForm({
       toast({ tone: TONES.success, title: COPY.saved(body.title) });
       router.push(link ? APP_ROUTES.links : `${APP_ROUTES.links}/${linkId.current}`);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidLinkField(message);
+      const field = namedField(error, LINK_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         flow.focusError(form);
-      } else if (
-        (error as { data?: { error?: { code?: string } } }).data?.error?.code ===
-        LINK_SETUP_REQUIRED_CODE
-      ) {
+      } else if (apiError(error).code === LINK_SETUP_REQUIRED_CODE) {
         setFormError(COPY.errors.notReady);
       } else setFormError(COPY.errors.failed);
       setBusy(false);
@@ -329,7 +325,7 @@ export function LinkForm({
             clientPays={clientPays}
             onClientPays={setClientPays}
             money={(units) =>
-              `${formatTokenAmount({ baseUnits: units, decimals: PRICE_DECIMALS, fractionDigits: exactDigits(units, PRICE_DECIMALS) })} ${MONEY_COPY.usd}`
+              amountText(units, { decimals: PRICE_DECIMALS, symbol: MONEY_COPY.usd })
             }
             feeOnly={kind === AMOUNT_KINDS.open}
           />

@@ -1,6 +1,5 @@
-import { formatTokenAmount } from "@forwend/ui-web";
 import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
-import { depositAmount, tokenKey } from "@/features/invoices/lib/invoices";
+import { depositAmount } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_STATES, PAY_TOKENS } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
@@ -11,7 +10,8 @@ import {
   API_PAYMENT_STATUSES,
   API_SETTLEMENT_STATUSES,
 } from "@/shared/constants/payment-state";
-import { exactDigits } from "@/shared/lib/money";
+import { tokenKey } from "@/shared/lib/chains";
+import { amountText } from "@/shared/lib/money";
 
 export function withOption(inv: Invoice, optionId: string | undefined): Invoice {
   const o = inv.optionLocked
@@ -38,10 +38,6 @@ export function withOption(inv: Invoice, optionId: string | undefined): Invoice 
 
 export function payToken(inv: Invoice): PayToken | null {
   return PAY_TOKENS[tokenKey(inv)] ?? null;
-}
-
-export function amountText(units: bigint, token: PayToken): string {
-  return `${formatTokenAmount({ baseUnits: units, decimals: token.decimals, fractionDigits: exactDigits(units, token.decimals) })} ${token.symbol}`;
 }
 
 export function payeeName(inv: Invoice): string | undefined {

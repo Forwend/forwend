@@ -32,8 +32,5 @@ export const RIGHT_PAD = "lg:pr-[max(2.5rem,calc(50vw-32rem))]";
 
 export const CLOSING_SOON_MS = 30 * 60_000;
 
-/** Only a fade: a rise would move what sits under the part. */
-export const FADE = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
-
 /** A token the invoice takes, or any token through NEAR Intents. */
 export const PAY_WAYS = { direct: "direct", cross: "cross" } as const;

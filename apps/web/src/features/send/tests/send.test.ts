@@ -125,9 +125,9 @@ describe("a paymaster send", () => {
     chainId: 8453,
     token: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
     amount: "2500000",
-    to: "0x" + "bb".repeat(20),
+    to: `0x${"bb".repeat(20)}`,
   };
-  const expected = { to: asked.to, from: "0x" + "aa".repeat(20), decimals: 6 };
+  const expected = { to: asked.to, from: `0x${"aa".repeat(20)}`, decimals: 6 };
   const send = {
     ...asked,
     sendId: "send-1",
@@ -217,8 +217,8 @@ describe("a paymaster send", () => {
       matches(send, { ...request, body: { ...request.body, sponsor_options: { asset: "usdt" } } }),
     ).toBe(false);
     expect(matches(send, withTx({ data: transferCalldata(send.to, 2_500_001n) }))).toBe(false);
-    expect(matches(send, withTx({ to: "0x" + "cc".repeat(20) }))).toBe(false);
-    expect(matches(send, withTx({ from: "0x" + "dd".repeat(20) }))).toBe(false);
+    expect(matches(send, withTx({ to: `0x${"cc".repeat(20)}` }))).toBe(false);
+    expect(matches(send, withTx({ from: `0x${"dd".repeat(20)}` }))).toBe(false);
     expect(matches(send, withTx({ value: "0x1" }))).toBe(false);
     expect(matches(send, withTx({ gas: "0x1" }))).toBe(false);
     expect(

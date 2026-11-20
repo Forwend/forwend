@@ -2,9 +2,8 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { DEFAULT_RANGE } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { seriesChange } from "@/features/balances/lib/balance-history";
-import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { usdText } from "@/shared/lib/money";
 
 export function BalanceChange({ series }: { series: HistorySeries }) {
   const change = seriesChange(series);
@@ -24,7 +23,7 @@ export function BalanceChange({ series }: { series: HistorySeries }) {
         <Icon aria-hidden className="size-[var(--fw-icon-sm)]" />
         <span className="tabular-nums">
           {up ? "+" : "−"}
-          {formatUsd(change < 0n ? -change : change)} {MONEY_COPY.usd}
+          {usdText(change < 0n ? -change : change)}
         </span>
       </span>
       <span className="text-muted">{rangeName}</span>

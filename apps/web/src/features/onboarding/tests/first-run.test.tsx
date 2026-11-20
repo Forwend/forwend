@@ -13,16 +13,6 @@ vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => ({ user: null }),
 }));
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const PERSONAL = "11111111-1111-4111-8111-111111111111";
 const FREELANCER = "22222222-2222-4222-8222-222222222222";
 const MERCHANT = "33333333-3333-4333-8333-333333333333";

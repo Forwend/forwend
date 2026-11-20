@@ -1,11 +1,12 @@
-import { formatDueDate } from "@/features/invoices/lib/invoices";
-import { AMOUNT_KINDS, USD_PATTERN } from "@/features/links/constants/links";
+import { AMOUNT_KINDS } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import { amountLabel } from "@/features/links/lib/links";
 import type { AmountKind, LinkField } from "@/features/links/types/links";
-import { Payee } from "@/features/pay/components/payee";
+import { Payee } from "@/features/stores/components/payee";
 import type { Store } from "@/features/stores/types/stores";
 import { FormPreview } from "@/shared/components/step-form";
+import { USD_PATTERN } from "@/shared/constants/money";
+import { formatDueDate } from "@/shared/lib/dates";
 
 export interface LinkPreviewProps {
   typed: Record<LinkField, string>;

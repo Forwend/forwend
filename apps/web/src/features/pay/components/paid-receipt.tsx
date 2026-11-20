@@ -8,11 +8,12 @@ import { Overpaid } from "@/features/pay/components/held-note";
 import { OriginMark, PayTokenMark } from "@/features/pay/components/token-marks";
 import { EMBED_LAYOUTS } from "@/features/pay/constants/embed";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
-import { amountText, payeeName, receiptDeposits } from "@/features/pay/lib/pay";
+import { payeeName, receiptDeposits } from "@/features/pay/lib/pay";
 import type { EmbedLayout, PayToken } from "@/features/pay/types/pay";
 import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { blockchainName, crossChainOptionRecorded, txLink } from "@/shared/lib/chains";
 import { dateTime } from "@/shared/lib/dates";
+import { amountText } from "@/shared/lib/money";
 
 export interface PaidReceiptProps {
   invoice: Invoice;

@@ -9,8 +9,8 @@ import { FIRST_RUN_COPY } from "@/features/onboarding/constants/onboarding-copy"
 import type { ProfileDetails } from "@/features/onboarding/types/onboarding";
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { PROFILE_KINDS, PROFILE_NAME_MAX } from "@/features/profiles/constants/profile";
-import { countryOptions } from "@/features/profiles/lib/billing-details";
 import type { NewProfileKind } from "@/features/profiles/types/profile";
+import { countryOptions } from "@/shared/lib/countries";
 
 const COPY = FIRST_RUN_COPY.details;
 const PREVIEW = NEW_INVOICE_COPY.preview;

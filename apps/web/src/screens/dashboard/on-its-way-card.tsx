@@ -3,35 +3,39 @@
 import { Card, PAYMENT_STATUSES, Skeleton } from "@forwend/ui-web";
 import { ChevronRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { fieldUnits, formatUsd, marketUsd } from "@/features/balances/lib/balances";
-import type { Balances } from "@/features/balances/types/balances";
+import { BALANCE_FIELDS } from "@/features/balances/constants/balances";
+import { fieldUnits, marketUsd } from "@/features/balances/lib/balances";
+import type { BalanceField, Balances } from "@/features/balances/types/balances";
+import { PAYMENT_PARAMS } from "@/features/payments/constants/payments";
+import { paymentsHref } from "@/features/payments/lib/payments";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_PAYMENT_STATES, API_SETTLEMENT_STATUSES } from "@/shared/constants/payment-state";
+import { formatUsd } from "@/shared/lib/money";
 import { STATE_STATUS } from "@/shared/lib/payment-state";
 
 // Surest first. Only "settling" matches its Payments list; the others follow ledger bookings.
 const PARTS = [
   {
-    field: "settling",
+    field: BALANCE_FIELDS.settling,
     dot: "bg-ink",
     label: COPY.legendMoving,
-    href: `${APP_ROUTES.payments}?settlementStatus=${API_SETTLEMENT_STATUSES.pending}`,
+    href: paymentsHref(PAYMENT_PARAMS.settlementStatus, API_SETTLEMENT_STATUSES.pending),
   },
   {
-    field: "confirming",
+    field: BALANCE_FIELDS.confirming,
     dot: "bg-muted",
     label: PAYMENT_STATUSES[STATE_STATUS[API_PAYMENT_STATES.confirming]].label,
-    href: `${APP_ROUTES.payments}?state=${API_PAYMENT_STATES.confirming}`,
+    href: paymentsHref(PAYMENT_PARAMS.state, API_PAYMENT_STATES.confirming),
   },
   {
-    field: "partial",
+    field: BALANCE_FIELDS.partial,
     dot: "bg-subtle",
     label: PAYMENT_STATUSES[STATE_STATUS[API_PAYMENT_STATES.partiallyPaid]].label,
-    href: `${APP_ROUTES.payments}?state=${API_PAYMENT_STATES.partiallyPaid}`,
+    href: paymentsHref(PAYMENT_PARAMS.state, API_PAYMENT_STATES.partiallyPaid),
   },
 ] as const;
 
@@ -45,7 +49,7 @@ export interface OnItsWayCardProps {
 /** What is coming but not in the wallet yet, in USD at market prices, by how sure it is. */
 export function OnItsWayCard({ balances, prices, failed, onRetry }: OnItsWayCardProps) {
   // No base units is a real zero, priced or not; otherwise a missing price is unknown, never valued as zero.
-  const usd = (field: (typeof PARTS)[number]["field"] | "held") =>
+  const usd = (field: BalanceField) =>
     !balances
       ? null
       : balances.tokens.every((t) => fieldUnits(t, field) === "0")
@@ -55,7 +59,7 @@ export function OnItsWayCard({ balances, prices, failed, onRetry }: OnItsWayCard
   const total = parts.every((p) => p.cents !== null)
     ? parts.reduce((n, p) => n + (p.cents ?? 0n), 0n)
     : null;
-  const held = usd("held");
+  const held = usd(BALANCE_FIELDS.held);
   return (
     <Card id="on-its-way" title={COPY.onItsWay} className="flex flex-col">
       {!balances && failed ? (

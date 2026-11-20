@@ -6,16 +6,6 @@ import { CheckoutForm } from "@/features/checkout/components/checkout-form";
 import { typeKey } from "@/features/checkout/lib/checkout";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
 const STORE = {
   storeId: "66666666-6666-4666-8666-666666666666",

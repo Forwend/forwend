@@ -1,5 +1,3 @@
-export const USD_DECIMALS = 2;
-
 export const BALANCE_FIELDS = {
   wallet: "wallet",
   pending: "pending",

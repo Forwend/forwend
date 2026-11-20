@@ -2,15 +2,16 @@
 
 import { EmptyState, Skeleton } from "@forwend/ui-web";
 import { UserRound } from "lucide-react";
-import { countryName } from "@/features/clients/lib/clients";
 import { PaymentReminders } from "@/features/invoices/components/payment-reminders";
 import { RepeatsMonthly } from "@/features/invoices/components/repeats-monthly";
 import { SendToClient } from "@/features/invoices/components/send-to-client";
-import { ORDER, PANEL_TITLE } from "@/features/invoices/constants/invoice-detail";
+import { ORDER } from "@/features/invoices/constants/invoice-detail";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { LoadError } from "@/shared/components/load-error";
 import { Party } from "@/shared/components/party";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { countryName } from "@/shared/lib/countries";
 import { shortDate } from "@/shared/lib/dates";
 
 export interface InvoiceClientPanelProps {

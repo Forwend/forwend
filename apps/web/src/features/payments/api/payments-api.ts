@@ -14,9 +14,9 @@ import type {
   PaymentPeriod,
   PaymentReconciliation,
 } from "@/features/payments/types/payments";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
-const path = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/payments`;
+const path = (profileId: string) => profilePath(profileId, "payments");
 interface Query {
   profileId: string;
   filters?: PaymentFilters;

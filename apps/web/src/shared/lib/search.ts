@@ -1,3 +1,5 @@
+import { SEARCH_MAX } from "@/shared/constants/search";
+
 /** Lower case without accents, as the kit's search selects compare, so "zur" finds Zürich. */
 export function foldText(text: string): string {
   return text
@@ -12,4 +14,8 @@ export function matchesWords(text: string, query: string): boolean {
   return foldText(query)
     .split(/\s+/)
     .every((word) => folded.includes(word));
+}
+
+export function apiSearch(search: string): string | undefined {
+  return search.trim().slice(0, SEARCH_MAX) || undefined;
 }

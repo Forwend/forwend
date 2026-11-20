@@ -1,9 +1,4 @@
 import { z } from "zod";
-import type {
-  ApiDepositStatus,
-  ApiPaymentStatus,
-  ApiSettlementStatus,
-} from "@/features/activity/types/activity";
 import { clientBodySchema } from "@/features/clients/schemas/clients";
 import {
   DOCUMENT_KINDS,
@@ -34,6 +29,11 @@ import {
   usdAmount,
 } from "@/shared/schemas/api";
 import type { CrossChainStatus } from "@/shared/types/chains";
+import type {
+  ApiDepositStatus,
+  ApiPaymentStatus,
+  ApiSettlementStatus,
+} from "@/shared/types/payment-state";
 
 export const optionFeesShape = {
   networkFee: baseUnits,

@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { JOB_FIELDS } from "@/features/jobs/constants/jobs";
-import {
-  dueDays,
-  jobRecord,
-  namedField,
-  paymentCents,
-  paymentStep,
-  usdText,
-} from "@/features/jobs/lib/jobs";
+import { dueDays, jobRecord, paymentCents, paymentStep } from "@/features/jobs/lib/jobs";
 
 describe("job amounts", () => {
   it("reads typed USD as exact cents, refusing what the API refuses", () => {
@@ -29,22 +21,12 @@ describe("job amounts", () => {
     ]) {
       expect(paymentCents(bad)).toBeNull();
     }
-    expect(usdText("1000.50")).toBe("1,000.50 USD");
   });
 
   it("reads days to pay as whole days up to the API's 90", () => {
     expect(dueDays("0")).toBe(0);
     expect(dueDays("90")).toBe(90);
     for (const bad of ["91", "-1", "7.5", "", "x"]) expect(dueDays(bad)).toBeNull();
-  });
-
-  it("names the field the API refused", () => {
-    const field = (message: string) => namedField(message, Object.values(JOB_FIELDS));
-    expect(field("invalid job request: client.email must be an email address")).toBe(
-      "client.email",
-    );
-    expect(field("invalid job request: payments need dueDays from 0 to 90")).toBe("payments");
-    expect(field("invalid job request: a profile has at most 1000 jobs")).toBeNull();
   });
 });
 

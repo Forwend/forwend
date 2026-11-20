@@ -64,16 +64,6 @@ function stubFetch(send: (request: Request) => unknown) {
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const TOKEN = {
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",

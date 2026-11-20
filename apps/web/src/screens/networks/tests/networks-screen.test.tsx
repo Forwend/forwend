@@ -5,16 +5,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { NetworksScreen } from "@/screens/networks/networks-screen";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const PROFILE_ID = "6f1c2a4e-8b3d-4f5a-9c7e-1d2b3a4c5e6f";
 vi.mock("@/features/profiles/hooks/use-app-session", () => ({
   useAppSession: () => ({ profile: { profileId: PROFILE_ID } }),

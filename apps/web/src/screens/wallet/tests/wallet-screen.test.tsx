@@ -5,19 +5,6 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WalletScreen } from "@/screens/wallet/wallet-screen";
 
-// jsdom lacks the modal methods; this is what the browser does that matters here.
-const proto = HTMLDialogElement.prototype as HTMLDialogElement & Record<string, unknown>;
-if (typeof proto.showModal !== "function") {
-  proto.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  proto.close = function (this: HTMLDialogElement) {
-    if (!this.hasAttribute("open")) return;
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-}
-
 const ADDRESS = "0x4edd1111111111111111111111111111111181fc";
 const calls = vi.hoisted(() => ({
   check: vi.fn(async () => {}),

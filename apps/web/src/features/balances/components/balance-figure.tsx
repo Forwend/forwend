@@ -7,12 +7,13 @@ import type { CSSProperties, ReactNode } from "react";
 import { EstimateHint } from "@/features/balances/components/estimate-hint";
 import { BALANCE_FIELDS } from "@/features/balances/constants/balances";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
-import { fieldUnits, formatUsd, marketUsd } from "@/features/balances/lib/balances";
+import { fieldUnits, marketUsd } from "@/features/balances/lib/balances";
 import type { Balances } from "@/features/balances/types/balances";
 import type { TokenPrice } from "@/features/prices/types/prices";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { formatUsd } from "@/shared/lib/money";
 
 export interface BalanceFigureProps {
   balances: Balances | null;

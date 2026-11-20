@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { storeBodySchema, storeSchema, storesSchema } from "@/features/stores/schemas/stores";
 import type { Store, StoreBody } from "@/features/stores/types/stores";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const STORES_TAG = "Stores";
 
-const storesUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/stores`;
+const storesUrl = (profileId: string) => profilePath(profileId, "stores");
 
 export const storesApi = apiSlice.enhanceEndpoints({ addTagTypes: [STORES_TAG] }).injectEndpoints({
   endpoints: (build) => ({

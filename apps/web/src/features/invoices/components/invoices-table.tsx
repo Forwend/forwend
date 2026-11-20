@@ -18,8 +18,6 @@ import { INVOICES_COPY, REQUESTS_COPY } from "@/features/invoices/constants/invo
 import {
   canStillBePaid,
   daysUntilDue,
-  formatDueDate,
-  formatDueDateShort,
   invoiceNumber,
   invoiceStatus,
   payLinkUrl,
@@ -32,12 +30,14 @@ import { ListFilters } from "@/shared/components/list-filters";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
+import { PageTitle } from "@/shared/components/page-title";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
 import { useListFilters } from "@/shared/hooks/use-list-filters";
+import { formatDueDate, formatDueDateShort } from "@/shared/lib/dates";
 import { narrowedBy } from "@/shared/lib/payment-state";
 import { paymentStateGroup } from "@/shared/lib/payment-state-filter";
 
@@ -193,12 +193,7 @@ export function InvoicesTable({ profileId, tokens, onRequest }: InvoicesTablePro
       className="flex flex-col gap-4"
     >
       <div className="flex items-center justify-between gap-3 lg:contents">
-        <h1
-          id="invoices-title"
-          className="text-2xl font-semibold tracking-tight text-ink lg:sr-only"
-        >
-          {COPY.invoices}
-        </h1>
+        <PageTitle id="invoices-title">{COPY.invoices}</PageTitle>
         {noInvoices ? null : (
           <NewInvoiceLink size="sm" className="lg:hidden" onRequest={onRequest} />
         )}

@@ -7,8 +7,6 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { TwoStepSetup } from "@/features/auth/components/two-step-setup";
 import { FRESH_SIGN_IN_COPY, TWO_STEP_COPY } from "@/features/auth/constants/auth-copy";
 import type { Balances } from "@/features/balances/types/balances";
-import { AMOUNT_ERRORS } from "@/features/invoices/constants/invoices";
-import { parseTokenAmount } from "@/features/invoices/lib/invoices";
 import type { Profile } from "@/features/profiles/types/profile";
 import {
   useCancelSendMutation,
@@ -40,6 +38,8 @@ import type {
   SendStep,
 } from "@/features/send/types/send";
 import { LoadError } from "@/shared/components/load-error";
+import { AMOUNT_ERRORS } from "@/shared/constants/money";
+import { parseTokenAmount } from "@/shared/lib/money";
 
 export interface SendSheetProps {
   open: boolean;

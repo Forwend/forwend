@@ -8,8 +8,8 @@ import { ProfileAvatar } from "@/features/profiles/components/profile-avatar";
 import { PROFILES_COPY } from "@/features/profiles/constants/profiles-copy";
 import { profileLabel } from "@/features/profiles/lib/profile";
 import type { Profile } from "@/features/profiles/types/profile";
-import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useDesktop } from "@/shared/hooks/use-desktop";
 
 export interface ProfileSheetProps {
   profiles: Profile[];
@@ -26,13 +26,11 @@ export function ProfileSheet({
   open,
   onOpenChange,
 }: ProfileSheetProps) {
+  const desktop = useDesktop();
   // Close when the window turns desktop-wide, or the sheet stays over the page.
   useEffect(() => {
-    const desktop = window.matchMedia(DESKTOP_QUERY);
-    const onChange = () => desktop.matches && onOpenChange(false);
-    desktop.addEventListener("change", onChange);
-    return () => desktop.removeEventListener("change", onChange);
-  }, [onOpenChange]);
+    if (desktop && open) onOpenChange(false);
+  }, [desktop, open, onOpenChange]);
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={PROFILES_COPY.profiles}>
       <ul className="flex flex-col gap-1">

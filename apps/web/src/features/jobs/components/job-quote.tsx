@@ -3,8 +3,6 @@
 import { BigAmount, buttonClasses, PAYMENT_STATUS, Skeleton, StatusPill } from "@forwend/ui-web";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
-import { countryName } from "@/features/clients/lib/clients";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useAcceptJobMutation, useGetPublicJobQuery } from "@/features/jobs/api/jobs-api";
 import { AcceptChange } from "@/features/jobs/components/accept-change";
@@ -12,19 +10,20 @@ import { ConsentForm } from "@/features/jobs/components/consent-form";
 import { JobRecord } from "@/features/jobs/components/job-record";
 import { PaymentStep } from "@/features/jobs/components/payment-step";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { isPendingChange, usdText } from "@/features/jobs/lib/jobs";
+import { isPendingChange } from "@/features/jobs/lib/jobs";
 import type { JobPayment, JobPaymentStatus } from "@/features/jobs/types/jobs";
 import { Backdrop } from "@/features/pay/components/backdrop";
-import { Payee } from "@/features/pay/components/payee";
 import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
-import { notFound } from "@/shared/api/server-reach";
+import { Payee } from "@/features/stores/components/payee";
+import { notFound } from "@/shared/api/api-error";
 import { LoadError } from "@/shared/components/load-error";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { countryName } from "@/shared/lib/countries";
 import { dateTime } from "@/shared/lib/dates";
-import { usdCents } from "@/shared/lib/money";
+import { formatUsd, usdCents, usdText } from "@/shared/lib/money";
 
 const PANEL = "fw-panel";
-const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 const payHref = (p: JobPayment) => `/pay/${p.payToken}`;
 const payable = (p: JobPayment) => p.payToken !== null && p.status === PAYMENT_STATUS.open;
 
@@ -122,7 +121,7 @@ export function JobQuote({ token }: { token: string }) {
                 payment={p}
                 first={n === 0}
                 last={n === job.payments.length - 1}
-                amount={usdText(p.amountUsd)}
+                amount={usdText(usdCents(p.amountUsd))}
               >
                 <p className="font-medium break-words text-ink">{p.title}</p>
                 <p className="text-sm text-muted">
@@ -183,7 +182,9 @@ export function JobQuote({ token }: { token: string }) {
           </ol>
           <p className="flex items-baseline justify-between gap-3 border-t border-line-strong pt-3">
             <span className="text-sm text-muted">{COPY.total}</span>
-            <span className="font-semibold tabular-nums text-ink">{usdText(job.totalUsd)}</span>
+            <span className="font-semibold tabular-nums text-ink">
+              {usdText(usdCents(job.totalUsd))}
+            </span>
           </p>
         </section>
 

@@ -14,12 +14,8 @@ import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/typ
 import type { Notifications } from "@/features/profiles/types/notifications";
 import type { FeesPaidBy, Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
-import { apiSlice } from "@/shared/api/api-slice";
-
-const NOT_FOUND = 404;
-
-const profileUrl = (profileId: string, path: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/${path}`;
+import { HTTP_STATUS } from "@/shared/api/api-error";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -56,11 +52,11 @@ export const profilesApi = apiSlice.injectEndpoints({
     /** null until saved (404 billing_details_not_found). */
     getBillingDetails: build.query<BillingDetails | null, string>({
       query: (profileId) => ({
-        url: profileUrl(profileId, "billing-details"),
-        validateStatus: (response) => response.ok || response.status === NOT_FOUND,
+        url: profilePath(profileId, "billing-details"),
+        validateStatus: (response) => response.ok || response.status === HTTP_STATUS.notFound,
       }),
       transformResponse: (data: BillingDetails, meta) =>
-        meta?.response?.status === NOT_FOUND ? null : data,
+        meta?.response?.status === HTTP_STATUS.notFound ? null : data,
       responseSchema: billingDetailsSchema.nullable(),
     }),
     saveBillingDetails: build.mutation<
@@ -68,7 +64,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       { profileId: string; body: BillingDetailsBody }
     >({
       query: ({ profileId, body }) => ({
-        url: profileUrl(profileId, "billing-details"),
+        url: profilePath(profileId, "billing-details"),
         method: "PUT",
         body,
       }),
@@ -84,12 +80,12 @@ export const profilesApi = apiSlice.injectEndpoints({
       },
     }),
     getNotifications: build.query<Notifications, string>({
-      query: (profileId) => profileUrl(profileId, "notifications"),
+      query: (profileId) => profilePath(profileId, "notifications"),
       responseSchema: notificationsSchema,
     }),
     saveNotifications: build.mutation<Notifications, { profileId: string; email: boolean }>({
       query: ({ profileId, email }) => ({
-        url: profileUrl(profileId, "notifications"),
+        url: profilePath(profileId, "notifications"),
         method: "PUT",
         body: { email },
       }),
@@ -109,7 +105,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       { profileId: string; livemode: boolean }
     >({
       query: ({ profileId, livemode }) => ({
-        url: profileUrl(profileId, "mode"),
+        url: profilePath(profileId, "mode"),
         method: "PUT",
         body: { livemode },
       }),
@@ -141,7 +137,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       { profileId: string; feesPaidBy: FeesPaidBy }
     >({
       query: ({ profileId, feesPaidBy }) => ({
-        url: profileUrl(profileId, "fees"),
+        url: profilePath(profileId, "fees"),
         method: "PUT",
         body: { feesPaidBy },
       }),
@@ -162,18 +158,18 @@ export const profilesApi = apiSlice.injectEndpoints({
     }),
     // upsertQueryData runs this schema on the list, so it checks the list itself.
     getProfileTokens: build.query<TokenSwitch[], string>({
-      query: (profileId) => profileUrl(profileId, "tokens"),
+      query: (profileId) => profilePath(profileId, "tokens"),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,
     }),
     getCrossChainSwitch: build.query<boolean, string>({
-      query: (profileId) => profileUrl(profileId, "tokens"),
+      query: (profileId) => profilePath(profileId, "tokens"),
       transformResponse: (data: { crossChain: boolean }) => data.crossChain,
       responseSchema: z.boolean(),
     }),
     saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
       query: ({ profileId, on }) => ({
-        url: profileUrl(profileId, "tokens"),
+        url: profilePath(profileId, "tokens"),
         method: "PUT",
         body: { crossChain: on },
       }),
@@ -195,7 +191,7 @@ export const profilesApi = apiSlice.injectEndpoints({
     }),
     saveProfileTokens: build.mutation<TokenSwitch[], { profileId: string; off: TokenRef[] }>({
       query: ({ profileId, off }) => ({
-        url: profileUrl(profileId, "tokens"),
+        url: profilePath(profileId, "tokens"),
         method: "PUT",
         body: { off },
       }),

@@ -2,9 +2,11 @@ import { TIMELINE_STATES, Timeline } from "@forwend/ui-web";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { RECORD_EVENTS } from "@/features/jobs/constants/jobs";
 import { RECORD_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
-import { jobRecord, usdText } from "@/features/jobs/lib/jobs";
+import { jobRecord } from "@/features/jobs/lib/jobs";
 import type { Job, PublicJob, RecordEvent } from "@/features/jobs/types/jobs";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import { dateTime } from "@/shared/lib/dates";
+import { usdCents, usdText } from "@/shared/lib/money";
 
 const number = (event: RecordEvent) => invoiceNumber(event.payment?.number ?? 0);
 // Only the owner's read has the emails the client typed.
@@ -19,7 +21,7 @@ function describeEvent(event: RecordEvent, job: PublicJob): string {
     case RECORD_EVENTS.accepted:
       return COPY.accepted(job.acceptedName ?? "", acceptedEmail(job));
     case RECORD_EVENTS.proposed:
-      return COPY.proposed(title, usdText(event.payment?.amountUsd ?? "0.00"));
+      return COPY.proposed(title, usdText(usdCents(event.payment?.amountUsd ?? "0.00")));
     case RECORD_EVENTS.changeAccepted:
       return COPY.changeAccepted(
         title,
@@ -43,7 +45,7 @@ export interface JobRecordProps {
 export function JobRecord({ job }: JobRecordProps) {
   return (
     <section aria-labelledby="job-record" className="fw-panel">
-      <h2 id="job-record" className="fw-panel-head text-base font-semibold text-ink">
+      <h2 id="job-record" className={PANEL_TITLE}>
         {COPY.title}
       </h2>
       <div className="px-4 py-4 sm:px-5">

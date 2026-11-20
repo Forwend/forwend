@@ -9,10 +9,10 @@ import { decimalText } from "@/features/invoices/lib/invoices";
 import { feeFigures } from "@/features/invoices/lib/new-invoice";
 import type { FeeQuote } from "@/features/invoices/types/invoices";
 import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 
 // A quote waits until typing stops, so each keystroke asks nothing.
 const QUOTE_WAIT_MS = 400;
-const UNAVAILABLE = 503; // network_fee_unavailable
 
 export interface FeeSummaryProps {
   profileId: string;
@@ -85,7 +85,7 @@ export function FeeSummary({
     price === "" || current
       ? null
       : failed
-        ? (quote.error as { status?: unknown }).status === UNAVAILABLE
+        ? errorStatus(quote.error) === HTTP_STATUS.unavailable
           ? COPY.failed
           : null
         : COPY.pricing;

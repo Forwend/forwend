@@ -1,4 +1,4 @@
-import { USD_PATTERN } from "@/features/links/constants/links";
+import { USD_PATTERN } from "@/shared/constants/money";
 
 export function typeKey(amount: string, key: string): string {
   const next = key === "." ? `${amount || "0"}.` : amount === "0" ? key : amount + key;

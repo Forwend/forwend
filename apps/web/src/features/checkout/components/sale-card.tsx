@@ -2,9 +2,7 @@
 
 import { cx } from "@forwend/ui-web";
 import { type ReactNode, useRef } from "react";
-
-export const FADE_IN =
-  "motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]";
+import { STEP_IN } from "@/shared/constants/motion";
 
 const CARD =
   "flex min-w-0 flex-col transition-colors duration-[var(--fw-duration-base)] max-sm:-mx-4 max-sm:min-h-dvh sm:min-h-[41.5rem] sm:rounded-lg sm:border sm:border-line";
@@ -26,7 +24,7 @@ export function SaleCard({ bar, step, foot, paid = false, children }: SaleCardPr
       </div>
       <div
         key={step}
-        className={cx("flex flex-1 flex-col", step === first.current ? undefined : FADE_IN)}
+        className={cx("flex flex-1 flex-col", step === first.current ? undefined : STEP_IN)}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-5 pt-2 pb-4 text-center">
           {children}

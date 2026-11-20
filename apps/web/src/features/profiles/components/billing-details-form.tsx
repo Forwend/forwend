@@ -15,15 +15,13 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSaveBillingDetailsMutation } from "@/features/profiles/api/profiles-api";
-import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
+import { BILLING_FIELDS, BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { BILLING_DETAILS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
-import {
-  billingErrors,
-  countryOptions,
-  invalidBillingField,
-} from "@/features/profiles/lib/billing-details";
+import { billingErrors } from "@/features/profiles/lib/billing-details";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
+import { namedField } from "@/shared/api/api-error";
 import { FieldGroup } from "@/shared/components/field-group";
+import { countryOptions } from "@/shared/lib/countries";
 
 type Field = keyof BillingDetailsBody;
 
@@ -72,9 +70,7 @@ export function BillingDetailsForm({ profileId, saved, next, business }: Billing
       toast({ tone: TONES.success, title: COPY.saved });
       router.push(next);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidBillingField(message);
+      const field = namedField(error, BILLING_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();

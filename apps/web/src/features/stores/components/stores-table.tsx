@@ -9,6 +9,7 @@ import type { Store } from "@/features/stores/types/stores";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const storeHref = (store: Store) => `${APP_ROUTES.stores}/${store.storeId}`;
@@ -45,9 +46,7 @@ export function StoresTable({ profileId, closeLabel, canAdd }: StoresTableProps)
       className="flex flex-col gap-4"
     >
       <div className="flex items-center justify-between gap-3 lg:contents">
-        <h1 id="stores-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {COPY.title}
-        </h1>
+        <PageTitle id="stores-title">{COPY.title}</PageTitle>
         {canAdd ? <AddStoreLink size="sm" className="lg:hidden" /> : null}
       </div>
       <ListToolbar

@@ -1,6 +1,5 @@
 /** The owner's invoice page layout, shared by the page, its panels and its loading skeleton. */
 
-export const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 export const ICON = "size-[var(--fw-icon-sm)]";
 
 // Phones: Back and More, then a large title. Desktop: the number, then Edit and More.

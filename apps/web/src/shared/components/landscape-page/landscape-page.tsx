@@ -4,7 +4,7 @@ import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/sit
 import styles from "./landscape-page.module.css";
 
 /** One centered message or form over the landscape strip; the logo sits as in the landing's bar. */
-export function LandscapePage({ homeLabel, children }: { homeLabel: string; children: ReactNode }) {
+export function LandscapePage({ children }: { children: ReactNode }) {
   return (
     <div className={`flex min-h-dvh flex-col bg-bg ${styles.page}`}>
       <div className={styles.landscape} aria-hidden="true">
@@ -26,7 +26,7 @@ export function LandscapePage({ homeLabel, children }: { homeLabel: string; chil
       </div>
       <SiteBar plain>
         <SiteBarRow>
-          <SiteBrand label={homeLabel} />
+          <SiteBrand />
         </SiteBarRow>
       </SiteBar>
       <main className={styles.main}>

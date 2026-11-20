@@ -4,9 +4,10 @@ import { buttonClasses, DetailList, DetailRow, Skeleton } from "@forwend/ui-web"
 import { Pencil, Store } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { tokensOn } from "@/features/invoices/lib/invoices";
 import { ExportPayments } from "@/features/payments/components/export-payments";
 import { PaymentList } from "@/features/payments/components/payment-list";
+import { PAYMENT_PARAMS } from "@/features/payments/constants/payments";
+import { paymentsHref } from "@/features/payments/lib/payments";
 import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
@@ -16,7 +17,7 @@ import { ProjectId } from "@/features/stores/components/project-id";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import { closeLabel } from "@/screens/stores/lib/close-choices";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import {
   DetailHeader,
@@ -26,6 +27,8 @@ import {
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { tokensOn } from "@/shared/lib/chains";
 import { shortDate } from "@/shared/lib/dates";
 
 export interface StoreScreenProps {
@@ -98,7 +101,7 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
             </h2>
             <div className="flex items-center gap-2">
               <Link
-                href={`${APP_ROUTES.payments}?storeId=${store.storeId}`}
+                href={paymentsHref(PAYMENT_PARAMS.storeId, store.storeId)}
                 className={buttonClasses({ variant: "ghost", size: "sm" })}
               >
                 {COPY.payments}
@@ -113,7 +116,7 @@ export function StoreScreen({ storeId }: StoreScreenProps) {
           />
         </section>
         <section aria-labelledby="store-details" className="fw-panel min-w-0 xl:sticky xl:top-20">
-          <h2 id="store-details" className="fw-panel-head text-base font-semibold text-ink">
+          <h2 id="store-details" className={PANEL_TITLE}>
             {COPY.details}
           </h2>
           <DetailList>

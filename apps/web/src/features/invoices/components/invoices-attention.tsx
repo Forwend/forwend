@@ -1,19 +1,19 @@
 "use client";
 
-import { formatTokenAmount, ROW_INTERACTIVE_CLASSES } from "@forwend/ui-web";
+import { ROW_INTERACTIVE_CLASSES } from "@forwend/ui-web";
 import { ChevronDown, ChevronRight, CircleDashed, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { useGetOwedQuery } from "@/features/invoices/api/invoices-api";
 import { OWED_KINDS } from "@/features/invoices/constants/invoices";
 import { INVOICES_COPY, OWED_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDateShort, invoiceNumber, owedCents } from "@/features/invoices/lib/invoices";
+import { invoiceNumber, owedCents } from "@/features/invoices/lib/invoices";
 import type { Owed } from "@/features/invoices/types/invoices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { ENTER } from "@/shared/constants/motion";
-import { exactDigits } from "@/shared/lib/money";
+import { formatDueDateShort } from "@/shared/lib/dates";
+import { exactAmount, usdText } from "@/shared/lib/money";
 
 const COPY = INVOICES_COPY.attention;
 const SHOWN = 2;
@@ -26,7 +26,7 @@ export function InvoicesAttention({ profileId }: { profileId: string }) {
     (o) => o.number !== null && (o.kind === OWED_KINDS.overdue || o.kind === OWED_KINDS.partlyPaid),
   );
   if (items.length === 0) return null;
-  const total = `${formatUsd(owedCents(items))} ${MONEY_COPY.usd}`;
+  const total = usdText(owedCents(items));
   const overdue = items.filter((o) => o.kind === OWED_KINDS.overdue).length;
   return (
     <section aria-label={COPY.title} className={`@container ${ENTER}`}>
@@ -96,11 +96,7 @@ function Row({ owed: o, className = "" }: { owed: Owed; className?: string }) {
       </span>
       <span className="flex shrink-0 flex-col items-end">
         <span className="text-sm font-medium whitespace-nowrap text-ink tabular-nums">
-          {formatTokenAmount({
-            baseUnits: units,
-            decimals: o.decimals,
-            fractionDigits: exactDigits(units, o.decimals),
-          })}{" "}
+          {exactAmount(units, o.decimals)}{" "}
           <span className="text-xs font-normal text-muted">
             {o.optionCount > 1 ? MONEY_COPY.usd : o.symbol}
           </span>

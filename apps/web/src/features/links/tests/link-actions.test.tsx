@@ -7,16 +7,6 @@ import { LinkActions } from "@/features/links/components/link-actions";
 import type { Link } from "@/features/links/types/links";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 afterEach(cleanup);
 
 const LINK: Link = {

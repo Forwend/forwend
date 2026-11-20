@@ -5,9 +5,9 @@ import { TriangleAlert } from "lucide-react";
 import { CUSTOM_EXPIRY, EXPIRY_CHOICES } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { type CheckoutClose, localDate } from "@/features/invoices/hooks/use-checkout-close";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import type { Expiry } from "@/features/invoices/types/invoices";
 import { ENTER } from "@/shared/constants/motion";
+import { formatDueDate } from "@/shared/lib/dates";
 
 const DAY_MS = 86_400_000;
 const EXPIRIES = [...Object.keys(EXPIRY_CHOICES), CUSTOM_EXPIRY] as Expiry[];

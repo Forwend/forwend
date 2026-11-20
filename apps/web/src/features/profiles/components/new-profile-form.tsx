@@ -27,6 +27,7 @@ import {
 import { NEW_PROFILE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import type { NewProfileKind, ProfileKind } from "@/features/profiles/types/profile";
+import { apiError } from "@/shared/api/api-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const KIND_ICONS = {
@@ -65,8 +66,7 @@ export function NewProfileForm() {
       chooseProfile(profile.profileId);
       router.push(APP_ROUTES.home);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
+      const message = apiError(error).message ?? "";
       if (message.includes("profiles")) setFormError(COPY.errors.cap);
       else if (message.includes("name")) setNameError(COPY.errors.name);
       else setFormError(COPY.errors.failed);

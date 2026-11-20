@@ -4,7 +4,9 @@ import { useSaveProfileTokensMutation } from "@/features/profiles/api/profiles-a
 import { SaveStatus } from "@/features/profiles/components/save-status";
 import { TOKENS_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import type { TokenSwitch } from "@/features/profiles/types/tokens";
-import { AssetSelection, assetKey } from "@/shared/components/chains/asset-selection";
+import { AssetSelection } from "@/shared/components/chains/asset-selection";
+import { offRefs, toggled } from "@/shared/lib/asset-selection";
+import { tokenKey } from "@/shared/lib/chains";
 
 export interface TokenSwitchesProps {
   profileId: string;
@@ -13,19 +15,12 @@ export interface TokenSwitchesProps {
 
 export function TokenSwitches({ profileId, saved }: TokenSwitchesProps) {
   const [save, { isLoading, isError, isSuccess }] = useSaveProfileTokensMutation();
-  const selected = new Set(saved.filter((t) => t.on).map(assetKey));
+  const selected = new Set(saved.filter((t) => t.on).map(tokenKey));
   const change = async (keys: readonly string[], on: boolean) => {
-    const next = new Set(selected);
-    for (const key of keys) {
-      if (on) next.add(key);
-      else next.delete(key);
-    }
+    const next = toggled(selected, keys, on);
     if (next.size === 0) return;
-    const off = saved
-      .filter((t) => !next.has(assetKey(t)))
-      .map(({ chainId, token }) => ({ chainId, token }));
     try {
-      await save({ profileId, off }).unwrap();
+      await save({ profileId, off: offRefs(saved, next) }).unwrap();
     } catch {
       // Shown below.
     }

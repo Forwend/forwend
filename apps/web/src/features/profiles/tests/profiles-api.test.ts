@@ -20,17 +20,6 @@ const merchant: Profile = {
   name: "Shop",
 };
 
-// Node's Request needs an absolute URL; the app calls "/api/…".
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 function answer(body: unknown) {
   return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
 }

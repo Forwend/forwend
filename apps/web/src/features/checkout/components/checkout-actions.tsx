@@ -18,9 +18,8 @@ import Link from "next/link";
 import { type MouseEvent, useRef } from "react";
 import { useExpireCheckoutMutation } from "@/features/checkout/api/checkout-api";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { APP_ROUTES } from "@/shared/config/routes";
-
-const CONFLICT = 409;
 
 export interface CheckoutActionsProps {
   profileId: string;
@@ -53,7 +52,7 @@ export function CheckoutActions({
       toast({ tone: TONES.success, title: COPY.canceled });
       onDone();
     } catch (failure) {
-      if ((failure as { status?: unknown }).status !== CONFLICT) return;
+      if (errorStatus(failure) !== HTTP_STATUS.conflict) return;
       dialog?.close();
       toast({ tone: TONES.warning, title: COPY.cancelFailed });
       onDone();
@@ -90,7 +89,7 @@ export function CheckoutActions({
         {sale && openCancel ? <MenuSeparator /> : null}
         {openCancel ? (
           <MenuItem
-            className="text-danger data-[highlighted]:bg-danger-soft"
+            danger
             onSelect={() => {
               chosen.current = openCancel;
             }}

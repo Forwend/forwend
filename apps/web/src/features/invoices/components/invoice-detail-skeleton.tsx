@@ -10,7 +10,6 @@ import {
   ICON,
   MAIN_COLUMN,
   ORDER,
-  PANEL_TITLE,
   PHONE_ROW,
   SIDE_COLUMN,
   TILE,
@@ -18,6 +17,7 @@ import {
 } from "@/features/invoices/constants/invoice-detail";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 
 /** The page's shape while it loads, so nothing moves when the data comes. */
 export function InvoiceDetailSkeleton({ back, request }: { back: ReactNode; request: boolean }) {

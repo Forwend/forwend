@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRecheckInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { chainName } from "@/shared/lib/chains";
 
-const TOO_MANY_REQUESTS = 429;
 // At least this long after "too soon"; the read (polled every 15 s) then gives the exact time.
 const TOO_SOON_REST_MS = 30_000;
 
@@ -38,11 +38,11 @@ export function useCheckStatus({
     fixedCacheKey: recheckKey(payToken ?? ""),
   });
   // Asked too soon (another tab, or before the read caught up): rest, then the button comes back.
-  const tooSoon = (error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS;
+  const tooSoon = errorStatus(error) === HTTP_STATUS.tooManyRequests;
   const [restUntil, setRestUntil] = useState(0);
   // Each refused press is a new error object, so each one rests again.
   useEffect(() => {
-    if ((error as { status?: unknown } | undefined)?.status === TOO_MANY_REQUESTS)
+    if (errorStatus(error) === HTTP_STATUS.tooManyRequests)
       setRestUntil(Date.now() + TOO_SOON_REST_MS);
   }, [error]);
   const left = useLeft(

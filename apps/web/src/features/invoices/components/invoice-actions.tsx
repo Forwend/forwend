@@ -18,15 +18,15 @@ import {
 } from "@forwend/ui-web";
 import { Ban, CopyPlus, Ellipsis, FilePen, Pencil, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCancelInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { EditInvoice, type EditInvoiceProps } from "@/features/invoices/components/edit-invoice";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { CheckStatusState } from "@/features/invoices/hooks/use-check-status";
 import { invoiceCopyHref, invoiceReviseHref } from "@/features/invoices/lib/invoices";
-import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
+import { useDesktop } from "@/shared/hooks/use-desktop";
 
-const CONFLICT = 409;
 const ICON = "size-[var(--fw-icon-md)] shrink-0 text-muted";
 const ROW = rowButtonClasses();
 
@@ -56,7 +56,7 @@ export function InvoiceActions({
   const [sheet, setSheet] = useState(false);
   const [cancel, { isLoading, error }] = useCancelInvoiceMutation();
   const toast = useToast();
-  const status = (error as { status?: unknown } | undefined)?.status;
+  const status = errorStatus(error);
   // A dialog opens once the menu or sheet has closed, so neither hands focus back over it.
   const chosen = useRef<(() => void) | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -76,7 +76,7 @@ export function InvoiceActions({
       onCanceled();
     } catch (failure) {
       // Too late: the refetch that follows can end the cancel, and the dialog with it; the toast stays.
-      if ((failure as { status?: unknown }).status === CONFLICT) {
+      if (errorStatus(failure) === HTTP_STATUS.conflict) {
         toast({ tone: TONES.warning, title: COPY.cancel.tooLate });
       }
     }
@@ -141,7 +141,7 @@ export function InvoiceActions({
               <>
                 <MenuSeparator />
                 <MenuItem
-                  className="text-danger data-[highlighted]:bg-danger-soft"
+                  danger
                   onSelect={() => {
                     chosen.current = openCancel ?? null;
                   }}
@@ -231,7 +231,7 @@ export function InvoiceActions({
       <p>{COPY.cancel.body}</p>
       {error ? (
         <p role="alert" className="mt-3 text-sm text-danger">
-          {status === CONFLICT ? COPY.cancel.tooLate : COPY.cancel.failed}
+          {status === HTTP_STATUS.conflict ? COPY.cancel.tooLate : COPY.cancel.failed}
         </p>
       ) : null}
       <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">
@@ -262,18 +262,5 @@ export function InvoiceActions({
     cancelDialog()
   ) : (
     more()
-  );
-}
-
-// Turning a tablet past the desktop width swaps the sheet for the menu, which also closes an open sheet.
-function useDesktop(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const query = window.matchMedia(DESKTOP_QUERY);
-      query.addEventListener("change", onChange);
-      return () => query.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(DESKTOP_QUERY).matches,
-    () => true,
   );
 }

@@ -12,16 +12,6 @@ import { makeStore } from "@/store/store";
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const invoiceId = `0x${"a".repeat(64)}`;
 const invoice: ActivityItem = {
   kind: "invoice",

@@ -6,11 +6,11 @@ import { ReceivedChart } from "@/features/balances/components/charts/received-ch
 import { RANGE_OPTIONS } from "@/features/balances/constants/balance-history";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { seriesTotal } from "@/features/balances/lib/balance-history";
-import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistoryRange, HistorySeries } from "@/features/balances/types/balance-history";
 import { BUSINESS_COPY as COPY } from "@/screens/dashboard/constants/business-copy";
 import { LoadError } from "@/shared/components/load-error";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { formatUsd } from "@/shared/lib/money";
 
 export interface ReceivedCardProps {
   range: HistoryRange;

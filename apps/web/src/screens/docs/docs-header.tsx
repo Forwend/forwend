@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { docsPath } from "@/shared/config/docs-routes";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { SITE_COPY } from "@/shared/constants/site-copy";
 import styles from "./docs.module.css";
 import { DocsNavigation } from "./docs-navigation";
 import { DocsSearch } from "./docs-search";
@@ -27,7 +28,7 @@ export function DocsHeader({ currentSlug, index }: DocsHeaderProps) {
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <div className={styles.brand}>
-          <Link href={APP_ROUTES.site} aria-label="Forwend home">
+          <Link href={APP_ROUTES.site} aria-label={SITE_COPY.home}>
             <Logo />
           </Link>
           <span aria-hidden="true">/</span>

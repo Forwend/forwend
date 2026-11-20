@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Button,
-  buttonClasses,
-  formatTokenAmount,
-  Spinner,
-  SuccessCheck,
-  shortAddress,
-} from "@forwend/ui-web";
+import { Button, buttonClasses, Spinner, SuccessCheck, shortAddress } from "@forwend/ui-web";
 import { CircleAlert, ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { profileLabel } from "@/features/profiles/lib/profile";
@@ -20,8 +13,9 @@ import {
 } from "@/features/send/constants/send";
 import { SEND_COPY } from "@/features/send/constants/send-copy";
 import type { Recipient, Relay, Send, SendOption } from "@/features/send/types/send";
+import { invalidValue, notFound } from "@/shared/api/api-error";
 import { txLink } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 
 export interface SendProgressProps {
   profileId: string;
@@ -77,8 +71,8 @@ export function SendProgress({
     relaying.current = true;
     submit({ profileId, sendId: initial.sendId, signature: relay.signature })
       .unwrap()
-      .catch((e: { status?: unknown }) => {
-        if (e.status === 404 || e.status === 422) setRefused(true);
+      .catch((e: unknown) => {
+        if (notFound(e) || invalidValue(e)) setRefused(true);
       })
       .finally(() => {
         relaying.current = false;
@@ -88,8 +82,8 @@ export function SendProgress({
     if (!lost || !hash || !readAt) return;
     submit({ profileId, sendId: initial.sendId, txHash: hash })
       .unwrap()
-      .catch((e: { status?: unknown }) => {
-        if (e.status === 404 || e.status === 422) setRefused(true);
+      .catch((e: unknown) => {
+        if (notFound(e) || invalidValue(e)) setRefused(true);
       });
   }, [lost, hash, readAt, submit, profileId, initial.sendId]);
   // error stays until a read succeeds, so a retry in flight doesn't lock the sheet again.
@@ -109,7 +103,7 @@ export function SendProgress({
   }, [send.status, onSent]);
 
   const units = BigInt(send.amount);
-  const amount = `${formatTokenAmount({ baseUnits: units, decimals: option.decimals, fractionDigits: exactDigits(units, option.decimals) })} ${option.symbol}`;
+  const amount = amountText(units, option);
   const to =
     "profile" in recipient ? profileLabel(recipient.profile) : shortAddress(recipient.address);
   const link = send.txHash ? txLink(send.chainId, send.txHash) : null;

@@ -113,7 +113,7 @@ export function KeyActions({ profileId, apiKey, onRolled }: KeyActionsProps) {
                   </MenuItem>
                 )}
                 <MenuItem
-                  className="text-danger data-[highlighted]:bg-danger-soft"
+                  danger
                   onSelect={() => {
                     chosen.current = "revoke";
                   }}

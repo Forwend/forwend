@@ -7,20 +7,6 @@ import { MarkDone } from "@/features/jobs/components/mark-done";
 import type { Job } from "@/features/jobs/types/jobs";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-// jsdom has no modal dialogs.
-HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-  this.open = true;
-};
-
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
 const JOB_ID = "11111111-1111-4111-8111-111111111111";
 const INVOICE = `0x${"9".repeat(64)}`;

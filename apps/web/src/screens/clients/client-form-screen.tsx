@@ -6,7 +6,7 @@ import { useGetClientQuery } from "@/features/clients/api/clients-api";
 import { ClientForm } from "@/features/clients/components/client-form";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 import { LoadError } from "@/shared/components/load-error";
 import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";

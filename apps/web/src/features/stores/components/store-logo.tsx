@@ -13,6 +13,7 @@ import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { useObjectUrl } from "@/features/stores/hooks/use-object-url";
 import { storeLogoUrl } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
+import { invalidValue } from "@/shared/api/api-error";
 
 export interface StoreLogoProps {
   profileId: string;
@@ -48,11 +49,7 @@ export function StoreLogo({ profileId, store, pending, onPending }: StoreLogoPro
       await saveLogo({ profileId, storeId: store.storeId, logo: file }).unwrap();
       toast({ tone: TONES.success, title: COPY.logoSaved });
     } catch (failure) {
-      setError(
-        (failure as { status?: unknown }).status === 422
-          ? COPY.errors.logo
-          : COPY.errors.logoFailed,
-      );
+      setError(invalidValue(failure) ? COPY.errors.logo : COPY.errors.logoFailed);
     }
   };
   const remove = async () => {

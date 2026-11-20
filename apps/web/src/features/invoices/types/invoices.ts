@@ -2,7 +2,6 @@ import type { z } from "zod";
 import type { TokenBalance } from "@/features/balances/types/balances";
 import type { ClientBody } from "@/features/clients/types/clients";
 import type {
-  AMOUNT_ERRORS,
   CUSTOM_EXPIRY,
   EXPIRY_CHOICES,
   HISTORY_ACTORS,
@@ -120,7 +119,6 @@ export interface InvoiceStart {
 export type ExpiryChoice = keyof typeof EXPIRY_CHOICES;
 export type Expiry = ExpiryChoice | typeof CUSTOM_EXPIRY;
 export type InvoiceField = (typeof INVOICE_FIELDS)[keyof typeof INVOICE_FIELDS];
-export type AmountError = (typeof AMOUNT_ERRORS)[keyof typeof AMOUNT_ERRORS];
 export type InvoicePdf = (typeof INVOICE_PDFS)[keyof typeof INVOICE_PDFS];
 
 export type InvoiceToken = Pick<TokenBalance, "chainId" | "token" | "symbol" | "decimals">;

@@ -21,7 +21,6 @@ import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import { useFound } from "@/features/pay/hooks/use-found";
 import type { CrossChainTarget } from "@/features/pay/lib/crosschain";
 import {
-  amountText,
   checkoutClosesAt,
   heldOnOtherOptions,
   payeeName,
@@ -34,6 +33,7 @@ import { TokenMark } from "@/shared/components/chains/token-mark";
 import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
 import { ENTER } from "@/shared/constants/motion";
 import { addressLink, chainName, crossChainEnded, lookalikeOf } from "@/shared/lib/chains";
+import { amountText } from "@/shared/lib/money";
 
 export interface PayBoxProps {
   invoice: Invoice;

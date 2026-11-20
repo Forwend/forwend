@@ -1,3 +1,5 @@
+import type { StoreField } from "@/features/stores/types/stores";
+
 export const STORE_LIMITS = {
   name: 64,
   origins: 20,
@@ -10,3 +12,11 @@ export const BRAND_COLOR_PATTERN = /^(#[0-9a-fA-F]{6})?$/;
 export const COLOR_PICKER_START = "#000000";
 
 export const LOGO_TYPES = ["image/png", "image/jpeg"] as const;
+
+export const STORE_FIELDS: readonly StoreField[] = [
+  "name",
+  "defaultExpiresIn",
+  "allowedOrigins",
+  "brandColor",
+  "tokensOff",
+];

@@ -203,13 +203,6 @@ describe("fresh sign-in", () => {
   });
 
   it("asks in a dialog of its own for a request no form claimed", async () => {
-    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
-      this.open = true;
-    };
-    HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
-      this.open = false;
-      this.dispatchEvent(new Event("close"));
-    };
     render(
       <FreshSignInProvider register={(fn) => (ask = fn)}>
         <p>Page</p>

@@ -4,14 +4,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { MfaProvider } from "@/features/auth/components/mfa-provider";
 import { useMfaStep } from "@/features/auth/hooks/use-mfa-step";
 
-// jsdom lacks the modal methods.
-const proto = HTMLDialogElement.prototype as HTMLDialogElement & Record<string, unknown>;
-if (typeof proto.showModal !== "function") {
-  proto.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-}
-
 const OPTIONS = { challenge: "c" };
 const privy = vi.hoisted(() => ({
   ask: (_: { mfaMethods: string[] }) => {},

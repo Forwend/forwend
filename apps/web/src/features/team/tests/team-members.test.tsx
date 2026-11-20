@@ -6,16 +6,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { TeamMembers } from "@/features/team/components/team-members";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 afterEach(cleanup);
 
 it("a failed stores load shows Try again, which then loads the team", async () => {

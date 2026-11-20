@@ -1,11 +1,12 @@
 "use client";
 
-import { Button, formatTokenAmount } from "@forwend/ui-web";
+import { Button } from "@forwend/ui-web";
 import { useState } from "react";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { shortQuantity } from "@/features/invoices/lib/invoices";
 import type { InvoiceLine, OptionFees } from "@/features/invoices/types/invoices";
-import { exactDigits } from "@/shared/lib/money";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { amountText } from "@/shared/lib/money";
 
 export interface InvoiceLinesProps {
   lines: readonly InvoiceLine[];
@@ -31,19 +32,12 @@ export function InvoiceLines({
 }: InvoiceLinesProps) {
   const inset = plain ? "" : "px-4 sm:px-5";
   const [all, setAll] = useState(lines.length <= SHOWN);
-  const money = (units: string | bigint) => {
-    const baseUnits = BigInt(units);
-    return `${formatTokenAmount({ baseUnits, decimals, fractionDigits: exactDigits(baseUnits, decimals) })} ${unit}`;
-  };
+  const money = (units: string | bigint) => amountText(BigInt(units), { decimals, symbol: unit });
   return (
     <section aria-labelledby="invoice-items" className={plain ? "flex flex-col" : "fw-panel"}>
       <h2
         id="invoice-items"
-        className={
-          plain
-            ? "border-b border-line pb-2 text-sm font-medium text-muted"
-            : "fw-panel-head text-base font-semibold text-ink"
-        }
+        className={plain ? "border-b border-line pb-2 text-sm font-medium text-muted" : PANEL_TITLE}
       >
         {lines.length ? COPY.items : COPY.summary}
       </h2>

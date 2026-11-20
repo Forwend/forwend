@@ -1,8 +1,6 @@
 "use client";
 
-import { Button, buttonClasses, EmptyState, Skeleton } from "@forwend/ui-web";
-import { IdCard } from "lucide-react";
-import Link from "next/link";
+import { Button, Skeleton } from "@forwend/ui-web";
 import { useSearchParams } from "next/navigation";
 import { useGetClientQuery } from "@/features/clients/api/clients-api";
 import { useClientSearch } from "@/features/clients/hooks/use-client-search";
@@ -14,18 +12,19 @@ import {
   NEW_INVOICE_COPY,
   NEW_REQUEST_COPY,
 } from "@/features/invoices/constants/invoices-copy";
-import { invoiceNumber, restartFrom, tokensOn } from "@/features/invoices/lib/invoices";
+import { invoiceNumber, restartFrom } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import {
   useGetBillingDetailsQuery,
   useGetProfileTokensQuery,
 } from "@/features/profiles/api/profiles-api";
+import { BillingNeeded } from "@/features/profiles/components/billing-needed";
 import { BILLING_THEN, PERMISSIONS, PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
 import { useListStoresQuery } from "@/features/stores/api/stores-api";
 import { PageTitle } from "@/shared/components/page-title";
-import { APP_ROUTES } from "@/shared/config/routes";
+import { tokensOn } from "@/shared/lib/chains";
 import { dateTime } from "@/shared/lib/dates";
 
 // ?from=<id> fills the form from that owned invoice; nothing but the id comes from the URL.
@@ -123,20 +122,7 @@ export function NewInvoiceScreen() {
           <Skeleton className="rounded-lg max-xl:hidden xl:h-[calc(100dvh-11.5rem)] xl:min-h-[32rem]" />
         </div>
       ) : billingNeeded ? (
-        <EmptyState
-          page
-          icon={IdCard}
-          title={NEW_INVOICE_COPY.billingNeeded.title}
-          description={NEW_INVOICE_COPY.billingNeeded.text}
-          action={
-            <Link
-              href={`${APP_ROUTES.billingDetails}?${BILLING_THEN.param}=${BILLING_THEN.newInvoice}`}
-              className={buttonClasses({ size: "sm" })}
-            >
-              {NEW_INVOICE_COPY.billingNeeded.action}
-            </Link>
-          }
-        />
+        <BillingNeeded why={NEW_INVOICE_COPY.billingNeeded} then={BILLING_THEN.newInvoice} />
       ) : tokens.length === 0 ? (
         <p className="text-muted">{COPY.noTokens}</p>
       ) : (

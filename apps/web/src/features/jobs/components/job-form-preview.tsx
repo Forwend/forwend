@@ -1,9 +1,8 @@
-import { formatUsd } from "@/features/balances/lib/balances";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { paymentCents } from "@/features/jobs/lib/jobs";
 import type { PaymentDraft } from "@/features/jobs/types/jobs";
 import { FormPreview } from "@/shared/components/step-form";
-import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { usdText } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.form;
 
@@ -47,7 +46,7 @@ export function JobFormPreview({ typed, payments, deposit, total }: JobFormPrevi
                   </span>
                 </span>
                 <span className="shrink-0 text-ink tabular-nums">
-                  {cents === null ? "—" : `${formatUsd(cents)} ${MONEY_COPY.usd}`}
+                  {cents === null ? "—" : usdText(cents)}
                 </span>
               </li>
             );
@@ -55,9 +54,7 @@ export function JobFormPreview({ typed, payments, deposit, total }: JobFormPrevi
         </ol>
         <p className="flex items-baseline justify-between gap-4 border-t border-line pt-3">
           <span className="text-muted">{COPY.total}</span>
-          <span className="font-semibold text-ink tabular-nums">
-            {formatUsd(total)} {MONEY_COPY.usd}
-          </span>
+          <span className="font-semibold text-ink tabular-nums">{usdText(total)}</span>
         </p>
       </div>
     </FormPreview>

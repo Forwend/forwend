@@ -6,8 +6,9 @@ import { GetItBack } from "@/features/pay/components/held-note";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import { useFound } from "@/features/pay/hooks/use-found";
-import { amountText, stateLine } from "@/features/pay/lib/pay";
+import { stateLine } from "@/features/pay/lib/pay";
 import type { PayStatus, PayToken } from "@/features/pay/types/pay";
+import { amountText } from "@/shared/lib/money";
 
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
 

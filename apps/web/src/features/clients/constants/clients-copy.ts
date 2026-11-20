@@ -1,4 +1,5 @@
 import { CLIENT_LIMITS } from "@/features/clients/constants/clients";
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
 export const CLIENTS_COPY = {
   title: "Clients",
   add: "Add client",
@@ -85,11 +86,11 @@ export const CLIENTS_COPY = {
   deleted: (name: string) => `${name} deleted`,
   errors: {
     required: "Fill in this field.",
-    email: "Enter an email like name@example.com.",
+    email: EMAIL_COPY.invalid,
     failed: "We could not save the client. Check the details and try again.",
     invalid: {
       name: `Use at most ${CLIENT_LIMITS.name} characters, with no hidden characters.`,
-      email: "Enter an email like name@example.com.",
+      email: EMAIL_COPY.invalid,
       address: `Use at most ${CLIENT_LIMITS.address} characters, with no hidden characters.`,
       country: "Choose a country.",
       taxId: `Use at most ${CLIENT_LIMITS.taxId} characters, with no hidden characters.`,

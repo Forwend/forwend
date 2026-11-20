@@ -16,11 +16,11 @@ import type {
   LinksPage,
   PublicLink,
 } from "@/features/links/types/links";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const LINKS_TAG = "Links";
 
-const linksUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/links`;
+const linksUrl = (profileId: string) => profilePath(profileId, "links");
 
 export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).injectEndpoints({
   endpoints: (build) => ({

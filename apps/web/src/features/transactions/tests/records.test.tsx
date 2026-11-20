@@ -10,23 +10,8 @@ import { TransactionType } from "@/features/transactions/components/transaction-
 import type { Transaction } from "@/features/transactions/types/transactions";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
 beforeAll(() => {
-  // jsdom has no modal dialogs, pointer capture or layout; Radix Select asks for the last two.
-  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-    this.open = true;
-  };
-  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
-    this.open = false;
-  };
+  // jsdom has no pointer capture or layout; Radix Select asks for both.
   Element.prototype.hasPointerCapture = () => false;
   Element.prototype.releasePointerCapture = () => {};
   Element.prototype.scrollIntoView = vi.fn();

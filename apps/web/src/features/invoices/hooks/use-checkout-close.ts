@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { CUSTOM_EXPIRY, EXPIRY_CHOICES } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import {
   dueCheckoutDate,
   dueCheckoutTarget,
   expiryChoice,
 } from "@/features/invoices/lib/new-invoice";
 import type { Expiry } from "@/features/invoices/types/invoices";
+import { formatDueDate } from "@/shared/lib/dates";
 
 /** The day a timestamp falls on here, as YYYY-MM-DD. */
 export const localDate = (time: number) => new Date(time).toLocaleDateString("en-CA");

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchClientsQuery } from "@/features/clients/api/clients-api";
-import { apiSearch, SEARCH_DELAY_MS } from "@/shared/hooks/use-list-filters";
+import { SEARCH_DELAY_MS } from "@/shared/constants/search";
+import { apiSearch } from "@/shared/lib/search";
 
 /** What is typed reaches the API SEARCH_DELAY_MS after the last key. */
 export function useClientSearch(profileId: string, skip = false) {

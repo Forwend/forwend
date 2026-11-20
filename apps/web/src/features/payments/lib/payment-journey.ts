@@ -24,9 +24,7 @@ import {
 import { crossChainEnded, crossChainOptionRecorded } from "@/shared/lib/chains";
 
 /** A deposit 1Click saw and converts or converted; one returned or held short paid nothing. */
-export function paidThroughIntents(
-  c: PaymentDetail["crossChain"] | undefined,
-): c is CrossChainPayment {
+function paidThroughIntents(c: PaymentDetail["crossChain"] | undefined): c is CrossChainPayment {
   return (
     c != null &&
     c.depositSeenAt !== null &&

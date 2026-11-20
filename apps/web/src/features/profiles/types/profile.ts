@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type {
+  BILLING_THEN,
   FEES_PAID_BY,
   NEW_PROFILE_KINDS,
   PERMISSIONS,
@@ -21,3 +22,8 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 export type Profile = z.infer<typeof profileSchema>;
 
 export type Me = z.infer<typeof meSchema>;
+
+export type BillingThen = Exclude<
+  (typeof BILLING_THEN)[keyof typeof BILLING_THEN],
+  typeof BILLING_THEN.param
+>;

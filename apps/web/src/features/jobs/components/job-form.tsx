@@ -13,17 +13,19 @@ import { JobFormPreview } from "@/features/jobs/components/job-form-preview";
 import { PaymentScheduleFields } from "@/features/jobs/components/payment-schedule-fields";
 import { JOB_FIELDS, JOB_LIMITS, PAYMENT_FIELDS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { dueDays, namedField, paymentCents } from "@/features/jobs/lib/jobs";
+import { dueDays, paymentCents } from "@/features/jobs/lib/jobs";
 import type {
   CreateJobBody,
   JobField,
   PaymentDraft,
   PaymentField,
 } from "@/features/jobs/types/jobs";
+import { invalidValue, namedField } from "@/shared/api/api-error";
 import { FieldGroup } from "@/shared/components/field-group";
-import { StepForm, useFormSteps } from "@/shared/components/step-form";
+import { StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
 import { usdFromCents } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.form;
@@ -38,7 +40,6 @@ const FIELD_STEPS: Record<JobField, string> = {
   [JOB_FIELDS.clientTaxId]: STEPS.client,
   [JOB_FIELDS.payments]: STEPS.payments,
 };
-const INVALID_VALUE = 422;
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
 const draft = (title: string, days: string): PaymentDraft => ({
   id: crypto.randomUUID(),
@@ -144,16 +145,11 @@ export function JobForm({ profileId, clientSearch }: JobFormProps) {
       const job = await createJob({ profileId, idempotencyKey: key, body }).unwrap();
       router.push(`${APP_ROUTES.jobs}/${job.jobId}`);
     } catch (error) {
-      const failure = error as { status?: unknown; data?: { error?: { message?: string } } };
-      const field =
-        failure.status === INVALID_VALUE
-          ? namedField(failure.data?.error?.message ?? "", Object.values(JOB_FIELDS))
-          : null;
+      const field = invalidValue(error) ? namedField(error, Object.values(JOB_FIELDS)) : null;
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalidField[field] }));
         flow.focusError(form);
-      } else
-        setFormError(failure.status === INVALID_VALUE ? COPY.errors.invalid : COPY.errors.failed);
+      } else setFormError(invalidValue(error) ? COPY.errors.invalid : COPY.errors.failed);
       setBusy(false);
     }
   };

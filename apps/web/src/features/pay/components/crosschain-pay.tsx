@@ -15,7 +15,7 @@ import { PayWays } from "@/features/pay/components/pay-ways";
 import { SendAddress } from "@/features/pay/components/send-address";
 import { TwoPress } from "@/features/pay/components/two-press";
 import { AmountRows } from "@/features/pay/components/you-send";
-import { FADE, PAY_WAYS } from "@/features/pay/constants/pay";
+import { PAY_WAYS } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import {
   quoteProblem,
@@ -23,7 +23,6 @@ import {
   slippageCoversRefundFee,
   verifyQuote,
 } from "@/features/pay/lib/crosschain";
-import { amountText } from "@/features/pay/lib/pay";
 import { keepAsked, readAsked } from "@/features/pay/lib/tab-memory";
 import type { CrossChain, CrossToken } from "@/features/pay/types/crosschain";
 import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
@@ -35,8 +34,9 @@ import {
   CROSS_CHAIN_TARGET,
   CROSS_CHAIN_TOKEN_ICONS,
 } from "@/shared/constants/chains";
-import { ENTER } from "@/shared/constants/motion";
+import { ENTER, FADE_IN } from "@/shared/constants/motion";
 import { blockchainName, chainLogo, iconOf, tokenLogo } from "@/shared/lib/chains";
+import { amountText } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
 
@@ -360,7 +360,7 @@ function Send({
   onRenew: () => void;
 }) {
   return (
-    <div className={`flex flex-col gap-4 ${FADE}`}>
+    <div className={`flex flex-col gap-4 ${FADE_IN}`}>
       {renewed && !expired ? (
         <p role="status" className="text-sm font-medium text-ink">
           {COPY.newAddress}

@@ -1,5 +1,6 @@
 import { BILLING_LIMITS } from "@/features/profiles/constants/billing-details";
 import { PROFILE_KINDS, PROFILE_NAME_MAX } from "@/features/profiles/constants/profile";
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
 
 export const PROFILES_COPY = {
   newProfile: "New profile",
@@ -44,6 +45,7 @@ export const NEW_PROFILE_COPY = {
 
 export const BILLING_DETAILS_COPY = {
   title: "Billing details",
+  needed: { title: "Add your billing details first", action: "Add billing details" },
   saved: "Billing details saved",
   contactGroup: "Contact",
   addressGroup: "Address and tax",
@@ -64,14 +66,14 @@ export const BILLING_DETAILS_COPY = {
   errors: {
     required: "Fill in this field.",
     country: "Choose a country.",
-    email: "Enter an email like name@example.com.",
+    email: EMAIL_COPY.invalid,
     failed: "We could not save your billing details. Check them and try again.",
     invalid: {
       name: `Use at most ${BILLING_LIMITS.name} characters, with no hidden characters. The name can't be Forwend.`,
       address: `Use at most ${BILLING_LIMITS.address} characters, with no hidden characters.`,
       country: "Choose a country.",
       taxId: `Use at most ${BILLING_LIMITS.taxId} characters, with no hidden characters.`,
-      email: "Enter an email like name@example.com.",
+      email: EMAIL_COPY.invalid,
     },
   },
 } as const;
