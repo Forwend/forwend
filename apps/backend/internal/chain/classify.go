@@ -13,7 +13,6 @@ import (
 // missing is the safe message for a block or state the endpoint doesn't have: one behind the head, or a pruned node.
 const missing = "block or state not available"
 
-// lacksData reports a lowercase error message saying the endpoint doesn't have the block or state asked for.
 func lacksData(m string) bool {
 	for _, lacks := range []string{"header not found", "unknown block", "block not found", "missing trie node", "historical state",
 		"state not available", "state is not available", "pruned"} {
@@ -58,8 +57,7 @@ func safeMessage(code int, message string) string {
 
 const notJSONRPC = "answer is not JSON-RPC"
 
-// outage says why a 200 answer is about the endpoint rather than the call, or returns "". A rate limit on any call
-// of a batch sends the whole batch to the next endpoint.
+// outage says why a 200 answer is the endpoint's fault, or ""; a rate limit on one call moves the whole batch.
 func outage(raw []byte) string {
 	type answer struct {
 		Error *struct {
@@ -91,8 +89,7 @@ func outage(raw []byte) string {
 	return ""
 }
 
-// rateLimited: code 429, -32005 (EIP-1474, Infura), -32007 (QuickNode) or a message saying so. Infura's -32005 for
-// too many log results is about the call (tooLarge), and the watcher narrows its range.
+// rateLimited: 429, -32005 (EIP-1474), -32007 (QuickNode) or the message; Infura's too-many-logs -32005 is tooLarge.
 func rateLimited(code int, message string) bool {
 	m := strings.ToLower(message)
 	if tooLarge(m) {
@@ -102,17 +99,13 @@ func rateLimited(code int, message string) bool {
 		strings.Contains(m, "rate limit") || strings.Contains(m, "rate exceeded") || strings.Contains(m, "too many requests")
 }
 
-// tooLarge reports a lowercase error message about a log query's block range or result size, such as "query returned
-// more than 10000 results" (Infura), "exceed maximum block range", "query exceeds max results 20000, retry with the
-// range" (Arc) or "log response size exceeded". A timeout or other failure that only mentions a result is not one.
+// tooLarge reports a log query refused for its block range or result size; a timeout that names results is not.
 func tooLarge(m string) bool {
 	return strings.Contains(m, "range") || strings.Contains(m, "results") || strings.Contains(m, "response size") ||
 		strings.Contains(m, "result size") || strings.Contains(m, "too large") || strings.Contains(m, "too big")
 }
 
-// addressLimit reports a lowercase error message refusing a log query for the contracts it names, such as "a maximum of
-// 10 addresses is allowed" (PublicNode).
-// A rate limit that names the caller's IP address is not one, nor is a range or result refusal.
+// addressLimit reports a log query refused for the contracts it names; a rate limit naming the IP is not one.
 func addressLimit(m string) bool {
 	return strings.Contains(m, "address") && !strings.Contains(m, "rate") && !tooLarge(m) &&
 		(strings.Contains(m, "maximum") || strings.Contains(m, "too many") || strings.Contains(m, "limit") ||
@@ -125,7 +118,6 @@ func Missing(err error) bool {
 	return errors.As(err, &e) && (e.Error() == missing || lacksData(strings.ToLower(e.Error())))
 }
 
-// AddressesTooMany reports a log query refused for the number of contracts it names, by the pool or a provider.
 func AddressesTooMany(err error) bool {
 	var status rpc.HTTPError
 	if errors.As(err, &status) {
@@ -136,8 +128,7 @@ func AddressesTooMany(err error) bool {
 	return errors.As(err, &e) && addressLimit(strings.ToLower(e.Error()))
 }
 
-// batchLimit reports a lowercase error message refusing a batch's size, such as "batch of more than 3 requests are not
-// allowed" or "batch size 101 exceeds limit of 100".
+// batchLimit reports a refused batch size, such as "batch size 101 exceeds limit of 100".
 func batchLimit(m string) bool {
 	return strings.Contains(m, "batch") && !strings.Contains(m, "rate") && (strings.Contains(m, "not allowed") ||
 		strings.Contains(m, "too large") || strings.Contains(m, "maximum batch") || strings.Contains(m, "exceeds") ||

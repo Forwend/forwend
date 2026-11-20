@@ -10,7 +10,6 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Migration 8 numbers existing invoices per profile by creation time, then id; each counter continues after them.
 func TestInvoiceNumbersForExistingInvoices(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
@@ -56,7 +55,7 @@ func TestInvoiceNumbersForExistingInvoices(t *testing.T) {
 	}
 	insert(1, a, "2026-10-01T10:00:00Z")
 	insert(3, a, "2026-10-01T09:00:00Z")
-	insert(2, a, "2026-10-01T09:00:00Z") // same time as 3: the lower id comes first
+	insert(2, a, "2026-10-01T09:00:00Z")
 	insert(4, b, "2026-10-01T08:00:00Z")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatal(err)

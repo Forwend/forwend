@@ -31,8 +31,7 @@ type Coin struct {
 
 var usdValue = regexp.MustCompile(`^[0-9]{1,6}(\.[0-9]{1,18})?$`)
 
-// parse reads a /simple/price answer for ids. A coin missing or with a null price has none this time. Any other
-// price that is not a positive decimal with its update time fails the whole answer, and so does one without prices.
+// parse reads a /simple/price answer; a missing or null price is skipped, any other bad price fails the answer.
 func parse(answer []byte, ids []string) ([]Coin, error) {
 	var coins map[string]struct {
 		USD       *json.Number `json:"usd"`
@@ -59,13 +58,11 @@ func parse(answer []byte, ids []string) ([]Coin, error) {
 	return out, nil
 }
 
-// Keeper reads the prices when due. URL is CoinGecko's API root; Key is the Demo plan's key, or "" to call without
-// one: never log it.
 type Keeper struct {
 	Pool   *pgxpool.Pool
 	Client *http.Client
 	URL    string
-	Key    string
+	Key    string // Demo plan key or ""; never log
 	Every  time.Duration
 	due    time.Time
 }

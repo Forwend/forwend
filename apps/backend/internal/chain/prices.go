@@ -17,8 +17,7 @@ type PriceFeed struct {
 	Heartbeat time.Duration
 }
 
-// EthUSD is each paymaster chain's Chainlink ETH/USD feed, 8 decimals, with its heartbeat in Chainlink's feed directory.
-// Base's proxy is the directory's second proxy of the eth-usd-shared-svr-2 feed.
+// EthUSD is each paymaster chain's Chainlink ETH/USD feed and heartbeat, from Chainlink's feed directory.
 var EthUSD = map[uint64]PriceFeed{
 	8453:   {common.HexToAddress("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"), 1200 * time.Second},
 	42161:  {common.HexToAddress("0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"), 1755 * time.Second},
@@ -26,8 +25,7 @@ var EthUSD = map[uint64]PriceFeed{
 	421614: {common.HexToAddress("0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165"), 120 * time.Second},
 }
 
-// SequencerUptime is each L2 mainnet's Chainlink sequencer uptime feed: 0 while the sequencer is up, 1 while it is
-// down, since startedAt. While it is down, feeds can't update and their last price looks current.
+// SequencerUptime is each L2's Chainlink uptime feed (0 up, 1 down); while down, old prices look current.
 var SequencerUptime = map[uint64]common.Address{
 	8453:  common.HexToAddress("0xBCF85224fc0756B9Fa45aA7892530B47e10b6433"),
 	42161: common.HexToAddress("0xFdB631F5EE196F0ed6FAa767959853A9F217697D"),
@@ -36,18 +34,14 @@ var SequencerUptime = map[uint64]common.Address{
 // sequencerGrace: once the sequencer is back, prices wait this long for the feeds to catch up.
 const sequencerGrace = time.Hour
 
-// priceSlack is how much later than its heartbeat a feed may answer: its update is a transaction that can wait for a
-// block, and a testnet oracle with a short heartbeat runs late now and then.
+// priceSlack is how late past its heartbeat a feed may answer: its update waits for a block; testnets run late.
 const priceSlack = 10 * time.Minute
 
-// EthUSDDecimals is the decimals of every EthUSD feed's answer.
 const EthUSDDecimals = 8
 
 var latestRoundData = common.Hex2Bytes("feaf968c")
 
-// EthPrice reads the chain's ETH/USD feed: the dollars one ether costs, with EthUSDDecimals decimals. It refuses a
-// price older than its heartbeat and priceSlack, or read while the L2 sequencer is down or back for under sequencerGrace:
-// such a price sets network fees and the floor of the executor's swap (R-227, R-229).
+// EthPrice reads the ETH/USD feed; it refuses a stale price, or one read while the L2 sequencer is down or just back.
 func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*big.Int, error) {
 	feed, ok := EthUSD[chainID]
 	if !ok {
@@ -84,7 +78,6 @@ func EthPrice(ctx context.Context, client *ethclient.Client, chainID uint64) (*b
 	return price, nil
 }
 
-// latestRound reads a Chainlink feed's latest answer, with when its round started and was last updated.
 func latestRound(ctx context.Context, client *ethclient.Client, feed common.Address) (answer *big.Int, started,
 	updated time.Time, err error) {
 	raw, err := client.CallContract(ctx, ethereum.CallMsg{To: &feed, Data: latestRoundData}, nil)

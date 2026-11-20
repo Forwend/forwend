@@ -14,7 +14,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
-// The hash is never computed in Go: go-ethereum gets it wrong on Tempo (S-4).
+// The hash is never computed in Go: go-ethereum gets it wrong on Tempo.
 type header struct {
 	Number    hexutil.Uint64 `json:"number"`
 	Hash      common.Hash    `json:"hash"`
@@ -32,9 +32,7 @@ func parts[T any](items []T) [][]T {
 	return append(out, items)
 }
 
-// narrow halves the log range after a refusal and reports that the query should be asked again; growAfter accepted
-// queries double it back. The pool already sent a refused query to every endpoint, so no endpoint takes this range.
-// Rate limits never narrow it: smaller ranges only mean more requests.
+// narrow halves the log range after a refusal every endpoint gave, never on a rate limit; growAfter doubles it back.
 func (c *Chain) narrow(err error) bool {
 	switch {
 	case err == nil:

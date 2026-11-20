@@ -35,7 +35,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// The creator's profile wallet: settle pays it.
 const wallet = "0x1111111111111111111111111111111111111111"
 
 type env struct {
@@ -48,7 +47,6 @@ type env struct {
 	ledger  *ledger.Service
 }
 
-// setup: the real factory at its compiled address, Anvil's key as executor, a mock USDC and a profile wallet.
 func setup(t *testing.T) env {
 	t.Helper()
 	return setupChain(t, chaintest.Start(t))
@@ -101,14 +99,11 @@ func (e env) signer(t *testing.T) *Signer {
 	}
 	clients := map[uint64]*ethclient.Client{e.chainID: e.client}
 	s := NewSigner(e.pool, key, clients)
-	// Anvil mines at once, so a test reads receipts and code again within milliseconds (the backoff has its own test).
 	s.receiptPoll, s.codePoll = 10*time.Millisecond, 10*time.Millisecond
-	// Anvil finalizes two blocks later, when a test mines them: a mined settle is read again next round.
 	s.finalWait = 0
 	return s
 }
 
-// paidInvoice is a 5 USDC invoice paid 6, booked until it has a settlement intent.
 func (e env) paidInvoice(t *testing.T) (id, receive string) {
 	t.Helper()
 	return e.pay(t, 7)
@@ -166,7 +161,6 @@ func (e env) createWithFees(t *testing.T, n int, expiresIn, networkFee, platform
 	return id, receive
 }
 
-// Anvil's finalized block is latest - 2.
 func (e env) final(t *testing.T, s *Signer) {
 	t.Helper()
 	e.anvil.Mine(2)
@@ -175,7 +169,6 @@ func (e env) final(t *testing.T, s *Signer) {
 	}
 }
 
-// finalWithWorker also runs a worker round first: its scan records another settler's events.
 func (e env) finalWithWorker(t *testing.T, s *Signer) {
 	t.Helper()
 	ctx := context.Background()
@@ -497,7 +490,7 @@ func TestRestartAfterSendingSendsNothing(t *testing.T) {
 	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
 		t.Fatalf("got %v", err)
 	}
-	e.anvil.Mine(1) // automine may not have mined the settle yet
+	e.anvil.Mine(1)
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -527,7 +520,6 @@ func TestRestartResendsAPendingSettleOnce(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 	saved, _ := e.saved(t, id)
-	// Mined only once the restart has sent the settle again, so the node answers that send as a duplicate.
 	proxy := e.anvil.Proxy()
 	var resent bool
 	proxy.Fail(func(c chaintest.Call) chaintest.Fault {
@@ -564,7 +556,7 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 			id, receive := e.create(t, 7)
 			e.anvil.Transfer(e.token, receive, "5000000")
 			if seenBeforeTheStop {
-				if err := e.watch.Scan(ctx); err != nil { // its block is above the finalized one: detected only
+				if err := e.watch.Scan(ctx); err != nil {
 					t.Fatal(err)
 				}
 				var status string
@@ -573,7 +565,6 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 					t.Fatalf("before the stop: transfer %q (%v), want detected", status, err)
 				}
 			}
-			// The processes are down: the chain goes on past the checkout's close.
 			e.anvil.Wait(2 * 3600)
 			e.anvil.Mine(3)
 
@@ -646,7 +637,7 @@ func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
 	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
 		t.Fatalf("got %v", err)
 	}
-	e.anvil.Mine(1) // automine may not have mined the settle yet
+	e.anvil.Mine(1)
 	if _, err := e.pool.Exec(ctx, "UPDATE profile_wallets SET address = '0x2222222222222222222222222222222222222223'"); err != nil {
 		t.Fatal(err)
 	}
@@ -695,7 +686,7 @@ func TestNonceTakenByAnotherTransaction(t *testing.T) {
 	if err := crashing.Run(ctx); !errors.Is(err, errStopped) {
 		t.Fatalf("got %v", err)
 	}
-	e.anvil.Transfer(e.token, "0x00000000000000000000000000000000000000bb", "1") // takes the saved nonce
+	e.anvil.Transfer(e.token, "0x00000000000000000000000000000000000000bb", "1")
 	if err := e.signer(t).Run(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -739,7 +730,6 @@ func TestForeignTxHashIsNotConfirmed(t *testing.T) {
 	}
 }
 
-// settleOutside deploys and settles the receiver directly from the executor, not through our signer.
 func (e env) settleOutside(t *testing.T, id, receive string) {
 	t.Helper()
 	var expires, deadline int64
@@ -779,7 +769,7 @@ func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
 	if err := e.pool.QueryRow(ctx, "SELECT id FROM settlement_intents WHERE invoice_id = $1", id).Scan(&intentID); err != nil {
 		t.Fatal(err)
 	}
-	stale, err := s.load(ctx, intentID) // loaded while pending
+	stale, err := s.load(ctx, intentID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -827,7 +817,7 @@ func TestSettleDroppedByReorgIsSentAgain(t *testing.T) {
 	if err := e.pool.QueryRow(ctx, "SELECT tx_hash FROM settlement_intents WHERE invoice_id = $1", id).Scan(&saved); err != nil {
 		t.Fatal(err)
 	}
-	e.anvil.Reorg(1) // the block with the settle is replaced: the payout is gone
+	e.anvil.Reorg(1)
 	if err := s.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -880,7 +870,6 @@ func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
 	}
 }
 
-// settlementTxHash is the hash the invoice reads show; "" is null.
 func (e env) settlementTxHash(t *testing.T, invoiceID string) string {
 	t.Helper()
 	return e.invoice(t, invoiceID).SettlementTxHash
@@ -912,7 +901,7 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *t
 				t.Fatalf("got %v", err)
 			}
 			e.anvil.Wait(3600 + 86400 + 60)
-			if send { // past the deadline only the refund authority may settle: ours reverts
+			if send {
 				var saved string
 				var raw []byte
 				if err := e.pool.QueryRow(ctx, "SELECT tx_hash, raw_tx FROM settlement_intents WHERE invoice_id = $1",
@@ -964,7 +953,7 @@ func TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain(t *testing.T) {
 	e.anvil.Wait(3600 + 86400 + 60)
 	e.anvil.AsAuthority(receiveA, "settle()")
 	s := e.signer(t)
-	s.attemptTimeout = 3 * time.Second // a deploy behind the gap would wait the full attempt
+	s.attemptTimeout = 3 * time.Second
 	for range 3 {
 		e.anvil.Mine(2)
 		if err := e.watch.Scan(ctx); err != nil {
@@ -1055,7 +1044,7 @@ func TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas(t *testing.T) {
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
 	proxy := e.anvil.Proxy()
-	lag := func(hidden int) { // the first hidden eth_getCode calls at the receiver say no code; every estimate is low
+	lag := func(hidden int) {
 		proxy.Stale(func(c chaintest.Call) json.RawMessage {
 			switch {
 			case c.Method == "eth_getCode" && strings.Contains(param(c, 0), receive) && hidden > 0:
@@ -1171,7 +1160,6 @@ func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
 		if status != step.want || hash == nil || *hash != saved {
 			t.Fatalf("%s: intent %s with hash %v; want %s with our settle %s", step.name, status, hash, step.want, saved)
 		}
-		// The operators' query for settles the signer can't resolve (docs/backend/architecture.md#signer).
 		var unresolved bool
 		if err := e.pool.QueryRow(ctx, `SELECT EXISTS (SELECT FROM settlement_intents
 			WHERE invoice_id = $1 AND status = 'sent' AND reason IS NOT NULL AND next_attempt_at > now() + interval '30 seconds')`,
@@ -1245,7 +1233,6 @@ func (e env) saved(t *testing.T, invoiceID string) (string, []byte) {
 	return hash, raw
 }
 
-// 100 gwei base fee: Anvil drops a pending settle signed before and refuses it again, as a node does.
 func (e env) overpriced(t *testing.T) {
 	t.Helper()
 	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", "0x174876e800")
@@ -1327,7 +1314,6 @@ func TestStuckSettleThatMinesWhenSentAgainIsBookedWithoutAnError(t *testing.T) {
 	}
 	stuck, _ := e.saved(t, id)
 	e.anvilCall(t, "evm_setAutomine", false)
-	// The saved settle goes out first and waits in the pool; it mines just before the replacement arrives.
 	proxy := e.anvil.Proxy()
 	sends := 0
 	proxy.Fail(func(c chaintest.Call) chaintest.Fault {
@@ -1378,7 +1364,7 @@ func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 	}
 	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", "0x1")
 	e.anvil.Mine(1)
-	e.anvil.SendRaw(hexutil.Encode(raw)) // the first version mines, not the replacement
+	e.anvil.SendRaw(hexutil.Encode(raw))
 
 	s := e.signer(t)
 	if err := s.Run(ctx); err != nil {
@@ -1402,7 +1388,7 @@ func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 }
 
 func TestSettleGasIsEstimatedAtTheDeployBlock(t *testing.T) {
-	const arbitrum = 400_000 // the at-block estimate with L1 data gas
+	const arbitrum = 400_000
 	for name, refuse := range map[string]bool{"at the deploy block": false, "node refuses a block": true} {
 		t.Run(name, func(t *testing.T) {
 			e := setup(t)
@@ -1482,7 +1468,7 @@ func TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
-	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", "0x2540be400") // 10 gwei while it signs
+	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", "0x2540be400")
 	e.anvil.Mine(1)
 	saving := e.signer(t)
 	saving.stopAfter = "save"
@@ -1644,7 +1630,7 @@ func TestNonceGapIsFilled(t *testing.T) {
 	if got := e.nonce(t); got != before+1 {
 		t.Fatalf("executor nonce %d, want %d after the filler", got, before+1)
 	}
-	id, _ := e.paidInvoice(t) // pays from Anvil's account, the executor here
+	id, _ := e.paidInvoice(t)
 	held := e.nonce(t)
 	if _, err := e.pool.Exec(ctx, `UPDATE settlement_intents SET status = 'sent', sender = $2, nonce = $3,
 		tx_hash = '0x' || repeat('ab', 32), raw_tx = '\x00' WHERE invoice_id = $1`, id,
@@ -1846,7 +1832,7 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 	}
 	e.anvil.Transfer(usdt, usdtOption.ReceiveAddress, "5000000")
 	round()
-	e.anvil.Transfer(e.token, usdcOption.ReceiveAddress, "5000000") // too late: USDT was chosen
+	e.anvil.Transfer(e.token, usdcOption.ReceiveAddress, "5000000")
 	e.anvil.Mine(2)
 	round()
 
@@ -1887,7 +1873,7 @@ func TestMinedSettleWaitsForFinalityBeforeItIsReadAgain(t *testing.T) {
 	id, _ := e.paidInvoice(t)
 	s := e.signer(t)
 	s.finalWait = FinalWait
-	e.anvil.Wait(90) // the settle's block is about 90 s newer than the finalized one
+	e.anvil.Wait(90)
 	if err := s.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -1917,7 +1903,6 @@ func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
-	// Missed: the scan passes their blocks without recording them, one before the invoice is paid, one after.
 	e.anvil.Transfer(e.token, missedFirst, "2000000")
 	e.anvil.Transfer(e.token, missedLater, "2000000")
 	e.anvil.Mine(2)
@@ -1990,7 +1975,7 @@ func TestStuckDeployReplacementPaysForTheWholeDeploy(t *testing.T) {
 	defer func() { _ = e.anvil.RPC.Call(nil, "evm_setAutomine", true) }()
 	for _, what := range []string{"the first deploy", "the deploy over it"} {
 		s := e.signer(t)
-		s.attemptTimeout = 2 * time.Second // the deploy waits in the mempool, as after a crash
+		s.attemptTimeout = 2 * time.Second
 		if err := s.Run(ctx); err == nil {
 			t.Fatalf("%s was not mined, yet the run reported no error", what)
 		}
@@ -2182,7 +2167,7 @@ func TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in.amount = new(big.Int).Add(in.amount, big.NewInt(1)) // the stored terms no longer compute the receive address
+	in.amount = new(big.Int).Add(in.amount, big.NewInt(1))
 	if err := s.reconcile(ctx, e.client, in); err != nil {
 		t.Fatalf("reconcile of a mined settle: %v", err)
 	}

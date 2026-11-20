@@ -1,13 +1,11 @@
-// Package finality tells how far a received deposit is from final, measured against the chain's finalized head
-// (D-45). No fixed block count: when finality is slow, the finalized head falls behind and the time left grows.
+// Package finality tells how far a deposit is from final against the chain's finalized head, not a block count.
 package finality
 
 import "time"
 
-// Block's Time is in Unix seconds, as the RPC reports it.
 type Block struct {
 	Number uint64
-	Time   uint64
+	Time   uint64 // Unix seconds
 }
 
 // Progress is what is left until a deposit's block is final. Both fields are 0 once it is final.

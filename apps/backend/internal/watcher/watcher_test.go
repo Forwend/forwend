@@ -53,7 +53,6 @@ type env struct {
 	chain *Chain
 }
 
-// setup runs Anvil with a mock USDC and one invoice paid at receive, and scans once so the cursor exists.
 func setup(t *testing.T) env {
 	t.Helper()
 	return setupChain(t, chaintest.Start(t))
@@ -146,7 +145,7 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if got := wait(); got != 2 {
 		t.Fatalf("blocks to wait when seen: %d", got)
 	}
-	e.anvil.Mine(1) // finalized is now one block short of the deposit
+	e.anvil.Mine(1)
 	e.scan(t)
 	if got, _ := e.rows(t); got[tx][0] != "detected" {
 		t.Fatalf("one block later: %v", got)
@@ -154,7 +153,7 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 	if got := wait(); got != 2 {
 		t.Fatalf("a later scan changed the blocks to wait: %d", got)
 	}
-	e.anvil.Mine(1) // the deposit's block is finalized
+	e.anvil.Mine(1)
 	e.scan(t)
 	if got, n := e.rows(t); n != 1 || got[tx][0] != "confirmed" {
 		t.Fatalf("once finalized: %v", got)
@@ -163,9 +162,8 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 
 func TestOnlyTheInvoiceTokenToAReceiveAddressCounts(t *testing.T) {
 	e := setup(t)
-	lookalike := e.anvil.DeployToken() // same name, symbol and Transfer event
+	lookalike := e.anvil.DeployToken()
 	e.anvil.Mint(lookalike, "100000000")
-	// The look-alike is also a listed token of another invoice, so the RPC filter returns its logs too.
 	_, err := e.pool.Exec(context.Background(), `
 		WITH tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		            VALUES ($1, 'evm', $2, 'OTHER', 6, true))
@@ -202,13 +200,12 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 	raw := e.anvil.RawTx(tx)
 	e.scan(t)
 
-	e.anvil.Reorg(1) // the block with the transfer is replaced by an empty one
+	e.anvil.Reorg(1)
 	e.scan(t)
 	if got, n := e.rows(t); n != 1 || got[tx][0] != "reorged" {
 		t.Fatalf("after the reorg: %v", got)
 	}
 
-	// The same signed transaction is mined again in another block: same tx hash and log index, new row.
 	e.anvil.SendRaw(raw)
 	e.scan(t)
 	if got, n := e.rows(t); n != 2 || got[tx][0] != "reorged" || got[tx][1] != "detected" {
@@ -228,7 +225,7 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 	for name, c := range map[string]struct {
 		refuse    func(blocks uint64, earlier int) chaintest.Fault
-		wantSizes []uint64 // the first ranges asked for
+		wantSizes []uint64
 		wantErr   bool
 	}{
 		"too many results over 700 blocks": {refuse: func(blocks uint64, _ int) chaintest.Fault {
@@ -479,13 +476,13 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 		t.Fatal(err)
 	}
 	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
-	watchedAfterDeadline = time.Since(time.Unix(86401, 0)) + time.Hour // still watched
+	watchedAfterDeadline = time.Since(time.Unix(86401, 0)) + time.Hour
 	late := e.anvil.Transfer(e.token, closing, "5000000")
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "detected" {
 		t.Fatalf("rows %v", got)
 	}
-	watchedAfterDeadline = 0 // the invoice leaves the window while its deposit is not final
+	watchedAfterDeadline = 0
 	e.anvil.Mine(2)
 	e.scan(t)
 	if got, _ := e.rows(t); got[late][0] != "confirmed" {
@@ -519,7 +516,6 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	e.scan(t)
 	e.anvil.Mine(2)
 	e.scan(t)
-	// Booked as late money, held for the payer; then support queues its return.
 	if _, err := e.pool.Exec(ctx, `WITH t AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
 		SELECT invoice_id, 'deposit', id FROM chain_transfers WHERE tx_hash = $1 RETURNING id)
 		INSERT INTO ledger_entries (transaction_id, account, amount)
@@ -531,7 +527,7 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func(window time.Duration) { watchedAfterDeadline = window }(watchedAfterDeadline)
-	watchedAfterDeadline = time.Since(time.Unix(int64(terms.SettleDeadline), 0)) - time.Hour // past the window
+	watchedAfterDeadline = time.Since(time.Unix(int64(terms.SettleDeadline), 0)) - time.Hour
 
 	e.anvil.AsAuthority(factory, "deploy((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))",
 		fmt.Sprintf("(0x%s,0x1111111111111111111111111111111111111111,%s,5000000,%d,%d,%d,0,0)", strings.Repeat("05", 32),
@@ -636,9 +632,9 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	removed.Removed = true
 	logs := []types.Log{
 		settled(watched, 5, final),
-		settled(watched, 50, final),                     // above the finalized block
-		settled(watched, 6, other),                      // another block than the one the chain shows at that height
-		settled(common.HexToAddress("0xbad"), 5, final), // not a watched receiver
+		settled(watched, 50, final),
+		settled(watched, 6, other),
+		settled(common.HexToAddress("0xbad"), 5, final),
 		removed,
 	}
 	got, err := e.chain.outflows(ctx, logs, headers, invoices, 10)
@@ -685,7 +681,6 @@ func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 	authority := common.Address(address.Known[address.Factory].RefundAuthority)
 	word := func(n int64) []byte { return common.LeftPadBytes(big.NewInt(n).Bytes(), 32) }
 	topic := func(a common.Address) common.Hash { return common.BytesToHash(a.Bytes()) }
-	// settle's logs: its transfers to the recipient, the settler and the refund authority, then Settled and FeesPaid.
 	settle := func(block common.Hash, network int64) []Outflow {
 		log := func(index uint, address common.Address, data []byte, topics ...common.Hash) types.Log {
 			return types.Log{Address: address, BlockNumber: 5, BlockHash: block, TxHash: block, Index: index, Data: data, Topics: topics}
@@ -721,7 +716,7 @@ func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 	block := common.HexToHash("0xb1")
 	missed := settle(block, 30000)
 	for i := range missed {
-		missed[i].Transfers = nil // a node answered without the transfers
+		missed[i].Transfers = nil
 	}
 	record(missed)
 	if got, want := rows(block), fmt.Sprintf("settlement 4950000 %s - transfer_evidence_missing, network_fee 30000 %s - "+

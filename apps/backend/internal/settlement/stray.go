@@ -22,8 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Strays are money an invoice option doesn't take: another token, or any token on another chain; never booked.
-// The receiver's recover returns it only where the factory, receiver code and refund authority there are ours.
+// Strays are money an option doesn't take; a recover returns it only where factory, code and authority are ours.
 
 var (
 	recoverSelector   = selector(recoverSignature)
@@ -59,7 +58,6 @@ type Stray struct {
 	Decimals    int
 }
 
-// Recovery is the calls that return a stray transfer.
 type Recovery struct {
 	To        common.Address
 	Authority common.Address
@@ -67,8 +65,7 @@ type Recovery struct {
 	Warnings  []string
 }
 
-// FindStrays reads the transaction on every chain and keeps its transfers to a receive address that aren't the
-// option's own money; a chain whose RPC fails stops the search, since a missed transfer would read as no case.
+// FindStrays reads the transaction on every chain for transfers that aren't the option's; an RPC failure stops it.
 func FindStrays(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethclient.Client, txHash string) ([]Stray, error) {
 	hash := common.HexToHash(txHash)
 	var strays []Stray
@@ -114,8 +111,7 @@ func FindStrays(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethcl
 	return strays, nil
 }
 
-// PlanRecovery checks a stray transfer can come back and gives the refund authority's calls; it sends nothing
-// and locks the transfer, so its recover is printed once.
+// PlanRecovery checks a stray can come back and gives the refund authority's calls, locking it so it prints once.
 func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.Client, s Stray, to *common.Address) (Recovery, error) {
 	// Printed before: once sent, the address no longer holds it, which must not read as "can't be returned".
 	var printed bool
@@ -242,8 +238,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	return r, nil
 }
 
-// ReleaseRecovery unlocks, one at a time, printed recovers the refund authority won't send. A lock is released
-// only while the receiver logged fewer recovers of its key than locks held, and none to its own destination.
+// ReleaseRecovery unlocks a printed recover not sent, only while the receiver logged fewer recovers than locks held.
 func ReleaseRecovery(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethclient.Client, txHash string) (int64, error) {
 	txHash = strings.ToLower(strings.TrimSpace(txHash))
 	var released int64
@@ -345,8 +340,7 @@ func recovers(ctx context.Context, client *ethclient.Client, from uint64, receiv
 	return n, nil
 }
 
-// reverted tells a refused call from a failed RPC, which must not read as "can't be returned"; the pool rewrites
-// every revert to this message (chain.safeMessage), and code 3 is the standard.
+// reverted tells a refused call from a failed RPC: the pool rewrites reverts to one message, and code 3 is standard.
 func reverted(err error) bool {
 	var e rpc.Error
 	if errors.As(err, &e) && e.ErrorCode() == 3 {
@@ -355,8 +349,7 @@ func reverted(err error) bool {
 	return strings.Contains(err.Error(), "execution reverted")
 }
 
-// ours is nil when the chain has our factory, receiver code and refund authority (our key, or a Safe like ours):
-// anyone can put other code at these addresses.
+// ours is nil when the chain has our factory, receiver code and refund authority; anyone can deploy look-alikes.
 func ours(ctx context.Context, home, there *ethclient.Client, factory [20]byte, authority common.Address) error {
 	// Both chains' answers for one read; a failed read is an error, never "not ours".
 	same := func(read func(*ethclient.Client) ([]byte, error)) (bool, int, error) {

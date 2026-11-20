@@ -10,12 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// leastAmount is the least an option's payments must add up to before they choose it (D-76): a tenth of the amount, at
-// most 1.00 USD (one whole token of a stablecoin, D-75). A partial payment then chooses, and a stranger's dust can't.
+// leastAmount: an option's payments must reach a tenth of the amount, at most one whole token, to choose it.
 const leastAmount = `least(greatest(div(i.amount, 10), 1), (10::numeric ^ tk.decimals)::numeric(78, 0))`
 
-// optionTotals are the on-time payments of the options of invoice $1, each with its option's running total; the caller
-// adds the status it counts.
+// optionTotals are the on-time payments of invoice $1's options with running totals; the caller adds the status.
 const optionTotals = `SELECT t.invoice_id, t.block_time, t.chain_id, t.block_number, t.log_index, t.booked,
 	    sum(t.amount) OVER (PARTITION BY t.invoice_id ORDER BY t.block_time, t.block_number, t.log_index) AS total,
 	    ` + leastAmount + ` AS least
@@ -26,22 +24,15 @@ const optionTotals = `SELECT t.invoice_id, t.block_time, t.chain_id, t.block_num
 // ChoosingSeenSQL is true while a payment that can choose an option of invoice $1 is seen, final or not.
 const ChoosingSeenSQL = `EXISTS (SELECT 1 FROM (` + optionTotals + ` AND t.status <> 'reorged') s WHERE total >= least)`
 
-// optionChoice is where one option of a payer-chooses invoice stands.
 type optionChoice struct {
-	noneChosen bool // every payment is the payer's until one chooses
-	superseded bool // another option is chosen: this one's money is held for the payer
-	// applyEarlier: this option is chosen, so its parts held while nothing was chosen pay the creator (applyHeldParts),
-	// unless it takes no more money (a cancel, D-26) or a return of it is under way.
-	applyEarlier bool
-	shown        bool // the row invoices_current shows: the chosen option, or the main row until one is chosen
-	// closedEverywhere: with nothing chosen past the close, every enabled option chain is final past it too, so no
-	// payment made before the close can still come.
-	closedEverywhere bool
+	noneChosen       bool // every payment is the payer's until one chooses
+	superseded       bool // another option is chosen: this one's money is held for the payer
+	applyEarlier     bool // held parts now pay the creator
+	shown            bool // the row invoices_current shows
+	closedEverywhere bool // no payment before the close can still come
 }
 
-// chooseOption (R-56, D-76): the first option whose final payments add up to its least amount is the invoice's, under
-// the main row's lock so two options can't both win; money on any other option is held for the payer. waiting is true
-// while a payment that can choose is seen but not final.
+// chooseOption: the first option whose final payments reach leastAmount wins, under the main row's lock.
 func chooseOption(ctx context.Context, tx pgx.Tx, invoiceID, group, current, refund, settlementState string, closesAt,
 	finalizedTime int64) (c optionChoice, waiting bool, err error) {
 	var chosen *string
@@ -93,7 +84,7 @@ func chooseOption(ctx context.Context, tx pgx.Tx, invoiceID, group, current, ref
 	return c, false, nil
 }
 
-// recordAwaitingChoice shows money seen on a payer-chooses invoice while the choice waits (R-119): open becomes detected.
+// recordAwaitingChoice shows money seen on a payer-chooses invoice while the choice waits: open becomes detected.
 func recordAwaitingChoice(ctx context.Context, tx pgx.Tx, invoiceID, group, current string) error {
 	if invoiceID != group || current != Open {
 		return nil
@@ -107,8 +98,7 @@ func recordAwaitingChoice(ctx context.Context, tx pgx.Tx, invoiceID, group, curr
 	return tx.Commit(ctx)
 }
 
-// applyHeldParts moves the held parts of option's on-time deposits, booked while no option was chosen, to the creator,
-// at most up to; each part names its transfer, so readers see which deposits paid the creator. It returns what moved.
+// applyHeldParts moves option's held on-time deposits to the creator, at most up; it returns what moved.
 func applyHeldParts(ctx context.Context, tx pgx.Tx, option string, closesAt int64, up *big.Int) (*big.Int, error) {
 	// A refund names no deposit, so after one, booked or not, a held deposit row may be money already returned: nothing
 	// moves, and what is held stays the payer's.

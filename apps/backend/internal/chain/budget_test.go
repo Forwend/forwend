@@ -102,7 +102,6 @@ func TestAPIReadsCannotTakeTheMoneyPathsBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer money.Close()
-	// One block-receipts read fills the api's 160 units a second for over 6 s.
 	if err := api.wait(ctx, "shared-account", []byte(`{"method":"eth_getBlockReceipts"}`)); err != nil {
 		t.Fatal(err)
 	}

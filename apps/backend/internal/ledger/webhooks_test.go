@@ -16,7 +16,6 @@ import (
 const allEvents = "{invoice.detected,invoice.partially_paid,invoice.paid,invoice.settled,invoice.expired,invoice.canceled," +
 	"invoice.held,invoice.open,invoice.reopened}"
 
-// endpoint gives the profile a webhook endpoint named by its description.
 func (e chainEnv) endpoint(t *testing.T, name, events string, enabled, livemode bool) {
 	t.Helper()
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO webhook_endpoints (id, profile_id, url, description,
@@ -27,7 +26,6 @@ func (e chainEnv) endpoint(t *testing.T, name, events string, enabled, livemode 
 	}
 }
 
-// R-147: each status change is one event, in order, to the endpoints that take it: on, of its mode, and of its type.
 func TestPaymentsBecomeWebhookEvents(t *testing.T) {
 	e := newChainEnv(t)
 	e.endpoint(t, "all", allEvents, true, false)
@@ -51,7 +49,6 @@ func TestPaymentsBecomeWebhookEvents(t *testing.T) {
 	}
 }
 
-// R-80: a run that holds money for two reasons tells the owner once, with the total; the history has a row for each.
 func TestOneRunHoldsForTwoReasons(t *testing.T) {
 	s := newSim(t)
 	id, receive := s.invoice()
@@ -81,7 +78,6 @@ func TestOneRunHoldsForTwoReasons(t *testing.T) {
 	}
 }
 
-// R-147: a reorg that takes away the only payment seen, and an owner's reopen, are events too.
 func TestReorgAndReopenBecomeWebhookEvents(t *testing.T) {
 	s := newSim(t)
 	ctx := context.Background()

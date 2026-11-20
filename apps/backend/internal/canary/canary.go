@@ -1,5 +1,4 @@
-// Package canary checks invoices' receive addresses apart from the code that makes them (R-51). It must not import
-// anything holding the factory address, or a tampered constant there would fool it too (TestImportsNoAppCode).
+// Package canary checks receive addresses apart from app code: an import would let a tampered constant fool it.
 package canary
 
 import (
@@ -34,19 +33,17 @@ var (
 	invoiceID = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
 	payToken  = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	predictV1 = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256))"))[:4]
-	// v2 terms end with the network and platform fees (R-226).
+	// v2 terms end with the network and platform fees.
 	predictV2 = crypto.Keccak256([]byte("predict((bytes32,address,address,uint256,uint64,uint64,uint256,uint256,uint256))"))[:4]
 )
 
-// terms is one stdin line: the invoice or one of its accepted options, as the database holds it. PayToken is the
-// pay link's token of the invoice the line belongs to (D-86); ClosesAt is when its checkout closes (R-130).
+// terms is one stdin line: an invoice or one of its options, as the database holds it.
 type terms struct {
 	ID, PayToken, Recipient, Token, Amount, Symbol, Network string
-	NetworkFee, PlatformFee                                 string // in its terms with a v2 factory (R-226)
+	NetworkFee, PlatformFee                                 string // only in v2 factory terms
 	ChainID, ExpiresAt, SettleDeadline, ClosesAt            uint64
 }
 
-// apiInvoice is the part of GET /v1/invoices/{payToken} the canary compares.
 type apiInvoice struct {
 	InvoiceID, Recipient, Token, Amount, ExpiresAt, SettleDeadline, Factory, ReceiveAddress string
 	NetworkFee, PlatformFee                                                                 string
@@ -72,8 +69,7 @@ type payPage struct {
 	Error      string
 }
 
-// Check returns one alert for each difference or failed read; none means every invoice's address matched.
-// ponytail: one invoice at a time; run invoices in parallel if a run gets too slow.
+// Check returns one alert per difference or failed read; none means every address matched.
 func Check(ctx context.Context, c config.Canary, lines []string) []string {
 	var alerts []string
 	rpcs := map[uint64][2]*rpc.Client{}
@@ -134,7 +130,6 @@ func Check(ctx context.Context, c config.Canary, lines []string) []string {
 		if err != nil {
 			alerts = append(alerts, fmt.Sprintf("invoice %s: %v", t.ID, err))
 		}
-		// A quote is checked against the address the factory predicts, once the api and the page showed that one.
 		for _, q := range quotes[t.ID] {
 			if err == nil {
 				if err := checkQuote(ictx, c, t, receive, q); err != nil {
@@ -176,11 +171,9 @@ func checkInvoice(ctx context.Context, c config.Canary, rpcs map[uint64][2]*rpc.
 	if err != nil {
 		return "", fmt.Errorf("api: %w", err)
 	}
-	// The link's invoice id is keccak256 of its pay token.
 	if want := crypto.Keccak256Hash(common.FromHex(t.PayToken)).Hex(); api.InvoiceID != want {
 		return "", fmt.Errorf("api invoiceId %s, want %s", api.InvoiceID, want)
 	}
-	// The option's own terms overwrite the invoice's; the others are shared.
 	found := false
 	for _, o := range api.Options {
 		if o.OptionID == t.ID {
@@ -308,11 +301,10 @@ func parseTerms(line string) (terms, error) {
 	return t, nil
 }
 
-// Seconds from expiry to the settle deadline that create used: 7 days (invoice.SettleWindow), 1 day before it (D-18).
+// Seconds from expiry to settle deadline that create used: 7 days (invoice.SettleWindow), 1 day on older invoices.
 var settleWindows = []uint64{604800, 86400}
 
-// predictCall is factory.predict(terms). A factory whose terms have no fees gets none; fees on such terms are an
-// alert before this is called.
+// predictCall is factory.predict(terms); a factory without fees gets none, as fees there alert first.
 func (t terms) predictCall(fees bool) []byte {
 	word := func(n *big.Int) []byte { return n.FillBytes(make([]byte, 32)) }
 	address := func(s string) []byte { return word(new(big.Int).SetBytes(common.HexToAddress(s).Bytes())) }
@@ -354,8 +346,7 @@ func readAPI(ctx context.Context, link string) (apiInvoice, error) {
 	return inv, json.NewDecoder(res.Body).Decode(&inv)
 }
 
-// readPayPages runs the page script (apps/web/scripts/canary-pay-page.ts) once for every id: the pay page is drawn
-// in the browser, and the address shows only after the payer confirms the network.
+// readPayPages draws each pay page with apps/web/scripts/canary-pay-page.ts: the address needs a browser.
 func readPayPages(ctx context.Context, c config.Canary, ids []string) (map[string]payPage, error) {
 	pages := map[string]payPage{}
 	if len(ids) == 0 {

@@ -37,8 +37,7 @@ func UserFeeToken(ctx context.Context, client *ethclient.Client, account common.
 	return common.BytesToAddress(out), true, nil
 }
 
-// TempoFee is SQL: wallet transfer t is send s's Tempo fee, sent to the fee manager and at most its signed fee.
-// Any other transfer to the fee manager is money out: it also swaps and takes liquidity.
+// TempoFee is SQL: t is send s's Tempo fee, to the fee manager and at most its signed fee; others are money out.
 func TempoFee(t, s string) string {
 	feeManager := "'" + strings.ToLower(TempoFeeManager.Hex()) + "'"
 	same := `tm.chain_id = ` + t + `.chain_id AND tm.tx_hash = ` + t + `.tx_hash AND tm.wallet_address = ` + t +

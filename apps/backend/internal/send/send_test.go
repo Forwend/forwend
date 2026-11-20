@@ -32,15 +32,13 @@ type env struct {
 	pool     *pgxpool.Pool
 	sends    *Service
 	token    string
-	profile  string // Alice's personal profile; its wallet is Anvil's sender
-	merchant string // Alice's merchant profile
-	bob      string // Bob's profile
+	profile  string
+	merchant string
+	bob      string
 	watch    *watcher.Chain
 	privy    *privytest.Fake
 }
 
-// newEnv: Alice's wallet holds 100 tokens on an Anvil chain where the wallet pays its own gas, Anvil's ether standing
-// in for Arc's USDC. Privy is a fake.
 func newEnv(t *testing.T) env {
 	t.Helper()
 	ctx := context.Background()
@@ -89,7 +87,6 @@ func (e env) prepare(t *testing.T, to, toProfile string, amount int64) (Send, er
 		ToProfileID: toProfile, Amount: big.NewInt(amount)})
 }
 
-// approve stands in for the owner's hold on Send: the browser signs only an approved send.
 func (e env) approve(t *testing.T, s Send) {
 	t.Helper()
 	if _, err := e.sends.Approve(context.Background(), e.profile, s.ID); err != nil {
@@ -107,7 +104,7 @@ func TestPrepareRefusesWhatWouldLoseMoney(t *testing.T) {
 		"token contract":  e.token,
 		"wrong checksum":  strings.Replace(checksummed, "aA", "Aa", 1),
 		"no 0x prefix":    strings.TrimPrefix(outsider, "0x"),
-		"other's profile": "", // with Bob's profile id below
+		"other's profile": "",
 	} {
 		toProfile := ""
 		if to == "" {
@@ -140,14 +137,13 @@ func TestPrepareWarnsOfANewRecipientAndAContract(t *testing.T) {
 	if want := []Warning{WarnNewRecipient}; !slices.Equal(s.Warnings, want) {
 		t.Errorf("new address: warnings = %v, want %v", s.Warnings, want)
 	}
-	other := e.anvil.DeployToken() // any contract that isn't in tokens
+	other := e.anvil.DeployToken()
 	if s, err = e.prepare(t, other, "", 1_000_000); err != nil {
 		t.Fatal(err)
 	}
 	if want := []Warning{WarnContract, WarnNewRecipient}; !slices.Equal(s.Warnings, want) {
 		t.Errorf("contract: warnings = %v, want %v", s.Warnings, want)
 	}
-	// A wallet with an EIP-7702 delegation is a wallet, as a Privy-sponsored profile wallet is.
 	delegated := "0x00000000000000000000000000000000000000dd"
 	if err := e.anvil.RPC.Call(nil, "anvil_setCode", delegated, "0xef0100"+strings.Repeat("11", 20)); err != nil {
 		t.Fatal(err)
@@ -158,7 +154,6 @@ func TestPrepareWarnsOfANewRecipientAndAContract(t *testing.T) {
 	if want := []Warning{WarnNewRecipient}; !slices.Equal(s.Warnings, want) {
 		t.Errorf("delegated wallet: warnings = %v, want %v", s.Warnings, want)
 	}
-	// Once the wallet has sent there, it's no longer new.
 	e.anvil.Transfer(e.token, outsider, "1")
 	if err := e.watch.Scan(context.Background()); err != nil {
 		t.Fatal(err)
@@ -181,7 +176,6 @@ func TestPrepareTransfersToTheOwnersOtherProfile(t *testing.T) {
 		len(s.Warnings) != 0 {
 		t.Errorf("transfer = to %s profile %v warnings %v", s.To, s.ToProfileID, s.Warnings)
 	}
-	// Its address pasted as an outside address is the same transfer.
 	if s, err = e.prepare(t, "0x00000000000000000000000000000000000000AA", "", 1_000_000); err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +186,6 @@ func TestPrepareTransfersToTheOwnersOtherProfile(t *testing.T) {
 
 func TestPrepareRefusesWhenTheTokenRefuses(t *testing.T) {
 	e := newEnv(t)
-	// The token now reverts every call, as a paused token or a blocked address does.
 	if err := e.anvil.RPC.Call(nil, "anvil_setCode", e.token, "0x60006000fd"); err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +202,6 @@ type rpcError struct {
 func (e rpcError) Error() string  { return e.message }
 func (e rpcError) ErrorData() any { return e.data }
 
-// A provider's error text can name its URL or key: the client sees only a revert reason the data decodes to.
 func TestATokensRefusalShowsOnlyItsDecodedRevertReason(t *testing.T) {
 	blocked := "0x08c379a0" + fmt.Sprintf("%064x%064x", 32, 7) + hex.EncodeToString([]byte("blocked")) + strings.Repeat("0", 50)
 	for name, c := range map[string]struct {
@@ -256,14 +248,12 @@ func TestOneOpenSendPerWalletAndChain(t *testing.T) {
 	if _, err := e.sends.Submit(ctx, e.profile, first.ID, hash); !errors.Is(err, ErrInvalid) {
 		t.Errorf("a second send takes the same hash: err = %v", err)
 	}
-	// The replaced send was never approved, so nothing signed it: it takes no hash, which could hide another transfer.
 	if _, err := e.sends.Submit(ctx, e.profile, first.ID, "0x"+strings.Repeat("cd", 32)); !errors.Is(err, ErrInvalid) {
 		t.Errorf("a send never approved takes a hash: err = %v", err)
 	}
 	if again, err := e.sends.Submit(ctx, e.profile, second.ID, hash); err != nil || again.Status != Submitted {
 		t.Errorf("the same hash again = %v, %v", again.Status, err)
 	}
-	// Once it's final the wallet takes the next one.
 	e.anvil.Mine(2)
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
@@ -285,7 +275,6 @@ func TestASendIsSentOnlyWhenTheChainShowsIt(t *testing.T) {
 	if s, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil || s.Status != Submitted || s.OnChain {
 		t.Fatalf("submitted = %s on chain %v, %v", s.Status, s.OnChain, err)
 	}
-	// A receipt alone isn't the watcher's record.
 	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
 	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Submitted || s.OnChain {
 		t.Errorf("mined, not recorded = %s on chain %v, want submitted", s.Status, s.OnChain)
@@ -323,7 +312,7 @@ func TestAReorgedSendWaitsAndIsDroppedIfNeverMinedAgain(t *testing.T) {
 	if s, _ = e.sends.Get(ctx, e.profile, s.ID); !s.OnChain {
 		t.Fatalf("before the reorg = %s on chain %v", s.Status, s.OnChain)
 	}
-	e.anvil.Reorg(1) // its block is replaced and its transaction dropped
+	e.anvil.Reorg(1)
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -344,7 +333,6 @@ func TestASendFailsWhenItsTransactionMovesSomethingElse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The reported hash is of a transaction without this transfer, as when the wallet's call inside it reverted.
 	e.approve(t, s)
 	hash := e.anvil.Transfer(e.token, outsider, "1")
 	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
@@ -354,7 +342,6 @@ func TestASendFailsWhenItsTransactionMovesSomethingElse(t *testing.T) {
 	if s, _ = e.sends.Get(ctx, e.profile, s.ID); s.Status != Failed || s.Failure == nil || *s.Failure != "reverted" {
 		t.Errorf("status = %s failure %v, want failed reverted", s.Status, s.Failure)
 	}
-	// It still paid for its gas, and keeps that fee (R-224).
 	if s.FeePaid == nil || s.FeePaid.Sign() <= 0 {
 		t.Errorf("a reverted send paid %v, want its fee", s.FeePaid)
 	}
@@ -389,7 +376,6 @@ func TestUnreportedAndDroppedSendsAreGivenUp(t *testing.T) {
 	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Failed || *got.Failure != "dropped" {
 		t.Errorf("never on the chain = %s, want failed dropped", got.Status)
 	}
-	// Another profile can't read it.
 	if _, err := e.sends.Get(ctx, e.bob, s.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("Bob reads Alice's send: err = %v", err)
 	}
@@ -471,8 +457,6 @@ func TestPendingListsSignedSendsUntilTheWatcherRecordsThem(t *testing.T) {
 	}
 }
 
-// R-216: where the token is the chain's gas coin (here Anvil's ether stands in for Arc's USDC), the wallet pays: the
-// send carries the fee and the gas caps it was estimated at.
 func TestAWalletPaysItsOwnGas(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -493,7 +477,6 @@ func TestAWalletPaysItsOwnGas(t *testing.T) {
 		got.NetworkFee.Cmp(s.NetworkFee) != 0 {
 		t.Errorf("kept gas %+v fee %v, want %+v %v", got.Gas, got.NetworkFee, s.Gas, s.NetworkFee)
 	}
-	// The amount alone fits the gas coin, but not with the fee.
 	if err := e.anvil.RPC.Call(nil, "anvil_setBalance", chaintest.Sender, "0xDE0B6B3A7640000"); err != nil { // 1 ether
 		t.Fatal(err)
 	}
@@ -502,11 +485,9 @@ func TestAWalletPaysItsOwnGas(t *testing.T) {
 	}
 }
 
-// R-216: Max sends the balance less the fee shown, so that fee covers the gas of any amount the wallet holds.
 func TestMaxFitsTheFeeShown(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	// A busy chain makes each calldata byte dear; the gas coin is exactly the 100 tokens held, as on Arc.
 	for _, call := range [][]any{{"anvil_setNextBlockBaseFeePerGas", "0x2E90EDD000"}, {"evm_mine"},
 		{"anvil_setBalance", chaintest.Sender, "0x56BC75E2D63100000"}} {
 		if err := e.anvil.RPC.Call(nil, call[0].(string), call[1:]...); err != nil {
@@ -522,9 +503,6 @@ func TestMaxFitsTheFeeShown(t *testing.T) {
 	}
 }
 
-// R-211: a summary is signed at most once. When the browser loses the answer of a signature that went out, a second
-// approve is refused and the wallet waits until the watcher finds the transfer, which becomes the send's hash, so the
-// owner can't send the same money twice. With no transfer, the approval ends after ApproveHold.
 func TestAnApprovedSendIsSignedOnceAndAnUnreportedOneIsFound(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -538,12 +516,10 @@ func TestAnApprovedSendIsSignedOnceAndAnUnreportedOneIsFound(t *testing.T) {
 	if _, err := e.sends.Approve(ctx, e.profile, s.ID); !errors.Is(err, ErrApproved) {
 		t.Errorf("a second approve: err = %v, want ErrApproved", err)
 	}
-	// Signed, but the browser never got the hash back.
 	hash := e.anvil.Transfer(e.token, outsider, "2000000")
 	if _, err := e.prepare(t, outsider, "", 2_000_000); !errors.Is(err, ErrBusy) {
 		t.Errorf("a new send while the approved one may be on its way: err = %v, want ErrBusy", err)
 	}
-	// Mined, but the watcher hasn't read it: the hold lasts until it has read the chain past the hold.
 	e.sends.now = func() time.Time { return time.Now().Add(ApproveHold) }
 	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.Status != Approved {
 		t.Errorf("mined, not read by the watcher after the hold = %s, want approved", got.Status)
@@ -582,8 +558,6 @@ func TestAnApprovedSendIsSignedOnceAndAnUnreportedOneIsFound(t *testing.T) {
 	}
 }
 
-// R-211: an approved send whose signature still waits in the mempool holds the wallet past ApproveHold, so a new send
-// can't be signed behind it; once mined, its transfer becomes its hash.
 func TestAnApprovedSendStillWaitingHoldsTheWallet(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -594,8 +568,7 @@ func TestAnApprovedSendStillWaitingHoldsTheWallet(t *testing.T) {
 	e.approve(t, s)
 	hash := e.anvil.Transfer(e.token, outsider, "2000000")
 	raw := e.anvil.RawTx(hash)
-	e.anvil.Reorg(1) // the transaction leaves the chain and the mempool
-	// The watcher has read the chain past the hold, so only the waiting transaction holds the wallet.
+	e.anvil.Reorg(1)
 	e.anvil.Wait(int64(ApproveHold.Seconds()))
 	e.anvil.Mine(1)
 	if err := e.watch.Scan(ctx); err != nil {
@@ -625,8 +598,6 @@ func TestAnApprovedSendStillWaitingHoldsTheWallet(t *testing.T) {
 	}
 }
 
-// A receipt read at the latest block can show a revert in a block a reorg then replaces; the same transaction can
-// succeed in the new one. Once the watcher records its transfer as final, the send is sent.
 func TestARevertedSendWhoseTransactionSucceedsAfterAReorgIsSent(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -652,8 +623,6 @@ func TestARevertedSendWhoseTransactionSucceedsAfterAReorgIsSent(t *testing.T) {
 	}
 }
 
-// R-212: a transaction still waiting in the mempool after DropAfter is not given up, and one given up as dropped that
-// is mined after all becomes sent once the watcher records it.
 func TestAWaitingSendIsNotDroppedAndADroppedOneMinedLaterIsSent(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -664,11 +633,10 @@ func TestAWaitingSendIsNotDroppedAndADroppedOneMinedLaterIsSent(t *testing.T) {
 	e.approve(t, s)
 	hash := e.anvil.Transfer(e.token, outsider, "3000000")
 	raw := e.anvil.RawTx(hash)
-	e.anvil.Reorg(1) // the transaction leaves the chain and the mempool
+	e.anvil.Reorg(1)
 	if _, err = e.sends.Submit(ctx, e.profile, s.ID, hash); err != nil {
 		t.Fatal(err)
 	}
-	// Back in the mempool, waiting: no block takes it.
 	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", false); err != nil {
 		t.Fatal(err)
 	}
@@ -681,7 +649,6 @@ func TestAWaitingSendIsNotDroppedAndADroppedOneMinedLaterIsSent(t *testing.T) {
 		t.Errorf("waiting in the mempool after DropAfter = %s, want submitted", got.Status)
 	}
 
-	// The node forgets it, so it is given up; then it is mined after all.
 	e.sends.now = time.Now
 	if err := e.anvil.RPC.Call(nil, "anvil_dropTransaction", hash); err != nil {
 		t.Fatal(err)
@@ -703,9 +670,6 @@ func TestAWaitingSendIsNotDroppedAndADroppedOneMinedLaterIsSent(t *testing.T) {
 	}
 }
 
-// D-49: money that leaves a profile wallet without a send its owner approved in Forwend tells the owner, once it is
-// final: a stolen session can sign through Privy without Forwend's screens. Reporting the theft's hash on a send never
-// approved, or on one for another amount, hides nothing; the owner's own approved send tells nobody.
 func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -721,7 +685,7 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	theft := e.anvil.Transfer(e.token, outsider, "2000000") // signed through Privy, never through Forwend
+	theft := e.anvil.Transfer(e.token, outsider, "2000000")
 	if _, err := e.sends.Submit(ctx, e.profile, small.ID, theft); !errors.Is(err, ErrInvalid) {
 		t.Errorf("a send never approved takes the theft's hash: err = %v", err)
 	}
@@ -742,7 +706,6 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	if n := outflows(); n != 1 {
 		t.Errorf("a transfer whose hash an approved send of another amount claims: %d notices, want 1", n)
 	}
-	// Its receipt holds no transfer of its amount, so it fails and frees the wallet.
 	e.sends.now = func() time.Time { return time.Now().Add(receiptAfter) }
 	if got, _ := e.sends.Get(ctx, e.profile, small.ID); got.Status != Failed {
 		t.Fatalf("the send that claimed the theft = %s, want failed", got.Status)
@@ -766,7 +729,6 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 		t.Errorf("after the owner's approved send: %d notices, want still 1", n)
 	}
 
-	// Signed after its approval ended, and the answer lost: still the owner's send.
 	late, err := e.prepare(t, outsider, "", 1_000_000)
 	if err != nil {
 		t.Fatal(err)
@@ -790,7 +752,6 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	if n := outflows(); n != 1 {
 		t.Errorf("after a send signed once its approval ended: %d notices, want still 1", n)
 	}
-	// An approval that ended long ago explains nothing.
 	if _, err := e.pool.Exec(ctx, `UPDATE sends SET approved_at = approved_at - interval '2 hours',
 		finished_at = finished_at - interval '2 hours' WHERE id = $1`, late.ID); err != nil {
 		t.Fatal(err)
@@ -805,7 +766,6 @@ func TestMoneyLeavingAWalletWithoutASendTellsItsOwner(t *testing.T) {
 	}
 }
 
-// R-224: a sent send keeps what its wallet really paid for gas, from the receipt.
 func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -840,7 +800,6 @@ func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
 	if s.FeePaid == nil || s.FeePaid.Cmp(want) != 0 || s.FeePaid.Cmp(s.NetworkFee) > 0 {
 		t.Errorf("wallet-paid send paid %v, want %v (at most the %v shown)", s.FeePaid, want, s.NetworkFee)
 	}
-	// Its transfer carries the fee in Transactions; an incoming transfer carries none.
 	page, err := activity.NewService(e.pool).Transfers(ctx, e.profile, "", 10, "", search.Query{})
 	if err != nil {
 		t.Fatal(err)
@@ -855,12 +814,9 @@ func TestASentSendRecordsTheFeeItsWalletPaid(t *testing.T) {
 	}
 }
 
-// R-224: on Tempo, where the fee manager exists, a wallet pays a send's fee in the token it sends: its native balance is
-// a placeholder, and a wallet that chose another fee token can't send.
 func TestATempoWalletPaysItsFeeInTheTokenItSends(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
-	// userTokens(address) answers this word whatever the account.
 	feeManager := func(word string) {
 		t.Helper()
 		if err := e.anvil.RPC.Call(nil, "anvil_setCode", chain.TempoFeeManager.Hex(), "0x7f"+word+"60005260206000f3"); err != nil {
@@ -868,7 +824,6 @@ func TestATempoWalletPaysItsFeeInTheTokenItSends(t *testing.T) {
 		}
 	}
 	feeManager(strings.Repeat("00", 32))
-	// No gas coin at all: only the token can pay.
 	if err := e.anvil.RPC.Call(nil, "anvil_setBalance", chaintest.Sender, "0x0"); err != nil {
 		t.Fatal(err)
 	}
@@ -888,15 +843,10 @@ func TestATempoWalletPaysItsFeeInTheTokenItSends(t *testing.T) {
 	}
 }
 
-// R-224, D-49: a Tempo wallet's fee leaves as a Transfer to the fee manager in its send's own transaction. Only that,
-// within the fee the send was signed for, is the send's fee and not money sent. The fee manager also swaps and takes
-// liquidity, so any other transfer to it, or a larger one in the send's transaction, shows in Transactions and tells
-// the owner. The fee manager is refused as a send's recipient, since the send would never end.
 func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
 	feeManager := strings.ToLower(chain.TempoFeeManager.Hex())
-	// send moves 1 token to outsider and, in the same transaction, the send's quoted fee plus extra to the fee manager.
 	send := func(extra int64) Send {
 		t.Helper()
 		s, err := e.prepare(t, outsider, "", 1_000_000)
@@ -945,7 +895,6 @@ func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 	if n, m := notices(), shown(); n != 0 || m != 0 {
 		t.Fatalf("the send's own fee: %d notices, %d rows; want none", n, m)
 	}
-	// A swap through the fee manager, outside any send: money out.
 	e.anvil.Transfer(e.token, feeManager, "3")
 	e.anvil.Mine(3)
 	if err := e.watch.Scan(ctx); err != nil {
@@ -954,13 +903,11 @@ func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 	if n, m := notices(), shown(); n != 1 || m != 1 {
 		t.Fatalf("a transfer to the fee manager outside a send: %d notices, %d rows; want 1 and 1", n, m)
 	}
-	// More than the send was signed for, in its own transaction: money out too.
 	send(1)
 	if n, m := notices(), shown(); n != 2 || m != 2 {
 		t.Fatalf("one unit over the signed fee in a send's transaction: %d notices, %d rows; want 2 and 2", n, m)
 	}
-	// A TIP-20 token's transfer to the fee manager outside a send, as a swap through its Fee AMM: money out as well.
-	const tip20 = "0x20c0000000000000000000000000000000000077" // the test token's code there stands in for OUSD
+	const tip20 = "0x20c0000000000000000000000000000000000077"
 	var code string
 	if err := e.anvil.RPC.Call(&code, "eth_getCode", e.token, "latest"); err != nil {
 		t.Fatal(err)
@@ -972,7 +919,7 @@ func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 		VALUES ($1, 'evm', $2, 'OUSD', 6, true)`, chaintest.ChainID, tip20); err != nil {
 		t.Fatal(err)
 	}
-	e.watch = watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC) // reads the token list anew
+	e.watch = watcher.NewChain(e.pool, chaintest.ChainID, e.anvil.RPC)
 	e.anvil.Mint(tip20, "100")
 	e.anvil.Transfer(tip20, feeManager, "27")
 	e.anvil.Mine(3)
@@ -982,8 +929,6 @@ func TestOnlyASendsOwnTempoFeeIsNotMoneySent(t *testing.T) {
 	if n := notices(); n != 3 {
 		t.Errorf("a TIP-20 transfer to the fee manager outside a send: %d notices in all, want 3", n)
 	}
-	// The chain is final before the browser reports the hash, as on Tempo: the fee of the approved send moving exactly
-	// that money tells nobody either.
 	before := notices()
 	early, err := e.prepare(t, outsider, "", 1_000_000)
 	if err != nil {

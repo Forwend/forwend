@@ -104,7 +104,7 @@ func TestAPINamesEveryMissingVariable(t *testing.T) {
 }
 
 func TestWorkerAndSigner(t *testing.T) {
-	t.Setenv("RESEND_API_KEY", "") // never a real key in a failure message
+	t.Setenv("RESEND_API_KEY", "")
 	t.Setenv("DATABASE_URL", "postgres://x")
 	t.Setenv("RPC_ALLOW_LOOPBACK", "0")
 	t.Setenv("RPC_ENDPOINT_SECRETS", `{"FIRST":"https://a.example/private","SECOND":"https://b.example/private"}`)
@@ -161,7 +161,6 @@ func TestCanary(t *testing.T) {
 		got.OneClickKey != config.CanaryOneClickKey {
 		t.Fatalf("got %+v, %v", got, err)
 	}
-	// 1Click's key is the canary's own; another only for a test's fake on loopback (D-124).
 	t.Setenv("CANARY_ONECLICK_KEY", "ed25519:test")
 	for url, ok := range map[string]bool{"http://127.0.0.1:4100": true, "": false, "https://1click.example": false, "ftp://x": false} {
 		t.Setenv("CANARY_ONECLICK_URL", url)
@@ -171,7 +170,6 @@ func TestCanary(t *testing.T) {
 	}
 	t.Setenv("CANARY_ONECLICK_KEY", "")
 	t.Setenv("CANARY_ONECLICK_URL", "")
-	// One RPC host twice is not a second opinion; a bad value is named, never shown.
 	for _, bad := range []string{`{"84532": ["https://a.example/v3/secret", "https://a.example/v3/other"]}`,
 		`{"84532": ["https://a.example/v3/secret"]}`,
 		`{"84532": ["http://a.example/secret", "https://b.example"]}`,
@@ -205,8 +203,6 @@ func TestRPCSecretsRejectMalformedInputWithoutEchoingIt(t *testing.T) {
 	}
 }
 
-// D-122: the platform fee plan is 0% when unset, and a plan the contract's tenth can't carry or a minimum over the cap
-// stops startup.
 func TestPlatformFeePlan(t *testing.T) {
 	for _, name := range []string{"DATABASE_URL", "API_ADDR", "PRIVY_APP_ID", "PRIVY_APP_SECRET"} {
 		t.Setenv(name, "x")
@@ -235,7 +231,6 @@ func TestPlatformFeePlan(t *testing.T) {
 	}
 }
 
-// D-124: 1Click's pinned key is replaced only for a test's fake on loopback, never by a copied test .env elsewhere.
 func TestOneClickSignerKeyOnlyForAFakeOnLoopback(t *testing.T) {
 	t.Setenv("RESEND_API_KEY", "")
 	t.Setenv("DATABASE_URL", "postgres://x")

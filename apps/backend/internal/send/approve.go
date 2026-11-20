@@ -10,10 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// Submit records the hash the browser got from signing the send (R-212). The same hash again is a no-op. Only an
-// approved send takes one, including one whose hold ended while the browser was signing: the browser signs only after
-// the approve, and a hash on a send never approved would explain away money that left without one (D-49). A
-// paymaster send takes none: Relay sends it, and only Privy gives its hash.
+// Submit records the browser's hash; only an approved send takes one, or a hash could explain away a theft.
 func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) (Send, error) {
 	txHash = strings.ToLower(txHash)
 	if !hashPattern.MatchString(txHash) {
@@ -42,8 +39,7 @@ func (s *Service) Submit(ctx context.Context, profileID, sendID, txHash string) 
 	return out, nil
 }
 
-// Approve lets the browser sign a prepared send, once: a second approve is ErrApproved, so one summary is never
-// signed twice. A send no longer prepared, such as one past PrepareTTL, comes back as it is.
+// Approve lets the browser sign a prepared send once (then ErrApproved), so one summary is never signed twice.
 func (s *Service) Approve(ctx context.Context, profileID, sendID string) (Send, error) {
 	out, err := s.Get(ctx, profileID, sendID)
 	if err != nil {
@@ -76,7 +72,6 @@ func (s *Service) Approve(ctx context.Context, profileID, sendID string) (Send, 
 	return approved, nil
 }
 
-// Cancel gives up an unsigned send, as when the owner closes the review.
 func (s *Service) Cancel(ctx context.Context, profileID, sendID string) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE sends SET status = 'canceled', finished_at = now()
 		WHERE id::text = $1 AND profile_id = $2 AND status = 'prepared'`, strings.ToLower(sendID), profileID)

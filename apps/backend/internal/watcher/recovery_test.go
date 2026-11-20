@@ -212,7 +212,6 @@ func TestPendingWalletHeightsShareLogRanges(t *testing.T) {
 	}
 }
 
-// prunedBelow answers every log query starting below block first as a node that keeps no older history.
 func prunedBelow(first uint64) func(chaintest.Call) chaintest.Fault {
 	return func(call chaintest.Call) chaintest.Fault {
 		var filter struct{ FromBlock hexutil.Uint64 }

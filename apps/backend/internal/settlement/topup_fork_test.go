@@ -23,7 +23,7 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 	for _, c := range []struct {
 		name, url string
 		id        uint64
-		holder    string // the USDC/WETH 0.3% pool: USDC outside the pool the swap uses
+		holder    string
 	}{
 		{"base", "https://mainnet.base.org", 8453, "0x6c561B446416E1A00E8E93E221854d6eA4171372"},
 		{"arbitrum", "https://arb1.arbitrum.io/rpc", 42161, "0xc473e2aEE3441BF9240Be85eb122aBB059A3B57c"},
@@ -37,7 +37,7 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 			defer pool.Close()
 			a := chaintest.StartFork(t, c.url)
 			client := ethclient.NewClient(a.RPC)
-			key, err := crypto.GenerateKey() // a known test key may carry code on a mainnet
+			key, err := crypto.GenerateKey()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -63,7 +63,6 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 				}
 				return wei
 			}
-			// Five deploys and settles' worth: below the alert's 20, enough to pay for the swap.
 			drain := func() {
 				t.Helper()
 				_, feeCap, err := chain.Fees(ctx, client, c.id)
@@ -87,7 +86,7 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 				t.Log(logs.String())
 				return logs.String()
 			}
-			a.As(c.holder, route.usdc.Hex(), "transfer(address,uint256)", s.sender.Hex(), "100000000") // 100 USDC
+			a.As(c.holder, route.usdc.Hex(), "transfer(address,uint256)", s.sender.Hex(), "100000000")
 			drain()
 
 			t.Run("buys at least the Chainlink price less 1%", func(t *testing.T) {
@@ -149,7 +148,6 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				// The feed says ether costs a tenth of what the pool pays: no swap clears its floor.
 				mock := a.PriceFeed(new(big.Int).Div(price, big.NewInt(10)))
 				code, err := client.CodeAt(ctx, mock, nil)
 				if err != nil {

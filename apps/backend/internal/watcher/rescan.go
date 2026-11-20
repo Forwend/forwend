@@ -12,14 +12,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RescanLimit bounds rescans per chain per round, so Check status calls take a bounded share of RPC budget (R-55).
+// RescanLimit bounds rescans per chain per round, so Check status calls take a bounded share of RPC budget.
 const RescanLimit = 5
 
 // rescanChunks log ranges at most per invoice per round.
 const rescanChunks = 5
 
-// Rescans never moves the chain's cursor: that would let the regular scan skip blocks for the other invoices. An
-// invoice past watchedAfterDeadline is not rescanned: its money is the refund authority's.
+// Rescans never moves the chain's cursor, so the regular scan skips no blocks; past watchedAfterDeadline, none run.
 func (c *Chain) Rescans(ctx context.Context) error {
 	if _, err := c.pool.Exec(ctx, `UPDATE invoice_rechecks r SET rescan_requested_at = NULL, rescan_from_block = NULL,
 		    rescanned_at = now()
@@ -79,7 +78,7 @@ func (c *Chain) rescanOne(ctx context.Context, id, receive, token string, saved 
 	}
 	next, done, err := c.rescan(ctx, common.HexToAddress(receive), receiver{id, token}, from)
 	if chain.Missing(err) {
-		// An invoice older than the history the RPCs keep: its rescan moves past the pruned blocks (R-191).
+		// An invoice older than the history the RPCs keep: its rescan moves past the pruned blocks.
 		kept, ok, prunedErr := c.pruned(ctx, from)
 		if prunedErr != nil || !ok {
 			return errors.Join(err, prunedErr)

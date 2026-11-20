@@ -1,5 +1,4 @@
-// Package ecb keeps the European Central Bank's daily euro reference rates (D-82), which records use to value a
-// payment in a currency other than USD (R-110). The ECB publishes them on TARGET business days around 16:00 CET.
+// Package ecb keeps the ECB's daily euro reference rates, used to value a payment in a currency other than USD.
 package ecb
 
 import (

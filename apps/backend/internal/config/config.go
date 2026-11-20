@@ -1,5 +1,4 @@
-// Package config reads every environment variable the binaries use. Locally they come from apps/backend/.env
-// (copy .env.example).
+// Package config reads every environment variable the binaries use; locally from apps/backend/.env.
 package config
 
 import (
@@ -10,52 +9,35 @@ import (
 )
 
 type API struct {
-	DatabaseURL  string
-	Addr         string
-	PrivyAppID   string
-	PrivyJWKSURL string
-	// PrivyAppSecret lets the api make profile wallets: never log it.
-	PrivyAppSecret   string
-	RPCSecrets       Secrets `json:"-"`
-	RPCAllowLoopback bool
-	RPCRate          float64
-	// PublicWebURL is the web app's origin, such as https://forwend.app: PDFs link to its /pay/<payToken> page.
-	PublicWebURL string
-	// UserBurst is each signed-in user's burst of requests; 0 keeps the default (mid.UserBurst). Only the live e2e,
-	// whose tests all run as one user, sets it.
-	UserBurst int
-	// TrustProxyHeader: a proxy in front (such as Traefik) sets X-Forwarded-For to the client's address, so public
-	// limits can count per payer. Off, the header is the client's own and is ignored.
-	TrustProxyHeader bool
-	// CodesPerHour is each user's Confirm it's you codes an hour; 0 keeps reauth.MaxPerHour. Only the live e2e, whose
-	// one test account confirms on every run against a lasting database, sets it.
-	CodesPerHour      int
+	DatabaseURL       string
+	Addr              string
+	PrivyAppID        string
+	PrivyJWKSURL      string
+	PrivyAppSecret    string  // never log
+	RPCSecrets        Secrets `json:"-"`
+	RPCAllowLoopback  bool
+	RPCRate           float64
+	PublicWebURL      string
+	UserBurst         int // 0 keeps mid.UserBurst
+	TrustProxyHeader  bool
+	CodesPerHour      int // 0 keeps reauth.MaxPerHour
 	EnableTestnetUSDC bool
-	// EnableMainnets are the live chains API startup switches on (R-222); the owner names each one.
-	EnableMainnets []uint64
-	// Email sends Confirm it's you codes (R-137); without a key no code can be sent, so protected changes need a
-	// full sign-in.
-	Email Email
-	// WebhookKey seals webhook signing secrets (R-146): 32 bytes, or nil to leave webhooks off. Never log it.
-	WebhookKey []byte
-	Fees       Fees
-	OneClick   OneClick
-	// CrossChainOff stops new cross-chain quotes on the whole platform (R-240), as for an incident at NEAR Intents. The
-	// worker still reads the open ones.
-	CrossChainOff bool
+	EnableMainnets    []uint64
+	Email             Email
+	WebhookKey        []byte // 32 bytes; nil leaves webhooks off; never log
+	Fees              Fees
+	OneClick          OneClick
+	CrossChainOff     bool
 }
 
-// OneClick is NEAR Intents' 1Click API for cross-chain payments (D-123). URL is its root, DefaultOneClickURL when unset.
-// Signer replaces the key its quotes must carry, 1Click's own pinned one (D-124), only for a test's fake on a loopback
-// URL: startup refuses it with any other. Key is the optional partner key (Q-18): never log it.
+// OneClick is NEAR Intents' 1Click API. Signer replaces its pinned quote key, only for a loopback test fake.
 type OneClick struct {
-	URL, Key, Signer string
+	URL, Key, Signer string // Key: optional partner key; never log
 }
 
 const DefaultOneClickURL = "https://1click.chaindefuser.com"
 
-// Fees is the platform fee plan (D-122) the api and the worker quote new invoices with: PLATFORM_FEE_BPS of the price,
-// at least PLATFORM_FEE_MIN_USD and at most PLATFORM_FEE_CAP_USD (unset: no cap). Unset, the rate is 0.
+// Fees is the platform fee: RateBps of the price, at least MinUSD, at most CapUSD (nil: no cap).
 type Fees struct {
 	RateBps        int64
 	MinUSD, CapUSD *big.Rat
@@ -65,42 +47,36 @@ type Worker struct {
 	DatabaseURL string
 	Chains      Chains
 	Email       Email
-	// RatesURL is the ECB's reference rates file (R-110); ECB_RATES_URL is set only by tests that run a fake.
-	RatesURL string
-	Prices   Prices
-	Fees     Fees // for a retainer's later months
-	OneClick OneClick
+	RatesURL    string
+	Prices      Prices
+	Fees        Fees // for a retainer's later months
+	OneClick    OneClick
 }
 
-// Prices is CoinGecko for the stablecoins' display prices (R-178). URL is its API root; COINGECKO_API_URL is set only
-// by tests that run a fake. Key is the optional Demo plan key: never log it.
+// Prices is CoinGecko for the stablecoins' display prices.
 type Prices struct {
 	URL   string
-	Key   string
+	Key   string // optional Demo plan key; never log
 	Every time.Duration
 }
 
-// Webhooks is what cmd/webhooks needs (R-148): the database and the key that opens the signing secrets, nothing else.
+// Webhooks is what cmd/webhooks needs: the database and the key that opens the signing secrets, nothing else.
 type Webhooks struct {
 	DatabaseURL string
-	// WebhookKey opens the signing secrets: 32 bytes, or nil, and nothing is sent. Never log it.
-	WebhookKey []byte
+	WebhookKey  []byte // nil: nothing is sent; never log
 }
 
-// Email is the owner's email (R-80, D-65). Without ResendKey the worker sends nothing and the events wait.
+// Email is the owner's email settings; without ResendKey the worker sends nothing and the events wait.
 type Email struct {
-	ResendKey    string // send-only Resend API key; never log it
-	ResendURL    string // Resend's send endpoint; set only by tests that run a fake
-	From         string // the sender, on the domain Resend verified
-	PublicWebURL string
-	// PostalAddress is the sender's address for each email's footer; empty leaves it out (Q-13).
-	PostalAddress string
-	// Support is where readers write with questions, named in each footer; empty leaves the line out.
-	Support string
+	ResendKey     string // send-only Resend API key; never log it
+	ResendURL     string // Resend's send endpoint; set only by tests that run a fake
+	From          string // the sender, on the domain Resend verified
+	PublicWebURL  string
+	PostalAddress string // "" leaves it out of the footer
+	Support       string // "" leaves the line out
 }
 
-// defaultRatesURL is the ECB's file of the last 90 days of euro reference rates: a wallet made after the worker's first
-// read has no older transfers.
+// defaultRatesURL has 90 days of ECB rates: a wallet made after the worker's first read has no older transfers.
 const defaultRatesURL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml"
 
 const defaultEmailFrom = "Forwend <notifications@mail.forwend.com>"
@@ -117,11 +93,10 @@ type Chains struct {
 	PollInterval  time.Duration
 }
 
-// Signer's ExecutorKey is read from a hex private key: never log it.
 type Signer struct {
 	DatabaseURL string
 	Chains      Chains
-	ExecutorKey *ecdsa.PrivateKey
+	ExecutorKey *ecdsa.PrivateKey // never log
 }
 
 // Ops is what cmd/ops needs to read a support case and queue a return: the database and the chains' RPCs, no key.
@@ -130,21 +105,19 @@ type Ops struct {
 	Chains      Chains
 }
 
-// Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's (R-51).
+// Canary is what cmd/canary needs: its own factory, code hash and RPCs, never the api's.
 type Canary struct {
-	AllowLoopback   bool
-	APIURL, WebURL  string
-	Factory         string
-	FactoryCodeHash string               // keccak256 of the factory's runtime code, lowercase 0x hex
-	FactoryFees     bool                 // its terms carry the fees (factory v2 on, R-226)
-	RPCURLs         map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
-	PageScript      string               // apps/web/scripts/canary-pay-page.ts, run with node
-	// 1Click's API root and the key its quotes carry (D-124): the canary's own copies, never the api's (R-235).
+	AllowLoopback            bool
+	APIURL, WebURL           string
+	Factory                  string
+	FactoryCodeHash          string               // keccak256 of the factory's runtime code, lowercase 0x hex
+	FactoryFees              bool                 // its terms carry the fees (factory v2)
+	RPCURLs                  map[uint64][2]string // two RPCs on different hosts per chain ID; may hold keys: never log
+	PageScript               string               // apps/web/scripts/canary-pay-page.ts, run with node
 	OneClickURL, OneClickKey string
 }
 
-// The canary's own copies of 1Click's root and quote key; CANARY_ONECLICK_URL and CANARY_ONECLICK_KEY replace them for
-// a test's fake.
+// The canary's own copies of 1Click's root and quote key; CANARY_ONECLICK_URL and _KEY replace them for a fake.
 const (
 	CanaryOneClickURL = "https://1click.chaindefuser.com"
 	CanaryOneClickKey = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc"

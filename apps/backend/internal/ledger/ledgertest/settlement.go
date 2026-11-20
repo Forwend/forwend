@@ -9,8 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Settlement supplies exact source and journal records to wallet-reader tests. The wallet's transfer is the amount less
-// the option's fees, each booked as its own outflow of the same settle (R-230).
+// Settlement writes a settle's records: the amount less fees to the wallet, each fee its own outflow.
 func Settlement(t *testing.T, pool *pgxpool.Pool, invoiceID, hash string, held bool) {
 	t.Helper()
 	ctx := t.Context()

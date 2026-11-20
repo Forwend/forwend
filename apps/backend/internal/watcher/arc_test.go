@@ -29,7 +29,6 @@ func arcLog(from common.Address, emitter common.Address, tx byte, index uint, va
 		TxHash: common.Hash{tx}, BlockHash: common.Hash{0xbb}, Index: index}
 }
 
-// micro is n micro-USDC in the system log's 18 decimals.
 func micro(n int64) *big.Int { return new(big.Int).Mul(big.NewInt(n), arcScale) }
 
 func credited(logs []types.Log) []string {
@@ -88,7 +87,6 @@ func TestArcUSDCIsCreditedOncePerMovement(t *testing.T) {
 	}
 }
 
-// arcNode answers eth_getLogs with answer's logs for the asked addresses and receipts with mined's logs.
 type arcNode struct {
 	asked    []common.Address
 	receipts int
@@ -139,7 +137,6 @@ func arcChain(t *testing.T, answer func(asked []common.Address) []types.Log, min
 	return NewChain(pool, 5042002, client), node
 }
 
-// asked answers only the logs of the addresses asked for, as a node does.
 func asked(logs []types.Log) func([]common.Address) []types.Log {
 	return func(addresses []common.Address) []types.Log {
 		out := []types.Log{}

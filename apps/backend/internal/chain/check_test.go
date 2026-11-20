@@ -31,13 +31,13 @@ func TestCheckEnabled(t *testing.T) {
 	down.Fail(func(chaintest.Call) chaintest.Fault { return chaintest.HTTP503 })
 	pair := []string{a.URL, localhost(a.URL)}
 	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`)) // chain 1
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":"0x1"}`))
 	}))
 	defer other.Close()
 	for name, tc := range map[string]struct {
 		public  []string
 		further error
-		want    string // the error that stops the process; "" when it starts
+		want    string
 		checked bool
 	}{
 		"working pair":                 {public: pair, checked: true},
@@ -79,7 +79,6 @@ func TestCheckEnabled(t *testing.T) {
 		}
 	})
 
-	// Enables a second chain: checked first and skipped, then the anvil chain is still checked.
 	t.Run("an unreachable chain skips only itself", func(t *testing.T) {
 		if _, err := db.Exec(ctx, "INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'two', true)"); err != nil {
 			t.Fatal(err)

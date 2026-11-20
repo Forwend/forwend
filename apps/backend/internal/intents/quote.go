@@ -12,15 +12,14 @@ import (
 	"time"
 )
 
-// BaseUSDC is the one asset a cross-chain payment delivers (D-123): USDC on Base, the 1Click id of its contract.
+// BaseUSDC is the one asset a cross-chain payment delivers: USDC on Base, the 1Click id of its contract.
 const (
 	BaseChainID   = 8453
 	BaseUSDC      = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
 	BaseUSDCAsset = "nep141:base-" + BaseUSDC + ".omft.near"
 )
 
-// Slippage is what the payer's amount may cover beyond today's price, in basis points; what isn't used comes back to
-// the refund address.
+// Slippage is basis points the payer's amount may cover beyond today's price; the unused part is refunded.
 const Slippage = 100
 
 // Ask is what a payer's quote asks of 1Click: exactly Amount of Base USDC to Recipient, from Origin.
@@ -32,25 +31,23 @@ type Ask struct {
 	Deadline  time.Time
 }
 
-// Quote is what 1Click answered. Signed is its answer byte for byte, which its signature covers (D-124).
+// Quote is what 1Click answered; Signed is its answer byte for byte, which its signature covers.
 type Quote struct {
-	DepositAddress string
-	DepositMemo    string
-	AmountIn       *big.Int
-	MinAmountIn    *big.Int
-	AmountOut      *big.Int
-	AmountInUSD    string
-	AmountOutUSD   string
-	TimeEstimate   int64
-	RefundFee      string
-	Deadline       time.Time // the request's: refunds of what hasn't converted begin
-	// AddressDeadline is 1Click's, signed: its address takes deposits until then. nil when it gave none.
-	AddressDeadline *time.Time
+	DepositAddress  string
+	DepositMemo     string
+	AmountIn        *big.Int
+	MinAmountIn     *big.Int
+	AmountOut       *big.Int
+	AmountInUSD     string
+	AmountOutUSD    string
+	TimeEstimate    int64
+	RefundFee       string
+	Deadline        time.Time  // the request's: refunds of what hasn't converted begin
+	AddressDeadline *time.Time // 1Click's, signed; nil if none
 	Signed          []byte
 }
 
-// Quote asks 1Click for an EXACT_OUTPUT quote and checks it is the one asked for, signed by c.Signer. A dry quote
-// has no address, and refunds to 1Click's own ledger since no money is sent to it.
+// Quote asks 1Click for an EXACT_OUTPUT quote signed by c.Signer; a dry one has no address and refunds to 1Click.
 func (c *Client) Quote(ctx context.Context, ask Ask, dry bool) (Quote, error) {
 	body := request(ask, dry)
 	answer, err := c.call(ctx, "POST", "/v0/quote", body)
@@ -60,8 +57,7 @@ func (c *Client) Quote(ctx context.Context, ask Ask, dry bool) (Quote, error) {
 	return Check(answer, ask, dry, c.Signer, time.Now())
 }
 
-// A signed quote is shown only while fresh (D-124): signed within PriceWindow of now, and its address takes deposits for
-// addressLeast more. An older one replayed could send a payer's money to an address 1Click no longer serves.
+// A signed quote shows only while fresh: a replayed old one could send money to an address 1Click no longer serves.
 const (
 	PriceWindow  = 15 * time.Minute
 	addressLeast = time.Hour
@@ -83,10 +79,7 @@ func request(ask Ask, dry bool) map[string]any {
 // ErrMismatch: a signed quote that isn't what was asked, as one for another recipient or amount.
 var ErrMismatch = errors.New("1Click quote is not the one asked for")
 
-// Check verifies answer's signature by key, then that its signed request is ask's and its quote delivers exactly the
-// amount (D-124), and that it is fresh at now. The pay page runs the same checks before it shows the address. A real
-// quote's request deadline is not signed (1Click signs the address's own deadline in its place), so it is checked as
-// 1Click's echo of what was asked.
+// Check verifies the signature, ask's exact amount and freshness; the unsigned request deadline is checked as an echo.
 func Check(answer []byte, ask Ask, dry bool, key string, now time.Time) (Quote, error) {
 	a, err := verified(answer, key)
 	if err != nil {
@@ -140,7 +133,7 @@ func Check(answer []byte, ask Ask, dry bool, key string, now time.Time) (Quote, 
 		return Quote{}, fmt.Errorf("%w: no deposit address", ErrMismatch)
 	case dry && q.DepositAddress != "": // a dry answer's address is not signed
 		return Quote{}, fmt.Errorf("%w: a dry quote with an address", ErrMismatch)
-	case q.DepositMemo != "": // memo chains are left out: a forgotten memo loses the money (D-123)
+	case q.DepositMemo != "": // memo chains are left out: a forgotten memo loses the money
 		return Quote{}, fmt.Errorf("%w: needs a memo", ErrMismatch)
 	}
 	return q, nil

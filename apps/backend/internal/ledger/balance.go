@@ -16,11 +16,10 @@ import (
 
 const BalanceTimeout = 10 * time.Second
 
-// BalanceOf reads from an RPC other than the watcher's, at its finalized block, so one bad provider can't mark an
-// invoice paid (D-15, D-45). An answer from behind the watcher's finalized block can miss deposits and is not used.
+// BalanceOf reads from an RPC other than the watcher's, at its finalized block, so one bad provider can't mark paid.
 type BalanceOf func(ctx context.Context, chainID uint64, token, holder string) (balance *big.Int, block uint64, err error)
 
-// BalanceFrom reads balances with one client per chain: give it RPCs other than the watcher's (D-15).
+// BalanceFrom reads with one client per chain: give it RPCs other than the watcher's.
 func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 	// Every RPC in the chain list serves eth_call at its finalized block.
 	return func(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
@@ -32,8 +31,7 @@ func BalanceFrom(clients map[uint64]*ethclient.Client) BalanceOf {
 	}
 }
 
-// BalanceSnapshot shares the selected provider's finalized header within one sequential ledger round.
-// A new round gets a new snapshot; failed header reads are never kept.
+// BalanceSnapshot shares one finalized header per ledger round; a failed header read is never kept.
 func BalanceSnapshot(client *ethclient.Client) BalanceOf {
 	var block *chain.Block
 	return func(ctx context.Context, chainID uint64, token, holder string) (*big.Int, uint64, error) {
@@ -49,11 +47,9 @@ func BalanceSnapshot(client *ethclient.Client) BalanceOf {
 	}
 }
 
-// DeployedAt reads factory.deployedAt(receiver) at the finalized block: 0 when the receiver is not deployed. An early
-// deploy, a refund authority recovery, ends the receiver's settle window at deployedAt + 30 days (R-130).
+// DeployedAt reads factory.deployedAt(receiver) at the finalized block, 0 if undeployed; settling ends 30 days on.
 type DeployedAt func(ctx context.Context, chainID uint64, factory, receiver string) (uint64, error)
 
-// DeployedFrom reads with BalanceFrom's clients, the RPC pool per chain.
 func DeployedFrom(clients map[uint64]*ethclient.Client) DeployedAt {
 	return func(ctx context.Context, chainID uint64, factory, receiver string) (uint64, error) {
 		client, ok := clients[chainID]
@@ -79,7 +75,7 @@ func DeployedFrom(clients map[uint64]*ethclient.Client) DeployedAt {
 	}
 }
 
-// funded asks the selected RPC whether the receive address holds at least every booked deposit (D-15).
+// funded asks the selected RPC whether the receive address holds at least every booked deposit.
 func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (bool, error) {
 	booked, onChain, block, err := s.compare(ctx, tx, invoiceID, chainID, finalized, token, receive)
 	if err != nil || onChain == nil {
@@ -93,10 +89,7 @@ func (s *Service) funded(ctx context.Context, tx pgx.Tx, invoiceID string, chain
 	return true, Unbooked(ctx, tx, invoiceID, booked, onChain, block)
 }
 
-// Unbooked alerts when the receive address holds at least DustExcess more than booked while every transfer the scan saw
-// is booked: a deposit the scan missed. Its excess alert holds the invoice's refunds (bookOutflow), never "paid" or the
-// settle: settle pays out only the amount, and the rest stays held for its payer. A balance read at a block the scan
-// hasn't reached yet can show a deposit it will still record, so it says nothing.
+// Unbooked alerts on DustExcess more on chain than booked while every seen transfer is booked: a missed deposit.
 func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain *big.Int, block uint64) error {
 	if onChain.Cmp(booked) <= 0 {
 		return nil
@@ -117,9 +110,7 @@ func Unbooked(ctx context.Context, tx pgx.Tx, invoiceID string, booked, onChain 
 	return alertAgainLater(ctx, tx, invoiceID, true)
 }
 
-// DustExcess: an unexplained balance under 0.01 of a token with these decimals (one base unit when it has fewer than
-// 2) doesn't stop expiry. Arc floors each native transfer but balanceOf floors their sum, so sub-micro sends leave dust
-// no transfer explains, and anyone could send some to keep an invoice open for good. The dust stays for the Safe.
+// DustExcess: unexplained dust under 0.01 token can't stop expiry; Arc's rounding leaves it, and anyone can send it.
 func DustExcess(decimals int) *big.Int {
 	return new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(max(decimals-2, 0))), nil)
 }
@@ -164,9 +155,7 @@ func (s *Service) balanced(ctx context.Context, tx pgx.Tx, invoiceID string, cha
 	return true, nil
 }
 
-// Backs off 1 min, doubling to at most a day, so unexplained balances can't use up the round's RPC calls (R-120).
-// The exponent stops at 11 (34 h, over the cap): a larger one overflows Postgres's interval. excess is more on chain
-// than booked: refunds of the invoice wait while it lasts (bookOutflow).
+// alertAgainLater backs off from 1 min, doubling to a day; the exponent stops at 11, as more overflows an interval.
 func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string, excess bool) error {
 	if _, err := tx.Exec(ctx, `INSERT INTO invoice_balance_alerts (invoice_id, alerts, next_check_at, excess)
 		VALUES ($1, 1, now() + interval '1 minute', $2)
@@ -179,8 +168,7 @@ func alertAgainLater(ctx context.Context, tx pgx.Tx, invoiceID string, excess bo
 	return nil
 }
 
-// onChain is nil when the RPC snapshot is behind the watcher's finalized block: nothing is decided until it catches up.
-// ponytail: the RPC call runs inside the transaction holding the invoice lock, bounded by BalanceTimeout.
+// compare: a nil onChain means the RPC is behind the watcher's finalized block, so nothing is decided yet.
 func (s *Service) compare(ctx context.Context, tx pgx.Tx, invoiceID string, chainID, finalized uint64, token, receive string) (booked, onChain *big.Int, block uint64, err error) {
 	if booked, err = accountBalance(ctx, tx, invoiceID, "receiver"); err != nil {
 		return nil, nil, 0, err

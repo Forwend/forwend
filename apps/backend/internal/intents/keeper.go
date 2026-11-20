@@ -22,7 +22,7 @@ const (
 	retry       = 2 * time.Minute
 )
 
-// Keeper keeps 1Click's token list in Postgres for every api replica (R-232).
+// Keeper keeps 1Click's token list in Postgres for every api replica.
 type Keeper struct {
 	Pool     *pgxpool.Pool
 	Client   *Client
@@ -104,8 +104,7 @@ func List(ctx context.Context, db interface {
 	return list, nil
 }
 
-// D-126: a dry quote for so little names any route's minimum above it. One goes out every ProbeGap, and each token is
-// checked again after probeEvery.
+// A dry quote this small names any route's minimum. One goes out every ProbeGap; a token again after probeEvery.
 const (
 	probeEvery = time.Hour
 	ProbeGap   = 5 * time.Second
@@ -113,15 +112,13 @@ const (
 
 var probeAmount = big.NewInt(10_000) // 0.01 USDC
 
-// The probe's recipient is Forwend's refund authority on Base: 1Click refuses a burn address as "recipient is not
-// valid", and a dry quote moves nothing.
+// The probe's recipient is our Base refund authority: 1Click refuses a burn address, and a dry quote moves nothing.
 var probeRecipient = func() string {
 	authority := address.Known[address.Factory].RefundAuthority
 	return "0x" + hex.EncodeToString(authority[:])
 }()
 
-// Probe asks one dry quote for the token whose minimum was checked longest ago, so payers see which tokens fit before
-// they pick (D-126). Base USDC, memo and left-out chains and unpriced tokens are never offered, so never checked.
+// Probe asks one dry quote for the token checked longest ago, so payers see which tokens fit before they pick.
 func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	if now.Before(k.probeDue) {
 		return nil
@@ -157,12 +154,11 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	if err == nil {
 		return SetMinimum(ctx, k.Pool, asset, minimum, now)
 	}
-	if errors.Is(err, ErrNoLiquidity) { // R-245: an answer of its own, not a fault to log
+	if errors.Is(err, ErrNoLiquidity) { // an answer of its own, not a fault to log
 		return SetNoLiquidity(ctx, k.Pool, asset, now)
 	}
-	// Any other answer keeps the token's minimum, or the one this round named, and is returned to be logged: a refusal
-	// naming none can be our own request's fault, as a recipient 1Click stops taking. The token waits its next turn, so
-	// it can't hold up the rest; only 1Click unreachable, or an answer failing its checks, slows the next one.
+	// Any other answer keeps the known minimum and is returned to be logged: a refusal naming none can be
+	// our request's fault. The token waits its next turn, so it can't hold up the rest.
 	var kept error
 	if minimum != nil {
 		kept = SetMinimum(ctx, k.Pool, asset, minimum, now)
@@ -175,8 +171,7 @@ func (k *Keeper) Probe(ctx context.Context, now time.Time) error {
 	return errors.Join(err, kept)
 }
 
-// SetMinimum keeps what 1Click said asset needs at least, in Base USDC base units; nil when it named none (D-126). An
-// answer that quotes or names a minimum has a route, so the token is offered again (R-245).
+// SetMinimum keeps asset's least amount in Base USDC base units, nil if none; an answer means a route.
 func SetMinimum(ctx context.Context, db interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }, asset string, minimum *big.Int, at time.Time) error {
@@ -192,8 +187,7 @@ func SetMinimum(ctx context.Context, db interface {
 	return nil
 }
 
-// SetNoLiquidity keeps that 1Click has no route for asset now, so payers aren't offered it until a later dry quote is
-// answered (R-245).
+// SetNoLiquidity marks that 1Click has no route for asset now, so payers aren't offered it until a dry quote answers.
 func SetNoLiquidity(ctx context.Context, db interface {
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }, asset string, at time.Time) error {

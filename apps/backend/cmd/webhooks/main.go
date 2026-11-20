@@ -1,5 +1,4 @@
-// Command webhooks sends the webhook deliveries (R-148). It holds no signer, Privy or email key: only the database
-// and WEBHOOK_SECRET_KEY, which opens the signing secrets. Its calls go out through webhook.Client's address filter.
+// Command webhooks sends webhook deliveries. It holds only the database and WEBHOOK_SECRET_KEY, no other key.
 package main
 
 import (
@@ -48,7 +47,6 @@ func run() error {
 		return invoiceapi.EventBody(e, inv)
 	}
 	hooks, client := webhook.NewService(pool, cfg.WebhookKey), webhook.Client()
-	// Without the key no endpoint can be made, so nothing waits.
 	slog.Info("webhooks ready", "on", cfg.WebhookKey != nil)
 	hooks.Run(ctx, client, body)
 	return nil

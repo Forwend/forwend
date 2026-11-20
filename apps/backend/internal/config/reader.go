@@ -52,8 +52,7 @@ func (r *reader) oneClick() OneClick {
 	return c
 }
 
-// oneClickFake checks a 1Click root, and that a key replacing the one 1Click signs with comes only with a test's fake
-// on loopback (D-124).
+// oneClickFake checks a 1Click root, and that a replaced signing key comes only with a loopback test fake.
 func (r *reader) oneClickFake(urlName, raw, keyName, key string) {
 	if u := webURL(raw); u == nil {
 		r.invalid = append(r.invalid, urlName+" (an http or https URL)")
@@ -163,8 +162,7 @@ func (r *reader) origin(name string) string {
 	return u.Scheme + "://" + u.Host
 }
 
-// keysURL must be https: anyone on the path of a plain-http key list could sign tokens for any user. Loopback http is
-// for tests.
+// keysURL must be https: anyone on the path of a plain-http key list could sign tokens. Loopback http is for tests.
 func (r *reader) keysURL(name string) string {
 	raw := r.get(name)
 	if raw == "" {
@@ -228,8 +226,7 @@ func (r *reader) chainIDs(name string) []uint64 {
 	return ids
 }
 
-// fees reads the platform fee plan. The contract takes at most a tenth of the amount in fees, network fee included, so
-// a rate is at most 500 basis points.
+// fees reads the fee plan; the contract takes at most a tenth of the amount in fees, so a rate is at most 500 bps.
 func (r *reader) fees() Fees {
 	var f Fees
 	if raw := os.Getenv("PLATFORM_FEE_BPS"); raw != "" {

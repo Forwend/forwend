@@ -129,8 +129,7 @@ func (p *Proxy) Fail(rule func(Call) Fault) {
 	p.rule = rule
 }
 
-// Stale answers a later single call with rule's result instead of forwarding it, as a lagging node would; a nil
-// result forwards the call, batches are always forwarded, and a nil rule stops it.
+// Stale answers later single calls with rule's result, as a lagging node would; a nil result forwards, nil rule stops.
 func (p *Proxy) Stale(rule func(Call) json.RawMessage) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

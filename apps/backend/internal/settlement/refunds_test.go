@@ -72,7 +72,6 @@ func TestAuthorityRefundReducesHeldFundsWithoutInventingSettlement(t *testing.T)
 	}
 }
 
-// pastWatchWindow moves an invoice 40 days past its settle deadline; deposits are watched only 30 days past it.
 func (e env) pastWatchWindow(t *testing.T, id string) {
 	t.Helper()
 	for _, q := range []string{"ALTER TABLE invoices DISABLE TRIGGER invoices_guard",
@@ -97,7 +96,7 @@ func (e env) scanAndBook(t *testing.T) {
 
 func TestRefundAfterTheWatchWindowIsBookedWhileHeldMoneyRemains(t *testing.T) {
 	e := setup(t)
-	id, receive := e.paidInvoice(t) // 5 USDC paid 6: 1 held for the payer
+	id, receive := e.paidInvoice(t)
 	e.deployReceiver(t, id)
 	e.anvil.Send(receive, "settle()")
 	e.scanAndBook(t)
@@ -105,7 +104,7 @@ func TestRefundAfterTheWatchWindowIsBookedWhileHeldMoneyRemains(t *testing.T) {
 		t.Fatalf("before the window ends: settlement %s, refund %s", got.SettlementStatus, got.RefundStatus)
 	}
 	e.pastWatchWindow(t, id)
-	e.create(t, 8) // deposits are still read for invoices inside the window
+	e.create(t, 8)
 	e.anvil.AsAuthority(receive, "refund(address,uint256)", chaintest.Sender, "1000000")
 	e.anvil.Transfer(e.token, receive, "2000000")
 	e.scanAndBook(t)
@@ -253,7 +252,6 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 	if err != nil || len(page.Items) != 1 || page.Items[0].Classification() != activity.ClassUnclassified || page.Items[0].Payment != nil {
 		t.Fatalf("refund-to-wallet misclassified: %+v %v", page, err)
 	}
-	// A known full payment stays historically paid after a return; further deposits belong to the payer.
 	e.anvil.Transfer(e.token, receive, "1000000")
 	e.anvil.Mine(2)
 	if err := e.watch.Scan(t.Context()); err != nil {
@@ -282,7 +280,7 @@ func TestUnloggedFundingReturnStaysObservedWithoutInventedBooking(t *testing.T) 
 	e := setup(t)
 	id, receive := e.create(t, 44)
 	e.deployReceiver(t, id)
-	// Model an accepted-token balance credit without an ERC20 Transfer log, as a native credit can behave.
+	// A balance credit without a Transfer log, as a native credit can be.
 	slot := crypto.Keccak256Hash(common.LeftPadBytes(common.HexToAddress(receive).Bytes(), 32), make([]byte, 32))
 	if err := e.anvil.RPC.Call(nil, "anvil_setStorageAt", e.token, slot.Hex(), fmt.Sprintf("0x%064x", 1000000)); err != nil {
 		t.Fatal(err)

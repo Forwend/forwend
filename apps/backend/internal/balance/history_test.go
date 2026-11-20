@@ -49,24 +49,23 @@ func TestHistoryEndsAtTheCurrentBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	watch := watcher.NewChain(pool, chaintest.ChainID, anvil.RPC)
-	if err := watch.Scan(ctx); err != nil { // the chain's first scan
+	if err := watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
 
-	// The profile wallet is Anvil's sender. Days 1 and 2 transfers land near noon UTC; today's mint lands exactly at
-	// 00:00 UTC, which starts today, so it counts for today and not for day 2.
+	// Days 1 and 2 land near noon UTC; today's mint lands at 00:00 UTC, so it counts for today.
 	const day, outsider = 24 * 60 * 60, "0x00000000000000000000000000000000000000cc"
 	now := anvil.Now()
 	anvil.Wait((now/day+1)*day + day/2 - now)
-	anvil.Mint(token, "100000000") // day 1: 100 in
+	anvil.Mint(token, "100000000")
 	anvil.Wait(day)
-	anvil.Transfer(token, outsider, "30000000") // day 2: 30 out
+	anvil.Transfer(token, outsider, "30000000")
 	if err := anvil.RPC.Call(nil, "evm_setNextBlockTimestamp", (anvil.Now()/day+1)*day); err != nil {
 		t.Fatal(err)
 	}
-	anvil.Mint(token, "5000000")               // day 3, today, at 00:00 UTC: 5 in
-	anvil.Mine(2)                              // final
-	anvil.Transfer(token, outsider, "1000000") // not final: in neither the balance nor the history
+	anvil.Mint(token, "5000000")
+	anvil.Mine(2)
+	anvil.Transfer(token, outsider, "1000000")
 	if err := watch.Scan(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +114,6 @@ func TestHistoryEndsAtTheCurrentBalance(t *testing.T) {
 		t.Fatalf("current balance %v, %v; the history must end at it", current.Tokens[0].Wallet, err)
 	}
 
-	// A missing balance leaves the token's series and every USD total null, as in Balances.
 	failing := NewService(pool, func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
 		return nil, 0, errors.New("rpc down")
 	})

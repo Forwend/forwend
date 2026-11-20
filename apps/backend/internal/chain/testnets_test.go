@@ -81,8 +81,6 @@ func TestEnableTestnetTokens(t *testing.T) {
 	}
 }
 
-// The pay page names a token by the symbol and decimals built into it and refuses any other token, so every token the
-// migrations and EnableTestnetTokens make must be in its PAY_TOKENS, alike.
 func TestPayTokensMatchTheWeb(t *testing.T) {
 	src, err := os.ReadFile("../../../web/src/features/pay/constants/pay.ts")
 	if err != nil {
@@ -126,7 +124,6 @@ func TestPayTokensMatchTheWeb(t *testing.T) {
 	}
 }
 
-// R-222: ENABLE_MAINNETS switches on the named live chains, and refuses a testnet or an unknown chain.
 func TestEnableMainnets(t *testing.T) {
 	ctx := context.Background()
 	db, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))

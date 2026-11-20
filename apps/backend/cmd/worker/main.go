@@ -75,7 +75,6 @@ func run() error {
 
 	w := worker.New(pool, specs, cfg.Chains.RPCRate, budget)
 	defer w.Close()
-	// Without a Resend key nothing is sent, and the events wait in the outbox.
 	sender, site := notify.FromConfig(cfg.Email)
 	invoices := invoice.NewService(pool)
 	quotes := balance.NewChainReader(specs, cfg.Chains.RPCRate, budget)

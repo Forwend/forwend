@@ -92,7 +92,7 @@ func TestHistoryForExistingInvoices(t *testing.T) {
 		"3 invoice.paid by system",
 		"2 invoice.canceled by owner",
 		"3 invoice.settled by system 0x" + "abababababababababababababababababababababababababababababababab",
-		"4 invoice.expired by system", // at its expiry, 2027-01-15
+		"4 invoice.expired by system",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("history\n got %q\nwant %q", got, want)

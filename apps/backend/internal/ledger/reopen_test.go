@@ -7,8 +7,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// R-130: the money held at the close, a late payment included, is the creator's again up to the amount, named by the
-// deposit it came from; a short close expires it again, and it reopens once.
 func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 	s := newSim(t)
 	ctx := context.Background()
@@ -27,7 +25,7 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 			id, account).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
-		return -n // credit balances are negative
+		return -n
 	}
 	paidBy := func(transfer int64) int64 {
 		var n int64
@@ -45,7 +43,7 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 	s.finalizedAt(1100)
 	s.process(full)
 	s.process(short)
-	late := s.transfer(full, receive, 4000000, 1200, "confirmed") // late: held
+	late := s.transfer(full, receive, 4000000, 1200, "confirmed")
 	s.process(full)
 	if p, _ := s.payment(full); p != ExpiredPartiallyPaid || balance(full, "payer_held") != 6000000 {
 		t.Fatalf("before the reopen: %s, held %d", p, balance(full, "payer_held"))
@@ -68,7 +66,7 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 		t.Fatalf("nothing held after the reopen, refund %s", r)
 	}
 	s.n = 100
-	s.transfer(short, shortReceive, 1000000, 40000, "confirmed") // before the new close: paid to the creator
+	s.transfer(short, shortReceive, 1000000, 40000, "confirmed")
 	s.exec("UPDATE chain_cursors SET last_scanned_block = 101,last_finalized_block = 101 WHERE chain_id = 1")
 	s.process(short)
 	if p, _ := s.payment(short); p != PartiallyPaid || balance(short, "recipient_payable") != 2000000 {
@@ -84,8 +82,6 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 	}
 }
 
-// R-130: an option that closes partly paid records its receiver's deploy time, 0 when not deployed; one that closes
-// with nothing paid can't reopen and is not read.
 func TestPartialCloseRecordsTheReceiverDeployTime(t *testing.T) {
 	s := newSim(t)
 	early, earlyReceive := s.invoice()

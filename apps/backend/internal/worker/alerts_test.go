@@ -50,7 +50,6 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 		    factory_address, '0x00000000000000000000000000000000000000cc', 'key-3', request_hash FROM invoices WHERE id = '0x' || repeat('01', 32)`); err != nil {
 		t.Fatal(err)
 	}
-	// Owed in full two hours ago, yet the finalized balance check still fails.
 	if _, err := pool.Exec(ctx, `INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount,
 		    expires_at, settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		SELECT '0x' || repeat('04', 32), profile_id, chain_id, chain_family, token_contract, amount,
