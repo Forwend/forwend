@@ -1,0 +1,4 @@
+# Generated from apps/backend/api/openapi.yaml by `pnpm api:generate`; GitHub collapses them in diffs.
+apps/backend/internal/httpapi/openapi/openapi.gen.go linguist-generated=true
+apps/web/src/shared/types/openapi.gen.ts linguist-generated=true
+packages/node/src/openapi.gen.ts linguist-generated=true
