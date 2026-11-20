@@ -20,13 +20,13 @@ apps/web/src/
 
 ## One layout everywhere
 
-A folder holds one kind of code, so where a thing lives follows from what it is (F169). A feature, `shared/` and a
+A folder holds one kind of code, so where a thing lives follows from what it is. A feature, `shared/` and a
 screen with supporting code use the same kind folders, created only when the first file of that kind exists:
 
 ```text
 features/invoices/
   api/          invoices-api.ts         RTK Query endpoints (injectEndpoints) and their generated hooks
-  schemas/      invoices.ts             Zod schemas for requests and responses (F170); types are inferred from them
+  schemas/      invoices.ts             Zod schemas for requests and responses; types are inferred from them
   types/        invoices.ts             interfaces and type aliases; unions derived from constants/ with `typeof`
   constants/    invoices.ts             finite values and limits (`as const`); invoices-copy.ts: the feature's text
   lib/          invoices.ts             pure functions: no React, no requests
@@ -50,6 +50,24 @@ features/invoices/
   type) instead of copying fields. Keep HTTP request and response shapes apart from internal types when they differ.
 - Keep finite domain values in `constants/` and derive unions from them. Use type-only imports.
 
+## Shared owners
+
+Several features use each of these. Reuse them before writing a helper.
+
+- Money text and parsing: `shared/lib/money.ts` (`exactAmount`, `amountText`, `usdText`, `parseTokenAmount`).
+  - USD limits, patterns and amount errors: `shared/constants/money.ts`.
+- Dates: `shared/lib/dates.ts` (`dateTime`, `formatDueDate`, `timeNear`, `monthDayTime`).
+- Chains, tokens, explorer links and logos: `shared/lib/chains.ts` (`tokenKey`, `tokensOn`, `chainName`, `txLink`).
+- Countries: `shared/lib/countries.ts` (`countryName`, `countryOptions`).
+- Accepted assets: `shared/components/chains/asset-selection.tsx` with `shared/lib/asset-selection.ts`.
+- A failed request: `shared/api/api-error.ts` (`HTTP_STATUS`, `errorStatus`, `apiError`, `notFound`, `namedField`).
+- A profile's API path: `profilePath` in `shared/api/api-slice.ts`.
+- Hooks: `useNow`, `useDesktop`, `useFormSteps`, `useListSearch`, `useListFilters` and `useShownData` in
+  `shared/hooks/`.
+- URL parameters: `setParam` and `withParam` in `shared/lib/url-params.ts`.
+- Motion classes: `FADE_IN` and `STEP_IN` in `shared/constants/motion.ts`.
+- Page parts: `PageTitle`, `DataTable`, `DetailHeader`, `StepForm`, `LoadError` and the rest of `shared/components/`.
+
 ## TypeScript and React conventions
 
 - A component is a function declaration with its props typed on the parameter: `export function TokenMark({ chainId }:
@@ -58,16 +76,28 @@ features/invoices/
   props inline. No `I` prefix (`Props`, not `IProps`): TypeScript's own style names interfaces by what they describe.
 - Let TypeScript infer a component's return type; annotate the return type of exported non-component functions.
 - Prefer `interface` for object shapes and `type` for unions, mapped types and aliases.
-- Use the shared kit (`@forwend/ui-web`) for every control: `Button` (variants primary, secondary, ghost, link and
-  soon), `IconButton` (icon-only, with a required label), `RowButton` (a full-width choice or menu trigger), `Form`,
-  `ChoiceCard`, the fields, `TruncatedAddress` and the rest. A link that looks like a button uses `buttonClasses`.
-  Raw controls remain only where the kit has no such control and the element is used once:
+- Use the shared kit (`@forwend/ui-web`) for every control: `Button` (variants primary, secondary, ghost, link,
+  soon and danger), `IconButton` (icon-only, with a required label), `RowButton` (a full-width choice or menu
+  trigger), `Form`, `ChoiceCard`, the fields, `TruncatedAddress` and the rest. A link that looks like a button uses
+  `buttonClasses`. Raw controls remain only where the kit has no such control:
   - `screens/app-shell/command-menu.tsx`: the search box is an ARIA combobox inside its own dialog.
   - `screens/app-shell/app-header.tsx`: the two search triggers that look like a field and open the command menu.
-  - `screens/app-shell/phone-tab-bar.tsx`: the More tab is a button styled exactly like its sibling tab links.
+  - `screens/app-shell/phone-tab-bar.tsx`: the More tab, styled like its sibling tab links.
+    - The profile card at the top of the More sheet, styled like the sheet's rows.
+  - `screens/settings/settings-screen.tsx` and `screens/wallet/wallet-screen.tsx`: a dialog trigger styled as a
+    settings row (Sign out of all devices, Export private key).
+  - `shared/components/list-filters.tsx`: each filter chip is a hidden radio inside its label.
+  - `screens/landing/sections/cross-chain/cross-chain-route.tsx`: the sample route's token picks.
+  - `screens/kit-directions/*-comp.tsx`: the direction comps' sample buttons.
   - `features/stores/components/store-form.tsx`: the browser's color picker, as the Accent color field's action.
   - `features/stores/components/store-logo.tsx`: a hidden file input that the Upload logo button opens.
   - `features/onboarding/components/ready-step.tsx`: the finish screen's action cards, buttons styled as its link cards.
+  - `features/onboarding/components/setup-guide.tsx`: the title row that opens and closes the setup guide.
+  - `features/pay/components/crosschain-picker.tsx`: the chain rows and the phone's Back row.
+  - `features/transactions/components/transaction-phone-row.tsx`: a phone row that opens the transaction.
+  - A tooltip trigger with a 44px hit area: `features/payments/components/payment-detail.tsx` (the held status),
+    `features/receive/components/receive-sheet.tsx` (the minimum) and
+    `features/transactions/components/records-value.tsx` (the rate date).
   Add a kit component instead the second time any of these is needed.
 
 ## Landing sections
@@ -94,7 +124,6 @@ screens/landing/
 
 Group the hero's rendering and supporting copy together. Keep section-only styles beside their component.
 A folder is useful when a section has supporting files, not merely because it appears on the page.
-The landing uses sign-in links instead of a waitlist form.
 An image also used by sign-in is shared branding, not landing-only data.
 The site bar that landing and sign-in share lives in `shared/components/site-bar/`.
 The landscape page that sign-in and the 404 share lives in `shared/components/landscape-page/`.
@@ -118,8 +147,8 @@ The store holds only the RTK Query request cache. What exists:
 
 - `store/store.ts`: `makeStore`, `AppStore`, `RootState` and `AppDispatch`; one store per tab, never a server-wide
   singleton.
-- `providers/store-provider.tsx` (signed-in app, inside Privy) and `providers/public-store-provider.tsx` (`/pay`,
-  `/reminders/<token>`, `/w/<token>` and `/l/<slug>`, no token).
+- `providers/store-provider.tsx` (the `(app)` group, inside Privy) and `providers/public-store-provider.tsx` (no
+  token: the `(checkout)` group with `/pay`, `/embed` and `/l`, plus `/reminders/<token>` and `/w/<token>`).
 - `shared/api/api-slice.ts`: the one `apiSlice` with the common request setup. Each feature injects its endpoints in
   `features/<feature>/api/<feature>-api.ts` with `injectEndpoints`; no endpoints in the shared file and no second
   `createApi`.
@@ -189,10 +218,12 @@ packages/ui-web/src/
   point where there is a real package boundary. Keep server-only modules out of client import paths and preserve
   small client boundaries; see [Next.js server and client components](https://nextjs.org/docs/app/getting-started/server-and-client-components).
 - Put unit tests in a `tests/` folder inside their owner: the feature (`features/balances/tests/`), the shared
-  capability (`shared/api/tests/`), the screen, or the UI component family (`components/payments/tests/`,
-  `hooks/tests/`). No repository-wide folder for application tests. `packages/design-tokens` and `packages/node` keep
-  their `test/` folders. Flow and browser tests stay in `apps/web/e2e/`; the live Privy tests share their sign-in setup in
+  capability (`shared/api/tests/`), the screen, or the UI component family (`components/payments/tests/`).
+  No repository-wide folder for application tests. The other packages and `apps/example-merchant` keep their `test/`
+  folders. Flow and browser tests stay in `apps/web/e2e/`; the live Privy tests share their sign-in setup in
   `e2e/privy/`. Go tests follow [backend rules](../backend/rules.md#layout).
+- `apps/web/vitest.setup.ts` holds the jsdom setup every web unit test shares: the same-origin `Request` and the modal
+  `<dialog>`. Do not copy it into a test file.
 - When moving existing tests, update Vitest discovery and prove the same tests still run. Update aliases, package
   exports, fixtures and docs with a move.
 - A structure refactor preserves routes, rendered behavior, API contracts and package exports. Run the existing

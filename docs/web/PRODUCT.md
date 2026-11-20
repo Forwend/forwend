@@ -2,7 +2,7 @@
 
 Public audiences: businesses, freelancers, and builders. Stores and marketplaces are examples of businesses.
 Payers use a wallet or exchange and do not need a Forwend account.
-Product requirements and money policy live in [PROJECT](../PROJECT.md); future scope is in [PLAN](../../PLAN.md).
+Product requirements and money policy live in [PROJECT](../../docs/PROJECT.md); future scope is in [PLAN](../../PLAN.md).
 
 - Explain the path: invoice → detected → confirmed → settled into the profile wallet. Show fees, network and who can move money.
 - Separate work progress from payment status, due dates from checkout expiry, and available money from held money.
