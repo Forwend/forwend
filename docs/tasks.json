@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 498,
+  "nextId": 499,
   "tasks": [
     {
       "id": "F332",
@@ -317,6 +317,112 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F498",
+      "type": "refactor",
+      "behavior": "The codebase is untangled: comments and tests are cut to what guards a break, owners are clear, and the docs match the code.",
+      "acceptance": [
+        "Every required check passes on the final commit: harness, docs-check, lint, typecheck, unit, build and e2e.",
+        "The balance report reads Still checking while a network's scan lags, and the send summary shows To shortened as From does."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "harness",
+        "docs-check",
+        "lint",
+        "typecheck",
+        "unit",
+        "build",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-20 review pass by four fresh-context reviewers (backend money paths, backend HTTP/API, web and UI kit, packages/contracts/docs): Read-only review of origin/main..HEAD, 1223 files, by area. No confirmed behavior regression in production code. Backend: route table identical (120 routes), no migration changed, JSON tags unchanged, moved or split functions compared by AST and body. Contracts: Solidity code lines identical, deploy records untouched. Found and fixed: settle read waits and amounts in two reads, now waits first (4a1219b8). Restored: concurrent option-choice test, node no-runtime-dependencies test. Known and left for the owner: cut tests for ErrFeeQuote, receiveAddress refusals, some PDF and receipt assertions, webhook redirect, Open error wrapping, onboarding repeats, js/react iframe and PayButton assertions; PLAN.md sections 11.x that PROJECT.md, openapi.yaml and pay.spec.ts still cite; Shift+PageDown in the range calendar now jumps 12 months; the held-on-other-option note skips tokens missing from PAY_TOKENS. Not covered: reviewers ran no tests; web invoice-detail, new-invoice-form and landing/kit screens were skimmed, not read line by line."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-20T15:58:06Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 5.1,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.7,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 80.6,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.2,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 49.7,
+            "log": ""
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.9,
+            "log": ""
+          }
+        ],
+        "taskHash": "fd6d9b47fb9f3435",
+        "filesHash": "cddd12f68d797efb",
+        "proof": {
+          "1": "e2e: all seven required checks pass; the web e2e needs the Privy app id blank locally because the test server runs on a port Privy does not allow",
+          "2": "unit: the new scanCurrent Go test, the web status test and the unchanged send tests pass; the Go e2e covers the report"
+        },
+        "review": {
+          "result": "pass",
+          "by": "four fresh-context reviewers (backend money paths, backend HTTP/API, web and UI kit, packages/contracts/docs)",
+          "summary": "Read-only review of origin/main..HEAD, 1223 files, by area. No confirmed behavior regression in production code. Backend: route table identical (120 routes), no migration changed, JSON tags unchanged, moved or split functions compared by AST and body. Contracts: Solidity code lines identical, deploy records untouched. Found and fixed: settle read waits and amounts in two reads, now waits first (4a1219b8). Restored: concurrent option-choice test, node no-runtime-dependencies test. Known and left for the owner: cut tests for ErrFeeQuote, receiveAddress refusals, some PDF and receipt assertions, webhook redirect, Open error wrapping, onboarding repeats, js/react iframe and PayButton assertions; PLAN.md sections 11.x that PROJECT.md, openapi.yaml and pay.spec.ts still cite; Shift+PageDown in the range calendar now jumps 12 months; the held-on-other-option note skips tokens missing from PAY_TOKENS. Not covered: reviewers ran no tests; web invoice-detail, new-invoice-form and landing/kit screens were skimmed, not read line by line.",
+          "at": "2026-11-20T16:00:42Z",
+          "filesHash": "cddd12f68d797efb"
+        }
+      },
+      "branch": "refactor/f498-the-codebase-is-untangled-comments-and-t",
+      "baseCommit": "ca13cffb0b277c388443f1780521485122549fa6",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {
