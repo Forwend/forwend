@@ -205,8 +205,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
       responses:
         "200":
@@ -300,8 +300,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: limit
           in: query
@@ -374,8 +374,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: limit
           in: query
@@ -444,8 +444,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: from
           in: query
@@ -508,8 +508,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: paymentId
           in: path
@@ -582,8 +582,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: paymentId
           in: path
@@ -651,8 +651,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: from
           in: query
@@ -711,8 +711,8 @@ paths:
         - name: refundStatus
           in: query
           schema: {"type": "string", "enum": ["none", "held", "refund_pending", "refunded"]}
-        - $ref: "#/components/parameters/PaymentState"
-        - $ref: "#/components/parameters/PaymentWallet"
+        - $ref: "#/components/parameters/StateFilter"
+        - $ref: "#/components/parameters/WalletFilter"
         - $ref: "#/components/parameters/PaymentReference"
         - name: paymentId
           in: path
@@ -1087,7 +1087,7 @@ paths:
                   items:
                     type: array
                     items: { $ref: "#/components/schemas/Owed" }
-                  count: { type: integer, minimum: 0, description: Every row, also those past limit. }
+                  count: { type: integer, minimum: 0, description: "Every row, also those past limit." }
                   totals:
                     type: array
                     description: |
@@ -1627,7 +1627,7 @@ paths:
           description: nextCursor from the previous page.
           schema: { type: string }
         - $ref: "#/components/parameters/StatusFilter"
-        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/StateFilter"
         - $ref: "#/components/parameters/Search"
       responses:
         "200":
@@ -2158,7 +2158,7 @@ paths:
                 required: [number, from]
                 properties:
                   number: { type: integer, minimum: 1 }
-                  from: { type: [string, "null"], description: The issuer's name, else the sender name. }
+                  from: { type: [string, "null"], description: "The issuer's name, else the sender name." }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/profiles/{profileId}/balances:
@@ -2202,7 +2202,7 @@ paths:
           description: nextCursor from the previous page.
           schema: { type: string }
         - $ref: "#/components/parameters/StatusFilter"
-        - $ref: "#/components/parameters/PaymentState"
+        - $ref: "#/components/parameters/StateFilter"
         - $ref: "#/components/parameters/Search"
       responses:
         "200":
@@ -2542,7 +2542,7 @@ paths:
           description: The invoice
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Invoice" }
+              schema: { $ref: "#/components/schemas/PublicInvoice" }
         "404": { $ref: "#/components/responses/InvoiceNotFound" }
         "500": { $ref: "#/components/responses/Internal" }
   /v1/invoices/{payToken}/payer-email:
@@ -3847,7 +3847,7 @@ components:
         detected or an on-time pending transfer is confirming; other open or partially_paid is open.
         Another value is 422.
       schema: { type: string, enum: [open, confirming, paid, settled, expired, canceled] }
-    PaymentState:
+    StateFilter:
       name: state
       in: query
       description: |
@@ -3857,7 +3857,7 @@ components:
         late or another option's). expired: closed without payment, including a checkout session closed by its expire
         action (its paymentStatus stays canceled). canceled: the issuer canceled an invoice or request.
       schema: { type: string, enum: [waiting, confirming, partially_paid, paid, overpaid, expired, canceled] }
-    PaymentWallet:
+    WalletFilter:
       name: wallet
       in: query
       description: |
@@ -3913,7 +3913,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: 1 to 255 bytes of UTF-8, not starting with job:, link: or retainer:, which Forwend keeps for itself.
+      description: "1 to 255 bytes of UTF-8, not starting with job:, link: or retainer:, which Forwend keeps for itself."
       schema: { type: string, minLength: 1, maxLength: 255 }
   schemas:
     CreateCheckoutSession:
@@ -3922,7 +3922,7 @@ components:
       required: [storeId, amountUsd]
       properties:
         storeId: { type: string, format: uuid }
-        amountUsd: { type: string, description: Exact USD decimal, at least 1.00. }
+        amountUsd: { type: string, description: "Exact USD decimal, at least 1.00." }
         reference: { type: string, maxLength: 100, description: Immutable external order reference. }
         title: { type: string, maxLength: 200 }
         expiresIn: { type: integer, minimum: 900, maximum: 31536000 }
@@ -3959,7 +3959,7 @@ components:
         receiver: { type: string, pattern: "^-?[0-9]+$" }
         payable: { type: string, pattern: "^-?[0-9]+$" }
         held: { type: string, pattern: "^-?[0-9]+$" }
-        settled: { type: string, pattern: "^-?[0-9]+$", description: What settlement paid the recipient, the amount less the fees. }
+        settled: { type: string, pattern: "^-?[0-9]+$", description: "What settlement paid the recipient, the amount less the fees." }
         fees: { type: string, pattern: "^-?[0-9]+$", description: The network and platform fees settlement paid. }
         refunded: { type: string, pattern: "^-?[0-9]+$" }
         observedRefunded: { type: string, pattern: "^[0-9]+$" }
@@ -4810,7 +4810,7 @@ components:
         payToken: { $ref: "#/components/schemas/PayToken" }
     PaymentLink:
       type: object
-      required: [linkId, slug, title, storeId, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid, reserved, ready,
+      required: [linkId, slug, title, storeId, feesPaidBy, amountUsd, minUsd, maxUsd, endsAt, maxPayments, active, visits, paid, reserved, ready,
         createdAt, updatedAt, livemode]
       properties:
         linkId: { type: string, format: uuid }
@@ -4827,8 +4827,8 @@ components:
         maxPayments: { type: [integer, "null"] }
         active: { type: boolean }
         visits: { type: integer, description: Times the link's page was opened. }
-        paid: { type: integer, description: Successful purchases, independent of settlement. }
-        ready: { type: boolean, description: Billing details, wallet and accepted tokens are ready in this store and mode. }
+        paid: { type: integer, description: "Successful purchases, independent of settlement." }
+        ready: { type: boolean, description: "Billing details, wallet and accepted tokens are ready in this store and mode." }
         reserved: { type: integer, description: "Unpaid attempts holding a slot: detected or partly paid, or open with a deposit seen or for 15 minutes from creation." }
         livemode: { type: boolean, description: "The link's permanent mode; a key reaches only links of its mode (D-87)." }
         feesPaidBy: { type: [string, "null"], enum: [owner, client, null], description: "Null: the profile's choice." }
@@ -5132,7 +5132,7 @@ components:
         token: { $ref: "#/components/schemas/Address" }
         symbol: { type: string }
         decimals: { type: integer, minimum: 0 }
-        network: { type: string, description: The chain's name, like base-sepolia. }
+        network: { type: string, description: "The chain's name, like base-sepolia." }
         on: { type: boolean }
     Issuer:
       type: object
@@ -5330,9 +5330,9 @@ components:
     ActivityItem:
       type: object
       required: [kind, at, invoiceId, chainId, token, symbol, decimals, amount, status, optionCount, closed, held,
-        merchantAmount, heldAmount, purpose, documentKind, number, reference, clientName, title]
+        merchantAmount, heldAmount, purpose, documentKind, number, reference, clientName, title, paymentStatus, confirming]
       properties:
-        paymentStatus: { type: string, description: Customer payment state, independent of the individual transfer confirmation. }
+        paymentStatus: { type: string, description: "Customer payment state, independent of the individual transfer confirmation." }
         confirming: { type: boolean, description: "An on-time transfer is still being confirmed or credited, or the finalized balance check is pending." }
         kind:
           type: string
@@ -5490,6 +5490,7 @@ components:
             where Forwend paid. Null for other transfers, and until the send's receipt was read.
     RecordsCurrency:
       type: object
+      required: [currency]
       additionalProperties: false
       properties:
         currency: { type: [string, "null"], pattern: "^[A-Z]{3}$" }
@@ -5863,122 +5864,13 @@ components:
           pattern: "^[0-9]+$"
           description: On-time base units without a deposit or reopen booking.
     Invoice:
-      description: An invoice read alone or just created, with its deposits.
+      description: An invoice as the owner's responses show it, read alone or just created, with its deposits.
       allOf:
         - $ref: "#/components/schemas/InvoiceSummary"
+        - $ref: "#/components/schemas/InvoiceDetail"
         - type: object
-          required: [paidAt, settledAt, deposits, options, nextCheckAt, lines, updates, replacedBy, crossChain, crossChainOn]
+          required: [settlementWait, reminders, retainer, sends, history, reopenUntil, replaces, memo, views]
           properties:
-            paidAt:
-              type: [string, "null"]
-              format: date-time
-              description: |
-                Once paymentStatus is paid: the block time of the deposit that completed the amount, as on the
-                receipt PDF. null before.
-            settledAt:
-              type: [string, "null"]
-              format: date-time
-              description: |
-                Once settlementStatus is settled: when the settlement was recorded as final (the ledger's settlement
-                entry). null before.
-            canceledAt:
-              type: [string, "null"]
-              format: date-time
-              description: When the owner canceled it (paymentStatus canceled); null otherwise.
-            depositSummary: { $ref: "#/components/schemas/DepositSummary" }
-            deposits:
-              type: array
-              maxItems: 100
-              description: |
-                Bounded preview of non-reorged transfers in chain order; empty on create.
-                Includes 95 recent transfers plus first on-time payment, last credited payment,
-                slowest confirmations and oldest unbooked confirmed transfer. Use depositSummary for totals.
-              items: { $ref: "#/components/schemas/Deposit" }
-            nextCheckAt:
-              type: [string, "null"]
-              format: date-time
-              description: When Check status may run again (R-55); null when it may now.
-            lines:
-              type: array
-              description: |
-                The invoice's line items in order (R-88), empty without a breakdown. Money is in the base units of the
-                option whose optionId is the invoiceId; quantity has 2 decimals ("7.50").
-              items:
-                type: object
-                required: [description, quantity, unitPrice, amount]
-                properties:
-                  description: { type: string }
-                  quantity: { type: string }
-                  unitPrice: { $ref: "#/components/schemas/Uint256" }
-                  amount: { $ref: "#/components/schemas/Uint256" }
-            options:
-              type: array
-              description: |
-                Every token and network the invoice accepts, ordered by chain and symbol: one for a fixed invoice. Each
-                has its own on-chain id (in its terms instead of invoiceId), amount and receive address; recipient,
-                expiresAt and settleDeadline are the invoice's.
-              items:
-                type: object
-                required: [optionId, chainId, network, token, symbol, decimals, amount, networkFee, platformFee, netAmount, feesPaidBy, receiveAddress, closesAt, deposits]
-                properties:
-                  amounts: { $ref: "#/components/schemas/PaymentAmounts" }
-                  closesAt: { type: string, format: date-time, description: This receiver option's effective close. }
-                  optionId: { $ref: "#/components/schemas/InvoiceId" }
-                  chainId: { type: integer }
-                  network: { type: string, description: The chain's name, such as base-sepolia. }
-                  token: { $ref: "#/components/schemas/Address" }
-                  symbol: { type: string }
-                  decimals: { type: integer, minimum: 0 }
-                  amount: { $ref: "#/components/schemas/Uint256" }
-                  networkFee:
-                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
-                    description: Paid at settlement to the settler for its gas (R-226). Part of the amount.
-                  platformFee:
-                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
-                    description: Paid at settlement to Forwend. Part of the amount; 0 at launch.
-                  netAmount:
-                    allOf: [{ $ref: "#/components/schemas/Uint256" }]
-                    description: What the owner receives, the amount less both fees.
-                  feesPaidBy:
-                    type: string
-                    enum: [owner, client]
-                    description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
-                  receiveAddress: { $ref: "#/components/schemas/Address" }
-                  depositSummary: { $ref: "#/components/schemas/DepositSummary" }
-                  deposits:
-                    type: array
-                    maxItems: 100
-                    description: |
-                      Bounded transfer preview with the same selection as the invoice deposits.
-                      On an option other than the shown one they are held for the payer (D-76).
-                    items: { $ref: "#/components/schemas/Deposit" }
-            replacedBy:
-              description: |
-                R-129. The invoice a Revise replaced this canceled one with, and its pay link; null when none.
-              oneOf:
-                - type: "null"
-                - $ref: "#/components/schemas/Revision"
-            crossChain:
-              description: R-235. The shown payment through NEAR Intents; null without one.
-              oneOf:
-                - type: "null"
-                - $ref: "#/components/schemas/CrossChainPayment"
-            crossChainOn:
-              type: boolean
-              description: R-240. The payee takes payments from other chains and the platform didn't turn them off; the pay page also needs a live Base USDC option.
-            updates:
-              type: array
-              description: |
-                R-128. The edits the payer sees, newest first: the reference, note or due date changed before any
-                payment. from and to are a due date's old and new value, null for the other fields.
-              items:
-                type: object
-                required: [at, field, from, to]
-                properties:
-                  at: { type: string, format: date-time }
-                  field: { type: string, enum: [reference, note, dueDate] }
-                  from: { type: [string, "null"], format: date }
-                  to: { type: [string, "null"], format: date }
             settlementWait:
               description: |
                 Only in the owner's responses (create and the profile's GET); the public GET leaves it out. Why a paid
@@ -6100,6 +5992,126 @@ components:
                 count: { type: integer, minimum: 0 }
                 firstAt: { type: [string, "null"], format: date-time }
                 lastAt: { type: [string, "null"], format: date-time }
+    PublicInvoice:
+      description: An invoice as the pay page's GET shows it, without the owner's fields.
+      allOf:
+        - $ref: "#/components/schemas/PublicInvoiceSummary"
+        - $ref: "#/components/schemas/InvoiceDetail"
+    InvoiceDetail:
+      type: object
+      description: What an invoice read alone adds to its summary, in the owner's and the pay page's responses.
+      required: [paidAt, settledAt, canceledAt, deposits, options, nextCheckAt, lines, updates, replacedBy, crossChain, crossChainOn]
+      properties:
+        paidAt:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Once paymentStatus is paid: the block time of the deposit that completed the amount, as on the
+            receipt PDF. null before.
+        settledAt:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Once settlementStatus is settled: when the settlement was recorded as final (the ledger's settlement
+            entry). null before.
+        canceledAt:
+          type: [string, "null"]
+          format: date-time
+          description: When the owner canceled it (paymentStatus canceled); null otherwise.
+        depositSummary: { $ref: "#/components/schemas/DepositSummary" }
+        deposits:
+          type: array
+          maxItems: 100
+          description: |
+            Bounded preview of non-reorged transfers in chain order; empty on create.
+            Includes 95 recent transfers plus first on-time payment, last credited payment,
+            slowest confirmations and oldest unbooked confirmed transfer. Use depositSummary for totals.
+          items: { $ref: "#/components/schemas/Deposit" }
+        nextCheckAt:
+          type: [string, "null"]
+          format: date-time
+          description: When Check status may run again (R-55); null when it may now.
+        lines:
+          type: array
+          description: |
+            The invoice's line items in order (R-88), empty without a breakdown. Money is in the base units of the
+            option whose optionId is the invoiceId; quantity has 2 decimals ("7.50").
+          items:
+            type: object
+            required: [description, quantity, unitPrice, amount]
+            properties:
+              description: { type: string }
+              quantity: { type: string }
+              unitPrice: { $ref: "#/components/schemas/Uint256" }
+              amount: { $ref: "#/components/schemas/Uint256" }
+        options:
+          type: array
+          description: |
+            Every token and network the invoice accepts, ordered by chain and symbol: one for a fixed invoice. Each
+            has its own on-chain id (in its terms instead of invoiceId), amount and receive address; recipient,
+            expiresAt and settleDeadline are the invoice's.
+          items:
+            type: object
+            required: [optionId, chainId, network, token, symbol, decimals, amount, networkFee, platformFee, netAmount, feesPaidBy, receiveAddress, closesAt, deposits]
+            properties:
+              amounts: { $ref: "#/components/schemas/PaymentAmounts" }
+              closesAt: { type: string, format: date-time, description: This receiver option's effective close. }
+              optionId: { $ref: "#/components/schemas/InvoiceId" }
+              chainId: { type: integer }
+              network: { type: string, description: "The chain's name, such as base-sepolia." }
+              token: { $ref: "#/components/schemas/Address" }
+              symbol: { type: string }
+              decimals: { type: integer, minimum: 0 }
+              amount: { $ref: "#/components/schemas/Uint256" }
+              networkFee:
+                allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                description: Paid at settlement to the settler for its gas (R-226). Part of the amount.
+              platformFee:
+                allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                description: Paid at settlement to Forwend. Part of the amount; 0 at launch.
+              netAmount:
+                allOf: [{ $ref: "#/components/schemas/Uint256" }]
+                description: What the owner receives, the amount less both fees.
+              feesPaidBy:
+                type: string
+                enum: [owner, client]
+                description: owner, deducted at settlement; client, added on top of the price, so amount is price plus fees (D-122).
+              receiveAddress: { $ref: "#/components/schemas/Address" }
+              depositSummary: { $ref: "#/components/schemas/DepositSummary" }
+              deposits:
+                type: array
+                maxItems: 100
+                description: |
+                  Bounded transfer preview with the same selection as the invoice deposits.
+                  On an option other than the shown one they are held for the payer (D-76).
+                items: { $ref: "#/components/schemas/Deposit" }
+        replacedBy:
+          description: |
+            R-129. The invoice a Revise replaced this canceled one with, and its pay link; null when none.
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Revision"
+        crossChain:
+          description: R-235. The shown payment through NEAR Intents; null without one.
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/CrossChainPayment"
+        crossChainOn:
+          type: boolean
+          description: R-240. The payee takes payments from other chains and the platform didn't turn them off; the pay page also needs a live Base USDC option.
+        updates:
+          type: array
+          description: |
+            R-128. The edits the payer sees, newest first: the reference, note or due date changed before any
+            payment. from and to are a due date's old and new value, null for the other fields.
+          items:
+            type: object
+            required: [at, field, from, to]
+            properties:
+              at: { type: string, format: date-time }
+              field: { type: string, enum: [reference, note, dueDate] }
+              from: { type: [string, "null"], format: date }
+              to: { type: [string, "null"], format: date }
     Revision:
       type: object
       description: The other invoice of a Revise (R-129). payToken is the replacement's pay link, null otherwise.
@@ -6109,8 +6121,54 @@ components:
         number: { type: integer, minimum: 1 }
         payToken: { oneOf: [{ type: "null" }, { $ref: "#/components/schemas/PayToken" }] }
     InvoiceSummary:
+      description: An invoice as the owner's list, create and reads show it.
+      allOf:
+        - $ref: "#/components/schemas/PublicInvoiceSummary"
+        - type: object
+          required: [metadata, client, state, wallet]
+          properties:
+            linkId:
+              type: string
+              format: uuid
+              description: Source payment link, on owner reads only when present.
+            metadata:
+              type: object
+              additionalProperties: { type: string }
+              description: The create's metadata, {} when none was sent (R-151). Only in the owner's responses.
+            client:
+              type: object
+              required: [name, email, address, country, taxId]
+              description: Only in the owner's responses (create, list and the profile's GET); the public GET leaves it out.
+              properties:
+                name: { type: [string, "null"] }
+                email: { type: [string, "null"] }
+                address: { type: [string, "null"] }
+                country: { type: [string, "null"] }
+                taxId: { type: [string, "null"] }
+            store:
+              type: object
+              required: [storeId, name]
+              description: |
+                A merchant invoice's store (R-134), only in the owner's responses; left out for a personal or freelancer
+                profile's invoice and in the public GET. It never changes.
+              properties:
+                storeId: { type: string, format: uuid }
+                name: { type: string }
+            state:
+              type: string
+              enum: [waiting, confirming, partially_paid, paid, overpaid, expired, canceled]
+              description: |
+                The merchant's payment state (D-114), the one the list's state filter tests; paymentStatus keeps its raw
+                value. Only in the owner's responses.
+            wallet:
+              type: string
+              enum: [none, pending, in_wallet, delayed, refused]
+              description: |
+                The wallet transfer state (D-114), as on a payment; settlementStatus keeps its raw value. Only in the
+                owner's responses.
+    PublicInvoiceSummary:
       type: object
-      required: [purpose, documentKind, invoiceId, payToken, optionId, optionLocked, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
+      required: [purpose, documentKind, invoiceId, payToken, optionId, optionLocked, pickedOptionId, optionCount, confirming, closed, number, title, note, dueDate, supplyDate, reference, agreedValue, senderName, returnUrl, issuer, chainId,
         livemode, token, amount, networkFee, platformFee, netAmount, feesPaidBy, recipient, factory, receiveAddress, expiresAt, closesAt, settleDeadline, paymentStatus,
         settlementStatus, refundStatus, settlementTxHash, createdAt, brand]
       description: |
@@ -6126,10 +6184,6 @@ components:
           type: string
           enum: [invoice, request, none]
           description: Legacy checkout attempts retain invoice documents. New checkout sessions have none.
-        linkId:
-          type: string
-          format: uuid
-          description: Source payment link, on owner reads only when present.
         invoiceId:
           allOf: [{ $ref: "#/components/schemas/InvoiceId" }]
           description: >-
@@ -6193,7 +6247,7 @@ components:
               required: [currency, amount, decimals, date]
               properties:
                 currency: { type: string }
-                amount: { type: string, pattern: "^[0-9]+$", description: In the currency's minor units, like cents. }
+                amount: { type: string, pattern: "^[0-9]+$", description: "In the currency's minor units, like cents." }
                 decimals: { type: integer, minimum: 0, description: The currency's ISO 4217 decimals. }
                 date: { type: string, format: date }
         senderName:
@@ -6202,29 +6256,6 @@ components:
         returnUrl:
           type: [string, "null"]
           description: The creator's https link for the payer once paid. In every response, the public GET too.
-        metadata:
-          type: object
-          additionalProperties: { type: string }
-          description: The create's metadata, {} when none was sent (R-151). Only in the owner's responses.
-        client:
-          type: object
-          required: [name, email, address, country, taxId]
-          description: Only in the owner's responses (create, list and the profile's GET); the public GET leaves it out.
-          properties:
-            name: { type: [string, "null"] }
-            email: { type: [string, "null"] }
-            address: { type: [string, "null"] }
-            country: { type: [string, "null"] }
-            taxId: { type: [string, "null"] }
-        store:
-          type: object
-          required: [storeId, name]
-          description: |
-            A merchant invoice's store (R-134), only in the owner's responses; left out for a personal or freelancer
-            profile's invoice and in the public GET. It never changes.
-          properties:
-            storeId: { type: string, format: uuid }
-            name: { type: string }
         brand:
           type: [object, "null"]
           required: [storeId, color, logoAt]
@@ -6268,7 +6299,7 @@ components:
         receiveAddress:
           allOf: [{ $ref: "#/components/schemas/Address" }]
           description: Where the payer sends the token; factory.predict of these terms.
-        expiresAt: { type: string, format: date-time, description: The terms' expiry, which the receive address commits to. }
+        expiresAt: { type: string, format: date-time, description: "The terms' expiry, which the receive address commits to." }
         closesAt:
           type: string
           format: date-time
@@ -6286,18 +6317,6 @@ components:
         refundStatus:
           type: string
           enum: [none, held, refund_pending, refunded]
-        state:
-          type: string
-          enum: [waiting, confirming, partially_paid, paid, overpaid, expired, canceled]
-          description: |
-            The merchant's payment state (D-114), the one the list's state filter tests; paymentStatus keeps its raw
-            value. Only in the owner's responses.
-        wallet:
-          type: string
-          enum: [none, pending, in_wallet, delayed, refused]
-          description: |
-            The wallet transfer state (D-114), as on a payment; settlementStatus keeps its raw value. Only in the
-            owner's responses.
         settlementTxHash:
           type: [string, "null"]
           pattern: "^0x[0-9a-f]{64}$"
@@ -6453,7 +6472,7 @@ components:
         quoteId: { type: [string, "null"], format: uuid, description: Null for a price. }
         token: { $ref: "#/components/schemas/CrossChainToken" }
         depositAddress: { type: [string, "null"], description: "Where the payer sends amountIn of the token; null for a price." }
-        amountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: What the payer sends, slippage included. }
+        amountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: "What the payer sends, slippage included." }
         minAmountIn: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: The least 1Click converts; less is refunded. }
         amountOut: { allOf: [{ $ref: "#/components/schemas/Uint256" }], description: Exactly what reaches the Base option. }
         amountInUsd: { type: string, description: "amountIn in USD at 1Click's price." }
