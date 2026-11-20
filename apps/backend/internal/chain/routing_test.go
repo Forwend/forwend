@@ -31,7 +31,7 @@ func TestPrivatePriorityFallbackAndRecovery(t *testing.T) {
 	spec.Endpoints[2].Tier = Private
 	spec.Endpoints[3].Role = Primary
 	spec.Endpoints[3].Tier = Private
-	r, err := NewRPCs(spec, 1000)
+	r, err := NewRPCs(spec, 1000, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestStaleAndUnsupportedFinalizedNodesFailOver(t *testing.T) {
 			defer bad.Close()
 			spec := testSpec(chaintest.ChainID, bad.URL, a.URL, localhost(a.URL))
 			spec.MaxHeadAge = time.Minute
-			r, err := NewRPCs(spec, 1000)
+			r, err := NewRPCs(spec, 1000, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

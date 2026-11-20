@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 	"github.com/forwend/forwend/apps/backend/internal/database"
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
@@ -134,7 +135,6 @@ func TestDepositIsDetectedThenConfirmed(t *testing.T) {
 		scannedTime != e.anvil.Now() {
 		t.Fatalf("scanned time %d (%v), want the latest block's %d", scannedTime, err, e.anvil.Now())
 	}
-	// The finalized block of the scan that saw it is kept: the deposit had 2 blocks to wait (R-73).
 	wait := func() (n int64) {
 		err := e.pool.QueryRow(context.Background(),
 			"SELECT block_number - detected_finalized_block FROM chain_transfers").Scan(&n)
@@ -186,7 +186,6 @@ func TestOnlyTheInvoiceTokenToAReceiveAddressCounts(t *testing.T) {
 	}
 }
 
-// Zero-value transfers, as address-poisoning spam sends, are no payment: nothing is recorded, so nothing confirms.
 func TestZeroValueTransferIsNoPayment(t *testing.T) {
 	e := setup(t)
 	e.anvil.Transfer(e.token, receive, "0")
@@ -216,7 +215,6 @@ func TestReorgMarksTheDepositReorged(t *testing.T) {
 		t.Fatalf("after the transaction is mined again: %v", got)
 	}
 
-	// A restarted worker resumes from the cursor; scanning again adds nothing.
 	restarted := env{anvil: e.anvil, pool: e.pool, token: e.token, chain: NewChain(e.pool, chaintest.ChainID, e.anvil.RPC)}
 	restarted.scan(t)
 	restarted.scan(t)
@@ -272,7 +270,7 @@ func TestLogRangeRetainsAcceptedSize(t *testing.T) {
 			var sizes []uint64
 			var answered [][2]uint64
 			for _, call := range proxy.Calls() {
-				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), TransferTopic.Hex()) {
+				if call.Method == "eth_getLogs" && strings.Contains(string(call.Params[0]), chain.TransferTopic.Hex()) {
 					from, to := logRange(t, call)
 					sizes = append(sizes, to-from+1)
 					if call.Fault == chaintest.Forward {
@@ -435,7 +433,6 @@ func TestSlowSmallRangeProviderStillMovesTheCursorEveryScan(t *testing.T) {
 	}
 }
 
-// Rewriting block_hash makes the row look recorded under another final block.
 func TestDepositMinedAgainUnderAFinalBlockIsSkipped(t *testing.T) {
 	e := setup(t)
 	tx := e.anvil.Transfer(e.token, receive, "5000000")
@@ -496,8 +493,6 @@ func TestInvoiceLeavingTheScanWithADetectedDepositStaysUntilItConfirms(t *testin
 	}
 }
 
-// R-183, PLAN 11.10.3: an expired receiver past the watch window that holds late money stays watched while support's
-// return is queued, so the refund the Safe sends weeks later is still recorded.
 func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -552,8 +547,6 @@ func TestReceiverWithAQueuedReturnStaysWatchedPastTheWindow(t *testing.T) {
 	}
 }
 
-// The receivers past the window are read from the invoices_money_chain partial index: its predicate is
-// ledger.MayHoldMoneySQL, which holding uses as it is.
 func TestReceiversHoldingMoneyAreReadFromTheirIndex(t *testing.T) {
 	if mayHoldMoneySQL != ledger.MayHoldMoneySQL {
 		t.Fatalf("holding reads %q, the ledger %q", mayHoldMoneySQL, ledger.MayHoldMoneySQL)
@@ -569,7 +562,6 @@ func TestReceiversHoldingMoneyAreReadFromTheirIndex(t *testing.T) {
 	}
 }
 
-// Here every eth_getLogs answer with a log is refused, as Infura refuses more than 10,000.
 func TestLogSpamDoesNotStopTheChain(t *testing.T) {
 	ctx := context.Background()
 	e := setup(t)
@@ -656,14 +648,13 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, got) }); err != nil {
 		t.Fatal(err)
 	}
-	// No node showed its transfer, so it stays unbooked and is read again, until a read finds the transfer.
 	again, err := e.chain.outflows(ctx, logs, headers, invoices, 10)
 	if err != nil || len(again) != 1 {
 		t.Fatalf("an event recorded without its transfer was not read again: %+v (%v)", again, err)
 	}
 	again[0].Transfers = []types.Log{{Address: common.HexToAddress(invoices[watched].token), BlockNumber: 5,
 		BlockHash: final, TxHash: common.HexToHash("0xfeed"), Index: 0, Data: amount,
-		Topics: []common.Hash{TransferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
+		Topics: []common.Hash{chain.TransferTopic, common.BytesToHash(watched.Bytes()), again[0].Log.Topics[2]}}}
 	if err := pgx.BeginFunc(ctx, e.pool, func(tx pgx.Tx) error { return RecordOutflows(ctx, tx, chaintest.ChainID, again) }); err != nil {
 		t.Fatal(err)
 	}
@@ -678,8 +669,6 @@ func TestOnlyNewFinalCanonicalEventsOfWatchedReceiversAreRecorded(t *testing.T) 
 	}
 }
 
-// R-230: FeesPaid is an outflow per fee, each matched to settle's own transfer between its transfer to the recipient
-// and Settled. Missed transfers are found by a later read; a fee other than the terms' is refused.
 func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -702,7 +691,7 @@ func TestFeesPaidIsAnOutflowPerFee(t *testing.T) {
 			return types.Log{Address: address, BlockNumber: 5, BlockHash: block, TxHash: block, Index: index, Data: data, Topics: topics}
 		}
 		transfer := func(index uint, to common.Address, amount int64) types.Log {
-			return log(index, common.HexToAddress(e.token), word(amount), TransferTopic, topic(at), topic(to))
+			return log(index, common.HexToAddress(e.token), word(amount), chain.TransferTopic, topic(at), topic(to))
 		}
 		transfers := []types.Log{transfer(0, recipient, 4950000), transfer(1, settler, network), transfer(2, authority, 20000)}
 		return []Outflow{

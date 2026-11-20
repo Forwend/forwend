@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
@@ -48,8 +49,7 @@ type movementJSON struct {
 	VerifiedHash        *string               `json:"verifiedHash"`
 	PolicyException     *string               `json:"policyException"`
 	ReconciliationError *string               `json:"reconciliationError"`
-	// R-235: what the payer sent through NEAR Intents for this Base transfer; null for any other row.
-	PaidWith *paidWithJSON `json:"paidWith"`
+	PaidWith            *paidWithJSON         `json:"paidWith"` // null except for a cross-chain Base transfer
 }
 
 type paidWithJSON struct {
@@ -64,7 +64,7 @@ type paidWithJSON struct {
 func toMovement(row invoice.PaymentMovement) movementJSON {
 	var usd *string
 	if row.ReceiverDelta != nil && row.Decimals != nil {
-		value := invoice.PaymentUSDValue(row.ReceiverDelta, *row.Decimals)
+		value := document.Decimal(row.ReceiverDelta, *row.Decimals)
 		usd = &value
 	}
 	return movementJSON{Livemode: row.Livemode, Network: row.Network, ID: row.ID, State: row.State, RecordedAt: row.RecordedAt.UTC().Format(time.RFC3339Nano), PaymentID: row.PaymentID, OptionID: row.OptionID,

@@ -88,7 +88,7 @@ var transactionsCSVHeader = []string{"Date (UTC)", "Direction", "Amount", "Token
 
 func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		from, to, err := dayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
+		from, to, err := httpio.DayRange(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -112,7 +112,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 				invoice, client = document.Number(t.Invoice.Number), t.Invoice.ClientName
 			}
 			row := make([]string, 0, len(header))
-			row = append(row, t.At.Format(time.RFC3339), t.Direction, tokenAmount(t), t.Symbol,
+			row = append(row, t.At.Format(time.RFC3339), t.Direction, document.Decimal(t.Amount, t.Decimals), t.Symbol,
 				document.NetworkName(t.ChainID), t.Counterparty, t.TxHash, t.Status, t.USDValue().FloatString(t.Decimals),
 				t.Classification(), invoice, client)
 			if currency != "" {
@@ -127,7 +127,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 			if t.Payment != nil {
 				paymentID = t.Payment.ID
 				if t.Payment.Fees != nil {
-					fees = units(t.Payment.Fees, t.Decimals)
+					fees = document.Decimal(t.Payment.Fees, t.Decimals)
 				}
 			}
 			row = append(row, paymentID, fees)
@@ -146,10 +146,6 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 		w.Header().Set("Content-Disposition", `attachment; filename="transactions.csv"`)
 		_, _ = body.WriteTo(w)
 	}
-}
-
-func dayRange(from, to string) (time.Time, time.Time, error) {
-	return httpio.DayRange(from, to)
 }
 
 func putTransactionLabel(activities *activity.Service) http.HandlerFunc {
@@ -226,7 +222,7 @@ func getStatement(activities *activity.Service, profiles *profile.Service) http.
 			httpio.WriteError(w, r, fmt.Errorf("%w: from and to are both required", activity.ErrInvalid))
 			return
 		}
-		from, to, err := dayRange(q.Get("from"), q.Get("to"))
+		from, to, err := httpio.DayRange(q.Get("from"), q.Get("to"))
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

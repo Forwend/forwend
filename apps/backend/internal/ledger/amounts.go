@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// querier is a pool or a transaction.
 type querier interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 }
@@ -22,8 +21,7 @@ const (
 	ReconciliationReview   ReconciliationStatus = "review"
 )
 
-// Amounts are an option's booked balances and outflows. Settled is what the recipient got; Fees, what settlement paid
-// the settler and the refund authority (R-230).
+// Amounts are an option's booked balances and outflows; Fees went to the settler and the refund authority.
 type Amounts struct {
 	ReconciliationStatus                                               ReconciliationStatus
 	Receiver, Payable, Held, Settled, Fees, Refunded, ObservedRefunded *big.Int
@@ -96,15 +94,13 @@ func ReadAmountsFor(ctx context.Context, db querier, invoiceIDs []string) (map[s
 	return result, rows.Err()
 }
 
-// UnreconciledSQL: a movement the ledger has not booked yet, an outflow it refused, a balance it can't explain, or a
-// negative balance. invoiceID is a trusted SQL expression, never request text.
+// UnreconciledSQL: unbooked movements, refused outflows, unexplained or negative balances; trusted SQL only.
 func UnreconciledSQL(invoiceID string) string {
 	return SettleWaitsSQL(invoiceID) + `
  OR EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = ` + invoiceID + ` AND excess)`
 }
 
-// SettleWaitsSQL is UnreconciledSQL less money on chain the ledger did not book: settle pays out only the amount, so
-// that money stays held for its payer.
+// SettleWaitsSQL is UnreconciledSQL less unbooked money on chain: settle pays only the amount, the rest stays held.
 func SettleWaitsSQL(invoiceID string) string {
 	return `EXISTS (SELECT 1 FROM receiver_outflows WHERE invoice_id = ` + invoiceID + ` AND kind <> 'recovery' AND ledger_transaction_id IS NULL)
  OR EXISTS (SELECT 1 FROM chain_transfers d WHERE d.invoice_id = ` + invoiceID + ` AND d.status = 'confirmed' AND NOT d.booked)
@@ -126,13 +122,18 @@ func reconciliationReviewSQL(invoiceID string) string {
  OR EXISTS (SELECT 1 FROM receiver_outflows review_flow WHERE review_flow.invoice_id = ` + invoiceID + ` AND review_flow.ledger_transaction_id IS NULL AND review_flow.kind <> 'recovery' AND review_flow.reconciliation_error NOT IN ('','awaiting_booking'))`
 }
 
-// OwedNotPaid lists invoices owed in full whose newest booking is older than after, yet not paid: the finalized
-// balance check keeps failing, so money may have left unbooked or the balance RPC disagrees with the scan (R-184).
+// OwedSQL is what the owner is owed on option, an SQL id; no settlement runs before the amount is all in.
+func OwedSQL(option string) string {
+	return `(SELECT -coalesce(sum(owed_e.amount), 0) FROM ledger_entries owed_e
+		JOIN ledger_transactions owed_t ON owed_t.id = owed_e.transaction_id
+		WHERE owed_t.invoice_id = ` + option + ` AND owed_e.account = 'recipient_payable')`
+}
+
+// OwedNotPaid lists invoices owed in full, last booked before after, yet not paid: the balance check keeps failing.
 func OwedNotPaid(ctx context.Context, db querier, after time.Duration) ([]string, error) {
 	rows, err := db.Query(ctx, `SELECT i.id FROM invoices i
 		WHERE i.payment_status IN ('detected', 'partially_paid')
-		  AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e JOIN ledger_transactions t ON t.id = e.transaction_id
-		       WHERE t.invoice_id = i.id AND e.account = 'recipient_payable') >= i.amount
+		  AND `+OwedSQL("i.id")+` >= i.amount
 		  AND (SELECT max(t.created_at) FROM ledger_transactions t WHERE t.invoice_id = i.id) < now() - $1 * interval '1 second'
 		ORDER BY i.id LIMIT 20`, int64(after/time.Second))
 	if err != nil {

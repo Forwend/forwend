@@ -223,7 +223,6 @@ func prunedBelow(first uint64) func(chaintest.Call) chaintest.Fault {
 	}
 }
 
-// History no RPC keeps can't be read again; the sweep moves to the oldest kept block instead of stalling on it (R-191).
 func TestRecoveryMovesPastHistoryNoRPCKeeps(t *testing.T) {
 	e := setup(t)
 	c, p := proxiedChain(t, e)
@@ -242,7 +241,6 @@ func TestRecoveryMovesPastHistoryNoRPCKeeps(t *testing.T) {
 	if _, err := e.pool.Exec(ctx, "UPDATE chain_recoveries SET next_block = 1, target_block = $1", latest); err != nil {
 		t.Fatal(err)
 	}
-	// Even the finalized block missing is no pruning (lagging or broken nodes): the sweep waits.
 	p.Fail(prunedBelow(1 << 40))
 	if err := c.Recover(ctx); err == nil {
 		t.Fatal("a sweep whose every block is missing moved on")
@@ -270,7 +268,6 @@ func TestRecoveryMovesPastHistoryNoRPCKeeps(t *testing.T) {
 	}
 }
 
-// pruned moves past blocks only when they are below the finalized block, that one is served, and the start is not.
 func TestPrunedFindsOnlyHistoryNoRPCKeeps(t *testing.T) {
 	e := setup(t)
 	c, p := proxiedChain(t, e)
@@ -286,7 +283,6 @@ func TestPrunedFindsOnlyHistoryNoRPCKeeps(t *testing.T) {
 	if _, ok, err := c.pruned(ctx, 1); ok || err != nil {
 		t.Fatalf("every block served: ok %v (%v), want no pruning", ok, err)
 	}
-	// A node missing blocks above the finalized one lags; it hasn't pruned them.
 	p.Fail(func(call chaintest.Call) chaintest.Fault {
 		var filter struct{ FromBlock hexutil.Uint64 }
 		if call.Method == "eth_getLogs" && json.Unmarshal(call.Params[0], &filter) == nil && uint64(filter.FromBlock) > finalized {
@@ -303,7 +299,6 @@ func TestPrunedFindsOnlyHistoryNoRPCKeeps(t *testing.T) {
 	}
 }
 
-// One endpoint pruned and another down is no proof that no endpoint keeps the blocks: the sweep waits.
 func TestRecoveryWaitsWhenAnEndpointThatMayKeepHistoryIsDown(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -313,7 +308,7 @@ func TestRecoveryWaitsWhenAnEndpointThatMayKeepHistoryIsDown(t *testing.T) {
 	r, err := chain.NewRPCs(chain.Spec{ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{
 		{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, URL: pruning.URL, BudgetGroup: "budget-0"},
 		{ID: "rpc-1", Provider: "provider-1", Role: chain.Primary, Tier: chain.Public, URL: strings.Replace(down.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"},
-	}}, 1000)
+	}}, 1000, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

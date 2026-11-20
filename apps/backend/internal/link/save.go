@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
@@ -36,13 +35,12 @@ func cents(field, s string) (int64, error) {
 	return 0, fmt.Errorf("%w: %s must be at least 1.00", ErrInvalid, field)
 }
 
-// newSlug is 12 random lowercase letters and digits (D-94): 60 bits of base32, so a link can't be guessed.
+// newSlug is 12 random lowercase letters and digits: 60 bits, so a link can't be guessed.
 func newSlug() string {
 	return strings.ToLower(rand.Text()[:12])
 }
 
-// Save creates the link with the id the caller picks, or replaces every field of the profile's link with that id:
-// a retried save makes one link. Its slug is made once and never changes. created is true for a new link.
+// Save creates or fully replaces the profile's link with the caller's id; its slug never changes.
 func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l Link, created bool, err error) {
 	d.Title = strings.TrimSpace(d.Title)
 	if !lowercaseUUID.MatchString(id) {
@@ -51,8 +49,7 @@ func (s *Service) Save(ctx context.Context, profileID, id string, d Details) (l 
 	if d.FeesPaidBy != "" && d.FeesPaidBy != invoice.FeesPaidByOwner && d.FeesPaidBy != invoice.FeesPaidByClient {
 		return Link{}, false, fmt.Errorf("%w: feesPaidBy must be owner, client or null", ErrInvalid)
 	}
-	if d.Title == "" || !utf8.ValidString(d.Title) || utf8.RuneCountInString(d.Title) > invoice.MaxTitle ||
-		!profile.PlainText(d.Title, false) {
+	if d.Title == "" || !profile.ValidText(d.Title, invoice.MaxTitle, false) {
 		return Link{}, false, fmt.Errorf("%w: title must be 1 to %d characters of plain text", ErrInvalid, invoice.MaxTitle)
 	}
 	amount, err := cents("amountUsd", d.AmountUSD)

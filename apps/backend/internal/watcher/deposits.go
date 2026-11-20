@@ -14,6 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -76,8 +78,7 @@ func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposi
 			d.from, d.to, d.amount.String(), status, d.finalized)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.ConstraintName == "chain_transfers_live_log" {
-			// The same transaction is already recorded under another block: one bad node must not stop the chain's
-			// scan, and an operator decides which block is real.
+			// The same transaction under another block: one bad node must not stop the scan; an operator decides.
 			_ = row.Rollback(ctx)
 			slog.Error("ALERT deposit recorded under another block was mined again; skipped", "chain", c.chainID,
 				"tx", d.txHash, "log", d.logIndex, "block", d.blockHash)
@@ -94,9 +95,8 @@ func (c *Chain) insertDeposits(ctx context.Context, tx pgx.Tx, deposits []deposi
 }
 
 func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, error) {
-	// Past MAX_HOLD (30 days after the settle deadline) only the refund authority moves the money: not watching those
-	// keeps topic lists bounded. One with a detected deposit stays, or that row would hold every scan's start for good.
-	// Two disjoint parts, so each reads only its rows from an index.
+	// Past address.MaxHold after the settle deadline only the refund authority moves the money: not watching those
+	// keeps topic lists bounded. One with a detected deposit stays, or it would hold every scan's start for good.
 	out, err := receiversOf(c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices
 		WHERE chain_id = $1 AND settle_deadline > extract(epoch FROM now())::bigint - $2
 		UNION ALL SELECT receive_address, id, token_contract FROM invoices
@@ -109,7 +109,6 @@ func (c *Chain) invoices(ctx context.Context) (map[common.Address]receiver, erro
 	return out, nil
 }
 
-// receiversOf maps rows of (receive_address, id, token_contract).
 func receiversOf(rows pgx.Rows, err error) (map[common.Address]receiver, error) {
 	if err != nil {
 		return nil, err
@@ -124,15 +123,12 @@ func receiversOf(rows pgx.Rows, err error) (map[common.Address]receiver, error) 
 	return out, err
 }
 
-var watchedAfterDeadline = 30 * 24 * time.Hour
+var watchedAfterDeadline = address.MaxHold
 
-// mayHoldMoneySQL is ledger.MayHoldMoneySQL, the invoices_money_chain index's predicate; a test keeps them equal. The
-// watcher can't import ledger: the ledger's tests run the watcher.
+// mayHoldMoneySQL is ledger.MayHoldMoneySQL (a test keeps them equal): the ledger's tests run the watcher.
 const mayHoldMoneySQL = `refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired'`
 
-// holding adds to the watched invoices the receivers past the watch window that still hold booked money: the refund
-// authority may still settle, refund or recover it (R-183). Settled ones can hold only money held for the payer, and
-// expired ones only late money, which is held too: the status filter keeps the ledger sums off most old invoices.
+// holding adds receivers past the watch window that still hold booked money: the refund authority may move it.
 func (c *Chain) holding(ctx context.Context, invoices map[common.Address]receiver) (map[common.Address]receiver, error) {
 	out, err := receiversOf(c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices i
 		WHERE chain_id = $1 AND settle_deadline <= extract(epoch FROM now())::bigint - $2
@@ -165,7 +161,7 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 	for _, part := range parts(receivers) {
 		found, err := c.filterLogs(ctx, ethereum.FilterQuery{
 			FromBlock: new(big.Int).SetUint64(lo), ToBlock: new(big.Int).SetUint64(hi),
-			Addresses: tokenList, Topics: [][]common.Hash{{TransferTopic}, nil, part},
+			Addresses: tokenList, Topics: [][]common.Hash{{chain.TransferTopic}, nil, part},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("read chain %d logs %d-%d: %w", c.chainID, lo, hi, err)
@@ -176,12 +172,11 @@ func (c *Chain) logs(ctx context.Context, lo, hi uint64, invoices map[common.Add
 	return nativeSends(logs), err
 }
 
-// invoiceLogs keeps the non-zero Transfer logs of each invoice's own token to its receive address, Arc's system logs
-// still unconverted (nativeSends).
+// invoiceLogs keeps non-zero Transfer logs of each invoice's own token to its receive address, plus Arc system logs.
 func invoiceLogs(logs []types.Log, invoices map[common.Address]receiver) []types.Log {
 	var out []types.Log
 	for _, l := range logs {
-		if l.Removed || len(l.Topics) != 3 || l.Topics[0] != TransferTopic || len(l.Data) != 32 ||
+		if l.Removed || len(l.Topics) != 3 || l.Topics[0] != chain.TransferTopic || len(l.Data) != 32 ||
 			new(big.Int).SetBytes(l.Data).Sign() == 0 {
 			continue
 		}

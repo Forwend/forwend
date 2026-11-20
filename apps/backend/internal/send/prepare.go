@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/chain"
-	"github.com/forwend/forwend/apps/backend/internal/settlement"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -33,14 +32,13 @@ type Request struct {
 // An EIP-7702 account's code is this prefix and the delegate's address: a wallet, not a contract.
 var delegation = common.Hex2Bytes("ef0100")
 
-// transferCall is the calldata of the token's transfer(to, amount).
 func transferCall(to string, amount *big.Int) []byte {
 	return slices.Concat(common.Hex2Bytes("a9059cbb"), common.LeftPadBytes(common.HexToAddress(to).Bytes(), 32),
 		common.LeftPadBytes(amount.Bytes(), 32))
 }
 
-// Prepare checks a send out of the profile's wallet and keeps it for the browser to sign (R-211). It replaces the
-// wallet's earlier unsigned send on the chain, and fails with ErrBusy while a signed one is still on its way.
+// Prepare checks a send out of the profile's wallet and keeps it for the browser to sign, replacing the
+// wallet's earlier unsigned send on the chain; ErrBusy while a signed one is still on its way.
 func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (Send, error) {
 	if req.Amount == nil || req.Amount.Sign() <= 0 {
 		return Send{}, fmt.Errorf("%w: amount must be a positive number of base units", ErrInvalid)
@@ -89,15 +87,13 @@ func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (S
 	return s.keep(ctx, out)
 }
 
-// tokenTerms is what a send of a token on a chain from the profile's wallet needs.
 type tokenTerms struct {
 	feeAsset *string
 	decimals int
 	wallet   string
 }
 
-// tokenTerms reads the token's terms in the profile's mode. The wallet pays its own fee in the token (D-121): as the
-// chain's gas coin (R-216), or through a paymaster (R-225).
+// tokenTerms reads the token's terms in the profile's mode; the wallet pays its fee in the token or by paymaster.
 func (s *Service) tokenTerms(ctx context.Context, profileID string, chainID uint64, token string) (tokenTerms, error) {
 	var t tokenTerms
 	var nativeGas bool
@@ -187,7 +183,6 @@ func parseAddress(s string) (string, error) {
 	return strings.ToLower(a.Hex()), nil
 }
 
-// checkOnChain reads the wallet's balance, dry-runs the transfer from the wallet and warns of a contract recipient.
 func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) error {
 	from, to, token := common.HexToAddress(out.From), common.HexToAddress(out.To), common.HexToAddress(out.Token)
 	raw, err := client.CallContract(ctx, ethereum.CallMsg{To: &token,
@@ -219,8 +214,8 @@ func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) erro
 	return nil
 }
 
-// refused tells a token's revert from any other failed read, such as a rate limit or a node behind. The client sees
-// only a decoded revert reason: the provider's error text can name its URL, key or internals.
+// refused tells a token's revert from any other failed read. The client sees only a decoded revert reason: the
+// provider's error text can name its URL, key or internals.
 func refused(err error) error {
 	if err == nil {
 		return nil
@@ -242,7 +237,6 @@ func refused(err error) error {
 	return ErrRefused
 }
 
-// keep cancels the wallet's unsigned send on the chain and saves this one in its place.
 func (s *Service) keep(ctx context.Context, out Send) (Send, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -299,16 +293,15 @@ func ceilDiv(a, b *big.Int) *big.Int {
 	return new(big.Int).Div(new(big.Int).Add(a, new(big.Int).Sub(b, big.NewInt(1))), b)
 }
 
-// estimate sets the gas the wallet pays (R-216). The amount and that fee must both fit the wallet's gas-coin balance.
+// estimate sets the gas the wallet pays; the amount and that fee must both fit the wallet's gas-coin balance.
 func (s *Service) estimate(ctx context.Context, client *ethclient.Client, out *Send, decimals int) error {
 	gas, fee, wei, err := feeFor(ctx, client, out.ChainID, out.From, out.Token, out.To, out.Amount, decimals)
 	if err != nil {
 		return err
 	}
-	// Tempo has no gas coin: a transfer of a USD token pays its fee in that token unless the wallet chose another, and
-	// its native balance is a placeholder (R-223).
+	// Tempo has no gas coin: a USD token transfer pays its fee in that token unless the wallet chose another.
 	from := common.HexToAddress(out.From)
-	chosen, tempo, err := settlement.UserFeeToken(ctx, client, from)
+	chosen, tempo, err := chain.UserFeeToken(ctx, client, from)
 	if err != nil {
 		return errors.Join(ErrUnavailable, err)
 	}
@@ -346,14 +339,11 @@ func covers(ctx context.Context, client *ethclient.Client, out Send) error {
 	return nil
 }
 
-// userOpGas is what a paymaster send adds to the transfer's own gas: the EIP-4337 user operation's checks, the
-// paymaster's fee pull and the bundle's overhead, L1 data included.
+// userOpGas is what a paymaster send adds to the transfer's gas: user op checks, fee pull, bundle overhead.
 // ponytail: a guess with room, not a measure; set it from the first live sends' receipts.
 const userOpGas = 400_000
 
-// paymasterFee is Forwend's estimate of what Privy's paymaster takes for the send, in the token's base units, rounded
-// up (R-225): the transfer's gas plus userOpGas at the chain's fee cap, in dollars at the chain's ETH/USD feed. Privy
-// quotes none, so the fee really taken can differ; FeePaid records it.
+// paymasterFee estimates Privy's paymaster fee in token base units, rounded up; Privy quotes none (FeePaid records it).
 func paymasterFee(ctx context.Context, client *ethclient.Client, chainID uint64, from, token, to string,
 	amount *big.Int, decimals int) (*big.Int, error) {
 	gas, _, _, err := feeFor(ctx, client, chainID, from, token, to, amount, decimals)
@@ -374,8 +364,8 @@ func paymasterFee(ctx context.Context, client *ethclient.Client, chainID uint64,
 	return units, nil
 }
 
-// feeFor is the transfer's estimated gas and a fifth more, at the chain's fee cap (settlement.Fees, R-189): the
-// gas to sign with, the most it costs in the token's base units (rounded up), and in the gas coin's wei.
+// feeFor is the transfer's gas plus a fifth at the chain's fee cap: gas to sign, fee in token units (rounded up),
+// and in the gas coin's wei.
 func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from, token, to string, amount *big.Int,
 	decimals int) (Gas, *big.Int, *big.Int, error) {
 	tokenAddr := common.HexToAddress(token)
@@ -384,11 +374,10 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 	if err := refused(err); err != nil {
 		return Gas{}, nil, nil, err
 	}
-	// Priced as if every amount byte were non-zero (16 gas, not 4): the fee is then the same for any amount, so the
-	// fee shown before the amount is known still covers Max.
+	// Priced as if every amount byte were non-zero, so the fee shown before the amount is known still covers Max.
 	gas += 12 * uint64(bytes.Count(data[36:], []byte{0}))
 	gas = gas * 6 / 5
-	tip, feeCap, err := settlement.Fees(ctx, client, chainID)
+	tip, feeCap, err := chain.Fees(ctx, client, chainID)
 	if err != nil {
 		return Gas{}, nil, nil, errors.Join(ErrUnavailable, err)
 	}
@@ -400,9 +389,8 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 	return Gas{Limit: gas, MaxFeePerGas: feeCap, MaxPriorityFeePerGas: tip}, fee, wei, nil
 }
 
-// Fee is what a send of the token on the chain to the address costs the profile's wallet now, in the token's base
-// units (R-216, R-225), and whether a paymaster takes it. The amount step shows it and keeps room for it in Max;
-// Prepare checks it again. An empty to estimates a send to the wallet itself.
+// Fee is what a send of the token to the address costs the wallet now, in base units, and whether a paymaster
+// takes it. An empty to estimates a send to the wallet itself.
 func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token, to string) (*big.Int, bool, error) {
 	terms, err := s.tokenTerms(ctx, profileID, chainID, token)
 	if err != nil {

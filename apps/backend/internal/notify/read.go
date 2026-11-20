@@ -11,13 +11,13 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
 	"github.com/forwend/forwend/apps/backend/internal/team"
 	"github.com/jackc/pgx/v5"
 )
 
-// read is what the event's email needs: its view, the address (nil or "" for none), whether it goes, and what it is
-// about, for the Idempotency-Key.
+// read is an event's email: its view, its address (nil or "" for none), whether it goes, and its key's subject.
 func read(ctx context.Context, tx pgx.Tx, e event, webURL string) (v view, to *string, on bool, scope string,
 	err error) {
 	var reader func(context.Context, pgx.Tx, event, string) (view, *string, bool, error)
@@ -43,7 +43,7 @@ func read(ctx context.Context, tx pgx.Tx, e event, webURL string) (v view, to *s
 	return v, to, on, scope, err
 }
 
-// welcomeEmail is about the account, not a profile's invoices: the profile's email setting doesn't apply (R-84).
+// welcomeEmail is about the account, not a profile's invoices: the profile's email setting doesn't apply.
 func welcomeEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view, *string, bool, error) {
 	var to *string
 	if err := tx.QueryRow(ctx, "SELECT login_email FROM users WHERE id = $1", e.user).Scan(&to); err != nil {
@@ -108,16 +108,16 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 		symbol, amount, hash string
 		issuer, typed        string
 		client, replyTo, due string
-		pay                  string // the pay link's token (D-86)
+		pay                  string // the pay link's token
 		decimals, options    int
 		chainID              uint64
 		live                 bool
-		paidWith             []string // a payment through NEAR Intents: symbol, chain, amount sent, decimals (R-239)
+		paidWith             []string // a payment through NEAR Intents: symbol, chain, amount sent, decimals
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
 		    coalesce((SELECT d.tx_hash FROM chain_transfers d
-		              JOIN ledger_transactions x ON x.chain_transfer_id = d.id AND x.kind IN ('deposit', 'reopen', 'chosen')
+		              JOIN ledger_transactions x ON x.chain_transfer_id = d.id AND x.kind IN `+ledger.DepositKindsSQL+`
 		              JOIN ledger_entries e ON e.transaction_id = x.id AND e.account = 'recipient_payable'
 		              WHERE d.invoice_id = o.id ORDER BY d.block_number DESC, d.log_index DESC LIMIT 1), ''),
 		    coalesce(m.client_email, ''), coalesce(m.issuer_email, ''), coalesce(m.due_date::text, ''),
@@ -136,7 +136,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 	if pay == "" && (e.kind == outbox.Sent || e.kind == outbox.Receipt) {
 		return view{}, nil, false, nil
 	}
-	// The payer's receipt goes to the address they gave, whatever the owner's setting (R-82).
+	// The payer's receipt goes to the address they gave, whatever the owner's setting.
 	if e.kind == outbox.Receipt {
 		on, to = true, payer
 	}
@@ -151,13 +151,13 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 		ownerURL = webURL + "/app/invoices/" + e.invoice
 	}
 	if e.kind == outbox.Sent {
-		// The owner sent it, so the owner's setting doesn't apply (R-94).
+		// The owner sent it, so the owner's setting doesn't apply.
 		network := document.NetworkName(chainID)
-		if options > 1 { // the client chooses the token and network, each at 1 USD (D-75)
+		if options > 1 { // the client chooses the token and network, each at 1 USD
 			symbol, network = "USD", ""
 		}
 		return marked(sent(reference, document.Amount(units, decimals, symbol), network, issuer, typed,
-				document.DateText(due), replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live),
+				document.DateText(due), replyTo, invoice.PayURL(webURL, pay), webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live),
 			&client, true, nil
 	}
 	var v view
@@ -181,8 +181,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 	return marked(v, live), to, on, nil
 }
 
-// reminderEmail sends only while reminders are on and something is left to pay on an open invoice (R-96): checked
-// again now, since it may have been paid or the reminders stopped after the step was queued.
+// reminderEmail sends only while reminders are on and something is left on an open invoice, checked again now.
 func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, webURL string) (view, *string, bool, error) {
 	var (
 		on, locked                       bool
@@ -197,7 +196,7 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		        AND (SELECT `+invoice.StatusFilterSQL+` FROM invoices_current invoices WHERE invoices.id = m.id) = 'open',
 		    coalesce(m.client_email, ''), coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''),
 		    coalesce(m.issuer_email, ''), coalesce(to_char(m.due_date, 'YYYY-MM-DD'), ''), m.number, t.symbol, t.decimals,
-		    o.chain_id, (o.amount + `+invoice.PaidToOwnerSQL("o.id")+`)::text,
+		    o.chain_id, (o.amount - `+ledger.OwedSQL("o.id")+`)::text,
 		    (SELECT count(*) FROM invoices c WHERE c.id = m.id OR c.main_id = m.id), m.chosen_id IS NOT NULL, r.stop_token,
 		    coalesce(m.pay_token, ''), (SELECT livemode FROM chains c WHERE c.chain_id = o.chain_id)
 		FROM invoices m JOIN invoice_reminders r ON r.invoice_id = m.id JOIN invoices o ON o.id = $2
@@ -211,16 +210,16 @@ func reminderEmail(ctx context.Context, tx pgx.Tx, id string, p outbox.Payload, 
 		on = false
 	}
 	network := document.NetworkName(chainID)
-	if options > 1 && !locked { // the client still chooses the token and network, each at 1 USD (D-75)
+	if options > 1 && !locked { // the client still chooses the token and network, each at 1 USD
 		symbol, network = "USD", ""
 	}
 	v := marked(reminder(p.Step, document.Number(number), document.Amount(units, decimals, symbol), network, issuer, sender,
-		document.DateText(due), replyTo, webURL+"/pay/"+pay, webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live)
+		document.DateText(due), replyTo, invoice.PayURL(webURL, pay), webURL+"/api/v1/invoices/"+pay+"/invoice.pdf"), live)
 	v.Stop, v.Unsubscribe = webURL+"/reminders/"+token, webURL+"/api/v1/reminders/"+token+"/stop"
 	return v, &to, on, nil
 }
 
-// changeEmail sends only while the change still waits for the client (R-107): it may since be withdrawn or accepted.
+// changeEmail sends only while the change still waits for the client.
 func changeEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view, *string, bool, error) {
 	var (
 		to                                   *string
@@ -258,8 +257,7 @@ func inviteEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view, 
 	return invitation(name, roleNames[role], replyTo, webURL+"/invite/"+e.payload.Token), &to, true, nil
 }
 
-// disabledEmail goes to the profile owner whatever their email setting (R-148): nothing else tells them that
-// deliveries stopped.
+// disabledEmail goes to the profile owner whatever their email setting: nothing else says deliveries stopped.
 func disabledEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view, *string, bool, error) {
 	var to *string
 	var raw string

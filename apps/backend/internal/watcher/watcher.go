@@ -1,5 +1,4 @@
-// Package watcher records Transfer deposits to receive addresses and profile-wallet transfers (R-38): detected when
-// seen, confirmed at or below the finalized block (D-45), reorged when another block shows at their height (R-20).
+// Package watcher records Transfer deposits to receive addresses and profile-wallet transfers, then their finality.
 package watcher
 
 import (
@@ -12,21 +11,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var TransferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
-
 const (
-	// MaxRange is the most blocks one eth_getLogs call covers; RPCs reject larger result sets (S-4). A range every
-	// endpoint refuses halves, down to one block and then its receipts, so zero-value Transfer spam can't stop the chain.
+	// MaxRange is the most blocks one eth_getLogs covers; a range every endpoint refuses halves, down to receipts.
 	MaxRange = 2000
-	// RescanDepth finalized blocks, at most one log range, are read again on every scan, so one lagging or empty
-	// eth_getLogs answer is never the last look at a block. Recovery sweeps everything again later.
+	// RescanDepth finalized blocks are read again every scan, so one empty eth_getLogs answer is never the last look.
 	RescanDepth = MaxRange
 	MaxBatch    = 100
 	// growAfter accepted queries or batches double a narrowed log range or batch again, up to MaxRange or MaxBatch.
@@ -37,14 +31,12 @@ const (
 
 // Run one Chain per chain: two at once would race on the cursor.
 type Chain struct {
-	pool    *pgxpool.Pool
-	chainID uint64
-	rpc     *rpc.Client
-	eth     *ethclient.Client
-	// span is the blocks per eth_getLogs call: halved when every endpoint refuses it, grown back after accepted ones.
-	span     uint64
-	accepted int
-	// batchSize is the most calls per batch, kept like span.
+	pool          *pgxpool.Pool
+	chainID       uint64
+	rpc           *rpc.Client
+	eth           *ethclient.Client
+	span          uint64
+	accepted      int
 	batchSize     int
 	batchAccepted int
 }
@@ -65,8 +57,7 @@ type pending struct {
 	logIndex    uint64
 }
 
-// Scan reads from RescanDepth below the last finalized block to latest, in one transaction. Scanning the same range
-// again changes nothing.
+// Scan reads from RescanDepth below the last finalized block to latest, in one transaction; it is idempotent.
 func (c *Chain) Scan(ctx context.Context) error {
 	latest, err := c.eth.BlockNumber(ctx)
 	if err != nil {
@@ -79,8 +70,8 @@ func (c *Chain) Scan(ctx context.Context) error {
 	return c.scanRange(ctx, from, min(latest, from+scanChunks*c.span-1), nil, from, from)
 }
 
-// scanRange records what it read up to latest, or up to the last whole log range read in scanShare of the deadline,
-// but always past must. Ranges read before a provider error are recorded too, and the error returned.
+// scanRange records what it read up to latest, or the last whole range read in scanShare of the deadline, always
+// past must; ranges read before a provider error are recorded too.
 func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *recoveryProgress, walletFrom, must uint64) error {
 	invoices, err := c.invoices(ctx)
 	if err != nil {
@@ -179,8 +170,7 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		return errors.Join(readErr, err)
 	}
 	transfers := wallets.transfers(walletLogs, openWallet, headers, finalized, seen)
-	// A detected row is reorged only when the chain shows another block at its height. A log that is merely
-	// missing from one answer proves nothing.
+	// A detected row is reorged only when the chain shows another block at its height: a missing log proves nothing.
 	reorgedOf := func(open []pending) []int64 {
 		var reorged []int64
 		for _, p := range open {
@@ -191,8 +181,7 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		}
 		return reorged
 	}
-	// The cursor's finalized block never passes what this scan read: finalized was read after latest and may be
-	// higher, and blocks above latest were not scanned. Its time is that block's, for expiry and countdowns.
+	// The cursor's finalized block never passes what this scan read; its time is that block's, for expiry.
 	head, ok := headers[latest]
 	if finalized > latest {
 		if !ok {
@@ -207,9 +196,8 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		recovery), readErr)
 }
 
-// scanLogs reads invoice deposits and receivers' events from from and wallet logs from walletFrom, in whole log ranges,
-// and returns the first block it did not read. Past must it stops once scanShare of the deadline is used; a failed
-// read stops it anywhere.
+// scanLogs reads deposits and receivers' events from from and wallet logs from walletFrom, in whole log ranges;
+// past must it stops at scanShare of the deadline, and a failed read stops it anywhere.
 func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uint64, invoices, receivers map[common.Address]receiver,
 	wallets wallets) (logs, walletLogs, outflowLogs []types.Log, next uint64, err error) {
 	began := time.Now()
@@ -244,8 +232,7 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uin
 	return logs, walletLogs, outflowLogs, lo, nil
 }
 
-// A new chain starts at its finalized block: earlier deposits and wallet transfers are never looked for. Detected rows
-// below the start are read at their own heights, so one that never confirms can't hold the scan back.
+// A new chain starts at its finalized block: earlier deposits are never looked for.
 // ponytail: add a start block to chains if a chain is enabled after invoices on it exist.
 func (c *Chain) start(ctx context.Context) (uint64, error) {
 	var from int64

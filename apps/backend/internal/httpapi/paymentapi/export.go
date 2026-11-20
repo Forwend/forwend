@@ -57,7 +57,7 @@ func movementCSV(movement invoice.PaymentMovement) []string {
 	text := httpio.CSVText
 	usd := ""
 	if movement.ReceiverDelta != nil && movement.Decimals != nil {
-		usd = invoice.PaymentUSDValue(movement.ReceiverDelta, *movement.Decimals)
+		usd = document.Decimal(movement.ReceiverDelta, *movement.Decimals)
 	}
 	number, decimals := "", ""
 	if movement.Number != nil {
@@ -73,7 +73,6 @@ func movementCSV(movement invoice.PaymentMovement) []string {
 		paidWithCSV(movement.PaidWith), text(paidWithTx(movement.PaidWith))}
 }
 
-// paidWithCSV names what the payer sent through NEAR Intents (R-235).
 func paidWithCSV(p *invoice.MovementPaidWith) string {
 	if p == nil || p.Amount == nil {
 		return ""

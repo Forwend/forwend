@@ -1,10 +1,9 @@
-// Package ledger books confirmed deposits and moves each invoice's payment status from the money it holds (R-21).
+// Package ledger books confirmed deposits and moves each invoice's payment status from the money it holds.
 package ledger
 
 import "math/big"
 
-// Payment statuses. paid, expired, expired_partially_paid and canceled are final but for one Reopen (R-130); the
-// database rejects any other transition. The owner cancels (invoice.Cancel); the ledger never does.
+// Payment statuses; paid, expired, expired_partially_paid and canceled are final but for one Reopen.
 const (
 	Open                 = "open"
 	Detected             = "detected"
@@ -15,18 +14,17 @@ const (
 	Canceled             = "canceled"
 )
 
-// Why money is held for the payer (D-26), in the order a run writes them to the history.
+// Why money is held for the payer, in the order a run writes them to the history.
 const (
 	HeldOverpaid    = "overpaid" // more than the amount, or sent after it was paid
 	HeldLate        = "late"     // sent after the checkout closed
-	HeldExpired     = "expired"  // what was paid of an invoice that expired unpaid; the owner may reopen it (R-130)
+	HeldExpired     = "expired"  // paid before an unpaid expiry; the owner may reopen
 	HeldCanceled    = "canceled"
-	HeldOtherOption = "other_option" // sent to an option the payer did not choose (D-76)
+	HeldOtherOption = "other_option" // sent to an option the payer did not choose
 )
 
 var heldReasons = []string{HeldOverpaid, HeldLate, HeldExpired, HeldCanceled, HeldOtherOption}
 
-// heldReason is why the held part of a deposit is the payer's.
 func heldReason(current string, late, superseded bool) string {
 	switch {
 	case current == Canceled:
@@ -39,18 +37,18 @@ func heldReason(current string, late, superseded bool) string {
 	return HeldOverpaid
 }
 
-// Final is a status that takes no more money for the creator: every later deposit is held for the payer (D-26).
+// Final is a status that takes no more money for the creator: every later deposit is held for the payer.
 func Final(status string) bool {
 	return status == Paid || status == Expired || status == ExpiredPartiallyPaid || status == Canceled
 }
 
-// MayHoldMoneySQL is true for an invoice row that can still owe its creator or hold money. A settled one holds only
-// money held for the payer, which sets its refund status; an expired one took none for its creator (Final). The
-// invoices_money_* partial indexes (migration 00120) have this predicate, so a reader that adds it reads only these rows.
+// DepositKindsSQL lists the ledger transaction kinds that book a deposit to an option.
+const DepositKindsSQL = "('deposit', 'reopen', 'chosen')"
+
+// MayHoldMoneySQL is the invoices_money_* partial indexes' predicate: rows that can still owe or hold money.
 const MayHoldMoneySQL = `refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired'`
 
-// split divides a deposit between what is still owed to the creator and what is held for the payer (D-24, D-26).
-// Nothing goes to the creator once the invoice is final or the deposit is late.
+// split divides a deposit into what is still owed to the creator and what is held for the payer.
 func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, toHeld *big.Int) {
 	toCreator = new(big.Int)
 	if !late && !final {
@@ -65,8 +63,7 @@ func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, to
 	return toCreator, new(big.Int).Sub(deposit, toCreator)
 }
 
-// funded: the finalized balance confirms the receive address holds every booked deposit; mayExpire: expiry has passed and
-// the chain holds exactly what is booked.
+// funded: the finalized balance holds every booked deposit; mayExpire: expired and the chain holds exactly that.
 func status(current string, amount, owed *big.Int, anyTransfer, mayExpire, funded bool) string {
 	switch {
 	case Final(current):

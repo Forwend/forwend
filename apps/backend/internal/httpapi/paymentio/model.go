@@ -48,23 +48,21 @@ type Payment struct {
 	Token         string                `json:"token"`
 	Amount        string                `json:"amount"`
 	Fees
-	PaymentStatus    string  `json:"paymentStatus"`
-	SettlementStatus string  `json:"settlementStatus"`
-	RefundStatus     string  `json:"refundStatus"`
-	State            string  `json:"state"`
-	Wallet           string  `json:"wallet"`
-	Confirming       bool    `json:"confirming"`
-	Closed           bool    `json:"closed"`
-	CreatedAt        string  `json:"createdAt"`
-	ClosesAt         string  `json:"closesAt"`
-	HostedURL        *string `json:"hostedUrl"`
-	PayToken         *string `json:"payToken"`
-	// R-235: a payment's own read gives its shown quote; a list only one whose deposit pays it (R-239).
-	CrossChain *CrossChain `json:"crossChain"`
+	PaymentStatus    string      `json:"paymentStatus"`
+	SettlementStatus string      `json:"settlementStatus"`
+	RefundStatus     string      `json:"refundStatus"`
+	State            string      `json:"state"`
+	Wallet           string      `json:"wallet"`
+	Confirming       bool        `json:"confirming"`
+	Closed           bool        `json:"closed"`
+	CreatedAt        string      `json:"createdAt"`
+	ClosesAt         string      `json:"closesAt"`
+	HostedURL        *string     `json:"hostedUrl"`
+	PayToken         *string     `json:"payToken"`
+	CrossChain       *CrossChain `json:"crossChain"` // in a list, only when a deposit pays it
 }
 
-// CrossChain is how a payment through NEAR Intents went (R-235): the quote, 1Click's status, what the payer sent and
-// got back, and both chains' transactions. signed is 1Click's answer, which the pay page checks (D-124).
+// CrossChain is how a payment through NEAR Intents went; Signed is 1Click's answer the pay page checks.
 type CrossChain struct {
 	Provider       string          `json:"provider"`
 	QuoteID        string          `json:"quoteId"`
@@ -133,7 +131,7 @@ func FromInvoice(inv invoice.Invoice, webURL string) Payment {
 		p.Receipts = append(p.Receipts, Receipt{OptionID: r.OptionID, ChainID: r.ChainID, Token: r.Token, Symbol: r.Symbol, Decimals: r.Decimals, Received: r.Received.String(), Pending: r.Pending.String(), Held: r.Held.String()})
 	}
 	if inv.PayToken != "" {
-		url := webURL + "/pay/" + inv.PayToken
+		url := invoice.PayURL(webURL, inv.PayToken)
 		p.HostedURL = &url
 		p.PayToken = &inv.PayToken
 	}

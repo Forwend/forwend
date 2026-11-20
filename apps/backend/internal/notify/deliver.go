@@ -1,5 +1,4 @@
-// Package notify sends the email for each outbox event (R-80, R-82, R-84, R-94, R-96, R-107, R-148), each under one Resend
-// Idempotency-Key on every retry, so a lost answer sends nothing twice. Nothing logs an address, a subject or a body.
+// Package notify sends each outbox event's email under one Resend Idempotency-Key, and logs no address or body.
 package notify
 
 import (
@@ -12,6 +11,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/forwend/forwend/apps/backend/internal/config"
 	"github.com/forwend/forwend/apps/backend/internal/email"
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/outbox"
@@ -39,8 +39,20 @@ func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site 
 	return nil
 }
 
-// dropToken removes an invite's link token from its row once the email is sent, skipped or given up: then only its
-// hash is left (R-139).
+// FromConfig returns c's Resend sender, nil without a key, and the site its emails link to.
+func FromConfig(c config.Email) (email.Sender, Site) {
+	site := Site{WebURL: c.PublicWebURL, PostalAddress: c.PostalAddress, Support: c.Support}
+	if c.ResendKey == "" {
+		return nil, site
+	}
+	r := email.NewResend(c.ResendKey, c.From)
+	if c.ResendURL != "" {
+		r.URL = c.ResendURL
+	}
+	return r, site
+}
+
+// dropToken removes an invite's link token once the email is sent, skipped or given up: only its hash stays.
 const dropToken = "payload = payload - 'token'"
 
 // event is an outbox row; the ids it isn't about are "" or 0.
@@ -91,8 +103,7 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		return false, fmt.Errorf("deliver email: %w", err)
 	}
 	if !on || to == nil || *to == "" {
-		// Email off for this profile, or no login email ('' when the account has none; NULL when it was never read):
-		// nothing to send, and nothing waits for it.
+		// Email off, or no login email ('' when the account has none, NULL when never read): nothing to send.
 		if _, err := tx.Exec(ctx, "UPDATE outbox_events SET published_at = now(), "+dropToken+" WHERE id = $1",
 			e.id); err != nil {
 			return false, fmt.Errorf("skip email event %d: %w", e.id, err)
@@ -104,14 +115,12 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		return failed(ctx, tx, e, fmt.Errorf("render email event %d: %w", e.id, err), true)
 	}
 	m.To = *to
-	// The key holds the invoice, user or job id because event ids restart in another database sharing the Resend team,
-	// and a hash of the address and the message because Resend refuses a key it already saw with another body: an
-	// invoice edited between two tries changes it.
+	// The key holds the subject's id, since event ids restart in another database on the same Resend team, and a
+	// hash of the address and message, since Resend refuses a seen key with another body.
 	sum := sha256.Sum256(fmt.Appendf(nil, "%q|%q|%q|%q|%q|%q", m.To, m.Subject, m.Text, m.HTML, m.ReplyTo, m.Unsubscribe))
 	m.Key = fmt.Sprintf("forwend-%s-%d-%x", scope, e.id, sum[:8])
 	if sent := sender.Send(ctx, m); sent != nil {
-		// Any send failure other than a refusal stops the round, so a failing or hanging Resend doesn't hold up the
-		// worker's chain rounds.
+		// Any failure other than a refusal stops the round, so a hanging Resend can't hold up the chain rounds.
 		return failed(ctx, tx, e, sent, errors.Is(sent, email.ErrRefused))
 	}
 	if _, err := tx.Exec(ctx, "UPDATE outbox_events SET attempts = attempts + 1, published_at = now(), "+dropToken+
@@ -124,8 +133,7 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	return true, tx.Commit(ctx)
 }
 
-// failed counts a failed try with Backoff and gives up after MaxAttempts; next says whether the round goes on. A refused
-// message or an event that can't be read or rendered must not hold up every email behind it (R-115).
+// failed counts a try with Backoff and gives up after MaxAttempts; next says whether the round goes on.
 func failed(ctx context.Context, tx pgx.Tx, e event, cause error, next bool) (bool, error) {
 	attempts := e.attempts + 1
 	var err error
@@ -147,7 +155,7 @@ func failed(ctx context.Context, tx pgx.Tx, e event, cause error, next bool) (bo
 	return next, tx.Commit(ctx)
 }
 
-// The client's and payer's emails go in the invoice's history (R-126): sent, or failed once given up.
+// The client's and payer's emails go in the invoice's history: sent, or failed once given up.
 var emailed = map[string]struct{ sent, failed string }{
 	outbox.Sent:     {history.InvoiceEmailed, history.InvoiceEmailFailed},
 	outbox.Reminder: {history.ReminderEmailed, history.ReminderEmailFailed},

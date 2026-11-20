@@ -9,12 +9,15 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // An empty token call cannot establish a zero balance.
 var ErrNoToken = errors.New("no token contract at the block")
+
+var TransferTopic = crypto.Keccak256Hash([]byte("Transfer(address,address,uint256)"))
 
 func TokenBalanceAt(ctx context.Context, client *ethclient.Client, chainID uint64, token, holder string,
 	block uint64) (*big.Int, error) {

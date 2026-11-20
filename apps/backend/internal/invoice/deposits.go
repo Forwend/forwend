@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/finality"
+	"github.com/forwend/forwend/apps/backend/internal/ledger"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -23,7 +24,7 @@ func readDepositSummaries(ctx context.Context, db paymentReader, ids []string) (
  coalesce(sum(t.amount) FILTER (WHERE t.block_time<=i.closes_at),0)::text,
  coalesce(sum(t.amount) FILTER (WHERE t.block_time>i.closes_at),0)::text,
  coalesce(sum(t.amount) FILTER (WHERE t.block_time<=i.closes_at AND NOT EXISTS (
-   SELECT 1 FROM ledger_transactions x WHERE x.chain_transfer_id=t.id AND x.kind IN ('deposit','reopen','chosen'))),0)::text
+   SELECT 1 FROM ledger_transactions x WHERE x.chain_transfer_id=t.id AND x.kind IN `+ledger.DepositKindsSQL+`)),0)::text
  FROM invoices i JOIN chain_transfers t ON t.invoice_id=i.id AND t.status<>'reorged'
  WHERE i.id=ANY($1::text[]) GROUP BY i.id`, ids)
 	if err != nil {
@@ -48,7 +49,7 @@ func readDepositSummaries(ctx context.Context, db paymentReader, ids []string) (
 // DepositPaidSQL is the part of chain transfer t the ledger booked to the creator, as text; NULL until booked.
 const DepositPaidSQL = `(SELECT coalesce(-sum(e.amount) FILTER (WHERE e.account = 'recipient_payable'), 0)::text
  FROM ledger_transactions x JOIN ledger_entries e ON e.transaction_id = x.id
- WHERE x.chain_transfer_id = t.id AND x.kind IN ('deposit', 'reopen', 'chosen') HAVING count(*) > 0)`
+ WHERE x.chain_transfer_id = t.id AND x.kind IN ` + ledger.DepositKindsSQL + ` HAVING count(*) > 0)`
 
 const depositColumns = `tx_hash,log_index,from_address,amount::text,block_number,block_time,status,
  coalesce(detected_finalized_block,0),` + DepositPaidSQL + `,
@@ -58,8 +59,7 @@ func readDepositPreview(ctx context.Context, db paymentReader, id string, head f
 	if count <= DepositPreviewLimit {
 		return readDeposits(ctx, db, id, head, DepositPreviewLimit)
 	}
-	// Older representatives keep receipts and confirmation progress correct when history is truncated. Before an option
-	// is chosen the pay page reads the choice from these 100 (R-119), so past them it may wait for the API's choice.
+	// Older representatives keep receipts and progress right when history is truncated.
 	rows, err := db.Query(ctx, `WITH selected AS (
  (SELECT id FROM chain_transfers WHERE invoice_id=$1 AND status<>'reorged'
   ORDER BY block_number DESC,log_index DESC LIMIT $2)
@@ -80,7 +80,7 @@ func readDepositPreview(ctx context.Context, db paymentReader, id string, head f
   ORDER BY t.block_time DESC,t.block_number DESC,t.log_index DESC LIMIT 1)
  UNION
  (SELECT t.id FROM chain_transfers t WHERE t.invoice_id=$1 AND t.status='confirmed' AND NOT EXISTS (
-    SELECT 1 FROM ledger_transactions x WHERE x.chain_transfer_id=t.id AND x.kind IN ('deposit','reopen','chosen'))
+    SELECT 1 FROM ledger_transactions x WHERE x.chain_transfer_id=t.id AND x.kind IN `+ledger.DepositKindsSQL+`)
   ORDER BY t.block_time,t.block_number,t.log_index LIMIT 1)
  ) SELECT `+depositColumns+` FROM chain_transfers t WHERE t.id IN (SELECT id FROM selected)
  ORDER BY block_number,log_index`, id, DepositPreviewLimit-5)

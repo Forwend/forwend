@@ -1,5 +1,4 @@
-// Package worker runs the worker's rounds: for each enabled chain it scans for deposits (watcher), then books and
-// moves the chain's invoices (ledger).
+// Package worker runs the worker's rounds: per enabled chain, the watcher's scan, then the ledger.
 package worker
 
 import (
@@ -19,8 +18,7 @@ const RescanTimeout = 30 * time.Second
 
 const RoundTimeout = 2 * time.Minute
 
-// LockKey is the worker's Postgres advisory lock: one worker runs at a time, since two would race on the chain
-// cursors.
+// LockKey is the worker's advisory lock: two workers would race on the chain cursors.
 const LockKey int64 = 0x666f7277656e6401 // "forwend" 1
 
 type Worker struct {
@@ -30,21 +28,19 @@ type Worker struct {
 	rpcs            map[uint64]chain.RPCs
 	watchers        map[uint64]*watcher.Chain
 	historyWatchers map[uint64]*watcher.Chain
-	balances        map[uint64]*ethclient.Client // the RPC pool per chain, read by the ledger (D-15)
+	balances        map[uint64]*ethclient.Client
 	jobs            chain.Jobs
 	historical      chain.Jobs
-	budgets         []*chain.Budget
+	budget          *chain.Budget
 	alertedAt       time.Time
 }
 
-// New sends each RPC at most rate calls per second.
-func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, rate float64, budgets ...*chain.Budget) *Worker {
-	w := &Worker{budgets: budgets, pool: pool, specs: specs, rate: rate, rpcs: map[uint64]chain.RPCs{},
+func New(pool *pgxpool.Pool, specs map[uint64]chain.Spec, rate float64, budget *chain.Budget) *Worker {
+	w := &Worker{budget: budget, pool: pool, specs: specs, rate: rate, rpcs: map[uint64]chain.RPCs{},
 		watchers: map[uint64]*watcher.Chain{}, historyWatchers: map[uint64]*watcher.Chain{}, balances: map[uint64]*ethclient.Client{}}
 	return w
 }
 
-// Round: a failing or rate-limited RPC is rested and its calls move to the chain's next one (chain.NewRPCs).
 func (w *Worker) Round(ctx context.Context) {
 	w.Tick(ctx)
 	w.jobs.Wait()
@@ -91,7 +87,7 @@ func (w *Worker) Tick(ctx context.Context) {
 				slog.Error("enabled chain is not in the chain list", "chain", id)
 				continue
 			}
-			r, err := chain.NewRPCs(spec, w.rate, w.budgets...)
+			r, err := chain.NewRPCs(spec, w.rate, w.budget)
 			if err != nil {
 				slog.Error("pick RPCs", "chain", id, "err", chain.Redact(err))
 				continue

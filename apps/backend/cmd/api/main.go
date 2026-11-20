@@ -88,16 +88,7 @@ func run() error {
 		return err
 	}
 	users := privy.NewClient(cfg.PrivyAppID, cfg.PrivyAppSecret, "")
-	// Confirm it's you codes (R-137) go out from the api at once; without a key none can be sent.
-	var sender email.Sender
-	if cfg.Email.ResendKey != "" {
-		r := email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
-		if cfg.Email.ResendURL != "" {
-			r.URL = cfg.Email.ResendURL // a test's fake Resend
-		}
-		sender = r
-	}
-	site := notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress, Support: cfg.Email.Support}
+	sender, site := notify.FromConfig(cfg.Email)
 	codes := reauth.NewService(pool, sender, func(code string) (email.Message, error) {
 		return notify.CodeMessage(site, code, reauth.CodeTTL)
 	}, cfg.CodesPerHour)

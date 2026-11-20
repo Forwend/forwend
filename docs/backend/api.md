@@ -1156,7 +1156,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - `networkFee.paidBy` says how: `wallet` for a `native_gas` token, `paymaster` for a `fee_asset` token.
     - `forwend`, with 0, is a send Forwend sponsored before D-121.
   - A `native_gas` token is its chain's gas coin (Arc USDC, Tempo OUSD; R-216, R-223).
-    - The server estimates the gas and a fifth more, at the fee cap of `settlement.Fees` (R-189).
+    - The server estimates the gas and a fifth more, at the fee cap of `chain.Fees` (R-189).
     - Amount plus fee must fit the wallet's gas-coin balance; on Tempo, its token balance (its native balance is a placeholder).
     - On Tempo a wallet that chose another fee token in the fee manager can't send: its fee would leave in that token.
     - `gas` gives the limit and fee caps the browser signs with, so the fee never exceeds `networkFee`.

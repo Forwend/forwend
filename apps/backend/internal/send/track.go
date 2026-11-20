@@ -48,7 +48,6 @@ func scan(row pgx.Row) (Send, error) {
 	return s, err
 }
 
-// Get is the send with its status brought up to date from the chain.
 func (s *Service) Get(ctx context.Context, profileID, sendID string) (Send, error) {
 	out, err := scan(s.pool.QueryRow(ctx, "SELECT "+columns+" FROM sends WHERE id::text = $1 AND profile_id = $2",
 		strings.ToLower(sendID), profileID))
@@ -60,8 +59,7 @@ func (s *Service) Get(ctx context.Context, profileID, sendID string) (Send, erro
 	return s.refresh(ctx, out)
 }
 
-// Pending is the profile's signed sends the watcher hasn't recorded yet, newest first, each brought up to date
-// (R-215): the money lists show them until the transfer's own row takes their place.
+// Pending is the profile's signed sends the watcher hasn't recorded yet, newest first, brought up to date.
 func (s *Service) Pending(ctx context.Context, profileID string) ([]Send, error) {
 	rows, err := s.pool.Query(ctx, "SELECT "+columns+` FROM sends WHERE profile_id = $1 AND status = 'submitted'
 		AND chain_id IN (SELECT chain_id FROM chains WHERE livemode = (SELECT livemode FROM profiles WHERE id = $1))
@@ -105,8 +103,8 @@ func (s *Service) finishOpen(ctx context.Context, wallet string, chainID uint64)
 	return nil
 }
 
-// refresh moves the send on from what the chain shows (R-212). Only the watcher's wallet transfer out of the wallet
-// with this hash, token, recipient and amount makes it sent; nothing here ever sends again.
+// refresh moves the send on from what the chain shows. Only the watcher's matching wallet transfer makes it
+// sent; nothing here ever sends again.
 func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	now := s.now()
 	switch out.Status {
@@ -122,9 +120,8 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 			return s.relayed(ctx, out)
 		}
 	case Failed:
-		// A transaction given up as dropped can still be mined, and one that reverted in a block a reorg replaced can
-		// succeed in the new one: its receipt was read at the latest block, not a final one. Once the watcher records
-		// its transfer as final, the send was sent after all.
+		// A dropped transaction can still be mined, and a revert in a reorged block can succeed: once the watcher
+		// records its transfer as final, the send was sent after all.
 		if out.Failure == nil || *out.Failure != "dropped" && *out.Failure != "reverted" {
 			return out, nil
 		}
@@ -189,8 +186,6 @@ func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	return out, nil // mined with the transfer: sent once the watcher records it
 }
 
-var transferTopic = common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
-
 // moves reports whether the receipt holds the send's token Transfer out of the wallet.
 func moves(r *types.Receipt, out Send) bool {
 	if r.Status != types.ReceiptStatusSuccessful {
@@ -198,7 +193,7 @@ func moves(r *types.Receipt, out Send) bool {
 	}
 	from, to := common.HexToAddress(out.From), common.HexToAddress(out.To)
 	for _, l := range r.Logs {
-		if l.Address == common.HexToAddress(out.Token) && len(l.Topics) == 3 && l.Topics[0] == transferTopic &&
+		if l.Address == common.HexToAddress(out.Token) && len(l.Topics) == 3 && l.Topics[0] == chain.TransferTopic &&
 			common.BytesToAddress(l.Topics[1].Bytes()) == from && common.BytesToAddress(l.Topics[2].Bytes()) == to &&
 			new(big.Int).SetBytes(l.Data).Cmp(out.Amount) == 0 {
 			return true
@@ -207,14 +202,10 @@ func moves(r *types.Receipt, out Send) bool {
 	return false
 }
 
-// unreported settles an approved send the browser never reported: its signature may have gone out though the answer
-// was lost. The wallet's transfer to the same address and amount that the watcher recorded since the approve, and no
-// send claims, becomes its hash; with none, the approval ends after ApproveHold, once the watcher has read the chain
-// past it and the wallet has no transaction still waiting. A paymaster send never takes a hash this way: only Privy
-// gives one (relayed).
+// unreported settles an approved send the browser never reported: a matching recorded transfer becomes its hash;
+// with none, the approval ends after ApproveHold. A paymaster send gets a hash only from Privy.
 func (s *Service) unreported(ctx context.Context, out Send) (Send, error) {
-	// The watcher's place is read before its transfers: a scan that commits in between then only adds a transfer,
-	// and never looks past the hold without it.
+	// The watcher's place is read before its transfers, so a scan that commits in between only adds a transfer.
 	var read bool
 	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM chain_cursors WHERE chain_id = $1
 		AND last_scanned_time >= $2)`, int64(out.ChainID), out.ApprovedAt.Add(ApproveHold).Unix()).Scan(&read); err != nil {
@@ -229,8 +220,7 @@ func (s *Service) unreported(ctx context.Context, out Send) (Send, error) {
 		ORDER BY w.block_number, w.log_index LIMIT 1`,
 		int64(out.ChainID), out.From, out.Token, out.To, out.Amount.String(), *out.ApprovedAt, out.FeeAsset).Scan(&hash)
 	if errors.Is(err, pgx.ErrNoRows) {
-		// A transfer mined within the hold that the watcher hasn't read yet would otherwise free the wallet for the
-		// same money again.
+		// A transfer mined within the hold that the watcher hasn't read yet would otherwise free the wallet again.
 		if s.now().Sub(*out.ApprovedAt) < ApproveHold || !read || s.waiting(ctx, out) {
 			return out, nil
 		}
@@ -248,8 +238,8 @@ func (s *Service) unreported(ctx context.Context, out Send) (Send, error) {
 	return s.refresh(ctx, next)
 }
 
-// waiting reports whether the wallet has a transaction no block holds yet, or the node can't tell. The lost signature
-// may be that transaction, and a new send would be signed at the next nonce and go out after it.
+// waiting reports whether the wallet has a transaction no block holds yet, or the node can't tell: a new send
+// would go out after it.
 func (s *Service) waiting(ctx context.Context, out Send) bool {
 	client, err := s.client(out.ChainID)
 	if err != nil {
@@ -268,8 +258,7 @@ func (s *Service) finish(ctx context.Context, out Send, status Status, failure *
 	return s.finishPaid(ctx, out, status, failure, nil)
 }
 
-// finishMined ends a mined send with the gas its wallet paid, from receipt or read now: 0 for a send Forwend sponsored.
-// A receipt that can't be read leaves the fee unknown rather than holding the send.
+// finishMined ends a mined send with the gas its wallet paid, 0 when Forwend sponsored it; unreadable is unknown.
 func (s *Service) finishMined(ctx context.Context, out Send, status Status, failure *string,
 	receipt *types.Receipt) (Send, error) {
 	paid := new(big.Int)
@@ -291,10 +280,8 @@ func (s *Service) finishMined(ctx context.Context, out Send, status Status, fail
 	return s.finishPaid(ctx, out, status, failure, paid)
 }
 
-// paymasterTook is the token a paymaster send's wallet paid in its transaction beyond the send itself
-// (chain.PaymasterFee): what it sent to anyone but the recipient, less what came back. Nothing counts unless the
-// transaction moved the send and all it sent elsewhere is within PaymasterFeeSlack times the quoted fee: anything else
-// is money out, not a fee. A reverted send moved nothing, so it counts none.
+// paymasterTook is what a paymaster send's wallet paid beyond the send, counted only when the transaction moved
+// the send and the rest is within PaymasterFeeSlack times the quoted fee: anything else is money out.
 func paymasterTook(r *types.Receipt, out Send) *big.Int {
 	took, back := new(big.Int), new(big.Int)
 	if !moves(r, out) {
@@ -302,7 +289,7 @@ func paymasterTook(r *types.Receipt, out Send) *big.Int {
 	}
 	from, to, token := common.HexToAddress(out.From), common.HexToAddress(out.To), common.HexToAddress(out.Token)
 	for _, l := range r.Logs {
-		if l.Address != token || len(l.Topics) != 3 || l.Topics[0] != transferTopic {
+		if l.Address != token || len(l.Topics) != 3 || l.Topics[0] != chain.TransferTopic {
 			continue
 		}
 		src, dst := common.BytesToAddress(l.Topics[1].Bytes()), common.BytesToAddress(l.Topics[2].Bytes())

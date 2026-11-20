@@ -12,14 +12,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 
-// Longest details, in characters (R-42).
+// Longest details, in characters.
 const (
 	MaxTitle      = 200
 	MaxNote       = 2000
@@ -35,11 +34,8 @@ var (
 	uint256Max = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
 )
 
-// Request is what a new invoice says. A fixed invoice sets ChainID, Token and Amount in base units; a payer-chooses
-// one sets only AmountUSD, a decimal like "12.50", paid in any enabled token at 1 USD each (D-75).
-//
-// A retainer stores its Request as JSON with these Go field names, so renaming a field needs a migration of
-// retainers.request.
+// Request is what a new invoice says: fixed (ChainID, Token, Amount) or payer-chooses (AmountUSD).
+// Retainers store it as JSON by these field names: renaming a field needs a migration of retainers.request.
 type Request struct {
 	ChainID          uint64
 	Token            string
@@ -47,42 +43,27 @@ type Request struct {
 	AmountUSD        string
 	ExpiresInSeconds *int64
 	Details
-	// Lines add up exactly to the amount. UnitPrice is in the amount's unit: base units with Amount, a USD decimal
-	// with AmountUSD.
-	Lines  []LineRequest
-	Agreed *AgreedRequest
-	// Reminders and Repeat need a due date and a client email.
-	Reminders bool
-	Repeat    *Repeat
-	// Replaces is the profile's invoice this one replaces, canceled in the same transaction.
-	Replaces string
-	// FeesPaidBy is FeesPaidByOwner or FeesPaidByClient; "" takes the profile's.
-	FeesPaidBy string
-	// StoreID is a merchant invoice's store; "" is the profile's first store.
-	StoreID string
-	Caller  Caller `json:"-"`
-	cycle   *cycle
+	Lines      []LineRequest // add up to the amount, in its unit
+	Agreed     *AgreedRequest
+	Reminders  bool // with Repeat, needs a due date and a client email
+	Repeat     *Repeat
+	Replaces   string // canceled in the same transaction
+	FeesPaidBy string // "" takes the profile's
+	StoreID    string // "" is the profile's first store
+	Caller     Caller `json:"-"`
+	cycle      *cycle
 }
 
 // Caller is who asks for an invoice and the rules of their workflow. A retainer never stores it.
 type Caller struct {
-	// Purpose is set only by checkout operations; "" makes an invoice or a request, as the profile's kind decides.
-	Purpose Purpose
-	// LinkID is the payment link a payer made it from: it has no number until its first deposit (R-141).
-	LinkID string
-	// By is who makes the invoice, for its history; "" is the owner.
-	By history.Actor
-	// Livemode requires the mode of an API key, payment link or job (D-87).
-	Livemode *bool
-	// Stores, when not nil, are the only stores a Developer or Finance member reaches: Replaces must be in one.
-	Stores []string
-	// Before runs under the profile lock, before Allow; an error refuses the create.
-	Before func(ctx context.Context, tx pgx.Tx) error
-	// Allow is asked just before the insert, so a refused or replayed create spends none of a public caller's shared
-	// budget (R-117).
-	Allow func() time.Duration
-	// After runs in the insert's transaction before commit, and not on an idempotent replay.
-	After func(ctx context.Context, tx pgx.Tx, invoiceID string) error
+	Purpose  Purpose // checkout only; "" goes by the profile's kind
+	LinkID   string
+	By       history.Actor                                                // "" is the owner
+	Livemode *bool                                                        // the mode of the key, link or job
+	Stores   []string                                                     // nil: every store
+	Before   func(ctx context.Context, tx pgx.Tx) error                   // under the profile lock, before Allow
+	Allow    func() time.Duration                                         // just before the insert, so a refusal costs none
+	After    func(ctx context.Context, tx pgx.Tx, invoiceID string) error // in the insert's transaction; not on a replay
 }
 
 type AgreedRequest struct {
@@ -91,8 +72,7 @@ type AgreedRequest struct {
 	Date     string // YYYY-MM-DD
 }
 
-// EUR and the ECB's daily reference-rate currencies, with ISO 4217 decimals (D-82).
-// The web keeps a copy; a test fails when they differ.
+// AgreedCurrencies are EUR and the ECB's daily rate currencies, with ISO 4217 decimals; the web's copy is tested.
 var AgreedCurrencies = map[string]int{
 	"EUR": 2, "USD": 2, "GBP": 2, "AUD": 2, "BRL": 2, "CAD": 2, "CHF": 2, "CNY": 2, "CZK": 2, "DKK": 2, "HKD": 2,
 	"HUF": 2, "IDR": 2, "ILS": 2, "INR": 2, "ISK": 0, "JPY": 0, "KRW": 0, "MXN": 2, "MYR": 2, "NOK": 2, "NZD": 2,
@@ -133,8 +113,7 @@ type LineRequest struct {
 	UnitPrice   string
 }
 
-// MinUSDCents is the least a new payment asks for (R-56): below it, a deposit that chooses an option or a small
-// transfer to a wallet can't be told apart from dust.
+// MinUSDCents is the least a new payment asks: below it, a deposit can't be told apart from dust.
 const MinUSDCents = 100
 
 var minUSD = big.NewRat(MinUSDCents, 100)
@@ -156,7 +135,6 @@ type line struct {
 	price       *big.Rat
 }
 
-// Metadata limits (D-101).
 const (
 	MaxMetadataKeys  = 20
 	MaxMetadataValue = 500
@@ -226,8 +204,7 @@ func checkLines(in []LineRequest, usd bool, total *big.Rat) ([]line, error) {
 	sum := new(big.Rat)
 	out := make([]line, 0, len(in))
 	for _, l := range in {
-		if l.Description == "" || !utf8.ValidString(l.Description) ||
-			utf8.RuneCountInString(l.Description) > MaxLineDescription || !profile.PlainText(l.Description, false) {
+		if l.Description == "" || !profile.ValidText(l.Description, MaxLineDescription, false) {
 			return nil, fmt.Errorf("%w: lines need a description of at most %d characters of plain text", ErrInvalid,
 				MaxLineDescription)
 		}
@@ -263,7 +240,7 @@ func checkLines(in []LineRequest, usd bool, total *big.Rat) ([]line, error) {
 	return out, nil
 }
 
-// usdUnits converts at 1 USD per token (D-75); nil when the decimals can't hold it exactly or it passes 2^256-1.
+// usdUnits converts at 1 USD per token; nil when the decimals can't hold it exactly or it passes 2^256-1.
 func usdUnits(usd *big.Rat, decimals int) *big.Int {
 	n := new(big.Rat).Mul(usd, new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)))
 	if !n.IsInt() || n.Num().Cmp(uint256Max) > 0 {
@@ -281,15 +258,14 @@ func (d Details) check() error {
 		{"title", d.Title, MaxTitle, false}, {"note", d.Note, MaxNote, true},
 		{"senderName", d.SenderName, MaxSenderName, false}, {"reference", d.Reference, profile.MaxClientReference, false},
 	} {
-		// Postgres text can't hold a NUL byte.
-		if !utf8.ValidString(f.value) || utf8.RuneCountInString(f.value) > f.max || !profile.PlainText(f.value, f.lines) {
+		if !profile.ValidText(f.value, f.max, f.lines) {
 			return fmt.Errorf("%w: %s must be at most %d characters of plain text", ErrInvalid, f.name, f.max)
 		}
 	}
 	if profile.Impersonates(d.SenderName) {
 		return fmt.Errorf("%w: senderName can't name Forwend", ErrInvalid)
 	}
-	// A saved client's rules (R-86), so a client copied from the list always fits.
+	// A saved client's rules, so a client copied from the list always fits.
 	client := profile.ClientDetails{Name: d.ClientName, Email: d.ClientEmail, Address: d.ClientAddress,
 		Country: d.ClientCountry, TaxID: d.ClientTaxID}
 	if p := client.Problem("client."); p != "" {
@@ -304,8 +280,7 @@ func (d Details) check() error {
 	}
 	badMetadata := len(d.Metadata) > MaxMetadataKeys
 	for k, v := range d.Metadata {
-		badMetadata = badMetadata || !metadataKey.MatchString(k) || !utf8.ValidString(v) ||
-			utf8.RuneCountInString(v) > MaxMetadataValue || !profile.PlainText(v, false)
+		badMetadata = badMetadata || !metadataKey.MatchString(k) || !profile.ValidText(v, MaxMetadataValue, false)
 	}
 	if badMetadata {
 		return fmt.Errorf("%w: metadata must hold at most %d keys of 1 to 40 letters, digits, _ or -, each with plain "+
@@ -320,9 +295,8 @@ func (d Details) check() error {
 	return nil
 }
 
-// requestHash fingerprints the checked request, so the same values sent again match and the body is never stored.
-// %q keeps the texts apart whatever they contain. A stored hash must keep matching its retries, so each part added
-// after the first ones joins only when set.
+// requestHash fingerprints the checked request, so a retry matches and the body is never stored.
+// A stored hash must keep matching its retries, so a part added later joins only when set.
 func requestHash(r Request, chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration,
 	lines []line) []byte {
 	d := r.Details
@@ -364,7 +338,7 @@ func requestHash(r Request, chainID uint64, token string, amount fmt.Stringer, e
 		b = fmt.Appendf(b, "|%q|%s|%s", l.description, l.quantity.RatString(), l.price.RatString())
 	}
 	h := sha256.Sum256(b)
-	// Purpose and who pays the fees joined the hash as a hash of the hash.
+	// Purpose and who pays the fees join as a hash of the hash, so older stored hashes still match.
 	if r.Caller.Purpose != "" {
 		h = sha256.Sum256(append(h[:], "|purpose="+string(r.Caller.Purpose)...))
 	}

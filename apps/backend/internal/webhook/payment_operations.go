@@ -8,6 +8,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// ProblemSQL is a delivery that failed or waits on a turned-off endpoint; d and w are the SQL aliases.
+func ProblemSQL(d, w string) string {
+	return "(" + d + ".status = 'failed' OR NOT " + w + ".enabled AND " + d + ".status = 'pending')"
+}
+
 type PaymentDelivery struct {
 	EndpointID, EventID, EventType, Status string
 	Enabled                                bool
@@ -24,7 +29,7 @@ func PaymentDeliveries(ctx context.Context, db queryer, id string) ([]PaymentDel
  FROM webhook_events e JOIN webhook_deliveries d ON d.event_id = e.id JOIN webhook_endpoints w ON w.id = d.endpoint_id
  LEFT JOIN LATERAL (SELECT a.status_code,a.at FROM webhook_attempts a WHERE a.endpoint_id = d.endpoint_id
      AND a.event_id = d.event_id ORDER BY a.id DESC LIMIT 1) attempt ON true
- WHERE e.invoice_id = $1 ORDER BY (d.status = 'failed' OR NOT w.enabled AND d.status = 'pending') DESC,e.sequence DESC,d.endpoint_id LIMIT 100`, id)
+ WHERE e.invoice_id = $1 ORDER BY `+ProblemSQL("d", "w")+` DESC,e.sequence DESC,d.endpoint_id LIMIT 100`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +39,7 @@ func PaymentDeliveries(ctx context.Context, db queryer, id string) ([]PaymentDel
 func ProblemDeliveries(ctx context.Context, db queryer, ids []string) (map[string]PaymentDelivery, error) {
 	rows, err := db.Query(ctx, `SELECT DISTINCT ON (e.invoice_id) e.invoice_id,d.endpoint_id::text,d.event_id
   FROM webhook_events e JOIN webhook_deliveries d ON d.event_id = e.id JOIN webhook_endpoints endpoint ON endpoint.id = d.endpoint_id
-  WHERE e.invoice_id = ANY($1::text[]) AND (d.status = 'failed' OR NOT endpoint.enabled AND d.status = 'pending')
+  WHERE e.invoice_id = ANY($1::text[]) AND `+ProblemSQL("d", "endpoint")+`
   ORDER BY e.invoice_id,e.sequence DESC,d.endpoint_id`, ids)
 	if err != nil {
 		return nil, err
@@ -73,7 +78,7 @@ func ProblemEndpoints(ctx context.Context, db queryer, profileID, storeID string
 	rows, err := db.Query(ctx, `SELECT w.id::text,coalesce(w.store_id::text,''),w.description,w.enabled,w.livemode,
    count(*) FILTER (WHERE d.status = 'failed'),count(*) FILTER (WHERE d.status = 'pending' AND NOT w.enabled),max(d.updated_at)
    FROM webhook_endpoints w JOIN webhook_deliveries d ON d.endpoint_id = w.id JOIN webhook_events e ON e.id = d.event_id
-   LEFT JOIN invoices m ON m.id = e.invoice_id WHERE `+where+` AND (d.status = 'failed' OR d.status = 'pending' AND NOT w.enabled)
+   LEFT JOIN invoices m ON m.id = e.invoice_id WHERE `+where+` AND `+ProblemSQL("d", "w")+`
    GROUP BY w.id ORDER BY max(d.updated_at) DESC,w.id LIMIT $2`, args...)
 	if err != nil {
 		return nil, err

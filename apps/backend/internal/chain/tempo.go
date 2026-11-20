@@ -1,21 +1,44 @@
 package chain
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// TempoFeeManager is Tempo's fee manager precompile: an account chooses its fee token there, and a fee leaves the
-// account as a Transfer of that token to it (R-224).
+// TempoFeeManager is Tempo's fee precompile: an account picks its fee token there; fees go to it as Transfers.
 var TempoFeeManager = common.HexToAddress("0xfeec000000000000000000000000000000000000")
 
-// TempoFee is the SQL test that wallet transfer t is wallet-paid send s's Tempo fee (R-224): the token's outflow from
-// the send's wallet to the fee manager, at most the fee the send was signed for together. The transaction is the one
-// whose hash the owner's browser reported for the send; or, until it reports one, a transaction since the send's
-// approval that moves exactly the send, as the send's own transfer is matched (D-49). Tempo blocks are final at once,
-// so the watcher may see the fee before the hash. The fee manager also swaps and takes liquidity, so any other
-// transfer to it is money out: it shows in Transactions and tells the owner.
+var userTokens = crypto.Keccak256([]byte("userTokens(address)"))[:4]
+
+// UserFeeToken is the token account chose in Tempo's fee manager, zero for none; tempo is false off Tempo.
+func UserFeeToken(ctx context.Context, client *ethclient.Client, account common.Address) (token common.Address,
+	tempo bool, err error) {
+	code, err := client.CodeAt(ctx, TempoFeeManager, nil)
+	if err != nil {
+		return common.Address{}, false, fmt.Errorf("read the fee manager's code: %w", err)
+	}
+	if len(code) == 0 {
+		return common.Address{}, false, nil
+	}
+	data := append(append([]byte{}, userTokens...), common.LeftPadBytes(account.Bytes(), 32)...)
+	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &TempoFeeManager, Data: data}, nil)
+	if err != nil {
+		return common.Address{}, true, fmt.Errorf("read the account's fee token: %w", err)
+	}
+	if len(out) != 32 {
+		return common.Address{}, true, fmt.Errorf("read the account's fee token: %d-byte answer", len(out))
+	}
+	return common.BytesToAddress(out), true, nil
+}
+
+// TempoFee is SQL: wallet transfer t is send s's Tempo fee, sent to the fee manager and at most its signed fee.
+// Any other transfer to the fee manager is money out: it also swaps and takes liquidity.
 func TempoFee(t, s string) string {
 	feeManager := "'" + strings.ToLower(TempoFeeManager.Hex()) + "'"
 	same := `tm.chain_id = ` + t + `.chain_id AND tm.tx_hash = ` + t + `.tx_hash AND tm.wallet_address = ` + t +

@@ -18,8 +18,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
-// On forks of Base and Arbitrum through their public RPCs:
-// go test -tags mainnetfork -run TestExecutorBuysGasOnAMainnetFork ./internal/settlement/
+// Forks Base and Arbitrum: go test -tags mainnetfork -run TestExecutorBuysGasOnAMainnetFork ./internal/settlement/
 func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 	for _, c := range []struct {
 		name, url string
@@ -67,7 +66,7 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 			// Five deploys and settles' worth: below the alert's 20, enough to pay for the swap.
 			drain := func() {
 				t.Helper()
-				_, feeCap, err := Fees(ctx, client, c.id)
+				_, feeCap, err := chain.Fees(ctx, client, c.id)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -92,7 +91,7 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 			drain()
 
 			t.Run("buys at least the Chainlink price less 1%", func(t *testing.T) {
-				_, feeCap, err := Fees(ctx, client, c.id)
+				_, feeCap, err := chain.Fees(ctx, client, c.id)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -114,7 +113,6 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 				if spent := new(big.Int).Sub(usdcBefore, usdcHeld()); spent.Cmp(in) != 0 {
 					t.Fatalf("spent %s USDC units, want %s", spent, in)
 				}
-				// Bought: the balance gained plus the approve's and the swap's gas.
 				bought := new(big.Int).Sub(etherHeld(), etherBefore)
 				end, err := client.BlockNumber(ctx)
 				if err != nil {
@@ -169,7 +167,6 @@ func TestExecutorBuysGasOnAMainnetFork(t *testing.T) {
 				if usdcHeld().Cmp(usdcBefore) != 0 || etherHeld().Cmp(etherBefore) > 0 {
 					t.Fatal("a refused swap moved USDC or bought ether")
 				}
-				// The next round swaps the approve it left, so a pool that keeps refusing costs no more gas.
 				drain()
 				before, err := client.BlockNumber(ctx)
 				if err != nil {
