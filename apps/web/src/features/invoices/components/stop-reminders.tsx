@@ -5,13 +5,12 @@ import { useEffect, useRef } from "react";
 import { useStopRemindersMutation } from "@/features/invoices/api/invoices-api";
 import { STOP_REMINDERS_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
-
-const NOT_FOUND = 404;
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 
 // Asks first, since mail scanners open links.
 export function StopReminders({ token }: { token: string }) {
   const [stop, { data, error, isLoading }] = useStopRemindersMutation();
-  const status = (error as { status?: unknown } | undefined)?.status;
+  const status = errorStatus(error);
   const heading = useRef<HTMLHeadingElement>(null);
   const stopped = !!data;
   useEffect(() => {
@@ -36,7 +35,7 @@ export function StopReminders({ token }: { token: string }) {
           <p className="text-muted">{COPY.body}</p>
           {error ? (
             <p role="alert" className="text-sm text-danger">
-              {status === NOT_FOUND ? COPY.notFound : COPY.failed}
+              {status === HTTP_STATUS.notFound ? COPY.notFound : COPY.failed}
             </p>
           ) : null}
           <Button

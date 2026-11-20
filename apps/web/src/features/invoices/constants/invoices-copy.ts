@@ -1,6 +1,5 @@
 import type { ClientKind } from "@/features/clients/types/clients";
 import {
-  AMOUNT_ERRORS,
   type CUSTOM_EXPIRY,
   EXPIRY_BOUNDS_S,
   EXPIRY_CHOICES,
@@ -32,6 +31,8 @@ import type {
   ReminderStep,
   SettlementWaitKind,
 } from "@/features/invoices/types/invoices";
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
+import { AMOUNT_ERRORS } from "@/shared/constants/money";
 
 const atMost = (n: number) =>
   `Use at most ${n.toLocaleString("en-US")} characters, with no hidden characters.`;
@@ -206,11 +207,8 @@ export const NEW_INVOICE_COPY = {
       date: "Pick the day you agreed it.",
     },
   },
-  billingNeeded: {
-    title: "Add your billing details first",
-    text: "Every invoice shows who bills the client: your name, address, country and email. EU, UK and US invoices need them.",
-    action: "Add billing details",
-  },
+  billingNeeded:
+    "Every invoice shows who bills the client: your name, address, country and email. EU, UK and US invoices need them.",
   datesGroup: "Dates",
   supplyLabel: "Supply date (optional)",
   supplyHint: "When the work was done, if not today.",
@@ -292,7 +290,7 @@ export const NEW_INVOICE_COPY = {
     [INVOICE_FIELDS.dueDate]: "Enter a date, or leave it empty.",
     [INVOICE_FIELDS.supplyDate]: "Enter a date, or leave it empty.",
     [INVOICE_FIELDS.clientName]: atMost(INVOICE_LIMITS.clientName),
-    [INVOICE_FIELDS.clientEmail]: "Enter an email like name@example.com.",
+    [INVOICE_FIELDS.clientEmail]: EMAIL_COPY.invalid,
     [INVOICE_FIELDS.clientAddress]: atMost(INVOICE_LIMITS.clientAddress),
     [INVOICE_FIELDS.clientCountry]: "Choose a country.",
     [INVOICE_FIELDS.clientTaxId]: atMost(INVOICE_LIMITS.clientTaxId),

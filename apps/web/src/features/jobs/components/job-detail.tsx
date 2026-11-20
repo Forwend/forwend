@@ -4,8 +4,6 @@ import { Badge, BUTTON_VARIANTS, Button, StatusPill, TONES, useToast } from "@fo
 import { BriefcaseBusiness } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
-import { countryName } from "@/features/clients/lib/clients";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { useWithdrawChangeMutation } from "@/features/jobs/api/jobs-api";
 import { JobRecord } from "@/features/jobs/components/job-record";
@@ -14,22 +12,22 @@ import { PaymentStep } from "@/features/jobs/components/payment-step";
 import { ProposeChange } from "@/features/jobs/components/propose-change";
 import { JOB_LIMITS, PAYMENT_STEPS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
-import { isPendingChange, paymentStep, usdText } from "@/features/jobs/lib/jobs";
+import { isPendingChange, paymentStep } from "@/features/jobs/lib/jobs";
 import type { Job, JobPaymentStatus } from "@/features/jobs/types/jobs";
-import { notFound } from "@/shared/api/server-reach";
+import { errorStatus, HTTP_STATUS, notFound } from "@/shared/api/api-error";
 import { CopyValue } from "@/shared/components/copy-value";
 import { DetailHeader } from "@/shared/components/detail-header";
 import { Party } from "@/shared/components/party";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { PANEL_TITLE } from "@/shared/constants/panel";
+import { countryName } from "@/shared/lib/countries";
 import { dateTime, shortDate } from "@/shared/lib/dates";
-import { usdCents } from "@/shared/lib/money";
+import { formatUsd, usdCents, usdText } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.detail;
-const CONFLICT = 409;
 const DAY = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 const PANEL = "fw-panel";
-const PANEL_TITLE = "fw-panel-head text-base font-semibold text-ink";
 const LINK = "text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink";
 
 export interface JobDetailProps {
@@ -120,7 +118,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                   payment={p}
                   first={i === 0}
                   last={i === job.payments.length - 1}
-                  amount={usdText(p.amountUsd)}
+                  amount={usdText(usdCents(p.amountUsd))}
                 >
                   <p className="font-medium break-words text-ink">{p.title}</p>
                   <p className="text-sm text-muted">
@@ -156,8 +154,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
                           document.getElementById("job-payments")?.focus();
                         } catch (failure) {
                           const gone =
-                            (failure as { status?: unknown }).status === CONFLICT ||
-                            notFound(failure);
+                            errorStatus(failure) === HTTP_STATUS.conflict || notFound(failure);
                           toast({
                             tone: TONES.warning,
                             title: gone ? COPY.withdrawGone : COPY.withdrawFailed,
@@ -215,7 +212,7 @@ export function JobDetail({ profileId, job, actions, titleRef }: JobDetailProps)
             <p className="flex items-baseline justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
               <span className="text-sm text-muted">{COPY.total}</span>
               <span className="text-lg font-semibold tabular-nums text-ink">
-                {usdText(job.totalUsd)}
+                {usdText(usdCents(job.totalUsd))}
               </span>
             </p>
             {canPropose ? (

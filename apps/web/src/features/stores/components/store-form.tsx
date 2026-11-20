@@ -11,25 +11,30 @@ import {
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { Payee } from "@/features/pay/components/payee";
 import type { TokenSwitch } from "@/features/profiles/types/tokens";
 import { useSaveStoreLogoMutation, useSaveStoreMutation } from "@/features/stores/api/stores-api";
+import { Payee } from "@/features/stores/components/payee";
 import { StoreLogo } from "@/features/stores/components/store-logo";
 import {
   BRAND_COLOR_PATTERN,
   COLOR_PICKER_START,
+  STORE_FIELDS,
   STORE_LIMITS,
 } from "@/features/stores/constants/stores";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { useObjectUrl } from "@/features/stores/hooks/use-object-url";
-import { invalidStoreField, originLines } from "@/features/stores/lib/stores";
+import { originLines } from "@/features/stores/lib/stores";
 import type { Store, StoreBody, StoreField } from "@/features/stores/types/stores";
-import { AssetSelection, assetKey } from "@/shared/components/chains/asset-selection";
+import { namedField } from "@/shared/api/api-error";
+import { AssetSelection } from "@/shared/components/chains/asset-selection";
 import { AssetStack } from "@/shared/components/chains/asset-stack";
 import { TokenMark } from "@/shared/components/chains/token-mark";
 import { FieldGroup } from "@/shared/components/field-group";
-import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
+import { FormPreview, StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
+import { offRefs, toggled } from "@/shared/lib/asset-selection";
+import { tokenKey } from "@/shared/lib/chains";
 
 export interface StoreFormProps {
   profileId: string;
@@ -63,7 +68,7 @@ export function StoreForm({
   const [closes, setCloses] = useState(String(store?.defaultExpiresIn ?? defaultClose));
   const [color, setColor] = useState(store?.brandColor ?? "");
   const shownTokens = tokens.filter((t) => t.on);
-  const [tokensOff, setTokensOff] = useState(() => new Set(store?.tokensOff.map(assetKey)));
+  const [tokensOff, setTokensOff] = useState(() => new Set(store?.tokensOff.map(tokenKey)));
   const [errors, setErrors] = useState<Partial<Record<StoreField, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -76,7 +81,8 @@ export function StoreForm({
     { id: STEPS.brand, label: COPY.brandGroup },
     ...(shownTokens.length ? [{ id: STEPS.assets, label: COPY.tokensGroup }] : []),
   ]);
-  const accepted = shownTokens.filter((t) => !tokensOff.has(assetKey(t)));
+  const accepted = shownTokens.filter((t) => !tokensOff.has(tokenKey(t)));
+  const acceptedKeys = new Set(accepted.map(tokenKey));
 
   const problems = (form: HTMLFormElement) => {
     const shown: Partial<Record<StoreField, string>> = {};
@@ -104,11 +110,9 @@ export function StoreForm({
       // Ones the profile has off stay as the store had them.
       tokensOff: [
         ...(store?.tokensOff ?? []).filter(
-          (t) => !shownTokens.some((s) => assetKey(s) === assetKey(t)),
+          (t) => !shownTokens.some((s) => tokenKey(s) === tokenKey(t)),
         ),
-        ...shownTokens
-          .filter((t) => tokensOff.has(assetKey(t)))
-          .map(({ chainId, token }) => ({ chainId, token })),
+        ...offRefs(shownTokens, acceptedKeys),
       ],
     };
     const shown = problems(form);
@@ -129,9 +133,7 @@ export function StoreForm({
       }
       router.push(`${APP_ROUTES.stores}/${storeId.current}`);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidStoreField(message);
+      const field = namedField(error, STORE_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         flow.focusError(form);
@@ -254,14 +256,9 @@ export function StoreForm({
             <AssetSelection
               label={COPY.tokensGroup}
               options={shownTokens}
-              selected={new Set(accepted.map(assetKey))}
+              selected={acceptedKeys}
               onChange={(keys, on) => {
-                const next = new Set(tokensOff);
-                for (const key of keys) {
-                  if (on) next.delete(key);
-                  else next.add(key);
-                }
-                setTokensOff(next);
+                setTokensOff(toggled(tokensOff, keys, !on));
                 setErrors((current) => ({ ...current, tokensOff: undefined }));
               }}
             />

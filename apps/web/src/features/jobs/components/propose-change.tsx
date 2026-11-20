@@ -9,11 +9,11 @@ import { CHANGE_ERRORS, JOB_LIMITS } from "@/features/jobs/constants/jobs";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import { dueDays, paymentCents } from "@/features/jobs/lib/jobs";
 import type { PaymentField } from "@/features/jobs/types/jobs";
+import { apiError, invalidValue } from "@/shared/api/api-error";
 import { usdFromCents } from "@/shared/lib/money";
 
 const COPY = JOBS_COPY.detail;
 const FORM = JOBS_COPY.form;
-const INVALID_VALUE = 422;
 
 export interface ProposeChangeProps {
   profileId: string;
@@ -60,11 +60,7 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
       });
       onProposed();
     } catch (failure) {
-      const { status, data } = failure as {
-        status?: unknown;
-        data?: { error?: { code?: string } };
-      };
-      const code = data?.error?.code;
+      const { code } = apiError(failure);
       if (code === CHANGE_ERRORS.pending || code === CHANGE_ERRORS.finished) {
         actions.current?.closest("dialog")?.close();
         document.getElementById("job-payments")?.focus();
@@ -74,7 +70,7 @@ export function ProposeChange({ profileId, jobId, onProposed }: ProposeChangePro
         });
         return;
       }
-      setError(status === INVALID_VALUE ? COPY.proposeInvalid : COPY.proposeFailed);
+      setError(invalidValue(failure) ? COPY.proposeInvalid : COPY.proposeFailed);
     }
   };
 

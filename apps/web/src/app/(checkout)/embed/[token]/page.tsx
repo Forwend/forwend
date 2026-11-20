@@ -5,10 +5,11 @@ import { PAY_TOKEN_PATTERN } from "@/features/invoices/constants/invoices";
 import { EMBED_LAYOUTS, EMBED_PARAMS } from "@/features/pay/constants/embed";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { PayScreen } from "@/screens/pay/pay-screen";
+import { NO_INDEX } from "@/shared/config/site";
 
 export const metadata: Metadata = {
   title: PAY_COPY.title,
-  robots: { index: false, follow: false },
+  robots: NO_INDEX,
 };
 
 // The checkout in a merchant's page. src/proxy.ts lets only the store's origin the query names frame it.

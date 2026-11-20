@@ -1,6 +1,10 @@
 import type { TimelineState } from "@forwend/ui-web";
 import type { z } from "zod";
-import type { JOURNEY_KINDS, SUM_CELLS } from "@/features/payments/constants/payments";
+import type {
+  JOURNEY_KINDS,
+  PAYMENT_PARAMS,
+  SUM_CELLS,
+} from "@/features/payments/constants/payments";
 import type {
   attentionPageSchema,
   paymentDetailSchema,
@@ -68,3 +72,5 @@ export type JourneyStep = { id: string; state: TimelineState } & (
   | { kind: typeof JOURNEY_KINDS.wallet; option?: PaymentOption }
   | { kind: typeof JOURNEY_KINDS.returned; option: PaymentOption; sent: PaymentReturn }
 );
+
+export type PaymentParam = (typeof PAYMENT_PARAMS)[keyof typeof PAYMENT_PARAMS];

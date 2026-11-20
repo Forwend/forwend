@@ -1,8 +1,8 @@
 import { pendingSendsSchema, sendFeeSchema, sendSchema } from "@/features/send/schemas/send";
 import type { Send, SendFee, SendRequest } from "@/features/send/types/send";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
-const sends = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/sends`;
+const sends = (profileId: string) => profilePath(profileId, "sends");
 
 export const sendApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({

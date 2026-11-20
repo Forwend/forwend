@@ -8,7 +8,7 @@ import { JobActions } from "@/features/jobs/components/job-actions";
 import { JobDetail } from "@/features/jobs/components/job-detail";
 import { JOBS_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 import { DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";

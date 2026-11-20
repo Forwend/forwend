@@ -7,16 +7,6 @@ import { makeStore } from "@/store/store";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
 
 afterEach(cleanup);

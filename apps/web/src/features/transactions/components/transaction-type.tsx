@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTokenAmount, SelectField, shortAddress, TONES, useToast } from "@forwend/ui-web";
+import { SelectField, shortAddress, TONES, useToast } from "@forwend/ui-web";
 import { useState } from "react";
 import { useLabelTransactionMutation } from "@/features/transactions/api/transactions-api";
 import {
@@ -10,12 +10,11 @@ import {
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
 import { typeName } from "@/features/transactions/lib/transactions";
 import type { Transaction, TransactionLabel } from "@/features/transactions/types/transactions";
-import { notFound } from "@/shared/api/server-reach";
+import { errorStatus, HTTP_STATUS, notFound } from "@/shared/api/api-error";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 
-const CONFLICT = 409;
 const CHOICES = [TRANSACTION_CLASSES.unclassified, ...TRANSACTION_LABELS].map((value) => ({
   value,
   label: COPY.classes[value],
@@ -42,14 +41,7 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
   }
   return (
     <SelectField
-      label={COPY.typeOf(
-        `${formatTokenAmount({
-          baseUnits: BigInt(t.amount),
-          decimals: t.decimals,
-          fractionDigits: exactDigits(BigInt(t.amount), t.decimals),
-        })} ${t.symbol}`,
-        shortAddress(t.counterparty),
-      )}
+      label={COPY.typeOf(amountText(BigInt(t.amount), t), shortAddress(t.counterparty))}
       hideLabel
       options={CHOICES}
       value={
@@ -70,8 +62,7 @@ export function TransactionType({ profileId, t }: TransactionTypeProps) {
           }).unwrap();
         } catch (failure) {
           setChosen(null);
-          const refused =
-            (failure as { status?: unknown }).status === CONFLICT || notFound(failure);
+          const refused = errorStatus(failure) === HTTP_STATUS.conflict || notFound(failure);
           toast({ tone: TONES.warning, title: refused ? COPY.typeRefused : COPY.typeFailed });
         }
       }}

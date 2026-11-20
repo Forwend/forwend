@@ -10,7 +10,7 @@ import { useGetStoreQuery } from "@/features/stores/api/stores-api";
 import { StoreForm } from "@/features/stores/components/store-form";
 import { STORES_COPY as COPY } from "@/features/stores/constants/stores-copy";
 import { CLOSE_CHOICES, DEFAULT_CLOSE } from "@/screens/stores/lib/close-choices";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 import { LoadError } from "@/shared/components/load-error";
 import { PageTitle } from "@/shared/components/page-title";
 import { RecordLink } from "@/shared/components/record-link";

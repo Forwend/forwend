@@ -6,16 +6,6 @@ import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { TokenSwitches } from "@/features/profiles/components/token-switches";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const USDC = {
   chainId: 84532,
   token: "0x036cbd53842c5426634e7929541ec2318f3dcf7e",

@@ -4,6 +4,7 @@ import type {
   FetchBaseQueryError,
   FetchBaseQueryMeta,
 } from "@reduxjs/toolkit/query";
+import { HTTP_STATUS } from "@/shared/api/api-error";
 import { REFRESH_MS } from "@/shared/config/refresh";
 
 interface RateLimitOptions {
@@ -49,12 +50,12 @@ export function withRateLimit(base: BaseQuery): BaseQuery {
   return async (args, api, extra) => {
     if (api.type === "query") await sleep(pausedUntil - Date.now(), api.signal);
     let result = await base(args, api, extra);
-    if (result.error?.status === 429 && extra?.answerFirst) return result;
-    if (result.error?.status === 429) {
+    if (result.error?.status === HTTP_STATUS.tooManyRequests && extra?.answerFirst) return result;
+    if (result.error?.status === HTTP_STATUS.tooManyRequests) {
       await sleep(retryAfterMs(result.meta?.response?.headers.get("Retry-After")), api.signal);
       result = await base(args, api, extra);
     }
-    if (result.error?.status === 429) {
+    if (result.error?.status === HTTP_STATUS.tooManyRequests) {
       pauseMs = nextPause(pauseMs);
       pausedUntil = Date.now() + pauseMs;
     } else {

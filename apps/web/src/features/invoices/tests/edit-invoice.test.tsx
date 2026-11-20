@@ -6,16 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditInvoice } from "@/features/invoices/components/edit-invoice";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
 const ID = `0x${"7".repeat(64)}`;
 

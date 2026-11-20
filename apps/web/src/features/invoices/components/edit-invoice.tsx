@@ -13,12 +13,12 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 import { useEditInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_FIELDS, INVOICE_LIMITS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY, NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate, isReturnLink, refusedField } from "@/features/invoices/lib/invoices";
+import { isReturnLink, refusedField } from "@/features/invoices/lib/invoices";
 import type { InvoiceField } from "@/features/invoices/types/invoices";
+import { errorStatus, HTTP_STATUS, invalidValue } from "@/shared/api/api-error";
+import { formatDueDate } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.edit;
-const INVALID_VALUE = 422;
-const CONFLICT = 409;
 
 export interface EditInvoiceProps {
   profileId: string;
@@ -108,11 +108,7 @@ function EditForm({
       toast({ tone: TONES.success, title: COPY.saved(number) });
       form.current?.closest("dialog")?.close();
     } catch (failure) {
-      const { status, data: body } = failure as {
-        status?: unknown;
-        data?: { error?: { message?: string } };
-      };
-      const refused = status === INVALID_VALUE ? refusedField(body?.error?.message ?? "") : null;
+      const refused = invalidValue(failure) ? refusedField(failure) : null;
       if (refused)
         setErrors({
           [refused.field]:
@@ -120,7 +116,7 @@ function EditForm({
               ? COPY.dueHint(formatDueDate(closesOn))
               : refused.message,
         });
-      else setFailed(status === CONFLICT ? COPY.locked : COPY.failed);
+      else setFailed(errorStatus(failure) === HTTP_STATUS.conflict ? COPY.locked : COPY.failed);
     }
   };
 

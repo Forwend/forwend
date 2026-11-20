@@ -4,7 +4,7 @@ import { useAcceptChangeMutation } from "@/features/jobs/api/jobs-api";
 import { ConsentForm } from "@/features/jobs/components/consent-form";
 import { QUOTE_COPY as COPY } from "@/features/jobs/constants/jobs-copy";
 import type { JobPayment } from "@/features/jobs/types/jobs";
-import { notFound } from "@/shared/api/server-reach";
+import { notFound } from "@/shared/api/api-error";
 
 export interface AcceptChangeProps {
   token: string;

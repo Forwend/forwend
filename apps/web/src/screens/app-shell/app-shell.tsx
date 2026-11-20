@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { PaymentToasts } from "@/features/activity/components/payment-toasts";
 import { AUTH_COPY } from "@/features/auth/constants/auth-copy";
-import { PRIVY_PASSKEY } from "@/features/auth/constants/sign-in";
+import { loginEmail, passkeyIds } from "@/features/auth/lib/privy-user";
 import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { FirstRun } from "@/features/onboarding/components/first-run";
 import { rememberReturnPage, takeReturnPage } from "@/features/onboarding/lib/onboarding";
@@ -174,10 +174,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     return (
       <FirstRun
         profiles={profiles}
-        email={user?.email?.address ?? user?.google?.email ?? ""}
-        passkeyLinked={
-          user?.linkedAccounts.some((account) => account.type === PRIVY_PASSKEY) ?? false
-        }
+        email={loginEmail(user) ?? ""}
+        passkeyLinked={passkeyIds(user).length > 0}
         onSignOut={() => void signOut()}
         // The address check above then leaves for href.
         onFinish={(profile, href) => {
@@ -189,7 +187,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     );
   }
 
-  const email = user?.email?.address ?? user?.google?.email ?? AUTH_COPY.signedIn;
+  const email = loginEmail(user) ?? AUTH_COPY.signedIn;
   return (
     // Phones: toasts sit above the tab bar, its border and the safe area.
     <ToastProvider className="max-lg:bottom-[calc(5rem+1px+env(safe-area-inset-bottom)+1rem)]">

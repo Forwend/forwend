@@ -21,13 +21,12 @@ import type {
   StoppedReminders,
 } from "@/features/invoices/types/invoices";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 export const INVOICES_TAG = "Invoices";
 
-const profileInvoices = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/invoices`;
+const profileInvoices = (profileId: string) => profilePath(profileId, "invoices");
 
 export const invoicesApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [INVOICES_TAG] })
@@ -74,7 +73,7 @@ export const invoicesApi = apiSlice
       /** Newest first. */
       getInvoiceEvents: build.query<InvoiceEvent[], string>({
         query: (profileId) => ({
-          url: `/v1/profiles/${encodeURIComponent(profileId)}/events`,
+          url: profilePath(profileId, "events"),
           params: { limit: 20 },
         }),
         rawResponseSchema: invoiceEventsSchema,
@@ -88,13 +87,13 @@ export const invoicesApi = apiSlice
         )
       >({
         query: ({ profileId, ...price }) => ({
-          url: `/v1/profiles/${encodeURIComponent(profileId)}/fees`,
+          url: profilePath(profileId, "fees"),
           params: price,
         }),
         responseSchema: feeQuoteSchema,
       }),
       getOwed: build.query<OwedList, string>({
-        query: (profileId) => `/v1/profiles/${encodeURIComponent(profileId)}/owed`,
+        query: (profileId) => profilePath(profileId, "owed"),
         responseSchema: owedListSchema,
         providesTags: [INVOICES_TAG],
       }),

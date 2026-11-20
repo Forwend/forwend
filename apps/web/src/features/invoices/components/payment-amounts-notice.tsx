@@ -1,11 +1,10 @@
-import { formatTokenAmount } from "@forwend/ui-web";
 import Link from "next/link";
 import { RECONCILIATION_STATES } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { InvoiceOption } from "@/features/invoices/types/invoices";
 import { ExplorerLink } from "@/shared/components/chains/explorer-link";
 import { chainName } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 
 export interface PaymentAmountsNoticeProps {
   options: readonly Pick<
@@ -60,7 +59,7 @@ export function PaymentAmountsNotice({
         const amounts = option.amounts;
         if (!amounts) return null;
         const units = BigInt(amounts.observedRefunded);
-        const amount = `${formatTokenAmount({ baseUnits: units, decimals: option.decimals, fractionDigits: exactDigits(units, option.decimals) })} ${option.symbol}`;
+        const amount = amountText(units, option);
         return (
           <div key={option.optionId} className="flex flex-col gap-1">
             <p className="text-muted">{COPY.recordedReturns(amount, chainName(option.chainId))}</p>

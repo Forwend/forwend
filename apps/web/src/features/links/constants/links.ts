@@ -1,3 +1,5 @@
+import type { LinkField } from "@/features/links/types/links";
+
 export const LINK_STATES = {
   on: "on",
   off: "off",
@@ -25,6 +27,12 @@ export const LINKS_PAGE_SIZE = 20;
 
 export const LINK_SLUG_PATTERN = /^[a-z0-9]{12}$/;
 
-export const USD_PATTERN = /^\d{1,12}(\.\d{1,2})?$/;
-
 export const OFFER_VERSION_PATTERN = /^[1-9][0-9]{0,18}$/;
+
+export const LINK_FIELDS: readonly LinkField[] = [
+  "title",
+  "amountUsd",
+  "minUsd",
+  "maxUsd",
+  "maxPayments",
+];

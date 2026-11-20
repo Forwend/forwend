@@ -1,8 +1,8 @@
 import { cx, Money, Skeleton, shortAddress } from "@forwend/ui-web";
 import { INVOICES_COPY } from "@/features/invoices/constants/invoices-copy";
-import { tokenKey } from "@/features/invoices/lib/invoices";
 import type { InvoiceSummary, InvoiceToken } from "@/features/invoices/types/invoices";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { tokenKey } from "@/shared/lib/chains";
 import { exactDigits } from "@/shared/lib/money";
 
 export interface InvoiceAmountProps {

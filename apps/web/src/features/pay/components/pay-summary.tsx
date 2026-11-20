@@ -2,16 +2,16 @@ import { Money } from "@forwend/ui-web";
 import { DOCUMENT_KINDS } from "@/features/invoices/constants/invoices";
 import { invoiceNumber, optionFees } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
-import { Payee } from "@/features/pay/components/payee";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
 import { PayTokenMark } from "@/features/pay/components/token-marks";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
-import { amountText, payeeName } from "@/features/pay/lib/pay";
+import { payeeName } from "@/features/pay/lib/pay";
 import type { PayStatus, PayToken } from "@/features/pay/types/pay";
+import { Payee } from "@/features/stores/components/payee";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { chainName } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText, exactDigits } from "@/shared/lib/money";
 
 export interface PaySummaryProps {
   invoice: Invoice;

@@ -1,4 +1,4 @@
-import { formatTokenAmount, type PaymentStatus } from "@forwend/ui-web";
+import type { PaymentStatus } from "@forwend/ui-web";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import {
   HELD_REASONS,
@@ -6,14 +6,11 @@ import {
   PROBLEM_CODES,
 } from "@/features/payments/constants/payments";
 import { PAYMENT_DETAIL_COPY } from "@/features/payments/constants/payments-copy";
-import type { Payment, PaymentProblem } from "@/features/payments/types/payments";
+import type { Payment, PaymentParam, PaymentProblem } from "@/features/payments/types/payments";
+import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 import { paymentStatusOf } from "@/shared/lib/payment-state";
-
-export function amountText(units: bigint, of: { decimals: number; symbol: string }): string {
-  return `${formatTokenAmount({ baseUnits: units, decimals: of.decimals, fractionDigits: exactDigits(units, of.decimals) })} ${of.symbol}`;
-}
 
 export function paymentLabel(
   payment: Pick<Payment, "reference" | "number" | "title" | "paymentId">,
@@ -94,4 +91,8 @@ export function optionFigures(
     extra: held > 0n ? held : pending > 0n && received > asked ? received - asked : 0n,
     due: received < asked ? asked - received : 0n,
   };
+}
+
+export function paymentsHref(param: PaymentParam, value: string): string {
+  return `${APP_ROUTES.payments}?${param}=${value}`;
 }

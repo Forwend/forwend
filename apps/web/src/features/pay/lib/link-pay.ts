@@ -1,12 +1,12 @@
-import { OFFER_VERSION_PATTERN, USD_PATTERN } from "@/features/links/constants/links";
+import { OFFER_VERSION_PATTERN } from "@/features/links/constants/links";
 import type { PublicLink } from "@/features/links/types/links";
 import { LINK_PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
+import { LEAST_USD_CENTS, USD_PATTERN } from "@/shared/constants/money";
 import { usdCents } from "@/shared/lib/money";
 
 const purchaseKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:([0-9]{1,14})$/;
 const INT64_MAX = 9223372036854775807n;
-const LEAST_CENTS = 100n; // 1.00 USD
 
 /** The URL keeps an uncertain Pay across reloads, so a retry reuses its idempotency key. */
 export function readPurchase(search: string): LinkPurchase | null {
@@ -48,7 +48,7 @@ export function checkLinkAmount(
   const cents = USD_PATTERN.test(amount) ? usdCents(amount) : 0n;
   if (cents === 0n) return { cents, error: COPY.errors.amount };
   const outside =
-    cents < LEAST_CENTS ||
+    cents < LEAST_USD_CENTS ||
     (link.minUsd !== null && cents < usdCents(link.minUsd)) ||
     (link.maxUsd !== null && cents > usdCents(link.maxUsd));
   return {

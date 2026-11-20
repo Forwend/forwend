@@ -13,20 +13,6 @@ vi.stubGlobal("matchMedia", () => ({
   removeEventListener() {},
 }));
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-// jsdom has no modal dialogs.
-HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-  this.open = true;
-};
-
 const ID = "0x7f3a9c1e5b2d4086a1c3e5f7092b4d6f8a0c2e4f6a8b0d2f4e6c8a0b2d4f6e81";
 const TOKEN = {
   chainId: 84532,

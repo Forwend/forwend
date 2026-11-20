@@ -6,11 +6,11 @@ import {
   savedClientBodySchema,
 } from "@/features/clients/schemas/clients";
 import type { Client, ClientsPage, SavedClientBody } from "@/features/clients/types/clients";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const CLIENTS_TAG = "Clients";
 
-const clientsUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/clients`;
+const clientsUrl = (profileId: string) => profilePath(profileId, "clients");
 const clientUrl = (profileId: string, clientId: string) =>
   `${clientsUrl(profileId)}/${encodeURIComponent(clientId)}`;
 

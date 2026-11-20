@@ -2,7 +2,6 @@ import { IconButton, Tooltip } from "@forwend/ui-web";
 import { CircleHelp } from "lucide-react";
 import { YouSend } from "@/features/pay/components/you-send";
 import { ONECLICK_SLIPPAGE_BPS } from "@/features/pay/constants/crosschain";
-import { FADE } from "@/features/pay/constants/pay";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import {
   bufferLine,
@@ -12,11 +11,12 @@ import {
   slippageCoversRefundFee,
   usdPerToken,
 } from "@/features/pay/lib/crosschain";
-import { amountText } from "@/features/pay/lib/pay";
 import type { CrossQuote } from "@/features/pay/types/crosschain";
 import type { PayToken } from "@/features/pay/types/pay";
 import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
 import { LineSkeleton } from "@/shared/components/rows-skeleton";
+import { FADE_IN } from "@/shared/constants/motion";
+import { amountText } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
 
@@ -70,7 +70,7 @@ export function CrossChainPrice({ price, loading, error, token }: CrossChainPric
   const minutes = Math.max(1, Math.round(price.timeEstimate / 60));
   return (
     <YouSend
-      className={FADE}
+      className={FADE_IN}
       amount={
         <>
           {amountText(sends, token).slice(0, -token.symbol.length - 1)}{" "}

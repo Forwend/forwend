@@ -2,7 +2,6 @@
 
 import { BUTTON_VARIANTS, Button, CodeInput } from "@forwend/ui-web";
 import { usePrivy } from "@privy-io/react-auth";
-import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { Mail } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSendFreshCodeMutation, useVerifyFreshCodeMutation } from "@/features/auth/api/auth-api";
@@ -11,6 +10,8 @@ import { FRESH_SIGN_IN_COPY as COPY } from "@/features/auth/constants/auth-copy"
 import { CODE_LENGTH, FRESH_CODE_ERRORS } from "@/features/auth/constants/sign-in";
 import { useFullCode } from "@/features/auth/hooks/use-full-code";
 import { loginEmail } from "@/features/auth/lib/privy-user";
+import { apiError } from "@/shared/api/api-error";
+import { useNow } from "@/shared/hooks/use-now";
 
 export interface FreshSignInStepProps {
   onDone: (ok: boolean) => void;
@@ -45,9 +46,9 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
       setSent(true);
       setResendAt(Date.now() + resendAfterSeconds * 1000);
     } catch (e) {
-      const failure = e as FetchBaseQueryError & { retryAfterSeconds?: number };
-      const code = (failure.data as { error?: { code?: string } } | undefined)?.error?.code;
-      const waitUntil = Date.now() + (failure.retryAfterSeconds ?? 0) * 1000;
+      const { code } = apiError(e);
+      const waitUntil =
+        Date.now() + ((e as { retryAfterSeconds?: number }).retryAfterSeconds ?? 0) * 1000;
       // The code sent a moment ago is still the one to enter.
       if (code === FRESH_CODE_ERRORS.sentRecently) {
         setSent(true);
@@ -188,19 +189,4 @@ export function FreshSignInStep({ onDone }: FreshSignInStepProps) {
       </div>
     </fieldset>
   );
-}
-
-function useNow(until: number) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    setNow(Date.now());
-    if (until <= Date.now()) return;
-    const timer = setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= until) clearInterval(timer);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [until]);
-  return now;
 }

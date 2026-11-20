@@ -18,10 +18,10 @@ import { useRef } from "react";
 import { useDeleteJobMutation } from "@/features/jobs/api/jobs-api";
 import { JOBS_COPY } from "@/features/jobs/constants/jobs-copy";
 import type { Job } from "@/features/jobs/types/jobs";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const COPY = JOBS_COPY.detail;
-const CONFLICT = 409;
 
 export interface JobActionsProps {
   profileId: string;
@@ -34,7 +34,7 @@ export function JobActions({ profileId, job, onDeleted, onTooLate }: JobActionsP
   const [remove, { isLoading, error }] = useDeleteJobMutation();
   const toast = useToast();
   const router = useRouter();
-  const status = (error as { status?: unknown } | undefined)?.status;
+  const status = errorStatus(error);
   // Open the dialog after the menu closes, or the menu returns focus over it.
   const chosen = useRef(false);
 
@@ -45,7 +45,7 @@ export function JobActions({ profileId, job, onDeleted, onTooLate }: JobActionsP
       toast({ tone: TONES.success, title: COPY.deleted(job.title) });
       router.push(APP_ROUTES.jobs);
     } catch (failure) {
-      if ((failure as { status?: unknown }).status === CONFLICT) {
+      if (errorStatus(failure) === HTTP_STATUS.conflict) {
         toast({ tone: TONES.warning, title: COPY.deleteTooLate });
         onTooLate();
       }
@@ -74,7 +74,7 @@ export function JobActions({ profileId, job, onDeleted, onTooLate }: JobActionsP
             }}
           >
             <MenuItem
-              className="text-danger data-[highlighted]:bg-danger-soft"
+              danger
               onSelect={() => {
                 chosen.current = true;
               }}
@@ -87,7 +87,7 @@ export function JobActions({ profileId, job, onDeleted, onTooLate }: JobActionsP
       )}
     >
       <p>{COPY.deleteBody}</p>
-      {error && status !== CONFLICT ? (
+      {error && status !== HTTP_STATUS.conflict ? (
         <p role="alert" className="mt-3 text-sm text-danger">
           {COPY.deleteFailed}
         </p>

@@ -31,8 +31,8 @@ import { useGetProfileTokensQuery } from "@/features/profiles/api/profiles-api";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { billingErrors } from "@/features/profiles/lib/billing-details";
 import type { NewProfileKind, Profile } from "@/features/profiles/types/profile";
-import { assetKey } from "@/shared/components/chains/asset-selection";
-import { selectionSummary } from "@/shared/lib/asset-selection";
+import { offRefs, selectionSummary, toggled } from "@/shared/lib/asset-selection";
+import { tokenKey } from "@/shared/lib/chains";
 
 const PHONE_OUTLINE =
   "max-sm:border max-sm:border-line max-sm:bg-surface dark:max-sm:border-line-strong";
@@ -81,7 +81,7 @@ export function FirstRun({
   const [skipped, setSkipped] = useState<ReadonlySet<NewProfileKind>>(new Set());
   const [website, setWebsite] = useState("");
   const [chosen, setChosen] = useState<Set<string> | null>(null);
-  const selected = chosen ?? new Set((tokens.data ?? []).filter((t) => t.on).map(assetKey));
+  const selected = chosen ?? new Set((tokens.data ?? []).filter((t) => t.on).map(tokenKey));
   const [errors, setErrors] = useState<Partial<Record<DetailsField, string>>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"main" | "skip" | null>(null);
@@ -111,12 +111,8 @@ export function FirstRun({
     setDetails((all) => ({ ...all, [kind]: { ...all[kind], [field]: value } }));
   };
   const changeTokens = (keys: readonly string[], on: boolean) => {
-    const nextSet = new Set(selected);
-    for (const key of keys) {
-      if (on) nextSet.add(key);
-      else nextSet.delete(key);
-    }
-    if (nextSet.size > 0) setChosen(nextSet);
+    const next = toggled(selected, keys, on);
+    if (next.size > 0) setChosen(next);
   };
 
   const skip = async () => {
@@ -140,12 +136,7 @@ export function FirstRun({
         details,
         skipped,
         website,
-        tokensOff:
-          withTokens && tokens.data
-            ? tokens.data
-                .filter((t) => !selected.has(assetKey(t)))
-                .map(({ chainId, token }) => ({ chainId, token }))
-            : null,
+        tokensOff: withTokens && tokens.data ? offRefs(tokens.data, selected) : null,
       });
       next();
     } catch {

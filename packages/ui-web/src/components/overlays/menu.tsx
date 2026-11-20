@@ -7,7 +7,9 @@ import { cx } from "../../lib/cx";
 
 export type MenuContentProps = RadixMenu.DropdownMenuContentProps;
 
-export type MenuItemProps = RadixMenu.DropdownMenuItemProps;
+export interface MenuItemProps extends RadixMenu.DropdownMenuItemProps {
+  danger?: boolean;
+}
 
 export type MenuRadioItemProps = RadixMenu.DropdownMenuRadioItemProps;
 
@@ -74,8 +76,13 @@ export function MenuContent({
 const ITEM =
   "flex min-h-9 cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-sm pointer-coarse:min-h-11 outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:text-subtle data-[highlighted]:bg-surface-2";
 
-export function MenuItem({ className, ...props }: MenuItemProps) {
-  return <RadixMenu.Item className={cx(ITEM, className)} {...props} />;
+export function MenuItem({ danger, className, ...props }: MenuItemProps) {
+  return (
+    <RadixMenu.Item
+      className={cx(ITEM, danger && "text-danger data-[highlighted]:bg-danger-soft", className)}
+      {...props}
+    />
+  );
 }
 
 export function MenuRadioItem({ className, children, ...props }: MenuRadioItemProps) {

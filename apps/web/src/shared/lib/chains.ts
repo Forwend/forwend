@@ -12,6 +12,21 @@ export function chainName(chainId: number): string {
   return CHAINS[chainId]?.name ?? `Chain ${chainId}`;
 }
 
+/** A token's identity: its chain and contract, in any letter case. */
+export function tokenKey(t: { chainId: number; token: string }): string {
+  return `${t.chainId}:${t.token.toLowerCase()}`;
+}
+
+/** An empty result stays empty: disabled tokens never come back. */
+export function tokensOn<T extends { chainId: number; token: string }>(
+  tokens: readonly T[],
+  off: readonly { chainId: number; token: string }[],
+): readonly T[] {
+  return tokens.filter(
+    (t) => !off.some((o) => o.chainId === t.chainId && o.token === t.token.toLowerCase()),
+  );
+}
+
 /** Token lists get a search past a handful: a profile can have hundreds of tokens on. */
 export const TOKEN_SEARCH_FROM = 10;
 

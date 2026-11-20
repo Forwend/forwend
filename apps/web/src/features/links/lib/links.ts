@@ -1,8 +1,6 @@
 import { LINK_STATES } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
-import type { Link, LinkField, LinkState } from "@/features/links/types/links";
-
-const FIELDS: LinkField[] = ["title", "amountUsd", "minUsd", "maxUsd", "maxPayments"];
+import type { Link, LinkState } from "@/features/links/types/links";
 
 export function linkState(link: Link, now: number): LinkState {
   if (!link.active) return LINK_STATES.off;
@@ -19,12 +17,6 @@ export function amountLabel(link: Pick<Link, "amountUsd" | "minUsd" | "maxUsd">)
   if (link.minUsd) return COPY.from(link.minUsd);
   if (link.maxUsd) return COPY.upTo(link.maxUsd);
   return COPY.anyAmount;
-}
-
-/** The field a refused save names: the API's message reads "invalid payment link request: title must …". */
-export function invalidLinkField(message: string): LinkField | null {
-  const name = message.split(": ")[1]?.split(" ")[0];
-  return FIELDS.find((field) => field === name) ?? null;
 }
 
 export function linkAddress(origin: string, slug: string): string {

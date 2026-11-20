@@ -11,6 +11,7 @@ import type { Link as PaymentLink } from "@/features/links/types/links";
 import { DataTable, DataTableSkeleton } from "@/shared/components/data-table";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
+import { PageTitle } from "@/shared/components/page-title";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 const linkHref = (link: PaymentLink) => `${APP_ROUTES.links}/${link.linkId}`;
@@ -52,9 +53,7 @@ export function LinksTable({ profileId, canWrite }: LinksTableProps) {
       className="flex flex-col gap-4"
     >
       <div className="flex items-center justify-between gap-3 lg:contents">
-        <h1 id="links-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-          {COPY.title}
-        </h1>
+        <PageTitle id="links-title">{COPY.title}</PageTitle>
         {canWrite && !noLinks ? <NewLinkLink size="sm" className="lg:hidden" /> : null}
       </div>
       {noLinks ? null : (

@@ -1,7 +1,6 @@
 import type { NewInvoicePreviewProps } from "@/features/invoices/components/new-invoice-preview";
 import {
   AGREED_CURRENCIES,
-  AMOUNT_ERRORS,
   DEFAULT_EXPIRY,
   DUE_GRACE_DAYS,
   EXPIRY_BOUNDS_S,
@@ -15,10 +14,9 @@ import {
   NEW_REQUEST_COPY,
 } from "@/features/invoices/constants/invoices-copy";
 import { documentDate } from "@/features/invoices/lib/invoice-document";
-import { decimalText, formatDueDate, parseTokenAmount } from "@/features/invoices/lib/invoices";
+import { decimalText } from "@/features/invoices/lib/invoices";
 import type {
   AgreedDraft,
-  AmountError,
   ExpiryChoice,
   FeeQuote,
   InvoiceIssuer,
@@ -27,7 +25,11 @@ import type {
   LineError,
   LineField,
 } from "@/features/invoices/types/invoices";
+import { AMOUNT_ERRORS } from "@/shared/constants/money";
 import { chainName } from "@/shared/lib/chains";
+import { formatDueDate } from "@/shared/lib/dates";
+import { parseTokenAmount } from "@/shared/lib/money";
+import type { AmountError } from "@/shared/types/money";
 
 const DAY_MS = 86_400_000;
 

@@ -25,6 +25,12 @@ const WEEKDAY_YEAR = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
   year: "numeric",
 });
+const DUE_DATE = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });
+const DUE_DAY = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
 
 function relativeDay(date: Date, now: Date): string | null {
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
@@ -52,6 +58,22 @@ export function timeNear(iso: string, day: string): string {
   const near = new Date(day);
   if (date.getFullYear() !== near.getFullYear()) return DATE_TIME.format(date);
   return (date.toDateString() === near.toDateString() ? TIME : DAY_TIME).format(date);
+}
+
+/** "Oct 28, 3:35 PM". */
+export function monthDayTime(iso: string): string {
+  return DAY_TIME.format(new Date(iso));
+}
+
+/** A YYYY-MM-DD date as that same day wherever the reader is. */
+export function formatDueDate(date: string): string {
+  return DUE_DATE.format(new Date(`${date}T00:00:00Z`));
+}
+
+export function formatDueDateShort(date: string, now: Date): string {
+  return date.startsWith(`${now.getFullYear()}-`)
+    ? DUE_DAY.format(new Date(`${date}T00:00:00Z`))
+    : formatDueDate(date);
 }
 
 /** "2:14 PM": a row's time under its day's heading. */

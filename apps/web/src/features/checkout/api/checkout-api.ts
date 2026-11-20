@@ -2,10 +2,9 @@ import { z } from "zod";
 import { checkoutBodySchema, checkoutSessionSchema } from "@/features/checkout/schemas/checkout";
 import type { CheckoutBody, CheckoutSession } from "@/features/checkout/types/checkout";
 import { PAYMENTS_TAG } from "@/features/payments/api/payments-api";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
-const sessionsUrl = (profileId: string) =>
-  `/v1/profiles/${encodeURIComponent(profileId)}/checkout-sessions`;
+const sessionsUrl = (profileId: string) => profilePath(profileId, "checkout-sessions");
 
 export const checkoutApi = apiSlice
   .enhanceEndpoints({ addTagTypes: [PAYMENTS_TAG] })

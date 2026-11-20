@@ -13,7 +13,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
 import { orderBlockchains, sendUnits } from "@/features/pay/lib/crosschain";
-import { amountText } from "@/features/pay/lib/pay";
 import type { CrossToken } from "@/features/pay/types/crosschain";
 import { PoweredByNearIntents } from "@/shared/components/chains/near-intents";
 import { StoredLogo } from "@/shared/components/chains/stored-logo";
@@ -22,7 +21,9 @@ import {
   CROSS_CHAIN_TARGET,
   CROSS_CHAIN_TOKEN_ICONS,
 } from "@/shared/constants/chains";
+import { STEP_IN } from "@/shared/constants/motion";
 import { blockchainName, chainLogo, iconOf, tokenLogo } from "@/shared/lib/chains";
+import { amountText } from "@/shared/lib/money";
 
 const COPY = PAY_COPY.crossChain;
 
@@ -39,7 +40,6 @@ const matches = (query: string, ...texts: string[]) =>
   texts.some((text) => text.toLowerCase().includes(query.trim().toLowerCase()));
 
 const STEPS = { chains: "chains", tokens: "tokens" } as const;
-const STEP_IN = "motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]";
 
 export function CrossChainPicker({
   open,
@@ -172,6 +172,7 @@ export function CrossChainPicker({
                   <Mark
                     text={blockchainName(chain ?? "")}
                     icon={iconOf(BLOCKCHAIN_ICONS, chain ?? "")}
+                    logo={chainLogo(chain ?? "")}
                   />
                   {blockchainName(chain ?? "")}
                 </button>

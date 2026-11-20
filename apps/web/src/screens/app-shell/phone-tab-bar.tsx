@@ -17,8 +17,8 @@ import {
   pageAllowed,
   SETTINGS_PATHS,
 } from "@/screens/app-shell/lib/app-nav";
-import { DESKTOP_QUERY } from "@/shared/config/breakpoints";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { useDesktop } from "@/shared/hooks/use-desktop";
 
 const TAB_COPY = { home: "Home", nav: "Main", more: "More", soon: "Coming soon" } as const;
 const TABS = [
@@ -60,12 +60,10 @@ export function PhoneTabBar({ pathname, onProfiles }: PhoneTabBarProps) {
     className: ROW,
   });
 
+  const desktop = useDesktop();
   useEffect(() => {
-    const desktop = window.matchMedia(DESKTOP_QUERY);
-    const closeOnDesktop = () => desktop.matches && setOpen(false);
-    desktop.addEventListener("change", closeOnDesktop);
-    return () => desktop.removeEventListener("change", closeOnDesktop);
-  }, []);
+    if (desktop) setOpen(false);
+  }, [desktop]);
 
   return (
     <>

@@ -6,28 +6,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ApiKeys } from "@/features/api-keys/components/api-keys";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-// jsdom lacks the modal methods.
-const proto = HTMLDialogElement.prototype as HTMLDialogElement & Record<string, unknown>;
-if (typeof proto.showModal !== "function") {
-  proto.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  proto.close = function (this: HTMLDialogElement) {
-    if (!this.hasAttribute("open")) return;
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-}
-
 const PROFILE = "6f9619ff-8b86-4011-b42d-00c04fc964ff";
 const OLD = "aaaaaaaa-0000-4000-8000-000000000001";
 const NEW = "aaaaaaaa-0000-4000-8000-000000000002";

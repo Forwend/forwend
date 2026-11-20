@@ -5,6 +5,7 @@ import { Check, Mail } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSetPayerEmailMutation } from "@/features/invoices/api/invoices-api";
 import { PAY_COPY } from "@/features/pay/constants/pay-copy";
+import { errorStatus } from "@/shared/api/api-error";
 import { ENTER } from "@/shared/constants/motion";
 
 const COPY = PAY_COPY.receipt;
@@ -22,7 +23,7 @@ export function ReceiptEmail({ linkToken, paid }: ReceiptEmailProps) {
   const [text, setText] = useState("");
   const form = useRef<HTMLFormElement>(null);
   const done = useRef<HTMLDivElement>(null);
-  const status = (error as { status?: unknown } | undefined)?.status;
+  const status = errorStatus(error);
   const problem = error ? (ANSWERS[status as keyof typeof ANSWERS] ?? COPY.failed) : undefined;
   useEffect(() => {
     if (step === "form") form.current?.querySelector("input")?.focus();

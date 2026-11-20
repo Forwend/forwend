@@ -24,6 +24,7 @@ import {
 import { WEBHOOKS_COPY as COPY } from "@/features/webhooks/constants/webhooks-copy";
 import { endpointPlace } from "@/features/webhooks/lib/webhooks";
 import type { WebhookEndpoint } from "@/features/webhooks/types/webhooks";
+import { invalidValue } from "@/shared/api/api-error";
 
 export interface EndpointDialogProps {
   profileId: string;
@@ -100,8 +101,7 @@ export function EndpointDialog({ profileId, stores, endpoint, trigger }: Endpoin
       if (fresh.cancelled(error)) return;
       // A 422 is most often an address that is not public.
       setErrors({
-        form:
-          (error as { status?: unknown }).status === 422 ? COPY.errors.refused : COPY.errors.failed,
+        form: invalidValue(error) ? COPY.errors.refused : COPY.errors.failed,
       });
     }
   };

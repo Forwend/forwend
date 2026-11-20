@@ -14,7 +14,7 @@ import { useId, useState } from "react";
 import { NoMatch } from "@/shared/components/no-match";
 import { CHAINS, TOKEN_ICONS } from "@/shared/constants/chains";
 import { assetGroups, selectionSummary } from "@/shared/lib/asset-selection";
-import { TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
+import { chainName, TOKEN_SEARCH_FROM, tokenKey } from "@/shared/lib/chains";
 import type { AssetOption } from "@/shared/types/asset-selection";
 
 // Bounded: thousands of tokens render a page of assets at a time, and a search narrows the rest.
@@ -35,9 +35,6 @@ const COPY = {
   moreNetworks: (n: number) => `Show ${n} more networks`,
   contract: (network: string, address: string) => `${network}, contract ${address}`,
 } as const;
-
-export const assetKey = (option: { chainId: number; token: string }) =>
-  `${option.chainId}:${option.token}`;
 
 export interface AssetSelectionProps {
   label: string;
@@ -106,7 +103,7 @@ export function AssetSelection({
       ) : (
         <ul aria-label={label} aria-describedby={summaryId} className="divide-y divide-line">
           {groups.slice(0, groupsShown).map((group) => {
-            const keys = group.options.map(assetKey);
+            const keys = group.options.map(tokenKey);
             const on = keys.filter((key) => selected.has(key)).length;
             const expanded = searching || open.has(group.symbol) || group.options.length === 1;
             const locked = keys.map((key) => (selected.has(key) ? lockedReason?.(key) : null));
@@ -194,8 +191,8 @@ function NetworkRows({
   return (
     <ul className="border-t border-line bg-sunken/40 py-1">
       {options.slice(0, shown).map((option) => {
-        const key = assetKey(option);
-        const network = CHAINS[option.chainId]?.name ?? `Chain ${option.chainId}`;
+        const key = tokenKey(option);
+        const network = chainName(option.chainId);
         const reason = selected.has(key) ? (lockedReason?.(key) ?? null) : null;
         return (
           <li key={key} className="flex flex-col pr-4 pl-11 sm:pr-5 sm:pl-12">

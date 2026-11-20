@@ -1,11 +1,11 @@
 "use client";
 
-import { Button, buttonClasses, Form, Stepper, type StepperStep } from "@forwend/ui-web";
+import { Button, buttonClasses, Form, Stepper } from "@forwend/ui-web";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { type FormEvent, type ReactNode, useState } from "react";
-import { flushSync } from "react-dom";
+import type { FormEvent, ReactNode } from "react";
 import { FlatFieldGroups } from "@/shared/components/field-group";
+import type { useFormSteps } from "@/shared/hooks/use-form-steps";
 
 // From xl the form and preview each scroll on their own, so the footer's buttons stay in view.
 const SPLIT_CLASSES =
@@ -19,32 +19,9 @@ const SPLIT_ASIDE_CLASSES = "xl:h-full xl:overflow-y-auto xl:overscroll-contain 
 const STEP_FOOTER_CLASSES =
   "sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-[1] flex flex-col-reverse gap-2 rounded-b-lg border-t border-line bg-surface px-4 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-5 lg:bottom-0";
 
-/** One group of fields at a time; every group stays mounted, so changing steps keeps what was typed. */
-export function useFormSteps(steps: readonly StepperStep[]) {
-  const [step, setStep] = useState(0);
-  const at = steps[step]?.id;
-  return {
-    steps,
-    step,
-    setStep,
-    at,
-    last: step === steps.length - 1,
-    shows: (id: string) => (at === id ? "contents" : "hidden"),
-    focusError: (form: HTMLFormElement) => {
-      const invalid = form.querySelector<HTMLElement>('[aria-invalid="true"], [data-invalid]');
-      const id = invalid?.closest<HTMLElement>("[data-step]")?.dataset.step;
-      const index = steps.findIndex((s) => s.id === id);
-      if (index >= 0) flushSync(() => setStep(index));
-      invalid?.focus();
-    },
-  };
-}
-
-type FormSteps = ReturnType<typeof useFormSteps>;
-
 export interface StepFormProps {
   label: string;
-  flow: FormSteps;
+  flow: ReturnType<typeof useFormSteps>;
   editing: boolean;
   cancelHref: string;
   copy: { back: string; continue: string; cancel: string; save: string };

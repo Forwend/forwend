@@ -6,7 +6,6 @@ import {
   ComboboxField,
   DatePicker,
   Form,
-  formatTokenAmount,
   IconButton,
   SegmentedControl,
   SelectField,
@@ -33,7 +32,6 @@ import { NewInvoiceMoreOptions } from "@/features/invoices/components/new-invoic
 import { NewInvoicePreview } from "@/features/invoices/components/new-invoice-preview";
 import { NewInvoiceReview } from "@/features/invoices/components/new-invoice-review";
 import {
-  AMOUNT_ERRORS,
   CUSTOM_EXPIRY,
   EXPIRY_CHOICES,
   INVOICE_FIELDS,
@@ -49,15 +47,7 @@ import {
   NEW_REQUEST_COPY,
 } from "@/features/invoices/constants/invoices-copy";
 import { useCheckoutClose } from "@/features/invoices/hooks/use-checkout-close";
-import {
-  decimalText,
-  formatDueDate,
-  isReturnLink,
-  parseTokenAmount,
-  refusedField,
-  tokenKey,
-  tokensOn,
-} from "@/features/invoices/lib/invoices";
+import { decimalText, isReturnLink, refusedField } from "@/features/invoices/lib/invoices";
 import {
   agreedProblems,
   atLeastMinimum,
@@ -83,21 +73,24 @@ import { FEES_PAID_BY } from "@/features/profiles/constants/profile";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import { allowsReturnLink } from "@/features/stores/lib/stores";
 import type { Store } from "@/features/stores/types/stores";
+import { apiError, invalidValue } from "@/shared/api/api-error";
 import { AssetIcon } from "@/shared/components/chains/asset-icon";
 import { FieldGroup, FlatFieldGroups } from "@/shared/components/field-group";
 import {
   SPLIT_FIELDS_CLASSES,
   SPLIT_FORM_CLASSES,
   STEP_HEAD_CLASSES,
-  useFormSteps,
 } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
+import { AMOUNT_ERRORS } from "@/shared/constants/money";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { chainName, TOKEN_SEARCH_FROM } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
+import { STEP_IN } from "@/shared/constants/motion";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
+import { chainName, TOKEN_SEARCH_FROM, tokenKey, tokensOn } from "@/shared/lib/chains";
+import { formatDueDate } from "@/shared/lib/dates";
+import { amountText, parseTokenAmount } from "@/shared/lib/money";
 
-const INVALID_VALUE = 422;
 // The invoice it replaces can no longer be canceled.
 const NOT_CANCELABLE = "invoice_not_cancelable";
 const NO_CLIENT: ClientBody = { name: "", email: "", address: "", country: "", taxId: "" };
@@ -108,8 +101,7 @@ const MORE_FIELDS = [
   INVOICE_FIELDS.repeat,
   INVOICE_FIELDS.repeatEndDate,
 ] as const;
-const STEP_SHOWN =
-  "flex flex-col gap-8 motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]";
+const STEP_SHOWN = `flex flex-col gap-8 ${STEP_IN}`;
 
 // Phones: the whole screen (the shell steps aside for data-phone-flow); larger: a card beside the preview.
 const SPLIT =
@@ -246,8 +238,7 @@ export function NewInvoiceForm({
   // In USD every token takes the amount, so it can have no more decimals than the token with the fewest.
   const decimals = any ? Math.min(...tokens.map((t) => t.decimals)) : token.decimals;
   const unit = any ? MONEY_COPY.usd : token.symbol;
-  const money = (units: bigint) =>
-    `${formatTokenAmount({ baseUnits: units, decimals, fractionDigits: Math.max(2, exactDigits(units, decimals)) })} ${unit}`;
+  const money = (units: bigint) => amountText(units, { decimals, symbol: unit });
   const amountError = (value: string) => {
     const units = atLeastMinimum(parseTokenAmount(value, decimals), decimals);
     if (typeof units !== "string") return undefined;
@@ -488,12 +479,7 @@ export function NewInvoiceForm({
       }).unwrap();
       router.push(`${APP_ROUTES.invoices}/${invoice.invoiceId}`);
     } catch (error) {
-      const failure = error as {
-        status?: unknown;
-        data?: { error?: { code?: string; message?: string } };
-      };
-      const refused =
-        failure.status === INVALID_VALUE ? refusedField(failure.data?.error?.message ?? "") : null;
+      const refused = invalidValue(error) ? refusedField(error) : null;
       if (refused) {
         const amountField = items.length > 0 ? INVOICE_FIELDS.lines : INVOICE_FIELDS.amount;
         showErrors({
@@ -501,9 +487,9 @@ export function NewInvoiceForm({
             ? amountField
             : refused.field]: refused.message,
         });
-      } else if (replaces && failure.data?.error?.code === NOT_CANCELABLE)
+      } else if (replaces && apiError(error).code === NOT_CANCELABLE)
         setFormError(INVOICES_COPY.revise.tooLate(replaces.number));
-      else setFormError(failure.status === INVALID_VALUE ? COPY.invalid : COPY.failed);
+      else setFormError(invalidValue(error) ? COPY.invalid : COPY.failed);
       setBusy(false);
     }
   };

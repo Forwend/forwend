@@ -14,12 +14,12 @@ import type {
   WebhookEndpoint,
   WebhookSecret,
 } from "@/features/webhooks/types/webhooks";
-import { apiSlice } from "@/shared/api/api-slice";
+import { apiSlice, profilePath } from "@/shared/api/api-slice";
 
 const ENDPOINTS_TAG = "WebhookEndpoints";
 const DELIVERIES_TAG = "WebhookDeliveries";
 
-const hooksUrl = (profileId: string) => `/v1/profiles/${encodeURIComponent(profileId)}/webhooks`;
+const hooksUrl = (profileId: string) => profilePath(profileId, "webhooks");
 const hookUrl = (profileId: string, endpointId: string) =>
   `${hooksUrl(profileId)}/${encodeURIComponent(endpointId)}`;
 

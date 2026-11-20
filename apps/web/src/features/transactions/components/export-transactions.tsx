@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BILLING_THEN } from "@/features/profiles/constants/profile";
+import { billingDetailsHref } from "@/features/profiles/lib/profile";
 import {
   recordsCurrencySaveKey,
   useDownloadStatementMutation,
@@ -16,12 +17,9 @@ import {
 import { RecordsCurrency } from "@/features/transactions/components/records-currency";
 import { TOO_MANY_TRANSACTIONS } from "@/features/transactions/constants/transactions";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
-import { notFound } from "@/shared/api/server-reach";
-import { APP_ROUTES } from "@/shared/config/routes";
+import { apiError, notFound } from "@/shared/api/api-error";
 
-const tooMany = (failure: unknown) =>
-  (failure as { data?: { error?: { code?: unknown } } }).data?.error?.code ===
-  TOO_MANY_TRANSACTIONS;
+const tooMany = (failure: unknown) => apiError(failure).code === TOO_MANY_TRANSACTIONS;
 
 export interface ExportTransactionsProps {
   profileId: string;
@@ -144,7 +142,7 @@ export function ExportTransactions({ profileId, disabled }: ExportTransactionsPr
             <>
               {" "}
               <Link
-                href={`${APP_ROUTES.billingDetails}?${BILLING_THEN.param}=${BILLING_THEN.transactions}`}
+                href={billingDetailsHref(BILLING_THEN.transactions)}
                 className="font-medium underline underline-offset-2"
               >
                 {COPY.addBillingDetails}

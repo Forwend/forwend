@@ -15,6 +15,7 @@ import { useSaveLinkMutation } from "@/features/links/api/links-api";
 import { LINK_SETUP_REQUIRED_CODE } from "@/features/links/constants/links";
 import { LINKS_COPY as COPY } from "@/features/links/constants/links-copy";
 import type { Link } from "@/features/links/types/links";
+import { apiError } from "@/shared/api/api-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 
 export interface LinkActionsProps {
@@ -51,7 +52,7 @@ export function LinkActions({ profileId, link, refreshing }: LinkActionsProps) {
         title: active ? COPY.turnedOn(link.title) : COPY.turnedOff(link.title),
       });
     } catch (error) {
-      const code = (error as { data?: { error?: { code?: string } } }).data?.error?.code;
+      const code = apiError(error).code;
       toast({
         tone: TONES.warning,
         title: code === LINK_SETUP_REQUIRED_CODE ? COPY.errors.notReady : COPY.toggleFailed,

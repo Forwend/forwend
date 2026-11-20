@@ -4,10 +4,10 @@ import { Switch, TONES, useToast } from "@forwend/ui-web";
 import { useSetRemindersMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import type { InvoiceReminders, ReminderStep } from "@/features/invoices/types/invoices";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { dateTime } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.reminders;
-const CONFLICT = 409;
 
 export interface PaymentRemindersProps {
   profileId: string;
@@ -33,8 +33,11 @@ export function PaymentReminders({
       await save({ profileId, invoiceId, on }).unwrap();
       toast({ tone: TONES.success, title: COPY.saved(on) });
     } catch (failure) {
-      const status = (failure as { status?: unknown }).status;
-      toast({ tone: TONES.warning, title: status === CONFLICT ? COPY.conflict : COPY.error });
+      const status = errorStatus(failure);
+      toast({
+        tone: TONES.warning,
+        title: status === HTTP_STATUS.conflict ? COPY.conflict : COPY.error,
+      });
     }
   };
 

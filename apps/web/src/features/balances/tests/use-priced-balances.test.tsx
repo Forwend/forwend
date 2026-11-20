@@ -7,17 +7,6 @@ import { useGetBalancesQuery } from "@/features/balances/api/balances-api";
 import { usePricedBalances } from "@/features/balances/hooks/use-priced-balances";
 import { makeStore } from "@/store/store";
 
-// The app calls the API same-origin; the test's Request needs an absolute URL.
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const TOKEN = "0x036cbd53842c5426634e7929541ec2318f3dcf7e";
 const BALANCES = {
   tokens: [

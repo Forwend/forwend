@@ -2,7 +2,6 @@
 
 import { Button } from "@forwend/ui-web";
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
-import { SIGN_IN_COPY } from "@/features/auth/constants/auth-copy";
 import { FIRST_RUN_COPY as COPY } from "@/features/onboarding/constants/onboarding-copy";
 import { SiteBar, SiteBarRow, SiteBrand } from "@/shared/components/site-bar/site-bar";
 
@@ -55,7 +54,7 @@ export function OnboardingFrame({
     <div className="flex min-h-dvh flex-col bg-bg">
       <SiteBar plain>
         <SiteBarRow>
-          <SiteBrand label={SIGN_IN_COPY.homeLabel} />
+          <SiteBrand />
           <div className="col-start-3 flex items-center gap-2 justify-self-end sm:gap-4">
             <span className="text-sm text-muted tabular-nums">
               {COPY.stepCount(step + 1, steps)}

@@ -18,13 +18,10 @@ import { saveChosenProfileId } from "@/features/profiles/lib/chosen-profile";
 import { useAcceptInviteMutation, useGetInvitationQuery } from "@/features/team/api/team-api";
 import { TEAM_ERRORS } from "@/features/team/constants/team";
 import { INVITE_COPY as COPY } from "@/features/team/constants/team-copy";
-import { notFound } from "@/shared/api/server-reach";
+import { apiError, notFound } from "@/shared/api/api-error";
 import { LoadError } from "@/shared/components/load-error";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { dateTime } from "@/shared/lib/dates";
-
-const code = (error: unknown) =>
-  (error as { data?: { error?: { code?: string } } } | undefined)?.data?.error?.code;
 
 const PANEL = "fw-panel w-full max-w-md overflow-hidden";
 const SECTION = "flex flex-col gap-3 px-4 py-5 sm:px-5";
@@ -79,7 +76,8 @@ export function AcceptInvite({ token }: AcceptInviteProps) {
   }
   const invite = invitation.currentData;
   if (!invite) return <InviteSkeleton label={COPY.loading} />;
-  const otherEmail = email !== invite.email || code(accepting.error) === TEAM_ERRORS.otherEmail;
+  const otherEmail =
+    email !== invite.email || apiError(accepting.error).code === TEAM_ERRORS.otherEmail;
   return (
     <div className={PANEL}>
       <Heading

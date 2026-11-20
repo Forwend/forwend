@@ -16,7 +16,7 @@ import {
   HISTORY_KINDS,
 } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
-import { formatDueDate, invoiceNumber } from "@/features/invoices/lib/invoices";
+import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import type {
   HistoryCategory,
   HistoryFilter,
@@ -24,15 +24,9 @@ import type {
   InvoiceHistoryEvent,
   InvoiceViews,
 } from "@/features/invoices/types/invoices";
-import { dateTime } from "@/shared/lib/dates";
+import { dateTime, formatDueDate, monthDayTime } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.history;
-const TIME = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 const FILTERS = Object.values(HISTORY_FILTERS)
   .filter((value) => value !== HISTORY_FILTERS.payment)
   .map((value) => ({
@@ -217,10 +211,9 @@ function Event({ line }: { line: Line }) {
 }
 
 function Time({ at }: { at: string }) {
-  const when = new Date(at);
   return (
     <time dateTime={at}>
-      {when.getFullYear() === new Date().getFullYear() ? TIME.format(when) : dateTime(at)}
+      {new Date(at).getFullYear() === new Date().getFullYear() ? monthDayTime(at) : dateTime(at)}
     </time>
   );
 }

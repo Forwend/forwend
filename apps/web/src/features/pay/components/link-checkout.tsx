@@ -20,16 +20,14 @@ import { amountLabel } from "@/features/links/lib/links";
 import type { PublicLink } from "@/features/links/types/links";
 import { Backdrop } from "@/features/pay/components/backdrop";
 import { LoadFailed } from "@/features/pay/components/load-failed";
-import { Payee } from "@/features/pay/components/payee";
 import { TestnetBadge } from "@/features/pay/components/testnet-badge";
 import { LEFT_PAD, RIGHT_PAD } from "@/features/pay/constants/pay";
 import { LINK_PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import { checkLinkAmount, purchaseSearch, readPurchase } from "@/features/pay/lib/link-pay";
 import type { LinkPurchase } from "@/features/pay/types/link-pay";
+import { Payee } from "@/features/stores/components/payee";
+import { apiError, errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { usdCents, usdFromCents } from "@/shared/lib/money";
-
-const NOT_FOUND = 404;
-const TOO_MANY = 429;
 
 export function LinkCheckout({ slug }: { slug: string }) {
   const link = useGetPublicLinkQuery(slug);
@@ -41,9 +39,8 @@ export function LinkCheckout({ slug }: { slug: string }) {
     counted.current = true;
     countVisit(slug);
   }, [countVisit, slug]);
-  const failure = link.error as { status?: unknown } | undefined;
   if (link.data) return <Loaded key={link.data.slug} link={link.data} onClosed={link.refetch} />;
-  if (failure?.status === NOT_FOUND) notFound();
+  if (errorStatus(link.error) === HTTP_STATUS.notFound) notFound();
   if (link.isError) return <LoadFailed onRetry={link.refetch} />;
   return (
     <div aria-busy="true" className={`flex flex-col gap-4 lg:col-span-2 lg:pt-8 ${LEFT_PAD}`}>
@@ -116,8 +113,7 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
       await readInvoice(payToken);
       router.push(`/pay/${payToken}`);
     } catch (err) {
-      const failure = err as { status?: unknown; data?: { error?: { code?: string } } };
-      const code = failure.data?.error?.code ?? "";
+      const code = apiError(err).code ?? "";
       if (LINK_CLOSED_CODES.includes(code)) {
         keepPurchase(null);
         setRefused(true);
@@ -131,7 +127,12 @@ function Loaded({ link, onClosed }: { link: PublicLink; onClosed: () => void }) 
         if (code === LINK_CHANGED_CODE) {
           setFormError(COPY.errors.changed);
           onClosed();
-        } else setFormError(failure.status === TOO_MANY ? COPY.errors.busy : COPY.errors.failed);
+        } else
+          setFormError(
+            errorStatus(err) === HTTP_STATUS.tooManyRequests
+              ? COPY.errors.busy
+              : COPY.errors.failed,
+          );
       }
       setBusy(false);
     }

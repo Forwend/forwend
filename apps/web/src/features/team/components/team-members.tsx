@@ -20,6 +20,7 @@ import { RollAfterRemoval } from "@/features/team/components/roll-after-removal"
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import type { Invite, ToRoll } from "@/features/team/types/team";
 import { LoadError } from "@/shared/components/load-error";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import { dateTime } from "@/shared/lib/dates";
 
 export interface TeamMembersProps {
@@ -139,7 +140,7 @@ export function TeamMembers({ profileId }: TeamMembersProps) {
         )}
       </section>
       <section aria-labelledby="team-invites" className="fw-panel @container">
-        <h2 id="team-invites" className="fw-panel-head text-base font-semibold text-ink">
+        <h2 id="team-invites" className={PANEL_TITLE}>
           {COPY.invites}
         </h2>
         {!loaded ? (

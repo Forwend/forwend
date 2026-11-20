@@ -38,16 +38,6 @@ vi.mock("@/features/send/hooks/use-sign-send", () => ({
   useSignSend: () => ({ sign: privy.sign, canSign: true }),
 }));
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const send: Send = {
   sendId: "11111111-1111-4111-8111-111111111111",
   chainId: 84532,

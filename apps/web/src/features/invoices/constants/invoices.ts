@@ -247,13 +247,6 @@ export const INVOICE_FIELDS = {
   repeatEndDate: "repeat.endDate",
 } as const;
 
-export const AMOUNT_ERRORS = {
-  format: "format",
-  decimals: "decimals",
-  zero: "zero",
-  min: "min",
-} as const;
-
 /** The API's line item limits. */
 export const LINE_LIMITS = { count: 100, description: 200, quantityMax: 1_000_000 } as const;
 export const LINE_ERRORS = {

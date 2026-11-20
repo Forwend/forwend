@@ -1,6 +1,6 @@
 "use client";
 
-import { cx, formatTokenAmount, PAYMENT_STATUS } from "@forwend/ui-web";
+import { cx, PAYMENT_STATUS } from "@forwend/ui-web";
 import { type ReactNode, useState } from "react";
 import { useGetProfileInvoiceQuery } from "@/features/invoices/api/invoices-api";
 import { InvoiceAmountPanel } from "@/features/invoices/components/invoice-amount-panel";
@@ -31,17 +31,16 @@ import {
   recordSteps,
 } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { BackLink } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { FADE_IN } from "@/shared/constants/motion";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { chainName } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
-
-const NOT_FOUND = 404;
-const FADE_IN = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
+import { amountText } from "@/shared/lib/money";
 
 export interface InvoiceDetailProps {
   invoiceId: string;
@@ -58,7 +57,7 @@ export function InvoiceDetail({
   notFound,
 }: InvoiceDetailProps) {
   const invoice = useGetProfileInvoiceQuery({ profileId, invoiceId, summary: true }, LIVE_QUERY);
-  const failure = invoice.error as { status?: unknown } | undefined;
+  const missing = errorStatus(invoice.error) === HTTP_STATUS.notFound;
   const back = (
     <BackLink href={APP_ROUTES.invoices} label={request ? REQUESTS_COPY.invoices : COPY.back} />
   );
@@ -77,11 +76,11 @@ export function InvoiceDetail({
       />
     );
   }
-  if (failure?.status === NOT_FOUND || invoice.isError) {
+  if (missing || invoice.isError) {
     return (
       <div className="flex flex-col gap-4">
         {back}
-        {failure?.status === NOT_FOUND ? (
+        {missing ? (
           <>
             <p className="text-muted">{COPY.notFound}</p>
             {notFound}
@@ -136,10 +135,7 @@ function InvoicePage({
   const beforePayment =
     payable && (status === PAYMENT_STATUS.open || status === PAYMENT_STATUS.overdue);
   const payLink = payable ? invoice.payToken : null;
-  const money = (units: bigint) =>
-    shown
-      ? `${formatTokenAmount({ baseUnits: units, decimals: shown.decimals, fractionDigits: exactDigits(units, shown.decimals) })} ${shown.symbol}`
-      : units.toString();
+  const money = (units: bigint) => (shown ? amountText(units, shown) : units.toString());
   const recheck = useCheckStatus({
     payToken: payLink,
     network: chainName(invoice.chainId),

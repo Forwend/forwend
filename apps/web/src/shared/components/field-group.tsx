@@ -1,4 +1,5 @@
 import { createContext, type ReactNode, use } from "react";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 
 /** Inside a form that is already one card, a group is a titled section, not a panel of its own. */
 export const FlatFieldGroups = createContext(false);
@@ -23,7 +24,7 @@ export function FieldGroup({ title, children }: FieldGroupProps) {
   return (
     <fieldset className="fw-panel flex min-w-0 flex-col">
       <legend className="sr-only">{title}</legend>
-      <p aria-hidden className="fw-panel-head text-base font-semibold text-ink">
+      <p aria-hidden className={PANEL_TITLE}>
         {title}
       </p>
       <div className="flex flex-col gap-5 p-4 sm:p-5">{children}</div>

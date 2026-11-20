@@ -1,10 +1,5 @@
 import { z } from "zod";
 import { ACTIVITY_KINDS } from "@/features/activity/constants/activity";
-import type {
-  ApiDepositStatus,
-  ApiPaymentStatus,
-  ApiSettlementStatus,
-} from "@/features/activity/types/activity";
 import {
   apiTime,
   baseUnits,
@@ -14,6 +9,11 @@ import {
   openEnum,
   pageOf,
 } from "@/shared/schemas/api";
+import type {
+  ApiDepositStatus,
+  ApiPaymentStatus,
+  ApiSettlementStatus,
+} from "@/shared/types/payment-state";
 
 export const activityItemSchema = z.object({
   kind: z.enum(ACTIVITY_KINDS),

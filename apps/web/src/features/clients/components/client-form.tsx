@@ -13,23 +13,21 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useSaveClientMutation } from "@/features/clients/api/clients-api";
-import { CLIENT_KINDS, CLIENT_LIMITS } from "@/features/clients/constants/clients";
+import { CLIENT_FIELDS, CLIENT_KINDS, CLIENT_LIMITS } from "@/features/clients/constants/clients";
 import { CLIENTS_COPY as COPY } from "@/features/clients/constants/clients-copy";
-import {
-  clientCountryOptions,
-  clientKind,
-  invalidClientField,
-} from "@/features/clients/lib/clients";
+import { clientCountryOptions, clientKind } from "@/features/clients/lib/clients";
 import type {
   Client,
   ClientKind,
   ClientTextField,
   SavedClientBody,
 } from "@/features/clients/types/clients";
+import { namedField } from "@/shared/api/api-error";
 import { FieldGroup } from "@/shared/components/field-group";
-import { FormPreview, StepForm, useFormSteps } from "@/shared/components/step-form";
+import { FormPreview, StepForm } from "@/shared/components/step-form";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { EMAIL_PATTERN } from "@/shared/constants/email";
+import { useFormSteps } from "@/shared/hooks/use-form-steps";
 
 type Field = ClientTextField;
 
@@ -116,9 +114,7 @@ export function ClientForm({ profileId, client }: ClientFormProps) {
       toast({ tone: TONES.success, title: COPY.saved(body.name) });
       router.push(`${APP_ROUTES.clients}/${clientId.current}`);
     } catch (error) {
-      const message =
-        (error as { data?: { error?: { message?: string } } }).data?.error?.message ?? "";
-      const field = invalidClientField(message);
+      const field = namedField(error, CLIENT_FIELDS);
       if (field) {
         flushSync(() => setErrors({ [field]: COPY.errors.invalid[field] }));
         flow.focusError(form);

@@ -6,8 +6,7 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { DEVELOPER_MODE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
-
-const INVALID = 422; // live mode with no mainnet on
+import { invalidValue } from "@/shared/api/api-error";
 
 export function OtherModeHint() {
   const { profile } = useAppSession();
@@ -28,9 +27,7 @@ export function OtherModeHint() {
       ) : null}
       {isError ? (
         <p role="alert" className="text-sm text-danger">
-          {(error as { status?: unknown } | undefined)?.status === INVALID
-            ? COPY.noLive
-            : COPY.saveFailed}
+          {invalidValue(error) ? COPY.noLive : COPY.saveFailed}
         </p>
       ) : null}
     </div>

@@ -6,9 +6,8 @@ import { PERMISSIONS } from "@/features/profiles/constants/profile";
 import { DEVELOPER_MODE_COPY as COPY } from "@/features/profiles/constants/profiles-copy";
 import { useAppSession } from "@/features/profiles/hooks/use-app-session";
 import { can } from "@/features/profiles/lib/profile";
+import { invalidValue } from "@/shared/api/api-error";
 import { SETTINGS_TITLE, SettingsGroup } from "@/shared/components/settings-group";
-
-const INVALID = 422; // live mode with no mainnet switched on
 
 /** On is test mode on the testnets; off is live mode on the mainnets. */
 export function DeveloperModeScreen() {
@@ -40,9 +39,7 @@ export function DeveloperModeScreen() {
           <p className="-mt-1.5 pb-1 text-sm text-muted">{on ? COPY.on : COPY.off}</p>
           {isError ? (
             <p role="alert" className="pb-1 text-sm text-danger">
-              {(error as { status?: unknown } | undefined)?.status === INVALID
-                ? COPY.noLive
-                : COPY.saveFailed}
+              {invalidValue(error) ? COPY.noLive : COPY.saveFailed}
             </p>
           ) : null}
         </div>

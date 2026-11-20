@@ -38,9 +38,9 @@ import { SaleCard } from "@/features/checkout/components/sale-card";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
 import { typeKey } from "@/features/checkout/lib/checkout";
 import type { CheckoutSession } from "@/features/checkout/types/checkout";
-import { USD_PATTERN } from "@/features/links/constants/links";
 import type { Store } from "@/features/stores/types/stores";
 import { APP_ROUTES } from "@/shared/config/routes";
+import { USD_PATTERN } from "@/shared/constants/money";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"] as const;

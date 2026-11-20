@@ -4,7 +4,6 @@ import {
   Button,
   Checkbox,
   FullAddress,
-  formatTokenAmount,
   HoldButton,
   NOTICE_TONES,
   Notice,
@@ -20,7 +19,7 @@ import { SEND_COPY } from "@/features/send/constants/send-copy";
 import { feeLabel, feeShown } from "@/features/send/lib/send";
 import type { Recipient, Send, SendMode, SendOption } from "@/features/send/types/send";
 import { chainName } from "@/shared/lib/chains";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText, exactAmount } from "@/shared/lib/money";
 
 export interface SendReviewProps {
   mode: SendMode;
@@ -51,11 +50,7 @@ export function SendReview({
   onHold,
 }: SendReviewProps) {
   const units = BigInt(send.amount);
-  const amount = formatTokenAmount({
-    baseUnits: units,
-    decimals: option.decimals,
-    fractionDigits: exactDigits(units, option.decimals),
-  });
+  const amount = exactAmount(units, option.decimals);
   const needsCheck = send.warnings.length > 0;
   const mfa = useWalletMfa();
   const fee = BigInt(send.networkFee.amount);
@@ -97,16 +92,7 @@ export function SendReview({
         {fee === 0n ? null : (
           <Row term={SEND_COPY.total}>
             <span className="font-medium tabular-nums">
-              {SEND_COPY.approx(
-                `${formatTokenAmount({
-                  baseUnits: units + feeShown(fee, option.decimals),
-                  decimals: option.decimals,
-                  fractionDigits: exactDigits(
-                    units + feeShown(fee, option.decimals),
-                    option.decimals,
-                  ),
-                })} ${option.symbol}`,
-              )}
+              {SEND_COPY.approx(amountText(units + feeShown(fee, option.decimals), option))}
             </span>
           </Row>
         )}

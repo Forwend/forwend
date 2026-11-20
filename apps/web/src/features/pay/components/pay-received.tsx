@@ -13,10 +13,11 @@ import {
 import { PayTokenMark } from "@/features/pay/components/token-marks";
 import { PAY_STATES } from "@/features/pay/constants/pay";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
-import { amountText, payeeName, seenInFull, stateLine } from "@/features/pay/lib/pay";
+import { payeeName, seenInFull, stateLine } from "@/features/pay/lib/pay";
 import type { PayStatus, PayToken } from "@/features/pay/types/pay";
 import { ENTER } from "@/shared/constants/motion";
 import { timeNear } from "@/shared/lib/dates";
+import { amountText } from "@/shared/lib/money";
 
 export interface PayReceivedProps {
   invoice: Invoice;

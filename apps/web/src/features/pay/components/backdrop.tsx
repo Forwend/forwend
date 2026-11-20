@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { FooterRidges } from "@/shared/components/art/footer-ridges";
+import { FooterRidges } from "@/features/pay/components/footer-ridges";
 
 export interface BackdropProps {
   color?: string | null; // the store's accent; lime without one

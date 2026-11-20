@@ -67,7 +67,7 @@ export function ClientActions({ profileId, client, onDeleted }: ClientActionsPro
             }}
           >
             <MenuItem
-              className="text-danger data-[highlighted]:bg-danger-soft"
+              danger
               onSelect={() => {
                 chosen.current = true;
               }}

@@ -1,3 +1,4 @@
+import { EMAIL_COPY } from "@/shared/constants/email-copy";
 export const AUTH_COPY = {
   notConfigured: "Sign-in is not set up here: NEXT_PUBLIC_PRIVY_APP_ID is missing.",
   checkingSignIn: "Checking your sign-in",
@@ -92,7 +93,6 @@ export const SIGN_OUT_EVERYWHERE_COPY = {
 } as const;
 
 export const SIGN_IN_COPY = {
-  homeLabel: "Forwend home",
   title: "Sign in to Forwend",
   intro: "New here? Signing in creates your account and wallet.",
   emailLabel: "Email",
@@ -109,7 +109,7 @@ export const SIGN_IN_COPY = {
   resent: "We sent a new code.",
   otherEmail: "Use another email",
   errors: {
-    email: "Enter an email like name@example.com.",
+    email: EMAIL_COPY.invalid,
     sendFailed: "We could not send the code. Try again.",
     code: "Enter all 6 digits.",
     codeFailed: "Wrong or expired code. Try again.",

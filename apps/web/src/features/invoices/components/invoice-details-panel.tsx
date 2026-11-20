@@ -1,27 +1,23 @@
 "use client";
 
-import { buttonClasses, formatTokenAmount } from "@forwend/ui-web";
+import { buttonClasses } from "@forwend/ui-web";
 import { FileDown } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, type Ref, useEffect, useRef } from "react";
-import { countryName } from "@/features/clients/lib/clients";
-import { ICON, ORDER, PANEL_TITLE } from "@/features/invoices/constants/invoice-detail";
+import { ICON, ORDER } from "@/features/invoices/constants/invoice-detail";
 import { INVOICE_PDFS } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
-import {
-  formatAgreed,
-  formatDueDate,
-  invoiceNumber,
-  invoicePdfUrl,
-} from "@/features/invoices/lib/invoices";
+import { formatAgreed, invoiceNumber, invoicePdfUrl } from "@/features/invoices/lib/invoices";
 import type { Invoice, InvoicePdf, Revision } from "@/features/invoices/types/invoices";
 import { RecordLink } from "@/shared/components/record-link";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { CROSS_CHAIN_STATUSES } from "@/shared/constants/chains";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { blockchainName, crossChainOptionRecorded } from "@/shared/lib/chains";
-import { dateTime } from "@/shared/lib/dates";
-import { exactDigits } from "@/shared/lib/money";
+import { countryName } from "@/shared/lib/countries";
+import { dateTime, formatDueDate } from "@/shared/lib/dates";
+import { amountText } from "@/shared/lib/money";
 
 const LINK = "text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink";
 
@@ -82,14 +78,7 @@ export function InvoiceDetailsPanel({
         crossChainOptionRecorded(invoice) ? (
           <Row term={COPY.paidThrough}>
             {COPY.paidThroughValue(
-              `${formatTokenAmount({
-                baseUnits: BigInt(crossChain.deposited ?? crossChain.amountIn),
-                decimals: crossChain.decimals,
-                fractionDigits: exactDigits(
-                  BigInt(crossChain.deposited ?? crossChain.amountIn),
-                  crossChain.decimals,
-                ),
-              })} ${crossChain.symbol}`,
+              amountText(BigInt(crossChain.deposited ?? crossChain.amountIn), crossChain),
               blockchainName(crossChain.blockchain),
             )}
           </Row>

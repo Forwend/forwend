@@ -2,9 +2,9 @@
 
 import { Tooltip } from "@forwend/ui-web";
 import { AGREED_CURRENCIES } from "@/features/invoices/constants/invoices";
-import { formatDueDate } from "@/features/invoices/lib/invoices";
 import { TRANSACTIONS_COPY as COPY } from "@/features/transactions/constants/transactions-copy";
 import type { TransactionRecordsValue } from "@/features/transactions/types/transactions";
+import { formatDueDate } from "@/shared/lib/dates";
 
 function formatRecordsValue(value: TransactionRecordsValue): string {
   const digits = AGREED_CURRENCIES[value.currency as keyof typeof AGREED_CURRENCIES];

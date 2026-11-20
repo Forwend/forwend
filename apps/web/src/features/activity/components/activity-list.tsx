@@ -24,12 +24,14 @@ import { ListFilters } from "@/shared/components/list-filters";
 import { ListToolbar } from "@/shared/components/list-toolbar";
 import { LoadError } from "@/shared/components/load-error";
 import { NoMatch } from "@/shared/components/no-match";
+import { PageTitle } from "@/shared/components/page-title";
 import { SKELETON_ROWS } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { PAYMENT_STATE_FILTERS } from "@/shared/constants/payment-state";
-import { useListFilters, useShownData } from "@/shared/hooks/use-list-filters";
+import { useListFilters } from "@/shared/hooks/use-list-filters";
+import { useShownData } from "@/shared/hooks/use-shown-data";
 import { chainName } from "@/shared/lib/chains";
 import { dayTime, timeOfDay } from "@/shared/lib/dates";
 import { exactDigits } from "@/shared/lib/money";
@@ -159,9 +161,7 @@ function ProfileActivity({ profileId, emptyAction }: ActivityListProps) {
       aria-busy={(!data && !list.isError) || stale || undefined}
       className="flex flex-col gap-4"
     >
-      <h1 id="activity-title" className="text-2xl font-semibold tracking-tight text-ink lg:sr-only">
-        {ACTIVITY_COPY.activity}
-      </h1>
+      <PageTitle id="activity-title">{ACTIVITY_COPY.activity}</PageTitle>
       {!noActivity ? (
         <p className="-mt-2 text-sm text-muted lg:mt-0">{ACTIVITY_COPY.intro}</p>
       ) : null}

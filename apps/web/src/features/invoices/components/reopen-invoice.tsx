@@ -3,10 +3,10 @@
 import { BUTTON_VARIANTS, Button, Dialog, TONES, useToast } from "@forwend/ui-web";
 import { useReopenInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { dateTime } from "@/shared/lib/dates";
 
 const COPY = INVOICE_COPY.reopen;
-const CONFLICT = 409;
 
 export interface ReopenInvoiceProps {
   profileId: string;
@@ -30,7 +30,7 @@ export function ReopenInvoice({
 }: ReopenInvoiceProps) {
   const [reopen, { isLoading, error }] = useReopenInvoiceMutation();
   const toast = useToast();
-  const status = (error as { status?: unknown } | undefined)?.status;
+  const status = errorStatus(error);
   const day = dateTime(until);
   const confirm = async () => {
     try {
@@ -39,7 +39,7 @@ export function ReopenInvoice({
       onReopened();
     } catch (failure) {
       // Too late: the refetch that follows ends the reopen, and the dialog with it; the toast stays.
-      if ((failure as { status?: unknown }).status === CONFLICT) {
+      if (errorStatus(failure) === HTTP_STATUS.conflict) {
         toast({ tone: TONES.warning, title: COPY.tooLate });
       }
     }
@@ -58,7 +58,7 @@ export function ReopenInvoice({
       <p>{COPY.body(day, noun)}</p>
       {error ? (
         <p role="alert" className="mt-3 text-sm text-danger">
-          {status === CONFLICT ? COPY.tooLate : COPY.failed}
+          {status === HTTP_STATUS.conflict ? COPY.tooLate : COPY.failed}
         </p>
       ) : null}
       <form method="dialog" className="mt-5 flex flex-wrap justify-end gap-2">

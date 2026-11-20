@@ -39,17 +39,12 @@ import { transactionKey } from "@/features/transactions/lib/transactions";
 import type { Transaction } from "@/features/transactions/types/transactions";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
+import { SEARCH_PARAM } from "@/shared/constants/search";
 import { chainName } from "@/shared/lib/chains";
+import { monthDayTime } from "@/shared/lib/dates";
 
 const SHOWN = 6;
 const SEEN_KEY = "forwend:notifications-seen:";
-const TIME = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
 const COPY = TRANSACTIONS_COPY.bell;
 
 function readSeen(profileId: string): number {
@@ -105,7 +100,7 @@ const eventRow = (e: InvoiceEvent): Row | null => {
     at: e.at,
     href: `${APP_ROUTES.payments}/${e.invoiceId}`,
     title: `${known.what} · ${name}`,
-    detail: `${chainName(e.chainId)} · ${TIME.format(new Date(e.at))}`,
+    detail: `${chainName(e.chainId)} · ${monthDayTime(e.at)}`,
     look: known.look,
     amount: e,
   };
@@ -126,7 +121,7 @@ const transferRow = (t: Transaction): Row => {
       ? `${APP_ROUTES.payments}/${paymentId}`
       : `${APP_ROUTES.transactions}?${SEARCH_PARAM}=${t.txHash}`,
     title: `${confirming ? COPY.confirming : paymentId ? COPY.inWallet : COPY.received} · ${name}`,
-    detail: `${chainName(t.chainId)} · ${TIME.format(new Date(t.at))}`,
+    detail: `${chainName(t.chainId)} · ${monthDayTime(t.at)}`,
     look: confirming ? LOOK.waiting : paymentId ? LOOK.wallet : LOOK.received,
     amount: t,
   };

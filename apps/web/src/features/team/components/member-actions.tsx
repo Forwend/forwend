@@ -120,7 +120,7 @@ export function MemberActions({ profileId, member, who, stores, onToRoll }: Memb
                   {COPY.change}
                 </MenuItem>
                 <MenuItem
-                  className="text-danger data-[highlighted]:bg-danger-soft"
+                  danger
                   onSelect={() => {
                     chosen.current = "remove";
                   }}

@@ -3,18 +3,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { RollAfterRemoval } from "@/features/team/components/roll-after-removal";
 
-// jsdom lacks the modal methods.
-const proto = HTMLDialogElement.prototype as HTMLDialogElement & Record<string, unknown>;
-if (typeof proto.showModal !== "function") {
-  proto.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  proto.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-}
-
 afterEach(cleanup);
 
 it("lists what the removed member could still use and sends the owner to roll it", () => {

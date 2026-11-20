@@ -8,16 +8,6 @@ import { SendProgress } from "@/features/send/components/send-progress";
 import type { Relay, Send } from "@/features/send/types/send";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
-
 const send: Send = {
   sendId: "11111111-1111-4111-8111-111111111111",
   chainId: 84532,

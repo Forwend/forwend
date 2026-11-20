@@ -126,7 +126,7 @@ export function EndpointActions({ profileId, stores, endpoint }: EndpointActions
   };
   const item = (choice: Chosen, Icon: typeof Pencil, label: string, danger = false) => (
     <MenuItem
-      className={danger ? "text-danger data-[highlighted]:bg-danger-soft" : undefined}
+      danger={danger}
       onSelect={() => {
         chosen.current = choice;
       }}

@@ -33,7 +33,7 @@ import { COMMAND_COPY as COPY } from "@/screens/app-shell/constants/command-menu
 import { navFor, pageAllowed } from "@/screens/app-shell/lib/app-nav";
 import type { Command } from "@/screens/app-shell/types/command-menu";
 import { APP_ROUTES } from "@/shared/config/routes";
-import { SEARCH_PARAM } from "@/shared/hooks/use-list-filters";
+import { SEARCH_PARAM } from "@/shared/constants/search";
 import { chainName } from "@/shared/lib/chains";
 
 type Entry = Omit<Command, "group">;

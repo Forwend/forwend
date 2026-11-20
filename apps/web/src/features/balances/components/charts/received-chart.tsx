@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import { BalanceChart } from "@/features/balances/components/charts/balance-chart";
 import { BALANCES_COPY } from "@/features/balances/constants/balances-copy";
 import { runningTotal } from "@/features/balances/lib/balance-history";
-import { formatUsd } from "@/features/balances/lib/balances";
 import type { HistorySeries } from "@/features/balances/types/balance-history";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { formatUsd } from "@/shared/lib/money";
 
 export interface ReceivedChartProps {
   series: HistorySeries;

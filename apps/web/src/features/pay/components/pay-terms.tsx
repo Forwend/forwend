@@ -5,17 +5,12 @@ import {
   HISTORY_FIELDS,
   INVOICE_PDFS,
 } from "@/features/invoices/constants/invoices";
-import {
-  formatAgreed,
-  formatDueDate,
-  invoicePdfUrl,
-  linesFigures,
-} from "@/features/invoices/lib/invoices";
+import { formatAgreed, invoicePdfUrl, linesFigures } from "@/features/invoices/lib/invoices";
 import type { Invoice } from "@/features/invoices/types/invoices";
 import { PAY_COPY as COPY } from "@/features/pay/constants/pay-copy";
 import { payToken } from "@/features/pay/lib/pay";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { dateTime } from "@/shared/lib/dates";
+import { dateTime, formatDueDate } from "@/shared/lib/dates";
 
 const ICON = "size-[var(--fw-icon-md)] shrink-0";
 

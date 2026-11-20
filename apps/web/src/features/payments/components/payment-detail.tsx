@@ -31,6 +31,7 @@ import {
 } from "@/features/payments/lib/payment-journey";
 import { heldHint, paymentDisplayStatus, paymentLabel } from "@/features/payments/lib/payments";
 import type { PaymentDetail as PaymentDetailType } from "@/features/payments/types/payments";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { DetailHeader, DetailHeaderSkeleton } from "@/shared/components/detail-header";
 import { LoadError } from "@/shared/components/load-error";
 import { RecordLink } from "@/shared/components/record-link";
@@ -38,11 +39,11 @@ import { LineSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
+import { FADE_IN } from "@/shared/constants/motion";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import { API_PAYMENT_STATUSES } from "@/shared/constants/payment-state";
 import { dateTime } from "@/shared/lib/dates";
 import { walletStateOf } from "@/shared/lib/payment-state";
-
-const NOT_FOUND = 404;
 
 export interface PaymentDetailProps {
   profileId: string;
@@ -55,7 +56,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
   const read = useGetPaymentQuery({ profileId, paymentId }, LIVE_QUERY);
   const title = useRef<HTMLHeadingElement>(null);
   const payment = read.currentData;
-  if (!payment && (read.error as { status?: unknown } | undefined)?.status === NOT_FOUND)
+  if (!payment && errorStatus(read.error) === HTTP_STATUS.notFound)
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted">{COPY.notFound}</p>
@@ -126,7 +127,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
         ) : null}
         <PaymentProblems problems={payment.problems} />
       </div>
-      <div className={`${FADE} lg:col-span-2`}>
+      <div className={`${FADE_IN} lg:col-span-2`}>
         <PaymentSum payment={payment} money={money} />
       </div>
       <div className={ACTIONS}>
@@ -158,7 +159,7 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
         <ExportPayments profileId={profileId} paymentId={paymentId} />
         {actions?.(payment, () => title.current?.focus())}
       </div>
-      <div className={`${FADE} lg:col-span-2`}>
+      <div className={`${FADE_IN} lg:col-span-2`}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(24rem,2fr)] xl:items-start">
           <div className="flex min-w-0 flex-col gap-6">
             <PaymentJourney payment={payment} steps={paymentJourney(payment, money)} />
@@ -251,13 +252,12 @@ export function PaymentDetail({ profileId, paymentId, actions, notFound }: Payme
 const PAGE = "grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start";
 const ACTIONS =
   "flex flex-wrap items-center gap-2 max-lg:*:flex-1 lg:col-start-2 lg:row-start-1 lg:justify-end";
-const FADE = "motion-safe:animate-[fw-fade-in_var(--fw-duration-base)_var(--fw-ease-out)]";
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="fw-panel overflow-hidden">
-      <h2 id={id} className="fw-panel-head text-base font-semibold text-ink">
+      <h2 id={id} className={PANEL_TITLE}>
         {title}
       </h2>
       {children}

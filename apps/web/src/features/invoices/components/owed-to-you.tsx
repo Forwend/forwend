@@ -1,17 +1,9 @@
 "use client";
 
-import {
-  Button,
-  Card,
-  EmptyState,
-  formatTokenAmount,
-  ROW_INTERACTIVE_CLASSES,
-  Skeleton,
-} from "@forwend/ui-web";
+import { Button, Card, EmptyState, ROW_INTERACTIVE_CLASSES, Skeleton } from "@forwend/ui-web";
 import { CircleCheck, FileText } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { useGetOwedQuery } from "@/features/invoices/api/invoices-api";
 import { OWED_KINDS } from "@/features/invoices/constants/invoices";
 import { OWED_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
@@ -24,7 +16,7 @@ import { LineSkeleton, RowsSkeleton } from "@/shared/components/rows-skeleton";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { exactDigits } from "@/shared/lib/money";
+import { exactAmount, formatUsd } from "@/shared/lib/money";
 
 const SHOWN = 5;
 
@@ -113,11 +105,7 @@ export function OwedToYou({ profileId }: { profileId: string }) {
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-0.5">
                       <span className="whitespace-nowrap text-ink tabular-nums">
-                        {formatTokenAmount({
-                          baseUnits: units,
-                          decimals: o.decimals,
-                          fractionDigits: exactDigits(units, o.decimals),
-                        })}{" "}
+                        {exactAmount(units, o.decimals)}{" "}
                         <span className="text-sm text-muted">
                           {o.optionCount > 1 ? MONEY_COPY.usd : o.symbol}
                         </span>

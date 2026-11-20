@@ -21,13 +21,13 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { CSSProperties } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { OWED_COPY } from "@/features/invoices/constants/invoices-copy";
 import { PAYMENTS_COPY } from "@/features/payments/constants/payments-copy";
 import { PROFILE_KINDS } from "@/features/profiles/constants/profile";
 import { APP_NAV } from "@/screens/app-shell/constants/app-nav";
 import { HERO_IMAGE } from "@/shared/assets/images";
 import { TOKEN_ICONS } from "@/shared/constants/chains";
+import { formatUsd } from "@/shared/lib/money";
 import { DASHBOARD } from "./constants/hero-dashboard";
 import styles from "./hero-dashboard.module.css";
 import { HeroReceivedChart } from "./hero-received-chart";

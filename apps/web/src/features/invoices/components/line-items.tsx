@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, formatTokenAmount, TextField } from "@forwend/ui-web";
+import { Button, TextField } from "@forwend/ui-web";
 import { Plus, Trash2, X } from "lucide-react";
 import { useRef } from "react";
 import { flushSync } from "react-dom";
@@ -8,7 +8,7 @@ import { LINE_LIMITS } from "@/features/invoices/constants/invoices";
 import { NEW_INVOICE_COPY } from "@/features/invoices/constants/invoices-copy";
 import { lineFigure } from "@/features/invoices/lib/new-invoice";
 import type { LineDraft, LineField } from "@/features/invoices/types/invoices";
-import { exactDigits } from "@/shared/lib/money";
+import { exactAmount } from "@/shared/lib/money";
 
 const COPY = NEW_INVOICE_COPY.items;
 
@@ -32,8 +32,7 @@ export function LineItems({ id, items, onChange, decimals, unit, errors, error }
   const set = (itemId: string, field: LineField, value: string) =>
     onChange(items.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
   const amounts = items.map((item) => lineFigure(item, decimals));
-  const figure = (units: bigint) =>
-    formatTokenAmount({ baseUnits: units, decimals, fractionDigits: exactDigits(units, decimals) });
+  const figure = (units: bigint) => exactAmount(units, decimals);
   // Phones: each item is a block, its amount and Remove on a line of their own.
   const grid =
     "grid grid-cols-[4.75rem_minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(0,1fr)_4rem_6.5rem_minmax(4.5rem,auto)_2.5rem] sm:items-start sm:gap-2";

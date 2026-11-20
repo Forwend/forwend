@@ -1,12 +1,7 @@
-import { formatTokenAmount } from "@forwend/ui-web";
-import { BALANCE_FIELDS, USD_DECIMALS } from "@/features/balances/constants/balances";
+import { BALANCE_FIELDS } from "@/features/balances/constants/balances";
 import type { BalanceField, Balances, TokenBalance } from "@/features/balances/types/balances";
 import { totalUsdCents } from "@/features/prices/lib/prices";
 import type { TokenPrice } from "@/features/prices/types/prices";
-
-export function formatUsd(cents: bigint): string {
-  return formatTokenAmount({ baseUnits: cents, decimals: USD_DECIMALS });
-}
 
 // An older API read has no settling part: its pending is the nearest.
 const settling = (t: TokenBalance) => t.settling ?? t.pending;

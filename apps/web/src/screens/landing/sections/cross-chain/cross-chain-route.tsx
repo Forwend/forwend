@@ -16,6 +16,7 @@ import {
   CROSS_CHAIN_TARGET,
   CROSS_CHAIN_TOKEN_ICONS,
 } from "@/shared/constants/chains";
+import { STEP_IN } from "@/shared/constants/motion";
 import { blockchainName, chainName } from "@/shared/lib/chains";
 import { PAYMENT_EXAMPLE as example } from "../example-payment/constants/example-payment";
 import {
@@ -179,10 +180,7 @@ export function CrossChainRoute() {
       <div className={styles.route}>
         <div className={styles.card}>
           <span className={styles.kicker}>Your customer pays with</span>
-          <div
-            key={run.pick}
-            className="motion-safe:animate-[fw-step-in_var(--fw-duration-base)_var(--fw-ease-out)]"
-          >
+          <div key={run.pick} className={STEP_IN}>
             <TokenLine {...sentLine} />
           </div>
           <div className={styles.amount}>

@@ -16,7 +16,6 @@ import {
 import { Check, Clock, Copy, ReceiptText, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { formatUsd } from "@/features/balances/lib/balances";
 import { CheckoutActions } from "@/features/checkout/components/checkout-actions";
 import { SaleCard } from "@/features/checkout/components/sale-card";
 import { CHECKOUT_COPY as COPY } from "@/features/checkout/constants/checkout-copy";
@@ -29,7 +28,7 @@ import { APP_ROUTES } from "@/shared/config/routes";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
 import { API_DEPOSIT_STATUSES } from "@/shared/constants/payment-state";
 import { chainName } from "@/shared/lib/chains";
-import { usdCents } from "@/shared/lib/money";
+import { formatUsd, usdCents } from "@/shared/lib/money";
 
 const POLL_MS = 3_000;
 const DONE = new Set<string>([

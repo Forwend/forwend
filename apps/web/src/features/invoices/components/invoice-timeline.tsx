@@ -3,6 +3,7 @@ import { RECORD_STEP_STATES } from "@/features/invoices/constants/invoices";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import { recordStepStates } from "@/features/invoices/lib/invoices";
 import type { RecordStep } from "@/features/invoices/types/invoices";
+import { PANEL_TITLE } from "@/shared/constants/panel";
 import { dateTime } from "@/shared/lib/dates";
 
 export interface InvoiceTimelineProps {
@@ -13,7 +14,7 @@ export interface InvoiceTimelineProps {
 export function InvoiceTimeline({ steps, className }: InvoiceTimelineProps) {
   return (
     <section aria-labelledby="invoice-timeline" className={cx("fw-panel", className)}>
-      <h2 id="invoice-timeline" className="fw-panel-head text-base font-semibold text-ink">
+      <h2 id="invoice-timeline" className={PANEL_TITLE}>
         {COPY.progressTitle}
       </h2>
       <div className="px-4 py-4 sm:px-5">

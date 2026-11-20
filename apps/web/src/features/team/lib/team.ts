@@ -2,6 +2,7 @@ import { ROLES } from "@/features/profiles/constants/profile";
 import { MEMBER_ROLES, TEAM_ERRORS } from "@/features/team/constants/team";
 import { TEAM_COPY as COPY } from "@/features/team/constants/team-copy";
 import type { GrantBody, MemberRole } from "@/features/team/types/team";
+import { apiError } from "@/shared/api/api-error";
 
 export function memberRole(role: string): MemberRole {
   return MEMBER_ROLES.find((r) => r === role) ?? ROLES.admin;
@@ -14,9 +15,7 @@ export function grant(role: MemberRole, stores: readonly string[]): GrantBody | 
 }
 
 export function grantError(failure: unknown): { email?: string; stores?: string; form?: string } {
-  const { data } = failure as { data?: { error?: { code?: string; message?: string } } };
-  const code = data?.error?.code;
-  const message = data?.error?.message ?? "";
+  const { code, message = "" } = apiError(failure);
   if (code === TEAM_ERRORS.onTeam) return { email: COPY.errors.onTeam };
   if (code === TEAM_ERRORS.rateLimited) return { form: COPY.errors.rateLimited };
   if (code === TEAM_ERRORS.invalid && message.includes("email"))

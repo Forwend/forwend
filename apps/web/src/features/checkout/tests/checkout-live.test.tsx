@@ -7,15 +7,6 @@ import { CheckoutLive } from "@/features/checkout/components/checkout-live";
 import type { CheckoutSession } from "@/features/checkout/types/checkout";
 import { makeStore } from "@/store/store";
 
-const NodeRequest = globalThis.Request;
-vi.stubGlobal(
-  "Request",
-  class extends NodeRequest {
-    constructor(input: RequestInfo | URL, init?: RequestInit) {
-      super(typeof input === "string" ? new URL(input, "http://localhost") : input, init);
-    }
-  },
-);
 // The sale's first read fails, so it shows the payment the session started with.
 vi.stubGlobal(
   "fetch",

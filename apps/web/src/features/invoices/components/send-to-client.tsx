@@ -6,10 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSendInvoiceMutation } from "@/features/invoices/api/invoices-api";
 import { INVOICE_COPY as COPY } from "@/features/invoices/constants/invoices-copy";
 import type { InvoiceSend } from "@/features/invoices/types/invoices";
+import { errorStatus, HTTP_STATUS } from "@/shared/api/api-error";
 import { dateTime } from "@/shared/lib/dates";
 
-const CONFLICT = 409;
-const TOO_MANY = 429;
 // The API takes one send per invoice a day.
 const SEND_EVERY_MS = 24 * 60 * 60 * 1000;
 
@@ -52,13 +51,13 @@ export function SendToClient({ profileId, invoiceId, number, email, sends }: Sen
       toast({ tone: TONES.success, title: COPY.send.done(number, email) });
       setSent(true);
     } catch (failure) {
-      const status = (failure as { status?: unknown }).status;
+      const status = errorStatus(failure);
       toast({
         tone: TONES.warning,
         title:
-          status === CONFLICT
+          status === HTTP_STATUS.conflict
             ? COPY.send.closed
-            : status === TOO_MANY
+            : status === HTTP_STATUS.tooManyRequests
               ? COPY.send.limited
               : COPY.send.error,
       });

@@ -12,6 +12,16 @@ export const PAYMENT_SOURCES = [
   PAYMENT_SOURCE.request,
   PAYMENT_SOURCE.paymentLink,
 ] as const;
+/** The Payments page's filters in its URL; all but view are the API's query names. */
+export const PAYMENT_PARAMS = {
+  view: "view",
+  state: "state",
+  source: "source",
+  storeId: "storeId",
+  linkId: "linkId",
+  settlementStatus: "settlementStatus",
+} as const;
+
 export const PAYMENT_VIEWS = {
   all: "all",
   attention: "attention",

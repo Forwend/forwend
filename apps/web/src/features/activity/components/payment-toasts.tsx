@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTokenAmount, TONES, useToast } from "@forwend/ui-web";
+import { TONES, useToast } from "@forwend/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { ACTIVITY_COPY } from "@/features/activity/constants/activity-copy";
 import { newPaymentEvents } from "@/features/activity/lib/payment-events";
@@ -9,7 +9,7 @@ import { INVOICE_EVENTS } from "@/features/invoices/constants/invoices";
 import { invoiceNumber } from "@/features/invoices/lib/invoices";
 import { LIVE_QUERY } from "@/shared/config/refresh";
 import { MONEY_COPY } from "@/shared/constants/money-copy";
-import { exactDigits } from "@/shared/lib/money";
+import { amountText } from "@/shared/lib/money";
 
 export interface PaymentToastsProps {
   profileId: string;
@@ -38,7 +38,7 @@ function ProfileToasts({ profileId }: { profileId: string }) {
     seen.current = known;
     for (const item of events) {
       const units = BigInt(item.amount);
-      const amount = `${formatTokenAmount({ baseUnits: units, decimals: item.decimals, fractionDigits: exactDigits(units, item.decimals) })} ${item.symbol}`;
+      const amount = amountText(units, item);
       const payment = item.number
         ? invoiceNumber(item.number)
         : (item.title ?? MONEY_COPY.checkout(item.invoiceId));
