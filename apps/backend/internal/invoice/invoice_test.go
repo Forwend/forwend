@@ -18,12 +18,17 @@ import (
 
 func TestReceiveAddressRefusesWhatSettleRefuses(t *testing.T) {
 	expires := time.Unix(1800000000, 0)
-	for name, recipient := range map[string]string{
+	refused := map[string]string{
 		"zero":           hexAddress([20]byte{}),
 		"factory":        hexAddress(address.Factory),
 		"implementation": hexAddress(address.Implementation),
 		"token":          usdc,
-	} {
+	}
+	for factory, spec := range address.Known {
+		refused["known factory "+hexAddress(factory)] = hexAddress(factory)
+		refused["known implementation "+hexAddress(spec.Implementation)] = hexAddress(spec.Implementation)
+	}
+	for name, recipient := range refused {
 		_, err := receiveAddress([32]byte{1}, 84532, usdc, recipient, big.NewInt(1), nil, nil, expires, expires.Add(SettleWindow))
 		if !errors.Is(err, ErrInvalid) {
 			t.Errorf("recipient = %s: got %v, want ErrInvalid", name, err)

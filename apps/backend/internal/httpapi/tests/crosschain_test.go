@@ -80,9 +80,14 @@ func TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens(t *testing.T) {
 	if !slices.Equal(assets, []string{tronUSDT, ethAsset}) {
 		t.Fatalf("assets %v", assets)
 	}
-	// 100 USD at 2143.49 USD an ETH, plus 1Click's 1% slippage, rounded up to a wei.
-	if estimates[ethAsset] != "47119417398728243" {
-		t.Fatalf("ETH estimate %s", estimates[ethAsset])
+	// 100 USD at 2143.49 USD an ETH with 1Click's 1% slippage on top, rounded up to a wei: 100e18 * 1.01 / 2143.49.
+	want := new(big.Int).Mul(big.NewInt(100*101), new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil))
+	q, m := new(big.Int).QuoRem(want, big.NewInt(214349), new(big.Int))
+	if m.Sign() > 0 {
+		q.Add(q, big.NewInt(1))
+	}
+	if estimates[ethAsset] != q.String() {
+		t.Fatalf("ETH estimate %s, want %s", estimates[ethAsset], q)
 	}
 }
 

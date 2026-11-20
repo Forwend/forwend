@@ -1162,7 +1162,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Reduced motion shows each state at once.
   - The payer never sees the wallet transfer or status badges.
   - Held money gets one short line, such as "Overpaid by X", with How to get it back on its right. It opens Need help
-    (PLAN 11.10).
+    (D-118).
   - Once the money went back the line is gone, and the payer reads Recorded returns with the return's transaction.
   - Copy names the payee, or "the invoice's creator". Never "the sender".
   - Footer: one quiet line.

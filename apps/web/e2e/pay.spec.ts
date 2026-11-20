@@ -150,7 +150,7 @@ test.describe("pay page", () => {
     await expect(
       help.getByText(/under 0\.10 USD aren't returned\. .+may never come back/),
     ).toBeVisible();
-    // PLAN 11.10: support returns held money, so the message carries the pay link it needs.
+    // D-118: support returns held money, so the message carries the pay link it needs.
     const mail = new URL(
       (await help.getByRole("link", { name: "Email support" }).getAttribute("href")) ?? "",
     );
@@ -813,7 +813,7 @@ test.describe("pay page", () => {
     await expect(showAddress(page)).toHaveCount(0);
   });
 
-  // PLAN 11.10: held money comes back through support; the page never sends the payer to the payee for it.
+  // D-118: held money comes back through support; the page never sends the payer to the payee for it.
   test("every held payment gets one short line, and How to get it back opens Need help", async ({
     context,
   }) => {
@@ -870,7 +870,7 @@ test.describe("pay page", () => {
     }
   });
 
-  // PLAN 11.10.3: once support returned the extra, the payer sees the return and no held line.
+  // D-118: once support returned the extra, the payer sees the return and no held line.
   test("an overpayment returned to the payer is no longer shown as held", async ({ page }) => {
     const confirmed = {
       ...DEPOSIT,

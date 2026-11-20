@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 499,
+  "nextId": 500,
   "tasks": [
     {
       "id": "F332",
@@ -428,6 +428,119 @@
       "delivery": {
         "mode": "pr",
         "branch": "refactor/f498-the-codebase-is-untangled-comments-and-t",
+        "base": "main"
+      }
+    },
+    {
+      "id": "F499",
+      "type": "fix",
+      "behavior": "Guards the refactor cut are back: the tests for fee quotes, receive-address refusals, receipts, webhooks, database open, onboarding and the checkout packages, and no document cites a PLAN section that is gone.",
+      "acceptance": [
+        "Each restored test passes, and fails when the behavior it guards is broken.",
+        "Every PLAN section cited in code and docs exists, and the held-on-another-option note and the range calendar keys are as the docs say."
+      ],
+      "dependsOn": [],
+      "state": "passing",
+      "verification": [
+        "harness",
+        "docs-check",
+        "lint",
+        "typecheck",
+        "unit",
+        "build",
+        "e2e"
+      ],
+      "refs": [],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-20 review pass by fresh-context reviewer of the F499 diff, plus the earlier four-area review of the refactor: Read-only review of origin/main..HEAD for F499. No production code changed: only openapi.yaml description text and pay.spec.ts comments outside tests and docs. Every restored test was diffed against the pre-refactor tree and matches it except deliberate renames to current names; none skipped or weakened; the riskiest ones were read and fail when the guarded code is removed. Mutation checks were run by the authors for each restored guard. Docs citations to PLAN sections that shipped were removed or retargeted to D-118 and D-102 and read correctly. Review findings fixed in the last commit: D-97 target, a dead PLAN 12.2a cite in D-120, two cut profile checks, and a component test for the range calendar's Shift keys. Known and left: three cases of the old fee table test (covered at HTTP level by TestEveryOptionCarriesTheHighestNetworkFee and TestAChainThatCantBePricedLeavesThePayerTheOthers); D-79 and D-80 read as history; the PLAN 10.1 comment in migration 00029 is untouched because editing a migration changes its checksum. Not covered: the full test suite and e2e were run by verify, not by the reviewer; docs/tasks.json was not reviewed."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-20T16:49:05Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.5,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.2,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.7,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 108.5,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 6.1,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 51.5,
+            "log": ""
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": ""
+          }
+        ],
+        "taskHash": "f50fdefc85686f83",
+        "filesHash": "29c125961c84b464",
+        "proof": {
+          "1": "unit: every restored Go and web test passes, and each fails when the code it guards is broken",
+          "2": "docs-check: no PLAN section that is gone is cited; the calendar rule is in R-59 with a component test; the held note is covered by its existing test"
+        },
+        "review": {
+          "result": "pass",
+          "by": "fresh-context reviewer of the F499 diff, plus the earlier four-area review of the refactor",
+          "summary": "Read-only review of origin/main..HEAD for F499. No production code changed: only openapi.yaml description text and pay.spec.ts comments outside tests and docs. Every restored test was diffed against the pre-refactor tree and matches it except deliberate renames to current names; none skipped or weakened; the riskiest ones were read and fail when the guarded code is removed. Mutation checks were run by the authors for each restored guard. Docs citations to PLAN sections that shipped were removed or retargeted to D-118 and D-102 and read correctly. Review findings fixed in the last commit: D-97 target, a dead PLAN 12.2a cite in D-120, two cut profile checks, and a component test for the range calendar's Shift keys. Known and left: three cases of the old fee table test (covered at HTTP level by TestEveryOptionCarriesTheHighestNetworkFee and TestAChainThatCantBePricedLeavesThePayerTheOthers); D-79 and D-80 read as history; the PLAN 10.1 comment in migration 00029 is untouched because editing a migration changes its checksum. Not covered: the full test suite and e2e were run by verify, not by the reviewer; docs/tasks.json was not reviewed.",
+          "at": "2026-11-20T16:52:07Z",
+          "filesHash": "29c125961c84b464"
+        },
+        "commit": "acac6d52",
+        "doneAt": "2026-11-20T17:01:08Z"
+      },
+      "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
+      "baseCommit": "ee3372cf2e6b11dbf3c9903b93db843aa94bc68a",
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
         "base": "main"
       }
     }

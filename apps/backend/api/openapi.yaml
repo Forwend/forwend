@@ -4186,7 +4186,7 @@ components:
         depositsTruncated: { type: "boolean" }
         returns:
           type: array
-          description: Held money the refund authority sent back to a payer, once booked, in chain order (PLAN 11.10.3).
+          description: Held money the refund authority sent back to a payer, once booked, in chain order (D-118).
           items:
             type: object
             additionalProperties: false
@@ -5943,7 +5943,7 @@ components:
                 email.receipt_ and sent or failed (R-126), invoice.edited (R-127), invoice.replaced (R-129),
                 invoice.reopened (R-130), whose until is the new close, invoice.numbered (R-141), when a payment-link
                 invoice took its number with its first deposit, invoice.return_queued and invoice.return_released,
-                when support queues or drops a return of held money (PLAN 11.10.3), or a payment through NEAR Intents
+                when support queues or drops a return of held money (D-118), or a payment through NEAR Intents
                 (R-234): crosschain.deposit_seen (asset and amount on the payer's chain), crosschain.converted
                 (amount of the option's USDC and the Base txHash), crosschain.refunded (asset and amount back to the
                 refund address) and crosschain.failed.

@@ -9,14 +9,43 @@ import (
 	"testing"
 )
 
-func TestCreateProfileErrors(t *testing.T) {
-	s, _, pool := newService(t)
+func TestCreateProfile(t *testing.T) {
+	s, f, pool := newService(t)
 	ctx := context.Background()
 	if _, _, err := s.SignUp(ctx, alice); err != nil {
 		t.Fatal(err)
 	}
+	p, created, err := s.Create(ctx, alice, "key-1", Merchant, "Shop")
+	if err != nil || !created || p.Kind != Merchant || p.Name != "Shop" || p.WalletAddress == "" {
+		t.Fatalf("got %+v, %v, %v", p, created, err)
+	}
+	again, created, err := s.Create(ctx, alice, "key-1", Merchant, "Shop")
+	if err != nil || created || again != p {
+		t.Fatalf("same key again: %+v, %v, %v; want the stored profile", again, created, err)
+	}
+	if _, _, err := s.Create(ctx, alice, "key-1", Freelancer, "Shop"); !errors.Is(err, ErrConflict) {
+		t.Fatalf("same key, other kind: %v, want ErrConflict", err)
+	}
+	other, _, err := s.Create(ctx, alice, "key-2", Freelancer, "")
+	if err != nil || other.Name != "" || other.WalletAddress == p.WalletAddress {
+		t.Fatalf("second profile %+v, %v; want no name and its own wallet", other, err)
+	}
+	if list, _ := s.List(ctx, alice); len(list) != 3 || count(t, pool, "profile_wallets") != 3 || f.Wallets() != 3 {
+		t.Fatalf("%d profiles, want personal, merchant and freelancer, each with a wallet", len(list))
+	}
+}
+
+func TestCreateProfileErrors(t *testing.T) {
+	s, _, pool := newService(t)
+	ctx := context.Background()
+	if _, _, err := s.Create(ctx, alice, "key-1", Merchant, ""); !errors.Is(err, ErrNotSignedUp) {
+		t.Fatalf("before signup: %v, want ErrNotSignedUp", err)
+	}
+	if _, _, err := s.SignUp(ctx, alice); err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range []struct{ kind, name string }{
-		{Merchant, strings.Repeat("é", MaxNameLength+1)}, {Merchant, "\xff"}, {Merchant, "a\x00b"},
+		{Personal, ""}, {"developer", ""}, {Merchant, strings.Repeat("é", MaxNameLength+1)}, {Merchant, "\xff"}, {Merchant, "a\x00b"},
 	} {
 		if _, _, err := s.Create(ctx, alice, "key-1", c.kind, c.name); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("kind %q name %q: %v, want ErrInvalid", c.kind, c.name, err)

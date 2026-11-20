@@ -1,13 +1,18 @@
 package document
 
 import (
+	"bytes"
+	"compress/zlib"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf16"
 
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/intents"
@@ -109,6 +114,19 @@ func TestStatusAsksForMoneyOnlyWhilePayable(t *testing.T) {
 			t.Errorf("%s: %q %q %q payable %v; want %q %q %q payable %v", c.name, s.label, s.figure, s.amount, s.payable,
 				c.label, c.figure, c.amount, c.payable)
 		}
+		if strings.Contains(s.detail, s.amount) || strings.Contains(s.detail, "2026") {
+			t.Errorf("%s: the panel's line %q repeats its figure or a date", c.name, s.detail)
+		}
+		for _, row := range s.totals[1:] {
+			if row[1] == s.amount && row[0] != "Left to pay" {
+				t.Errorf("%s: the totals repeat the panel's %s as %s", c.name, s.amount, row[0])
+			}
+		}
+	}
+	// Held money comes back through support, which the pay page's Need help names; the payee can't return it.
+	held := statusOf(with(ledger.ExpiredPartiallyPaid, func(i *invoice.Invoice) { i.Amounts.Held = big.NewInt(4_000000) }), now)
+	if !strings.Contains(held.detail, "Need help on the pay page") || strings.Contains(held.detail, " ask ") {
+		t.Errorf("expired partially paid: %q; want the way to Need help and no ask-the-payee", held.detail)
 	}
 	partial := statusOf(with(ledger.PartiallyPaid, func(i *invoice.Invoice) { i.Amounts.Payable = big.NewInt(4_000000) }), now)
 	if got := fmt.Sprint(partial.totals); got != "[[Total 10.00 USDC] [Received 4.00 USDC] [Left to pay 6.00 USDC]]" {
@@ -132,23 +150,96 @@ func TestFeesShowWhenTheClientPaysThem(t *testing.T) {
 	}
 }
 
-func TestReceiptOfARefundedQuoteDoesNotSayNEARIntents(t *testing.T) {
+func TestReceiptOfOneWholeTransfer(t *testing.T) {
+	paidAt := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	ten := big.NewInt(10_000000)
+	usdc := chain.Asset{ChainID: 84532, Symbol: "USDC", Decimals: 6}
+	amounts := &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: ten, Held: new(big.Int),
+		Settled: new(big.Int), Fees: new(big.Int), Refunded: new(big.Int)}
+	tx := "0x" + strings.Repeat("ab", 32)
+	inv := invoice.Invoice{Asset: usdc, Amount: ten, PaymentStatus: ledger.Paid, PaidAt: paidAt, CreatedAt: paidAt,
+		ClosesAt: paidAt.Add(time.Hour), OptionID: "o", Amounts: amounts, Options: []invoice.Option{{ID: "o",
+			Asset: usdc, Amount: ten, Amounts: amounts,
+			Deposits: []invoice.Deposit{{TxHash: tx, Amount: ten, Paid: ten, BlockTime: paidAt, Status: "confirmed"}}}}}
+	pdf, err := Receipt(inv, "https://example.com/pay/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.Join(pages(t, pdf), "\n")
+	if !strings.Contains(text, "Payment received\nDate (UTC)\nNetwork\nAmount\n28 Oct 2026, 12:00\nBase Sepolia\n10.00 USDC\n"+tx) ||
+		strings.Contains(text, "Applied") || strings.Contains(text, "\nReceived\n") {
+		t.Fatalf("one whole transfer: want its row alone, without Applied or totals:\n%s", text)
+	}
+}
+
+func TestReceiptNamesWhatWasPaidThroughNEARIntents(t *testing.T) {
 	paidAt := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
 	ten := big.NewInt(10_000000)
 	usdc := chain.Asset{ChainID: 8453, Symbol: "USDC", Decimals: 6}
 	amounts := &ledger.Amounts{ReconciliationStatus: ledger.ReconciliationVerified, Payable: ten, Held: new(big.Int),
 		Settled: new(big.Int), Fees: new(big.Int), Refunded: new(big.Int)}
-	inv := invoice.Invoice{Asset: usdc, Amount: ten, PaymentStatus: ledger.Paid, PaidAt: paidAt, CreatedAt: paidAt,
-		ClosesAt: paidAt.Add(time.Hour), OptionID: "o", Amounts: amounts,
-		Options: []invoice.Option{{ID: "o", Asset: usdc, Amount: ten, Amounts: amounts}},
-		CrossChain: &invoice.CrossChainPayment{Status: intents.Refunded, OptionID: "o", Symbol: "USDT", Blockchain: "bsc",
-			Decimals: 18, AmountIn: big.NewInt(1)}}
-	pdf, err := Receipt(inv, "https://example.com/pay/x", nil)
-	if err != nil {
-		t.Fatal(err)
+	sent, _ := new(big.Int).SetString("1263120000000000000000", 10)
+	receipt := func(status, option string) []byte {
+		inv := invoice.Invoice{Asset: usdc, Amount: ten, PaymentStatus: ledger.Paid, PaidAt: paidAt, CreatedAt: paidAt,
+			ClosesAt: paidAt.Add(time.Hour), SupplyDate: "2026-10-27", OptionID: "o", Amounts: amounts,
+			Options: []invoice.Option{{ID: "o", Asset: usdc, Amount: ten, Amounts: amounts}},
+			CrossChain: &invoice.CrossChainPayment{Status: status, OptionID: option, Symbol: "USDT", Blockchain: "bsc",
+				Decimals: 18, AmountIn: sent}}
+		pdf, err := Receipt(inv, "https://example.com/pay/x", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return pdf
 	}
-	if text := strings.Join(pages(t, pdf), "\n"); strings.Contains(text, "NEAR Intents") {
-		t.Fatalf("a refunded quote's receipt says NEAR Intents:\n%s", text)
+	want := "1,263.12 USDT on BNB Chain through NEAR Intents"
+	x, ok := drawnAt(t, receipt(intents.Success, "o"), want)
+	if !ok {
+		t.Fatalf("receipt doesn't say %q", want)
+	}
+	measure := open("Receipt", "", "", paidAt, nil, false, "")
+	measure.SetFont(font, "", 9.5)
+	if end := x + measure.GetStringWidth(want); end > margin+width {
+		t.Errorf("%q ends at %.1f mm, past the right margin at %.0f mm", want, end, margin+width)
+	}
+	if _, ok := drawnAt(t, receipt(intents.Refunded, "o"), "through NEAR Intents"); ok {
+		t.Error("a refunded quote's receipt says Paid with")
+	}
+	if _, ok := drawnAt(t, receipt(intents.Success, "base"), "through NEAR Intents"); ok {
+		t.Error("the receipt of an invoice paid on another option says Paid with")
+	}
+}
+
+// drawnAt is where, in mm from the page's left edge, a text run containing text starts.
+func drawnAt(t *testing.T, pdf []byte, text string) (float64, bool) {
+	t.Helper()
+	run := regexp.MustCompile(`BT ([0-9.]+) [0-9.]+ Td \(((?:\\.|[^\\)])*)\)Tj`)
+	for rest := pdf; ; {
+		start := bytes.Index(rest, []byte("stream\n"))
+		if start < 0 {
+			return 0, false
+		}
+		rest = rest[start+len("stream\n"):]
+		end := bytes.Index(rest, []byte("\nendstream"))
+		zr, err := zlib.NewReader(bytes.NewReader(rest[:end]))
+		rest = rest[end+len("\nendstream"):]
+		if err != nil {
+			continue
+		}
+		content, err := io.ReadAll(zr)
+		if err != nil {
+			continue
+		}
+		for _, m := range run.FindAllSubmatch(content, -1) {
+			raw := regexp.MustCompile(`\\(.)`).ReplaceAll(m[2], []byte("$1"))
+			units := make([]uint16, len(raw)/2)
+			for j := range units {
+				units[j] = uint16(raw[2*j])<<8 | uint16(raw[2*j+1])
+			}
+			if strings.Contains(string(utf16.Decode(units)), text) {
+				pt, _ := strconv.ParseFloat(string(m[1]), 64)
+				return pt * 25.4 / 72, true
+			}
+		}
 	}
 }
 
