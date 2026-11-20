@@ -80,6 +80,7 @@ func (e invoiceEnv) closeCheckout(t *testing.T, id string) {
 }
 
 func TestListInvoicesFilterAndSearch(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	body := func(amount, details string) string {
 		return `{"chainId": 84532, "token": "` + usdc + `", "amount": "` + amount + `"` + details + `}`
@@ -151,6 +152,7 @@ func TestListInvoicesFilterAndSearch(t *testing.T) {
 }
 
 func TestClosedCheckoutReadsExpired(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	var ids []string
 	for i := range 5 {
@@ -199,6 +201,7 @@ func TestClosedCheckoutReadsExpired(t *testing.T) {
 }
 
 func TestGetActivityFilterAndSearch(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	var ids []string
 	for i := range 3 {
@@ -247,6 +250,7 @@ func TestGetActivityFilterAndSearch(t *testing.T) {
 }
 
 func TestGetTransactionsFilterAndSearch(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	// Transfer n: block time n, hash of the letter pair, counterparty of the digit.
 	for _, tr := range []struct {
@@ -280,6 +284,7 @@ func TestGetTransactionsFilterAndSearch(t *testing.T) {
 }
 
 func TestSearchAndCursorWithBadBytesAre422(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	p := "/v1/profiles/" + e.aliceProfile
 	cursor := func(s string) string { return url.QueryEscape(base64.RawURLEncoding.EncodeToString([]byte(s))) }

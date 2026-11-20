@@ -69,7 +69,10 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
 - A passing check is reused only when its input contents, command, runner, execution environment, selected packages and tool versions match.
 - Ignored package environment files participate in applicable fingerprints. Their values are never written into check records.
 - Local results expire after 24 hours. Use `verify ID --fresh` or `check --fresh` to force execution.
-- Failed checks are never reused. Verification stops at the first failure and preserves earlier successful results.
+- Failed checks are never reused. A failure stops its lane and preserves earlier successful results.
+  - Checks in different lanes of the registry run at the same time; a failure stops only its own lane (R-257).
+  - Checks without a `lane` run in the `main` lane. `unit`, `contracts`, `backend`, `backend-affected` and `symbolic` share the `unit` lane.
+  - `symbolic` cleans the contracts build that `e2e` also reads. Run it alone or with `--lane unit`, as staging CI does.
 - Source changes during execution invalidate the result. Changes to task wording require fresh evidence binding, but unchanged checks can be reused.
 - Git-injected commit identity and index-location metadata do not invalidate results; execution configuration still does.
 - Pre-commit checks use the same selection and cache. Stage the complete change first; partially staged inputs are refused.

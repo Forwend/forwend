@@ -10,6 +10,7 @@ import (
 
 // A lock whose client vanished without a close must be freed in about a minute, not the two hours TCP takes by default.
 func TestLockConnectionNoticesALostClientSoon(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	pool, err := Open(ctx, databasetest.New(t))
 	if err != nil {

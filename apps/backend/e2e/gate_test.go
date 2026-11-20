@@ -52,6 +52,7 @@ const (
 // TestMoneyLoop pays an invoice on Anvil and follows it to settled through the worker and signer; the ledger then
 // equals the chain.
 func TestMoneyLoop(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	st := newStack(t, false)
 	anvil, token, privy, api, conn, profile, limited := st.anvil, st.token, st.privy, st.api, st.conn, st.profile, st.limited
@@ -287,20 +288,25 @@ func newStack(t *testing.T, singleRPC bool, apiEnv ...string) *stack {
 		_, _ = io.WriteString(w, `{"usd-coin":{"usd":0.9996,"last_updated_at":1793212112}}`)
 	}))
 	t.Cleanup(coinGeckoFake.Close)
-	apiAddr := freeAddr(t)
 	common := []string{"DATABASE_URL=" + dbURL}
 	rpcs := []string{"RPC_ENDPOINT_SECRETS=", "RPC_ALLOW_LOOPBACK=1", "RPC_RATE_PER_SECOND=100"}
-	start(t, bin, "api", append(append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
-		"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
-		"PUBLIC_WEB_URL=http://localhost:3000", "WEBHOOK_SECRET_KEY="+webhookKey), apiEnv...))
-	api := "http://" + apiAddr
-	waitFor(t, "api healthy", func() bool {
-		res, err := http.Get(api + "/healthz")
-		if err == nil {
-			res.Body.Close()
-		}
-		return err == nil && res.StatusCode == http.StatusOK
-	})
+	api := func() string {
+		apiStart.Lock()
+		defer apiStart.Unlock()
+		apiAddr := freeAddr(t)
+		start(t, bin, "api", append(append(append(common, rpcs...), "API_ADDR="+apiAddr, "PRIVY_APP_ID="+appID,
+			"PRIVY_JWKS_URL="+privy.JWKSURL, "PRIVY_APP_SECRET=unused", // this test makes its profile in the database
+			"PUBLIC_WEB_URL=http://localhost:3000", "WEBHOOK_SECRET_KEY="+webhookKey), apiEnv...))
+		api := "http://" + apiAddr
+		waitFor(t, "api healthy", func() bool {
+			res, err := http.Get(api + "/healthz")
+			if err == nil {
+				res.Body.Close()
+			}
+			return err == nil && res.StatusCode == http.StatusOK
+		})
+		return api
+	}()
 
 	conn, err := pgx.Connect(ctx, dbURL)
 	if err != nil {
@@ -417,6 +423,10 @@ func start(t *testing.T, bin, name string, env []string) (stop func()) {
 	})
 	return stop
 }
+
+// Parallel stacks start their apis one at a time: freeAddr's port is free again until the api binds it,
+// and another stack's api answering /healthz there would pass for this one.
+var apiStart sync.Mutex
 
 func freeAddr(t *testing.T) string {
 	t.Helper()

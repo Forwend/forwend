@@ -14,6 +14,7 @@ import (
 )
 
 func TestLinkCheckout(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	const eurc = "0x3333333333333333333333333333333333333333"
@@ -150,6 +151,7 @@ func TestLinkCheckout(t *testing.T) {
 }
 
 func TestLinkPayIsRateLimited(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
 		"did:privy:alice", "", `{"title": "Hourly", "amountUsd": "1"}`)
@@ -197,6 +199,7 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 }
 
 func TestLinkPayRefusedByCreateSpendsNoSharedBudget(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	// Links forced active on a profile that can't invoice: create refuses each Pay.
 	for i := range 5 {
@@ -223,6 +226,7 @@ func TestLinkPayRefusedByCreateSpendsNoSharedBudget(t *testing.T) {
 }
 
 func TestOneStrangerCantStopABusyLink(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
 		"did:privy:alice", "", `{"title": "Hourly", "amountUsd": "1"}`)
@@ -259,6 +263,7 @@ func TestOneStrangerCantStopABusyLink(t *testing.T) {
 }
 
 func TestUnpaidClosedLinkCheckoutsDontUseUpTheDaysQuota(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
 		"did:privy:alice", "", `{"title": "Hourly", "amountUsd": "1"}`)

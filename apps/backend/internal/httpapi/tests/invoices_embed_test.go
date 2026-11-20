@@ -8,6 +8,7 @@ import (
 )
 
 func TestEmbedAllowedOnlyForTheStoresExactOrigins(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestReviseReplacesTheInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	old := e.post(t, alice, e.aliceProfile, "key-1", basicBody).body

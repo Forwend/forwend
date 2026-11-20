@@ -119,6 +119,7 @@ func (h hookEnv) deliver(t *testing.T) {
 }
 
 func TestWebhookBodyBuildEndsBeforeItsLeaseExpires(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	h.canceled(t, "body-deadline")
 	bounded := make(chan bool, 1)
@@ -144,6 +145,7 @@ func TestWebhookBodyBuildEndsBeforeItsLeaseExpires(t *testing.T) {
 }
 
 func TestADeliveryThatCantBeBuiltFailsOnTheSchedule(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	broken := h.canceled(t, "unbuildable")
 	healthy := h.canceled(t, "healthy")
@@ -184,6 +186,7 @@ func TestADeliveryThatCantBeBuiltFailsOnTheSchedule(t *testing.T) {
 }
 
 func TestWebhookManualQueueBudgetPreservesFinancialEvents(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	path := "/v1/profiles/" + h.shop + "/webhooks/" + h.endpoint + "/test"
 	for range webhook.ManualPendingLimit {
@@ -260,6 +263,7 @@ func signedBy(secret string, req *http.Request, body []byte) bool {
 }
 
 func TestWebhookDeliveriesAreSignedAndRetried(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	event := h.canceled(t, "key-1")
 	first := h.secrets(t)
@@ -317,6 +321,7 @@ func TestWebhookDeliveriesAreSignedAndRetried(t *testing.T) {
 }
 
 func TestDeliveriesStaySignedWhateverTheProfilesMode(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	h.canceled(t, "key-1")
 	first := h.secrets(t)
@@ -329,6 +334,7 @@ func TestDeliveriesStaySignedWhateverTheProfilesMode(t *testing.T) {
 }
 
 func TestWebhookEndpointsTurnOff(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	other, edge := "dddddddd-0000-4000-8000-000000000002", "dddddddd-0000-4000-8000-000000000003"
 	h.addEndpoint(t, other, h.recv.URL+"/other")
@@ -401,6 +407,7 @@ func TestWebhookEndpointsTurnOff(t *testing.T) {
 }
 
 func TestAClaimedDeliveryIsSentOnce(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	h.canceled(t, "key-1")
 	release := make(chan struct{})
@@ -429,6 +436,7 @@ func TestAClaimedDeliveryIsSentOnce(t *testing.T) {
 }
 
 func TestAHostileAnswerIsLogged(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	event := h.canceled(t, "key-1")
 	h.recv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -447,6 +455,7 @@ func TestAHostileAnswerIsLogged(t *testing.T) {
 }
 
 func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	const alice = "did:privy:alice"
 	hook := "/v1/profiles/" + h.shop + "/webhooks/" + h.endpoint
@@ -540,6 +549,7 @@ func TestOwnerResendsAndTestsDeliveries(t *testing.T) {
 }
 
 func TestAnAttemptInFlightKeepsAResend(t *testing.T) {
+	t.Parallel()
 	h := newHookEnv(t)
 	event := h.canceled(t, "key-1")
 	// The last attempt: its failure would turn the endpoint off.

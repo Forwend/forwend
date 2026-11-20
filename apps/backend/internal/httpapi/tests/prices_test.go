@@ -8,6 +8,7 @@ import (
 )
 
 func TestPrices(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	if r := e.call(t, "GET", "/v1/prices", "", "", ""); r.status != http.StatusUnauthorized || errorCode(r) != "unauthorized" {
 		t.Fatalf("GET without a token: %d %v", r.status, r.body)

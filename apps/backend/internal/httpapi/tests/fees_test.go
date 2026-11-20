@@ -35,6 +35,7 @@ func (q *quote) NetworkFee(_ context.Context, chainID uint64) (*big.Rat, error) 
 }
 
 func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
+	t.Parallel()
 	q := &quote{usd: big.NewRat(5, 100)}
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: q})
 	const alice = "did:privy:alice"
@@ -106,6 +107,7 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 }
 
 func TestTransactionsShowASettlementsFees(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100)}})
 	const alice = "did:privy:alice"
 	made := e.post(t, alice, e.aliceProfile, "fee-1", basicBody)
@@ -131,6 +133,7 @@ func TestTransactionsShowASettlementsFees(t *testing.T) {
 }
 
 func TestAPaymentLinkChoosesWhoPaysTheFees(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100)}})
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -158,6 +161,7 @@ func TestAPaymentLinkChoosesWhoPaysTheFees(t *testing.T) {
 }
 
 func TestAChainThatCantBePricedLeavesThePayerTheOthers(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100), failing: 421614}})
 	const alice, arbitrum = "did:privy:alice", "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
 	e.exec(t, `WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (421614, 'evm', 'arbitrum-sepolia', true)
@@ -177,6 +181,7 @@ func TestAChainThatCantBePricedLeavesThePayerTheOthers(t *testing.T) {
 }
 
 func TestEveryOptionCarriesTheHighestNetworkFee(t *testing.T) {
+	t.Parallel()
 	q := &quote{usd: big.NewRat(1, 100), per: map[uint64]*big.Rat{421614: big.NewRat(6, 100)}}
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: q})
 	const alice, arbitrum = "did:privy:alice", "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"

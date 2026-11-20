@@ -441,14 +441,24 @@ test.describe("pay page", () => {
       await page.reload();
       await check.click();
       await expect(answer).toBeVisible();
-      const [row, button, below] = await Promise.all([
-        waiting.boundingBox(),
-        check.boundingBox(),
-        answer.boundingBox(),
-      ]);
-      const middle = (box: typeof row) => (box ? box.y + box.height / 2 : 0);
+      // Read in one frame: the panel glides as the answer opens, and separate reads can land on different frames.
+      const { row, button, below } = await page.evaluate(
+        ([row, button, below]) => {
+          const box = (element: Element) => {
+            const { y, height } = element.getBoundingClientRect();
+            return { y, height };
+          };
+          return { row: box(row), button: box(button), below: box(below) };
+        },
+        [
+          await waiting.elementHandle(),
+          await check.elementHandle(),
+          await answer.elementHandle(),
+        ] as const,
+      );
+      const middle = (box: typeof row) => box.y + box.height / 2;
       expect(Math.abs(middle(row) - middle(button))).toBeLessThan(4);
-      expect(below && button && below.y >= button.y + button.height).toBe(true);
+      expect(below.y).toBeGreaterThanOrEqual(button.y + button.height);
     }
   });
 

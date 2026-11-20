@@ -113,6 +113,7 @@ func TestLockRunsOneWorkerAtATime(t *testing.T) {
 }
 
 func TestHeldGivesUpOnASilentConnection(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	cfg, err := pgxpool.ParseConfig(databasetest.New(t))
 	if err != nil {

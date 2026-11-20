@@ -19,10 +19,13 @@ const (
 
 // The shared budget, spent only by an email that goes out, keeps the public receipt route from mass mailing.
 const (
-	PayerEmailRate, PayerEmailBurst       = 0.1, 3
-	PickRate, PickBurst                   = 0.2, 10
-	PayerEmailAllRate, PayerEmailAllBurst = 5, 20
+	PayerEmailRate, PayerEmailBurst = 0.1, 3
+	PickRate, PickBurst             = 0.2, 10
+	PayerEmailAllBurst              = 20
 )
+
+// The shared refill per second; a var so a test can stop the refill.
+var PayerEmailAllRate = 5.0
 
 // Each pay link's own budget keeps public page loads from running up its view count.
 const ViewRate, ViewBurst = 0.2, 5

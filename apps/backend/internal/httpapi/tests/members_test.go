@@ -12,6 +12,7 @@ import (
 )
 
 func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	const alice = "did:privy:alice"
@@ -220,6 +221,7 @@ func TestMembersReachOnlyWhatTheirRoleAllows(t *testing.T) {
 }
 
 func TestMemberSignUpMakesNoWalletForTheirTeamsProfile(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	const dave = "did:privy:dave"
@@ -246,6 +248,7 @@ func TestMemberSignUpMakesNoWalletForTheirTeamsProfile(t *testing.T) {
 }
 
 func TestDeveloperStoreEditPreservesUnavailableTokenRestrictions(t *testing.T) {
+	t.Parallel()
 	for _, table := range []string{"chains", "tokens"} {
 		t.Run(table, func(t *testing.T) {
 			e := invoiceAPI(t)
@@ -287,6 +290,7 @@ func TestDeveloperStoreEditPreservesUnavailableTokenRestrictions(t *testing.T) {
 }
 
 func TestPendingRoleChangeCannotUndoDemotion(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	store := storeIDs(t, e, shop)[0]

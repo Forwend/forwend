@@ -9,6 +9,7 @@ import (
 )
 
 func TestBalanceRoundSharesTheSecondProviderHeader(t *testing.T) {
+	t.Parallel()
 	a := chaintest.Start(t)
 	token := a.DeployToken()
 	a.Mint(token, "1000000")

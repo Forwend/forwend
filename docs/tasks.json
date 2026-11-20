@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 500,
+  "nextId": 501,
   "tasks": [
     {
       "id": "F332",
@@ -543,6 +543,112 @@
         "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
         "base": "main"
       }
+    },
+    {
+      "id": "F500",
+      "type": "perf",
+      "behavior": "Checks give their answer fast and never hide a failure",
+      "acceptance": [
+        "The slowest Go packages (httpapi/tests, settlement, ledger, database) run their tests in parallel and pass with -race and -shuffle=on several times in a row; the backend unit check is at least twice as fast as before (97 s).",
+        "The backend e2e tests run in parallel and pass; the backend e2e check is faster than before (31 s).",
+        "Browser tests run fully parallel with no retries on CI and pass several times in a row.",
+        "Verification runs checks in different lanes at the same time; a failure stops only its lane; every failure is reported; harness tests cover it.",
+        "Staging CI runs each lane as its own job and still runs every required and CI-only check."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "harness",
+        "unit",
+        "e2e"
+      ],
+      "refs": [
+        "R-257",
+        "R-158",
+        "R-40"
+      ],
+      "keep": [],
+      "review": true,
+      "notes": [
+        "2026-11-20 review pass by reviewer: No blocking defect. Checked: every parallel Go test vs process-wide writes (slog default, http.DefaultTransport, chain.EthUSD, reauth.TwoStepWait stay in sequential tests with Cleanup restore; removed signedInAt write was the only shared var); go test -race -count=3 -shuffle=on on httpapi/tests, settlement, ledger, database passes; backend e2e -count=2 -shuffle passes; harness 67 tests and docs-check pass. Lanes: cache writes under lock, done/errors safe, lane exception propagates and stops other lanes (tried), SIGTERM/Ctrl-C stop every RUNNING check, cmd_verify fails when a lane stops early (len(results) < len(order)). CI matrix [main, unit] covers all required and CI-only checks; artifact names unique. Non-blocking: (1) docs/workflow.md:73 says Go and forge checks share the unit lane, but backend-e2e and e2e (Go e2e reading packages/contracts/out) and build (forge build via turbo) are main lane; a local check --ci without --lane, or an explicit symbolic task check, can run forge clean while backend e2e reads out/ and fail spuriously; CI jobs are separate so CI is safe. Concurrent forge compiles showed no torn artifact reads in 3 trials. (2) verification.run: a lane thread that passed cancelled.is_set() just before stop_running() can still start one check that outlives the harness; tiny window. (3) signedInAt is now fixed at process start: fresh-sign-in tests need the httpapi/tests process to finish within auth.FreshWindow (15 min); now about 66 s. (4) e2e freeAddr reserves then closes a port; with parallel stacks a reused port would let waitFor(api healthy) reach another test's API; low odds. (5) The CI Postgres restart step is only actionlint-checked until a staging run.",
+        "2026-11-20 review pass by reviewer: Re-review of changes since the last pass; no blocking defect. (1) e2e/gate_test.go apiStart mutex: freeAddr through /healthz runs under the lock, and defer Unlock covers t.Fatal; the only other freeAddr caller is the sequential loadtest. (2) docs/workflow.md lane bullets match config.json. Nit: backend-e2e also reads the contracts build, not only e2e. (3) chain/budget_test: rates give api next_at about now+6.25 s and money about now+0.4 s. The order check catches a shared bucket (no row) and a too-small money share, and drops only the 200 ms wall-clock bound. (4) pay.spec.ts reads the three rects in one evaluate: 10/10 with --repeat-each=10; tsc and biome clean. (5) PayerEmailAllRate var: routes.go reads it once when the router is built, the test is sequential with a Cleanup restore, and mid.Buckets handles rate 0 (as DryQuoteAllRate already does). (6) TestUserRateLimit with burst 3 still checks 429, rate_limited, Retry-After 1, per-user buckets and refill. It no longer asserts the default 60 or the 0->mid.UserBurst fallback in guards.go:27: a small, acceptable loss. Ran: go test -race -count=3 -shuffle=on ./internal/chain ./internal/httpapi/tests ok; the two rate tests with -count=5 ok; e2e -count=2 -shuffle ok; harness tests and docs-check ok."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-20T18:12:38Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.8,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.8,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 82.0,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 4.1,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 45.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "7e06ddd8b6a6081e",
+        "filesHash": "aa4a703fe0eabc4a",
+        "proof": {
+          "1": "unit: backend go test -race passes with t.Parallel in httpapi/tests, settlement, ledger, database (40-43 s vs 97 s); budget, payer-email and user-limit tests no longer depend on machine speed (old versions fail when slowed, new ones pass)",
+          "2": "e2e: backend e2e tests run in parallel, apis start one at a time on their own port; runs pass in 13-15 s vs 31 s before",
+          "3": "e2e: Playwright fullyParallel, no CI retries; 146/146 pass in 33.5 s vs 53.5 s, 438/438 with --repeat-each=3; the Check status layout test reads its boxes in one frame (40/40)",
+          "4": "harness: test_lanes_run_side_by_side_and_a_failure_stops_only_its_lane and test_sigterm_stops_the_checks_of_every_lane fail on the old runner and pass now",
+          "5": "harness: test_staging_ci_runs_every_lane matches ci.yml's lane matrix [main, unit] to the registry; actionlint passes"
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review of changes since the last pass; no blocking defect. (1) e2e/gate_test.go apiStart mutex: freeAddr through /healthz runs under the lock, and defer Unlock covers t.Fatal; the only other freeAddr caller is the sequential loadtest. (2) docs/workflow.md lane bullets match config.json. Nit: backend-e2e also reads the contracts build, not only e2e. (3) chain/budget_test: rates give api next_at about now+6.25 s and money about now+0.4 s. The order check catches a shared bucket (no row) and a too-small money share, and drops only the 200 ms wall-clock bound. (4) pay.spec.ts reads the three rects in one evaluate: 10/10 with --repeat-each=10; tsc and biome clean. (5) PayerEmailAllRate var: routes.go reads it once when the router is built, the test is sequential with a Cleanup restore, and mid.Buckets handles rate 0 (as DryQuoteAllRate already does). (6) TestUserRateLimit with burst 3 still checks 429, rate_limited, Retry-After 1, per-user buckets and refill. It no longer asserts the default 60 or the 0->mid.UserBurst fallback in guards.go:27: a small, acceptable loss. Ran: go test -race -count=3 -shuffle=on ./internal/chain ./internal/httpapi/tests ok; the two rate tests with -count=5 ok; e2e -count=2 -shuffle ok; harness tests and docs-check ok.",
+          "at": "2026-11-20T18:21:41Z",
+          "filesHash": "aa4a703fe0eabc4a"
+        }
+      },
+      "branch": "perf/f500-checks-give-their-answer-fast-and-never",
+      "baseCommit": "ae2551a25ca1bf117223ca6eb39b97f29914e8e7",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

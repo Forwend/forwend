@@ -128,7 +128,6 @@ func invoiceAPICrossChain(t *testing.T, userBurst int, webhookKey []byte, client
 	}
 	t.Cleanup(pool.Close)
 	e := invoiceEnv{pool: pool, privyKey: privyKey, wallets: privytest.New(t)}
-	signedInAt = time.Now()
 	e.wallets.PasskeySignIn = signedInAt.Unix()
 	err = pool.QueryRow(ctx, `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true
@@ -244,6 +243,7 @@ func errorCode(r reply) string {
 const basicBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000000"}`
 
 func TestCreateInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	before := time.Now().UTC().Truncate(time.Second)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
@@ -322,6 +322,7 @@ const detailsBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "5000
 	"taxId": "DE999999999"}}`
 
 func TestCreateInvoiceStoresDetails(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody)
 	if r.status != http.StatusCreated {
@@ -361,6 +362,7 @@ func TestCreateInvoiceStoresDetails(t *testing.T) {
 }
 
 func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	// The setup's billing details: billingBody's.
@@ -396,6 +398,7 @@ func TestInvoiceKeepsItsIssuerCopy(t *testing.T) {
 }
 
 func TestBusinessInvoiceNeedsBillingDetails(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	wallet := `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
@@ -431,6 +434,7 @@ func unhex(t *testing.T, s string) []byte {
 }
 
 func TestCreateInvoiceIsIdempotent(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	first := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
 	again := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
@@ -448,6 +452,7 @@ func TestCreateInvoiceIsIdempotent(t *testing.T) {
 }
 
 func TestCreateInvoiceSameKeyConcurrently(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	replies := make([]reply, 10)
 	var wg sync.WaitGroup
@@ -477,6 +482,7 @@ func TestCreateInvoiceSameKeyConcurrently(t *testing.T) {
 }
 
 func TestCreateInvoiceErrors(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	body := func(fields string) string { return `{"chainId": 84532, "token": "` + usdc + `", ` + fields + `}` }
 	tests := []struct {
@@ -557,6 +563,7 @@ func TestCreateInvoiceErrors(t *testing.T) {
 }
 
 func TestGetInvoiceNotFound(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	for _, id := range []string{"0x" + strings.Repeat("ab", 32), "not-an-id"} {
 		if r := e.get(t, id); r.status != http.StatusNotFound || errorCode(r) != "invoice_not_found" {
@@ -566,6 +573,7 @@ func TestGetInvoiceNotFound(t *testing.T) {
 }
 
 func TestGetInvoiceKeepsTheConfirmingTotal(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
 	id, receive := created.body["invoiceId"].(string), created.body["receiveAddress"].(string)
@@ -602,6 +610,7 @@ func TestGetInvoiceKeepsTheConfirmingTotal(t *testing.T) {
 
 // A wallet equal to the token: terms settle() would refuse.
 func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	_, err := e.pool.Exec(context.Background(), `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id,
 		chain_family, address) VALUES ($1, 'privy', 'wallet-2', 'evm', $2)`, e.walletless, usdc)
@@ -617,6 +626,7 @@ func TestCreateInvoiceRefusesUnsettleableTerms(t *testing.T) {
 }
 
 func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	created := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody)
 	id, receive := created.body["invoiceId"].(string), created.body["receiveAddress"].(string)
@@ -668,6 +678,7 @@ func TestGetInvoiceListsDepositsWithProgress(t *testing.T) {
 }
 
 func TestListInvoices(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/invoices"
 	empty := e.call(t, "GET", path, "did:privy:alice", "", "")
@@ -749,6 +760,7 @@ func TestListInvoices(t *testing.T) {
 }
 
 func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -812,6 +824,7 @@ func TestOwnerSeesWhyAPaidInvoiceWaits(t *testing.T) {
 }
 
 func TestGetProfileInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", detailsBody).body["invoiceId"].(string)
 	path := func(profile, invoice string) string { return "/v1/profiles/" + profile + "/invoices/" + invoice }
@@ -850,6 +863,7 @@ func TestGetProfileInvoice(t *testing.T) {
 }
 
 func TestHugeAmountUSDIsRefusedBeforeParsing(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	body := `{"amountUsd": "` + strings.Repeat("9", 1<<20-100) + `"}`
 	start := time.Now()

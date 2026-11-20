@@ -12,6 +12,7 @@ import (
 )
 
 func TestUnminedReceiptDoesNotHammerTheProvider(t *testing.T) {
+	t.Parallel()
 	a := chaintest.Start(t)
 	p := a.Proxy()
 	client, err := ethclient.Dial(p.URL)

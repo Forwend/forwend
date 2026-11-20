@@ -2,6 +2,8 @@
 services:
   postgres:
     image: postgres:17
+    # Parallel Go tests and the backend e2e stacks, run side by side, peak near 150 connections; the default is 100.
+    command: ["postgres", "-c", "max_connections=300"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set in apps/backend/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in apps/backend/.env}

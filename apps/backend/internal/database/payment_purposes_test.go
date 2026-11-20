@@ -11,6 +11,7 @@ import (
 )
 
 func TestPaymentPurposeMigrationPreservesLegacyDocuments(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
 	if err != nil {

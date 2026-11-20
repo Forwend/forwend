@@ -129,6 +129,7 @@ func (s *sim) payment(id string) (payment, refund string) {
 }
 
 func TestLaggingSecondRPCNeverExpiresAPaidInvoice(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.transfer(id, receive, 5000000, simExpires-10, "confirmed")
@@ -146,6 +147,7 @@ func TestLaggingSecondRPCNeverExpiresAPaidInvoice(t *testing.T) {
 }
 
 func TestPendingOnTimeDepositDelaysExpiry(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	tid := s.transfer(id, receive, 5000000, simExpires-10, "detected")
@@ -162,6 +164,7 @@ func TestPendingOnTimeDepositDelaysExpiry(t *testing.T) {
 }
 
 func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.answer[receive] = big.NewInt(5000000)
@@ -179,6 +182,7 @@ func TestUnexplainedBalanceDelaysExpiry(t *testing.T) {
 }
 
 func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	ctx := context.Background()
 	alert := func(id string) (excess bool) {
@@ -221,6 +225,7 @@ func TestPaidInvoiceWithUnbookedMoneyAlerts(t *testing.T) {
 }
 
 func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.answer[receive] = new(big.Int).Sub(DustExcess(6), big.NewInt(1))
@@ -232,6 +237,7 @@ func TestDustNoTransferExplainsDoesNotDelayExpiry(t *testing.T) {
 }
 
 func TestDustFollowsTheTokensDecimals(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	s.exec("UPDATE tokens SET decimals = 18")
 	dust, receive := s.invoice()
@@ -250,6 +256,7 @@ func TestDustFollowsTheTokensDecimals(t *testing.T) {
 }
 
 func TestRefundOfAMissedDepositWaitsForThatDeposit(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	ctx := context.Background()
 	id, receive := s.invoice()
@@ -286,6 +293,7 @@ func TestRefundOfAMissedDepositWaitsForThatDeposit(t *testing.T) {
 }
 
 func TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	ctx := context.Background()
 	id, receive := s.invoice()
@@ -320,6 +328,7 @@ func TestRefundBeforeTheMissedDepositBooksOnceItIsRecorded(t *testing.T) {
 }
 
 func TestBalanceAlertEndsWhenTheBalanceAgreesAgain(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	ctx := context.Background()
 	id, receive := s.invoice()
@@ -349,6 +358,7 @@ func TestBalanceAlertEndsWhenTheBalanceAgreesAgain(t *testing.T) {
 }
 
 func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	var stuck []string
 	for range 20 {
@@ -403,6 +413,7 @@ func TestUnexplainedBalanceWaitsLongerEachTime(t *testing.T) {
 }
 
 func TestPartlyPaidInvoiceCompletedWhileTheRPCLagsIsPaidLater(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.transfer(id, receive, 2000000, simExpires-100, "confirmed")
@@ -427,6 +438,7 @@ func TestPartlyPaidInvoiceCompletedWhileTheRPCLagsIsPaidLater(t *testing.T) {
 }
 
 func TestOwedInFullButShortOnChainIsListedForAnAlert(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.transfer(id, receive, 5000000, simExpires-100, "confirmed")
@@ -452,6 +464,7 @@ func TestOwedInFullButShortOnChainIsListedForAnAlert(t *testing.T) {
 }
 
 func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.answer[receive] = big.NewInt(5000000)
@@ -475,6 +488,7 @@ func TestSecondRPCBehindFinalizedNeverDecides(t *testing.T) {
 }
 
 func TestProcessChainContinuesAfterAnError(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	broken, brokenReceive := s.invoice()
 	ok, okReceive := s.invoice()
@@ -490,6 +504,7 @@ func TestProcessChainContinuesAfterAnError(t *testing.T) {
 }
 
 func TestInvoiceStartsOpen(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	_, err := s.pool.Exec(context.Background(), `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
@@ -504,6 +519,7 @@ func TestInvoiceStartsOpen(t *testing.T) {
 }
 
 func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.exec(`UPDATE invoices SET payment_status = 'canceled', canceled_at = now() WHERE id = $1`, id)
@@ -531,6 +547,7 @@ func TestCanceledInvoiceHoldsEveryDeposit(t *testing.T) {
 }
 
 func TestOutboxEventsFollowTheLedger(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	events := func(id string) []string {
 		t.Helper()
@@ -570,6 +587,7 @@ func TestOutboxEventsFollowTheLedger(t *testing.T) {
 }
 
 func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.exec(`UPDATE invoices SET payer_email = 'payer@example.com' WHERE id = $1`, id)
@@ -585,6 +603,7 @@ func TestPaidQueuesTheReceiptWhenAsked(t *testing.T) {
 }
 
 func TestRoundReadsInvoicesThroughTheirIndexes(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, _ := s.invoice()
 	plans := databasetest.Plans(t, s.pool.Config().ConnString(), func(pool *pgxpool.Pool) {
@@ -604,6 +623,7 @@ func TestRoundReadsInvoicesThroughTheirIndexes(t *testing.T) {
 }
 
 func TestUnchangedStatusIsNotWrittenAgain(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, _ := s.invoice()
 	version := func() (xmin string) {

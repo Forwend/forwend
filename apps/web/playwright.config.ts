@@ -19,8 +19,9 @@ export default defineConfig({
   testDir: "./e2e",
   testIgnore: "privy/**", // playwright.privy.config.ts
   globalTeardown: "./e2e/unmatched.ts",
+  // Tests in one file run on any worker, so a long file never holds the run; a test that passes only on retry is a bug.
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: PUBLIC_URL,

@@ -6,6 +6,7 @@ import (
 )
 
 func TestInvoiceLines(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	line := func(invoice, position int, quantity, unitPrice, amount string) error {

@@ -14,6 +14,7 @@ import (
 )
 
 func TestHealthz(t *testing.T) {
+	t.Parallel()
 	pool, err := database.Open(context.Background(), databasetest.New(t))
 	if err != nil {
 		t.Fatal(err)

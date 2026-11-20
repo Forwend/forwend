@@ -31,6 +31,7 @@ var (
 // Held money of every kind, and another token, goes back through ops case, ops return and the printed Safe calls,
 // with the real binaries on Anvil (D-118, R-130, R-83). After each, the ledger equals the chain and the payer has it.
 func TestReturnsThroughSupport(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	st := newStack(t, false)
 	start(t, st.bin, "worker", st.loop) // the signer starts later: a return is queued before A settles

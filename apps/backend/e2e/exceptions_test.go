@@ -51,6 +51,7 @@ func (m *mailbox) mails() []sentMail {
 
 // TestExceptionsCancelAndEmail is the phase 9 gate (R-83), run with the real binaries on Anvil.
 func TestExceptionsCancelAndEmail(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	st := newStack(t, false)
 	mail := newMailbox(t)

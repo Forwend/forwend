@@ -232,6 +232,7 @@ func (e env) intent(t *testing.T, invoiceID string) (status, settlement, reason 
 }
 
 func TestSettlesAPaidInvoiceOnce(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -301,6 +302,7 @@ func TestSettlesAPaidInvoiceOnce(t *testing.T) {
 }
 
 func TestSettlementWithFeesIsBookedInFull(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.createWithFees(t, 7, 3600, 30000, 20000)
@@ -373,6 +375,7 @@ func TestSettlementWithFeesIsBookedInFull(t *testing.T) {
 }
 
 func TestOwnSettleIsSettledFromItsReceiptWithoutAScan(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -406,6 +409,7 @@ func TestOwnSettleIsSettledFromItsReceiptWithoutAScan(t *testing.T) {
 }
 
 func TestReceiptFromABlockNoLongerCanonicalIsNotRecorded(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -452,6 +456,7 @@ func TestReceiptFromABlockNoLongerCanonicalIsNotRecorded(t *testing.T) {
 }
 
 func TestRestartAfterSavingSendsTheSavedTransaction(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -481,6 +486,7 @@ func TestRestartAfterSavingSendsTheSavedTransaction(t *testing.T) {
 }
 
 func TestRestartAfterSendingSendsNothing(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -504,6 +510,7 @@ func TestRestartAfterSendingSendsNothing(t *testing.T) {
 }
 
 func TestRestartResendsAPendingSettleOnce(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -549,6 +556,7 @@ func TestRestartResendsAPendingSettleOnce(t *testing.T) {
 }
 
 func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
+	t.Parallel()
 	for name, seenBeforeTheStop := range map[string]bool{"never seen": false, "seen, not final": true} {
 		t.Run(name, func(t *testing.T) {
 			e := setup(t)
@@ -601,6 +609,7 @@ func TestPaidWhileTheWorkerWasDownSettlesAfterARestart(t *testing.T) {
 }
 
 func TestRefusesTermsThatDoNotMatch(t *testing.T) {
+	t.Parallel()
 	for name, tamper := range map[string]string{
 		"recipient is not the profile wallet": "UPDATE profile_wallets SET address = '0x2222222222222222222222222222222222222223'",
 		"terms do not compute the stored receive address": `ALTER TABLE invoices DISABLE TRIGGER invoices_guard;
@@ -629,6 +638,7 @@ func TestRefusesTermsThatDoNotMatch(t *testing.T) {
 }
 
 func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -651,6 +661,7 @@ func TestSentSettleIsFinishedEvenIfTheWalletChanged(t *testing.T) {
 }
 
 func TestPausedFactoryIsRetried(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -678,6 +689,7 @@ func TestPausedFactoryIsRetried(t *testing.T) {
 }
 
 func TestNonceTakenByAnotherTransaction(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -710,6 +722,7 @@ func TestNonceTakenByAnotherTransaction(t *testing.T) {
 }
 
 func TestForeignTxHashIsNotConfirmed(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -744,6 +757,7 @@ func (e env) settleOutside(t *testing.T, id, receive string) {
 }
 
 func TestExternallySettledIntentIsConfirmed(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -761,6 +775,7 @@ func TestExternallySettledIntentIsConfirmed(t *testing.T) {
 }
 
 func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -789,6 +804,7 @@ func TestStaleAttemptDoesNotOverwriteAConfirmedIntent(t *testing.T) {
 }
 
 func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -806,6 +822,7 @@ func TestSignerSkipsChainsItDoesNotServe(t *testing.T) {
 }
 
 func TestSettleDroppedByReorgIsSentAgain(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -837,6 +854,7 @@ func TestSettleDroppedByReorgIsSentAgain(t *testing.T) {
 }
 
 func TestAfterTheDeadlineTheSignerWaitsForTheRefundAuthority(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -890,6 +908,7 @@ func (e env) invoice(t *testing.T, id string) invoice.Invoice {
 }
 
 func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *testing.T) {
+	t.Parallel()
 	for name, send := range map[string]bool{"reverted": true, "never mined": false} {
 		t.Run(name, func(t *testing.T) {
 			e := setup(t)
@@ -939,6 +958,7 @@ func TestSettledByTheRefundAuthorityAfterOurSettleFailedRecordsActualTxHash(t *t
 }
 
 func TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	idA, receiveA := e.paidInvoice(t)
@@ -978,6 +998,7 @@ func TestNonceOfASettleTheRefundAuthorityReplacedIsUsedAgain(t *testing.T) {
 }
 
 func TestHangingRPCDoesNotStallTheSigner(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	e.paidInvoice(t)
@@ -1040,6 +1061,7 @@ func (e env) dueNow(t *testing.T) {
 }
 
 func TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -1094,6 +1116,7 @@ func TestSettleWaitsForTheReceiverCodeAndNeverUnderestimatesGas(t *testing.T) {
 }
 
 func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -1181,6 +1204,7 @@ func TestStaleNotSettledReadKeepsOurSuccessfulSettle(t *testing.T) {
 }
 
 func TestStalePendingNonceUsesTheSavedNonce(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	first, _ := e.paidInvoice(t)
@@ -1240,6 +1264,7 @@ func (e env) overpriced(t *testing.T) {
 }
 
 func TestStuckSettleIsReplacedWithAHigherFee(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1304,6 +1329,7 @@ func TestStuckSettleIsReplacedWithAHigherFee(t *testing.T) {
 }
 
 func TestStuckSettleThatMinesWhenSentAgainIsBookedWithoutAnError(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1343,6 +1369,7 @@ func TestStuckSettleThatMinesWhenSentAgainIsBookedWithoutAnError(t *testing.T) {
 }
 
 func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1388,6 +1415,7 @@ func TestReplacedSettleThatMinesIsBookedOnce(t *testing.T) {
 }
 
 func TestSettleGasIsEstimatedAtTheDeployBlock(t *testing.T) {
+	t.Parallel()
 	const arbitrum = 400_000
 	for name, fault := range map[string]chaintest.Fault{
 		"at the deploy block":         chaintest.Forward,
@@ -1470,6 +1498,7 @@ func (e env) deployHash(t *testing.T, proxy *chaintest.Proxy) string {
 }
 
 func TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1495,6 +1524,7 @@ func TestStuckSettleOverTheMaxFeeIsSentAgainAsItIs(t *testing.T) {
 }
 
 func TestSettlementIsBookedOnlyWhenTheFinalizedReceiverIsSettled(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1546,6 +1576,7 @@ func (e env) sponsoredHistory(t *testing.T, count int, sender string, networkFee
 }
 
 func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	e.sponsoredHistory(t, SponsoredPerDay, strings.ToLower(chaintest.Sender), 0)
@@ -1574,6 +1605,7 @@ func TestSponsoredSettlementsPerUserAreCapped(t *testing.T) {
 }
 
 func TestSettlesThatPayTheirNetworkFeeAreNotCapped(t *testing.T) {
+	t.Parallel()
 	sender := strings.ToLower(chaintest.Sender)
 	t.Run("one that pays its fee settles past the cap", func(t *testing.T) {
 		e := setup(t)
@@ -1610,6 +1642,7 @@ func TestSettlesThatPayTheirNetworkFeeAreNotCapped(t *testing.T) {
 }
 
 func TestSignerStopsWhenItLosesItsLock(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, _ := e.paidInvoice(t)
 	s := e.signer(t)
@@ -1624,6 +1657,7 @@ func TestSignerStopsWhenItLosesItsLock(t *testing.T) {
 }
 
 func TestNonceGapIsFilled(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	s := e.signer(t)
@@ -1652,6 +1686,7 @@ func TestNonceGapIsFilled(t *testing.T) {
 }
 
 func TestDeployReplacesAStuckTransaction(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	if err := e.anvil.RPC.Call(nil, "evm_setAutomine", false); err != nil {
@@ -1688,6 +1723,7 @@ func TestDeployReplacesAStuckTransaction(t *testing.T) {
 }
 
 func TestStuckDeployReplacementStopsAtTheCeiling(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", hexutil.EncodeUint64(400e9))
@@ -1722,6 +1758,7 @@ func TestStuckDeployReplacementStopsAtTheCeiling(t *testing.T) {
 }
 
 func TestReplacementNeverPassesTheCeiling(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	e.anvilCall(t, "anvil_setNextBlockBaseFeePerGas", hexutil.EncodeUint64(400e9))
@@ -1740,6 +1777,7 @@ func TestReplacementNeverPassesTheCeiling(t *testing.T) {
 }
 
 func TestTempoSettleGasFloor(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	if err := e.anvil.RPC.Call(nil, "anvil_setCode", chain.TempoFeeManager, hexutil.Encode([]byte{0x60, 0, 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3})); err != nil {
@@ -1763,6 +1801,7 @@ func TestTempoSettleGasFloor(t *testing.T) {
 }
 
 func TestReplacementSettleGetsAFreshGasLimit(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -1808,6 +1847,7 @@ func TestReplacementSettleGetsAFreshGasLimit(t *testing.T) {
 }
 
 func TestSettlesTheOptionPaidFirst(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	usdt := e.anvil.DeployToken()
@@ -1873,6 +1913,7 @@ func TestSettlesTheOptionPaidFirst(t *testing.T) {
 }
 
 func TestMinedSettleWaitsForFinalityBeforeItIsReadAgain(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -1899,6 +1940,7 @@ func TestMinedSettleWaitsForFinalityBeforeItIsReadAgain(t *testing.T) {
 }
 
 func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	afterPaid, missedLater := e.pay(t, 8)
@@ -1959,6 +2001,7 @@ func TestUnbookedMoneyAlertsButHoldsNeitherPaidNorTheSettle(t *testing.T) {
 }
 
 func TestOnlyAlreadyKnownMeansTheNodeHoldsTheSettle(t *testing.T) {
+	t.Parallel()
 	for msg, want := range map[string]bool{"already known": true, "transaction already imported": true,
 		"AlreadyKnown": true, "unknown account": false, "unknown transaction type": false} {
 		if got := holds(errors.New(msg)); got != want {
@@ -1968,6 +2011,7 @@ func TestOnlyAlreadyKnownMeansTheNodeHoldsTheSettle(t *testing.T) {
 }
 
 func TestStuckDeployReplacementPaysForTheWholeDeploy(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -2027,6 +2071,7 @@ func TestStuckDeployReplacementPaysForTheWholeDeploy(t *testing.T) {
 }
 
 func TestOnlyTheLowestUnminedSettleWaitsForItsReceipt(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	first, _ := e.paidInvoice(t)
@@ -2070,6 +2115,7 @@ func TestOnlyTheLowestUnminedSettleWaitsForItsReceipt(t *testing.T) {
 }
 
 func TestSavedSettleIsNotReplacedWhileTheExecutorCannotPayGas(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -2106,6 +2152,7 @@ func TestSavedSettleIsNotReplacedWhileTheExecutorCannotPayGas(t *testing.T) {
 }
 
 func TestSavedSettleIsSentOnlyAsItsSendersSettleOfItsTerms(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, receive := e.paidInvoice(t)
@@ -2156,6 +2203,7 @@ func TestSavedSettleIsSentOnlyAsItsSendersSettleOfItsTerms(t *testing.T) {
 }
 
 func TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)
@@ -2182,6 +2230,7 @@ func TestMinedSettleIsConfirmedEvenWhenItsTermsNoLongerCompute(t *testing.T) {
 }
 
 func TestReplacementNeverPassesTheGasCap(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	s := e.signer(t)
@@ -2201,6 +2250,7 @@ func TestReplacementNeverPassesTheGasCap(t *testing.T) {
 }
 
 func TestDroppedSettleKeepsItsSignedVersions(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := context.Background()
 	id, _ := e.paidInvoice(t)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestKeyMode(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	profile := "/v1/profiles/" + e.aliceProfile
@@ -181,6 +182,7 @@ func TestKeyMode(t *testing.T) {
 }
 
 func TestUSDInvoiceDoesNotFallBackWhenLiveTokensAreOff(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	e.enableArbUSDC(t)
 	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
@@ -194,6 +196,7 @@ func TestUSDInvoiceDoesNotFallBackWhenLiveTokensAreOff(t *testing.T) {
 }
 
 func TestPaymentLinksStayInTheirMode(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	path := "/v1/profiles/" + e.aliceProfile

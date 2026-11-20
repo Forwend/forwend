@@ -27,6 +27,7 @@ func (e chainEnv) endpoint(t *testing.T, name, events string, enabled, livemode 
 }
 
 func TestPaymentsBecomeWebhookEvents(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	e.endpoint(t, "all", allEvents, true, false)
 	e.endpoint(t, "paid", "{invoice.paid}", true, false)
@@ -50,6 +51,7 @@ func TestPaymentsBecomeWebhookEvents(t *testing.T) {
 }
 
 func TestOneRunHoldsForTwoReasons(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	id, receive := s.invoice()
 	s.transfer(id, receive, 2000000, simExpires-10, "confirmed")
@@ -79,6 +81,7 @@ func TestOneRunHoldsForTwoReasons(t *testing.T) {
 }
 
 func TestReorgAndReopenBecomeWebhookEvents(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	ctx := context.Background()
 	for name, events := range map[string]string{"all": allEvents, "paid": "{invoice.paid}"} {

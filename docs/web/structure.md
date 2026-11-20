@@ -221,7 +221,9 @@ packages/ui-web/src/
   capability (`shared/api/tests/`), the screen, or the UI component family (`components/payments/tests/`).
   No repository-wide folder for application tests. The other packages and `apps/example-merchant` keep their `test/`
   folders. Flow and browser tests stay in `apps/web/e2e/`; the live Privy tests share their sign-in setup in
-  `e2e/privy/`. Go tests follow [backend rules](../backend/rules.md#layout).
+  `e2e/privy/`.
+  - Browser tests run fully parallel with no retries (R-257): each test sets up its own state.
+  - Go tests follow [backend rules](../backend/rules.md#layout).
 - `apps/web/vitest.setup.ts` holds the jsdom setup every web unit test shares: the same-origin `Request` and the modal
   `<dialog>`. Do not copy it into a test file.
 - When moving existing tests, update Vitest discovery and prove the same tests still run. Update aliases, package

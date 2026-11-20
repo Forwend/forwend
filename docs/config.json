@@ -43,6 +43,7 @@
     },
     {
       "id": "unit",
+      "lane": "unit",
       "argv": ["pnpm", "test"],
       "required": true,
       "cache": true,
@@ -174,6 +175,7 @@
     },
     {
       "id": "contracts",
+      "lane": "unit",
       "argv": ["pnpm", "--filter", "@forwend/contracts", "test"],
       "timeoutSeconds": 900,
       "cache": true,
@@ -193,6 +195,7 @@
     },
     {
       "id": "backend",
+      "lane": "unit",
       "argv": ["pnpm", "--filter", "@forwend/backend", "test"],
       "timeoutSeconds": 900,
       "cache": true,
@@ -213,6 +216,7 @@
     },
     {
       "id": "backend-affected",
+      "lane": "unit",
       "argv": ["python3", "scripts/check-backend.py"],
       "changedPaths": true,
       "cache": true,
@@ -248,6 +252,7 @@
     },
     {
       "id": "symbolic",
+      "lane": "unit",
       "argv": ["sh", "-c", "forge clean && pipx run halmos==0.3.3 --match-contract Symbolic"],
       "cwd": "packages/contracts",
       "ci": true,

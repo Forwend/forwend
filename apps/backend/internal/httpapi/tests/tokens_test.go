@@ -12,6 +12,7 @@ import (
 const arbUSDC = "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
 
 func TestTokenSavePreservesUnavailablePreferences(t *testing.T) {
+	t.Parallel()
 	for _, table := range []string{"chains", "tokens"} {
 		t.Run(table, func(t *testing.T) {
 			e := invoiceAPI(t)
@@ -51,6 +52,7 @@ func (e invoiceEnv) enableArbUSDC(t *testing.T) {
 }
 
 func TestTokensOff(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	e.enableArbUSDC(t)
@@ -182,6 +184,7 @@ func TestTokensOff(t *testing.T) {
 }
 
 func TestTokenPreferencesKeepOneTokenPerMode(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	e.enableArbUSDC(t)
 	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
@@ -204,6 +207,7 @@ func TestTokenPreferencesKeepOneTokenPerMode(t *testing.T) {
 }
 
 func TestTempoAppearsOffAndCanBeEnabled(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	const tempo = "0x20c0000000000000000000006a37da5c996874be"

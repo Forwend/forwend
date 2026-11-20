@@ -20,6 +20,7 @@ const allEvents = `["invoice.detected", "invoice.partially_paid", "invoice.paid"
 	"invoice.canceled", "invoice.held", "invoice.open", "invoice.reopened"]`
 
 func TestInvoiceChangesBecomeWebhookEvents(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	const alice = "did:privy:alice"

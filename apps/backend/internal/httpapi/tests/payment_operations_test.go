@@ -15,6 +15,7 @@ import (
 )
 
 func TestMerchantPaymentFiltersSeparateSourcesAndKeepUnpaidAttempts(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -81,6 +82,7 @@ func TestMerchantPaymentFiltersSeparateSourcesAndKeepUnpaidAttempts(t *testing.T
 }
 
 func TestConfirmingPaymentFilterIncludesUncreditedDeposits(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -124,6 +126,7 @@ func TestConfirmingPaymentFilterIncludesUncreditedDeposits(t *testing.T) {
 }
 
 func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -268,6 +271,7 @@ func TestPaymentAttentionShowsNetFundsAndDeliveryWithoutChangingPaymentTruth(t *
 }
 
 func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTotals(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -383,6 +387,7 @@ func TestPaymentMovementExportReconcilesReturnsAndKeepsObservationsOutOfBookedTo
 }
 
 func TestPaymentMovementExportPreservesLargeBaseUnitsAndRejectsMoreThanTenThousandRows(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -430,6 +435,7 @@ func TestPaymentMovementExportPreservesLargeBaseUnitsAndRejectsMoreThanTenThousa
 }
 
 func TestPaymentMovementAllocationKeepsNoTransferIdentity(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -464,6 +470,7 @@ func TestPaymentMovementAllocationKeepsNoTransferIdentity(t *testing.T) {
 }
 
 func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -515,6 +522,7 @@ func TestPaymentVerificationWaitsForExplainedSourcesAndAutomaticRescans(t *testi
 }
 
 func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -557,6 +565,7 @@ func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *tes
 }
 
 func TestPaymentReconciliationReportsAScanThatLagsTheClock(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -578,6 +587,7 @@ func TestPaymentReconciliationReportsAScanThatLagsTheClock(t *testing.T) {
 }
 
 func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -647,6 +657,7 @@ func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testin
 }
 
 func TestPaymentSearchKeepsPaginationAndProfileScope(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -701,6 +712,7 @@ func TestPaymentSearchKeepsPaginationAndProfileScope(t *testing.T) {
 }
 
 func TestPaymentStateAndWalletAgreeAcrossReadsAndFilters(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPIWith(t, 200, webhookKey)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -852,6 +864,7 @@ func containsPayment(r reply, id string) bool {
 }
 
 func TestPaymentHeldOnAnotherOptionAndLookupByNumberHashAddressOrReference(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)

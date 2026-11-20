@@ -13,6 +13,7 @@ import (
 )
 
 func TestGetBalances(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	r := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/balances", "did:privy:alice", "", "")
 	want := map[string]any{
@@ -36,6 +37,7 @@ func TestGetBalances(t *testing.T) {
 }
 
 func TestGetActivity(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/activity"
 	empty := e.call(t, "GET", path, "did:privy:alice", "", "")
@@ -83,6 +85,7 @@ func TestGetActivity(t *testing.T) {
 }
 
 func TestGetTransactions(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/transactions"
 	empty := e.call(t, "GET", path, "did:privy:alice", "", "")
@@ -141,6 +144,7 @@ func TestGetTransactions(t *testing.T) {
 }
 
 func TestGetBalanceHistory(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/balance-history"
 	r := e.call(t, "GET", path+"?days=2", "did:privy:alice", "", "")
@@ -187,6 +191,7 @@ func TestGetBalanceHistory(t *testing.T) {
 }
 
 func TestTransactionRecords(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
 	path := "/v1/profiles/" + e.aliceProfile + "/transactions"
@@ -302,6 +307,7 @@ func TestTransactionRecords(t *testing.T) {
 }
 
 func TestStatement(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
 	made := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/invoices", alice, "inv-1",

@@ -11,6 +11,7 @@ import (
 )
 
 func TestSettleChecksTheInvoicesOwnFactory(t *testing.T) {
+	t.Parallel()
 	v1 := common.HexToAddress("0xECe745390524e4d0B05D26F56AF7F1D38FDb7546")
 	wallet := "0x1111111111111111111111111111111111111111"
 	terms := address.Terms{InvoiceID: [32]byte{1}, Recipient: common.HexToAddress(wallet),

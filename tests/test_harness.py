@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -555,6 +556,61 @@ class HarnessTests(unittest.TestCase):
         with patch.object(h, 'run_check', wraps=h.run_check) as run:
             self.assertEqual(self.verify(), 1)
             self.assertEqual(run.call_count, 1)
+
+    def test_lanes_run_side_by_side_and_a_failure_stops_only_its_lane(self):
+        def meet(mine, theirs):
+            # Waits for the other lane's file: run one after the other, the first would time out.
+            return [sys.executable, '-c', f'import pathlib, time\npathlib.Path({str(self.root / mine)!r}).touch()\n'
+                    f'while not pathlib.Path({str(self.root / theirs)!r}).exists(): time.sleep(.01)']
+        passing, failing = [sys.executable, '-c', 'pass'], [sys.executable, '-c', 'raise SystemExit(1)']
+        self.config['checks'] = [
+            {'id': 'unit', 'argv': meet('a', 'b'), 'timeoutSeconds': 10},
+            {'id': 'go', 'argv': meet('b', 'a'), 'lane': 'go', 'timeoutSeconds': 10},
+            {'id': 'broken', 'argv': failing, 'lane': 'go'},
+            {'id': 'after', 'argv': passing, 'lane': 'go'},
+            {'id': 'later', 'argv': passing}]
+        self.save()
+        with patch.object(h, 'run_check', wraps=h.run_check) as run:
+            self.assertEqual(self.run_cli('check', 'unit', 'go', 'broken', 'after', 'later'), 1)
+        self.assertEqual(sorted(call.args[1]['id'] for call in run.call_args_list), ['broken', 'go', 'later', 'unit'])
+        with patch.object(h, 'run_check', side_effect=AssertionError('another lane ran')):
+            self.assertEqual(self.run_cli('check', '--lane', 'missing', 'unit'), 2)
+
+    def test_sigterm_stops_the_checks_of_every_lane(self):
+        pid_files = [self.root / 'main.pid', self.root / 'go.pid']
+        self.config['checks'] = [
+            {'id': name, 'lane': name, 'argv': [sys.executable, '-c', f'import os, time; '
+             f'open({str(pid_file)!r}, "w").write(str(os.getpid())); time.sleep(30)']}
+            for name, pid_file in zip(['main', 'go'], pid_files)]
+        self.save()
+        harness = subprocess.Popen([sys.executable, spec.origin, '--root', str(self.root), 'check', 'main', 'go'],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        deadline = time.monotonic() + 10
+        while not all(path.exists() and path.read_text() for path in pid_files):
+            self.assertLess(time.monotonic(), deadline, 'the checks never started')
+            time.sleep(.05)
+        checks = [int(path.read_text()) for path in pid_files]
+        harness.terminate()
+        harness.wait(timeout=10)
+        for check in checks:
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(check, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(.05)
+            else:
+                os.kill(check, 9)
+                self.fail('a check kept running after the harness got SIGTERM')
+
+    def test_staging_ci_runs_every_lane(self):
+        repo = Path(__file__).resolve().parents[1]
+        lanes = {h.verification.lane(check) for check in h.read_json(repo / h.CONFIG)['checks']
+                 if check.get('required') or check.get('ci')}
+        workflow = (repo / '.github/workflows/ci.yml').read_text()
+        matrix = re.search(r'lane: \[([^\]]*)\]', workflow)
+        self.assertIsNotNone(matrix, 'ci.yml has no lane matrix')
+        self.assertEqual({name.strip() for name in matrix.group(1).split(',')}, lanes)
 
     def test_repeat_verification_reuses_matching_success(self):
         self.config['checks'][0]['cache'] = True

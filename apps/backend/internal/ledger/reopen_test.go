@@ -8,6 +8,7 @@ import (
 )
 
 func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	ctx := context.Background()
 	reopen := func(id string, until int64) error {
@@ -83,6 +84,7 @@ func TestReopenCountsHeldAndNewMoneyUntilTheNewClose(t *testing.T) {
 }
 
 func TestPartialCloseRecordsTheReceiverDeployTime(t *testing.T) {
+	t.Parallel()
 	s := newSim(t)
 	early, earlyReceive := s.invoice()
 	never, neverReceive := s.invoice()

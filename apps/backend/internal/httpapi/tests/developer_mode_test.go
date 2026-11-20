@@ -8,6 +8,7 @@ import (
 )
 
 func TestDeveloperModeIsTheProfilesMode(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -109,6 +110,7 @@ func TestDeveloperModeIsTheProfilesMode(t *testing.T) {
 }
 
 func TestNewProfilesStartLiveOnceAMainnetIsOn(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	e.exec(t, "UPDATE chains SET enabled = true WHERE chain_id = 8453")
 	r := e.call(t, "POST", "/v1/profiles", "did:privy:alice", "new-live", `{"name": "Live work", "kind": "freelancer"}`)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestReceiptListsEveryDepositAndOnlyPaidMoneyAsApplied(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",

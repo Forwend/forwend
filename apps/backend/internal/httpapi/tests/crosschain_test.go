@@ -63,6 +63,7 @@ func liveInvoice(t *testing.T, e invoiceEnv, key string, expiresIn int) (string,
 }
 
 func TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens(t *testing.T) {
+	t.Parallel()
 	e, _ := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
 	r := e.call(t, "GET", crossPath+pay+"/crosschain/tokens", "", "", "")
@@ -92,6 +93,7 @@ func TestCrossChainTokensLeaveOutDirectMemoAndDestinationTokens(t *testing.T) {
 }
 
 func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
 	keeper := &intents.Keeper{Pool: e.pool, Client: fake.Client(), Every: time.Hour}
@@ -129,6 +131,7 @@ func TestCrossChainTokensLeaveOutATokenWithoutLiquidity(t *testing.T) {
 }
 
 func TestCrossChainTokensLeaveOutAnUnquotablePairAndBitcoin(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	const btc = "nep141:btc.omft.near"
 	fake.Tokens = append(fake.Tokens, map[string]any{"assetId": btc, "blockchain": "btc", "symbol": "BTC",
@@ -170,6 +173,7 @@ func TestCrossChainTokensLeaveOutAnUnquotablePairAndBitcoin(t *testing.T) {
 }
 
 func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	pay, options := liveInvoice(t, e, "key-1", 86400)
 	base := options[intents.BaseChainID]
@@ -249,6 +253,7 @@ func TestCrossChainQuotePaysExactlyWhatIsDueIntoTheBaseOption(t *testing.T) {
 }
 
 func TestCrossChainQuoteFromTheOwnersPreviewKeepsNoPick(t *testing.T) {
+	t.Parallel()
 	e, _ := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
 	r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`", "preview": true}`)
@@ -261,6 +266,7 @@ func TestCrossChainQuoteFromTheOwnersPreviewKeepsNoPick(t *testing.T) {
 }
 
 func TestSlowChainQuoteGetsALongerDeadline(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	ltc := "nep141:ltc.omft.near"
 	fake.Tokens = append(slices.Clone(intentstest.Tokens), map[string]any{"assetId": ltc, "blockchain": "ltc",
@@ -346,6 +352,7 @@ func TestCrossChainCallsShareOneBudgetAcrossInvoices(t *testing.T) {
 }
 
 func TestCrossChainQuoteRefusals(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
 	quote := func(pay, asset, refund string) reply {
@@ -434,6 +441,7 @@ func TestCrossChainQuoteRefusals(t *testing.T) {
 }
 
 func TestCrossChainQuoteNot1ClickSignedIsRefused(t *testing.T) {
+	t.Parallel()
 	fake := intentstest.New(t)
 	client := fake.Client()
 	client.Signer = intentstest.New(t).Key // another key than the one the fake signs with
@@ -494,6 +502,7 @@ func chainTransfer(t *testing.T, e invoiceEnv, chainID uint64, option, txHash, a
 }
 
 func TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose(t *testing.T) {
+	t.Parallel()
 	e, _ := crossChainEnv(t)
 	quote := func(pay string) reply {
 		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
@@ -525,6 +534,7 @@ func TestCrossChainQuoteAsksForWhatIsLeftAndEndsBeforeTheClose(t *testing.T) {
 }
 
 func TestCrossChainNeedsAnOpenBaseOptionWithNothingConfirming(t *testing.T) {
+	t.Parallel()
 	e, _ := crossChainEnv(t)
 	quote := func(pay string) reply {
 		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refundTo+`"}`)
@@ -556,6 +566,7 @@ func TestCrossChainNeedsAnOpenBaseOptionWithNothingConfirming(t *testing.T) {
 }
 
 func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	quote := func(pay, refund string) reply {
 		return e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+tronUSDT+`", "refundTo": "`+refund+`"}`)
@@ -617,6 +628,7 @@ func TestCrossChainQuoteRefusesWhat1ClickSignedForAnotherPayment(t *testing.T) {
 }
 
 func TestCrossChainQuoteThatIsNotFreshIsRefused(t *testing.T) {
+	t.Parallel()
 	e, fake := crossChainEnv(t)
 	for name, tamper := range map[string]func(map[string]any){
 		"old": func(a map[string]any) {
@@ -654,6 +666,7 @@ func TestCrossChainQuoteRefusedForAnotherReasonDoesNotBlameTheRefundAddress(t *t
 }
 
 func TestCrossChainTokensCarryTheirCoingeckoID(t *testing.T) {
+	t.Parallel()
 	e, _ := crossChainEnv(t)
 	pay, _ := liveInvoice(t, e, "key-1", 86400)
 	e.exec(t, `UPDATE intents_tokens SET coingecko_id = 'tether' WHERE asset_id = $1`, tronUSDT)

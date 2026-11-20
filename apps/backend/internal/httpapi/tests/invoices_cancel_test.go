@@ -7,6 +7,7 @@ import (
 )
 
 func TestCancelInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	cancel := func(profile, id string) reply {
 		return e.call(t, "POST", "/v1/profiles/"+profile+"/invoices/"+id+"/cancel", "did:privy:alice", "", "")
@@ -58,6 +59,7 @@ func TestCancelInvoice(t *testing.T) {
 }
 
 func TestCancelPayerChoosesInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`)
@@ -94,6 +96,7 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 }
 
 func TestCanceledInvoicePDF(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
 		strings.Replace(basicBody, "{", `{"supplyDate": "2026-10-01", "reference": "PO-7",

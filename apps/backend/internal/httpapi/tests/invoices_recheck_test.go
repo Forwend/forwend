@@ -27,6 +27,7 @@ func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply
 
 // The env's address holds 2500000 finalized.
 func TestRecheckInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -80,6 +81,7 @@ func TestRecheckInvoice(t *testing.T) {
 }
 
 func TestRecheckLimitsAndChainErrors(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	failing := httptest.NewServer(httpapi.NewMux(e.pool, nil, nil,
 		func(context.Context, uint64, string, string) (*big.Int, uint64, error) {
@@ -106,6 +108,7 @@ func TestRecheckLimitsAndChainErrors(t *testing.T) {
 }
 
 func TestUnknownInvoicesDoNotUseTheSharedCheckLimit(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "unknown-recheck", basicBody).body["invoiceId"].(string)
 	unknown := "0x" + strings.Repeat("0", 64)
@@ -121,6 +124,7 @@ func TestUnknownInvoicesDoNotUseTheSharedCheckLimit(t *testing.T) {
 }
 
 func TestRecheckBudgetHasAShareForEachOwner(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	victim := e.post(t, "did:privy:alice", e.aliceProfile, "victim", basicBody).body["invoiceId"].(string)
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)

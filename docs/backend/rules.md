@@ -145,6 +145,10 @@ Keep the current Go backend; do not copy frontend folders or NestJS layers into 
   - Code that waits on a chain takes its poll interval as a field, so a test on Anvil polls in milliseconds.
 - Tests follow [Which tests to keep](../workflow.md#which-tests-to-keep); table tests for rules.
 - `go test -race` runs in the backend check.
+- In the slowest packages and `e2e/`, each top-level test calls `t.Parallel()`: it owns its database and Anvil (R-257).
+  - A test that writes process-wide state stays sequential: `slog.SetDefault`, `http.DefaultTransport`, `chain.EthUSD`.
+  - Go runs every sequential test before the parallel ones, so a parallel test never sees such a write.
+  - Package variables shared by tests stay read-only.
 
 ## Errors and shutdown
 

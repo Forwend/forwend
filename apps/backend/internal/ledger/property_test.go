@@ -13,6 +13,7 @@ import (
 )
 
 func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	url := databasetest.Migrated(t, database.Migrate)
 	pool, err := database.Open(ctx, url)
