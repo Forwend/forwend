@@ -36,10 +36,7 @@ func writeTokens(w http.ResponseWriter, r *http.Request, profiles *profile.Servi
 func putTokens(profiles *profile.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// A part left out stays as it is, so saving one never puts back another tab's change to the other.
-		var body struct {
-			Off        *[]tokenJSON `json:"off"`
-			CrossChain *bool        `json:"crossChain"`
-		}
+		var body tokensBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

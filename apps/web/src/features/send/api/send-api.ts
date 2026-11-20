@@ -1,13 +1,18 @@
 import { pendingSendsSchema, sendFeeSchema, sendSchema } from "@/features/send/schemas/send";
 import type { Send, SendFee, SendRequest } from "@/features/send/types/send";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const sends = (profileId: string) => profilePath(profileId, "sends");
 
 export const sendApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
     prepareSend: build.mutation<Send, SendRequest>({
-      query: ({ profileId, ...body }) => ({ url: sends(profileId), method: "POST", body }),
+      query: ({ profileId, ...body }) => ({
+        url: sends(profileId),
+        method: "POST",
+        body: body satisfies ApiBody<"/v1/profiles/{profileId}/sends", "post">,
+      }),
       responseSchema: sendSchema,
     }),
     approveSend: build.mutation<Send, { profileId: string; sendId: string }>({
@@ -24,7 +29,7 @@ export const sendApi = apiSlice.injectEndpoints({
       query: ({ profileId, sendId, ...body }) => ({
         url: `${sends(profileId)}/${encodeURIComponent(sendId)}/submit`,
         method: "POST",
-        body,
+        body: body satisfies ApiBody<"/v1/profiles/{profileId}/sends/{sendId}/submit", "post">,
       }),
       responseSchema: sendSchema,
       invalidatesTags: ["PendingSends"],

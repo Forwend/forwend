@@ -109,11 +109,7 @@ func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc
 
 func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			OriginAsset string `json:"originAsset"`
-			RefundTo    string `json:"refundTo"`
-			Preview     bool   `json:"preview"`
-		}
+		var body crossQuoteBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

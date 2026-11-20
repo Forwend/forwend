@@ -15,6 +15,7 @@ import type {
   WebhookSecret,
 } from "@/features/webhooks/types/webhooks";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const ENDPOINTS_TAG = "WebhookEndpoints";
 const DELIVERIES_TAG = "WebhookDeliveries";
@@ -88,7 +89,10 @@ export const webhooksApi = apiSlice
         query: ({ profileId, endpointId, since }) => ({
           url: `${hookUrl(profileId, endpointId)}/deliveries/resend-failed`,
           method: "POST",
-          body: { since },
+          body: { since } satisfies ApiBody<
+            "/v1/profiles/{profileId}/webhooks/{endpointId}/deliveries/resend-failed",
+            "post"
+          >,
         }),
         argSchema: endpointArg.extend({ since: z.iso.datetime() }),
         rawResponseSchema: resentSchema,

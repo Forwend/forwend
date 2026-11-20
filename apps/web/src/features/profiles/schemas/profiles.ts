@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { FEES_PAID_BY, PROFILE_KINDS, ROLES } from "@/features/profiles/constants/profile";
+import {
+  FEES_PAID_BY,
+  NEW_PROFILE_KINDS,
+  PROFILE_KINDS,
+  ROLES,
+} from "@/features/profiles/constants/profile";
 import { apiTime, count, evmAddress } from "@/shared/schemas/api";
 
 export const profileSchema = z.object({
@@ -24,7 +29,7 @@ export const meSchema = z.object({
 });
 
 export const createProfileBodySchema = z.object({
-  kind: z.enum(PROFILE_KINDS),
+  kind: z.enum(NEW_PROFILE_KINDS),
   name: z.string(),
 });
 

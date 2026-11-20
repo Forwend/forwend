@@ -37,3 +37,13 @@ func toKeyJSON(k apikey.Key) keyJSON {
 	}
 	return out
 }
+
+type createKeyBody struct {
+	Name    string            `json:"name"`
+	StoreID string            `json:"storeId"`
+	Scopes  []auth.Permission `json:"scopes"`
+}
+
+type rollKeyBody struct {
+	OverlapHours *int `json:"overlapHours"`
+}

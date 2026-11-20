@@ -1,6 +1,7 @@
 import { crossQuoteSchema, crossTokensSchema } from "@/features/pay/schemas/crosschain";
 import type { CrossQuote, CrossTokens } from "@/features/pay/types/crosschain";
 import { apiSlice } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const crossChain = (payToken: string) => `/v1/invoices/${encodeURIComponent(payToken)}/crosschain`;
 
@@ -24,7 +25,10 @@ export const crossChainApi = apiSlice.injectEndpoints({
       query: ({ payToken, originAsset, refundTo, preview }) => ({
         url: `${crossChain(payToken)}/quotes`,
         method: "POST",
-        body: { originAsset, refundTo, preview },
+        body: { originAsset, refundTo, preview } satisfies ApiBody<
+          "/v1/invoices/{payToken}/crosschain/quotes",
+          "post"
+        >,
       }),
       responseSchema: crossQuoteSchema,
     }),

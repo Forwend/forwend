@@ -99,3 +99,9 @@ func toPublicLinkJSON(p link.Public) publicLinkJSON {
 	}
 	return out
 }
+
+type payLinkBody struct {
+	AmountUSD         string `json:"amountUsd"`
+	ExpectedAmountUSD string `json:"expectedAmountUsd"`
+	ExpectedVersion   string `json:"expectedVersion"`
+}

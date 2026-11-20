@@ -155,9 +155,7 @@ func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFun
 
 func putReminders(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			On *bool `json:"on"`
-		}
+		var body remindersBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -286,9 +284,7 @@ func listEvents(invoices *invoice.Service) http.HandlerFunc {
 
 func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Email string `json:"email"`
-		}
+		var body payerEmailBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -305,9 +301,7 @@ func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerF
 
 func putPick(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			OptionID string `json:"optionId"`
-		}
+		var body pickBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -347,14 +341,7 @@ func countView(invoices *invoice.Service) http.HandlerFunc {
 // The whole editable set: a missing, null or blank field clears it.
 func putDetails(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Memo        string `json:"memo"`
-			ClientEmail string `json:"clientEmail"`
-			ReturnURL   string `json:"returnUrl"`
-			Reference   string `json:"reference"`
-			Note        string `json:"note"`
-			DueDate     string `json:"dueDate"`
-		}
+		var body detailsBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

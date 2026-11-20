@@ -12,10 +12,11 @@ import {
 } from "@/features/profiles/schemas/profiles";
 import type { BillingDetails, BillingDetailsBody } from "@/features/profiles/types/billing-details";
 import type { Notifications } from "@/features/profiles/types/notifications";
-import type { FeesPaidBy, Me, Profile, ProfileKind } from "@/features/profiles/types/profile";
+import type { FeesPaidBy, Me, NewProfileKind, Profile } from "@/features/profiles/types/profile";
 import type { TokenRef, TokenSwitch } from "@/features/profiles/types/tokens";
 import { HTTP_STATUS } from "@/shared/api/api-error";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiAnswer, ApiBody } from "@/shared/types/api-contract";
 
 export const profilesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -26,7 +27,7 @@ export const profilesApi = apiSlice.injectEndpoints({
     }),
     createProfile: build.mutation<
       Profile,
-      { idempotencyKey: string; body: { kind: ProfileKind; name: string } }
+      { idempotencyKey: string; body: { kind: NewProfileKind; name: string } }
     >({
       query: ({ idempotencyKey, body }) => ({
         url: "/v1/profiles",
@@ -87,7 +88,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       query: ({ profileId, email }) => ({
         url: profilePath(profileId, "notifications"),
         method: "PUT",
-        body: { email },
+        body: { email } satisfies ApiBody<"/v1/profiles/{profileId}/notifications", "put">,
       }),
       responseSchema: notificationsSchema,
       async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
@@ -107,7 +108,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       query: ({ profileId, livemode }) => ({
         url: profilePath(profileId, "mode"),
         method: "PUT",
-        body: { livemode },
+        body: { livemode } satisfies ApiBody<"/v1/profiles/{profileId}/mode", "put">,
       }),
       responseSchema: profileModeSchema,
       async onQueryStarted({ profileId }, { dispatch, getState, queryFulfilled }) {
@@ -139,7 +140,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       query: ({ profileId, feesPaidBy }) => ({
         url: profilePath(profileId, "fees"),
         method: "PUT",
-        body: { feesPaidBy },
+        body: { feesPaidBy } satisfies ApiBody<"/v1/profiles/{profileId}/fees", "put">,
       }),
       responseSchema: profileFeesSchema,
       async onQueryStarted({ profileId }, { dispatch, queryFulfilled }) {
@@ -164,17 +165,19 @@ export const profilesApi = apiSlice.injectEndpoints({
     }),
     getCrossChainSwitch: build.query<boolean, string>({
       query: (profileId) => profilePath(profileId, "tokens"),
-      transformResponse: (data: { crossChain: boolean }) => data.crossChain,
+      transformResponse: (data: ApiAnswer<"/v1/profiles/{profileId}/tokens", "get">) =>
+        data.crossChain,
       responseSchema: z.boolean(),
     }),
     saveCrossChainSwitch: build.mutation<boolean, { profileId: string; on: boolean }>({
       query: ({ profileId, on }) => ({
         url: profilePath(profileId, "tokens"),
         method: "PUT",
-        body: { crossChain: on },
+        body: { crossChain: on } satisfies ApiBody<"/v1/profiles/{profileId}/tokens", "put">,
       }),
       argSchema: z.object({ profileId: z.guid(), on: z.boolean() }),
-      transformResponse: (data: { crossChain: boolean }) => data.crossChain,
+      transformResponse: (data: ApiAnswer<"/v1/profiles/{profileId}/tokens", "put">) =>
+        data.crossChain,
       responseSchema: z.boolean(),
       async onQueryStarted({ profileId, on }, { dispatch, queryFulfilled }) {
         const guess = dispatch(
@@ -193,7 +196,7 @@ export const profilesApi = apiSlice.injectEndpoints({
       query: ({ profileId, off }) => ({
         url: profilePath(profileId, "tokens"),
         method: "PUT",
-        body: { off },
+        body: { off } satisfies ApiBody<"/v1/profiles/{profileId}/tokens", "put">,
       }),
       transformResponse: (data: { tokens: TokenSwitch[] }) => data.tokens,
       responseSchema: profileTokensSchema.shape.tokens,

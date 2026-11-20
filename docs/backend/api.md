@@ -7,9 +7,19 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
 - `apps/backend/api/openapi.yaml` (OpenAPI 3.1) describes every route except `/healthz`; change it before code.
   - `TestOpenAPINamesEveryRoute` fails on a route without its operation, or an operation without its route (R-150).
   - It reads each route from one literal `"METHOD /path"` on its `Handle` line, and fails on any other form.
-- Go request and response types are written by hand in each module's `model.go` (`internal/httpapi/invoiceapi/model.go`).
-- The web app's types are Zod schemas in `apps/web/src/features/*/schemas/` ([web architecture](../web/architecture.md)).
-- Keep both equal to the spec.
+- `pnpm api:generate` (`scripts/api-types.sh`) makes types from the spec into three files. Never edit them by hand.
+  - Go: `internal/httpapi/openapi/openapi.gen.go`, by oapi-codegen; its config is `oapi-codegen.yaml` beside it.
+  - Node package: `packages/node/src/openapi.gen.ts`, by openapi-typescript.
+  - Web app: `apps/web/src/shared/types/openapi.gen.ts`, by openapi-typescript.
+- The `api-contract` check generates into a temporary folder and fails when a committed file differs.
+  - A spec that does not parse fails it too. The check writes nothing in the repository.
+- The spec must say what the API sends: a field Go always sends is required; one it can send as null is nullable.
+- Go request and response JSON stays hand-written in each module's `model.go`, request bodies included.
+  - Generated structs sort fields by name, which would reorder the JSON the API sends.
+  - Each module's `TestJSONMatchesTheSpec` compares its structs with the generated ones through `openapi.Diff`.
+  - It checks field names and value types; for answers also which fields may be left out or sent as null.
+- The Node package's exported types are aliases of the generated ones ([packages/node](../../packages/node/AGENTS.md)).
+- The web app's Zod schemas stay hand-written ([web architecture](../web/architecture.md)); a typecheck compares them.
 
 ## Routes
 

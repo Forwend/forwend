@@ -177,3 +177,7 @@ func baseUnits(amounts []*big.Int) []string {
 	}
 	return out
 }
+
+type labelBody struct {
+	Label *string `json:"label"`
+}

@@ -6,6 +6,7 @@ import {
 } from "@/features/api-keys/schemas/api-keys";
 import type { ApiKey, ApiKeyBody, NewApiKey } from "@/features/api-keys/types/api-keys";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const KEYS_TAG = "ApiKeys";
 
@@ -29,7 +30,10 @@ export const apiKeysApi = apiSlice.enhanceEndpoints({ addTagTypes: [KEYS_TAG] })
       query: ({ profileId, keyId, overlapHours }) => ({
         url: `${keysUrl(profileId)}/${encodeURIComponent(keyId)}/roll`,
         method: "POST",
-        body: { overlapHours },
+        body: { overlapHours } satisfies ApiBody<
+          "/v1/profiles/{profileId}/keys/{keyId}/roll",
+          "post"
+        >,
       }),
       argSchema: z.object({
         profileId: z.guid(),

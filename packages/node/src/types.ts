@@ -1,3 +1,10 @@
+import type { components, operations } from "./openapi.gen.js";
+
+type Schemas = components["schemas"];
+type Query<Operation extends keyof operations> = NonNullable<
+  operations[Operation]["parameters"]["query"]
+>;
+
 /** The invoice events a webhook carries. */
 export const WEBHOOK_EVENT_TYPES = [
   "invoice.detected",
@@ -10,10 +17,7 @@ export const WEBHOOK_EVENT_TYPES = [
   "invoice.open",
   "invoice.reopened",
 ] as const;
-
 export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number];
-
-// The values openapi.yaml lists for each status.
 export const PAYMENT_STATUSES = [
   "open",
   "detected",
@@ -36,7 +40,6 @@ export const LIST_STATUSES = [
 ] as const;
 /** Why money is held for the payer. */
 export const HELD_REASONS = ["overpaid", "late", "expired", "canceled", "other_option"] as const;
-
 /** 1Click's statuses of a NEAR Intents payment; SUCCESS, REFUNDED and FAILED are final. */
 export const CROSS_CHAIN_STATUSES = [
   "PENDING_DEPOSIT",
@@ -47,14 +50,12 @@ export const CROSS_CHAIN_STATUSES = [
   "REFUNDED",
   "FAILED",
 ] as const;
-
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export type CrossChainStatus = (typeof CROSS_CHAIN_STATUSES)[number];
 export type SettlementStatus = (typeof SETTLEMENT_STATUSES)[number];
 export type RefundStatus = (typeof REFUND_STATUSES)[number];
 export type ListStatus = (typeof LIST_STATUSES)[number];
 export type HeldReason = (typeof HELD_REASONS)[number];
-
 export const PAYMENT_PURPOSES = ["invoice", "checkout", "request"] as const;
 export const PAYMENT_SOURCES = [...PAYMENT_PURPOSES, "payment_link"] as const;
 export type PaymentSource = (typeof PAYMENT_SOURCES)[number];
@@ -63,7 +64,6 @@ export const CHECKOUT_STATES = ["open", "complete", "expired"] as const;
 export type PaymentPurpose = (typeof PAYMENT_PURPOSES)[number];
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 export type CheckoutState = (typeof CHECKOUT_STATES)[number];
-
 /** The merchant's payment state; paymentStatus keeps the raw value. */
 export const PAYMENT_STATES = [
   "waiting",
@@ -78,254 +78,13 @@ export type PaymentState = (typeof PAYMENT_STATES)[number];
 /** Where the received money is on its way to the profile's wallet. */
 export const WALLET_STATES = ["none", "pending", "in_wallet", "delayed", "refused"] as const;
 export type WalletState = (typeof WALLET_STATES)[number];
-
 export const RECONCILIATION_STATUSES = ["verified", "pending", "review"] as const;
 export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
-export interface PaymentAmounts {
-  reconciliationStatus: ReconciliationStatus;
-  receiver: string;
-  payable: string;
-  held: string;
-  /** What settlement paid the recipient: the amount less the fees. */
-  settled: string;
-  fees: string;
-  refunded: string;
-  observedRefunded: string;
-  lastReturnTxHash: string | null;
-  unreconciled: boolean;
-  hasPolicyException: boolean;
-}
-
 export const FEES_PAID_BY = ["owner", "client"] as const;
 /** owner: the fees are deducted at settlement. client: they are added on top of the price. */
 export type FeesPaidBy = (typeof FEES_PAID_BY)[number];
-
-/** An option's fees, in its token's base units. */
-export interface OptionFees {
-  /** Paid at settlement to the settler for its gas. */
-  networkFee: string;
-  /** Paid at settlement to Forwend. */
-  platformFee: string;
-  /** The amount less both fees. */
-  netAmount: string;
-  feesPaidBy: FeesPaidBy;
-}
-
-export interface PaymentReceipt {
-  optionId: string;
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-  received: string;
-  pending: string;
-  /** Booked money on this option still owed to the payer. */
-  held: string;
-}
-
-/** A transaction 1Click names; explorerUrl is "" when 1Click gave no https link. */
-export interface CrossChainTx {
-  hash: string;
-  explorerUrl: string;
-}
-
-/** A NEAR Intents payment; amounts are base units of their token, null until 1Click reports them. */
-export interface CrossChain {
-  provider: "near_intents";
-  quoteId: string;
-  assetId: string;
-  blockchain: string;
-  symbol: string;
-  decimals: number;
-  depositAddress: string;
-  refundTo: string;
-  amountIn: string;
-  minAmountIn: string;
-  amountOut: string;
-  status: CrossChainStatus;
-  deposited: string | null;
-  delivered: string | null;
-  refunded: string | null;
-  refundReason: string | null;
-  originTxs: CrossChainTx[];
-  destinationTxs: CrossChainTx[];
-  shownUntil: string;
-  deadline: string;
-  createdAt: string;
-  depositSeenAt: string | null;
-  convertedAt: string | null;
-  /** 1Click's signed answer, as the pay page checks it. */
-  signed: Record<string, unknown>;
-}
-
-export interface Payment extends OptionFees {
-  receipts: PaymentReceipt[];
-  customerName: string | null;
-  customerEmail: string | null;
-  amounts?: PaymentAmounts;
-  paymentId: string;
-  source: PaymentSource;
-  optionId: string;
-  optionLocked: boolean;
-  optionCount: number;
-  symbol: string;
-  decimals: number;
-  purpose: PaymentPurpose;
-  documentKind: DocumentKind;
-  number: number | null;
-  storeId: string | null;
-  storeName: string | null;
-  linkId: string | null;
-  livemode: boolean;
-  title: string | null;
-  reference: string | null;
-  chainId: number;
-  token: string;
-  amount: string;
-  paymentStatus: PaymentStatus;
-  settlementStatus: SettlementStatus;
-  refundStatus: RefundStatus;
-  state: PaymentState;
-  wallet: WalletState;
-  dueDate: string | null;
-  confirming: boolean;
-  closed: boolean;
-  createdAt: string;
-  closesAt: string;
-  hostedUrl: string | null;
-  /** The hosted page's token: what @forwend/js and @forwend/react take. */
-  payToken: string | null;
-  /** A NEAR Intents payment; a list fills it only while that deposit pays this payment. */
-  crossChain: CrossChain | null;
-}
-
-/** One payment as payments.get returns it. */
-export interface PaymentDetails extends Payment {
-  customer: { name: string | null; email: string | null };
-  metadata: Record<string, string>;
-  /** Base units of the paymentId option's token; quantity has 2 decimals. */
-  items: { description: string; quantity: string; unitPrice: string; amount: string }[];
-  options: PaymentOption[];
-  deliveries: PaymentDelivery[];
-  deliveryCount: number;
-  deliveriesTruncated: boolean;
-  problems: PaymentProblem[];
-  snapshotAt: string;
-}
-
-/** A token and network the payer may pay with. */
-export interface PaymentOption extends OptionFees {
-  optionId: string;
-  chainId: number;
-  token: string;
-  symbol: string;
-  decimals: number;
-  amount: string;
-  receiveAddress: string;
-  closesAt: string;
-  paymentStatus: PaymentStatus;
-  settlementStatus: SettlementStatus;
-  refundStatus: RefundStatus;
-  amounts: PaymentAmounts | null;
-  coverage: PaymentCoverage;
-  settlement: PaymentSettlement | null;
-  /** Held money sent back to the payer, in chain order. */
-  returns: PaymentReturn[];
-  deposits: Deposit[];
-  /** More transfers reached the address than deposits lists. */
-  depositsTruncated: boolean;
-}
-
-/** How far the scan of an option's address got, and what it could not book yet. */
-export interface PaymentCoverage {
-  /** False once the scan stops reading the address's deposits. */
-  historyComplete: boolean;
-  verifiedBlock: number | null;
-  verifiedHash: string | null;
-  verifiedTime: string | null;
-  observedBalance: string | null;
-  balanceDifference: string | null;
-  reconciliationError: string | null;
-  bookingError: string | null;
-  retryAt: string | null;
-  updatedAt: string;
-  chainFinalizedBlock: number | null;
-  pendingDeposits: number;
-  unbookedDeposits: number;
-  /** 1 when the balance exceeds every recorded deposit: the scan missed one. */
-  unprovedDeposits: number;
-  unbookedOutflows: number;
-}
-
-/** The move of an option's money to the profile wallet. */
-export interface PaymentSettlement {
-  status: string;
-  wait: string | null;
-  attempts: number;
-  createdAt: string;
-  nextAttemptAt: string;
-  signedAt: string | null;
-  txHash: string | null;
-  /** The settlement seen to succeed, a mined replacement too; display only. */
-  receiptTxHash: string | null;
-  blockNumber: number | null;
-  /** Null before a successful receipt. */
-  blocksLeft: number | null;
-  secondsLeft: number | null;
-}
-
-export interface PaymentReturn {
-  txHash: string;
-  /** The payer's address the money went to. */
-  to: string;
-  amount: string;
-  blockTime: string;
-}
-
 export const DEPOSIT_STATUSES = ["detected", "confirmed"] as const;
 export type DepositStatus = (typeof DEPOSIT_STATUSES)[number];
-
-/** A transfer to an option's receive address, in its token's base units. */
-export interface Deposit {
-  txHash: string;
-  logIndex: number;
-  from: string;
-  amount: string;
-  blockNumber: number;
-  blockTime: string;
-  /** confirmed once its block is final. */
-  status: DepositStatus;
-  /** Sent after the close: held for the payer unless the owner reopens the invoice. */
-  late: boolean;
-  /** The part booked to the owner; null until the ledger books it. */
-  paid: string | null;
-  blocksLeft: number;
-  blocksTotal: number;
-  secondsLeft: number;
-}
-
-/** Totals of every transfer, beyond the deposits a read lists. */
-export interface DepositSummary {
-  count: number;
-  onTimeAmount: string;
-  lateAmount: string;
-  /** On time, and not booked yet. */
-  pendingAmount: string;
-}
-
-export interface PaymentDelivery {
-  endpointId: string;
-  eventId: string;
-  eventType: WebhookEventType;
-  status: string;
-  enabled: boolean;
-  attempts: number;
-  lastStatusCode: number | null;
-  lastAttemptAt: string | null;
-  nextAttemptAt: string;
-  canManage: boolean;
-}
-
 export const PAYMENT_PROBLEM_CODES = [
   "verification_pending",
   "reconciliation_required",
@@ -345,173 +104,6 @@ export const PAYMENT_PROBLEM_ACTIONS = [
   "review_webhooks",
   "ask_admin",
 ] as const;
-
-/** Something about a payment that needs a look, and what to do. */
-export interface PaymentProblem {
-  code: (typeof PAYMENT_PROBLEM_CODES)[number];
-  action: (typeof PAYMENT_PROBLEM_ACTIONS)[number];
-  amount: string | null;
-  asset: { chainId: number; token: string; symbol: string; decimals: number } | null;
-  optionId: string | null;
-  endpointId: string | null;
-  eventId: string | null;
-  reason: string | null;
-}
-
-/** A merchant profile's store. storeId is public and grants nothing. */
-export interface Store {
-  storeId: string;
-  name: string;
-  defaultExpiresIn: number;
-  /** The origins that may frame this store's checkout. */
-  allowedOrigins: string[];
-  brandColor: string | null;
-  logoAt: string | null;
-  tokensOff: { chainId: number; token: string }[];
-  updatedAt: string;
-}
-
-export interface CheckoutSession {
-  sessionId: string;
-  status: CheckoutState;
-  payment: Payment;
-}
-
-export interface CreateCheckoutSession {
-  storeId: string;
-  amountUsd: string;
-  reference?: string;
-  title?: string;
-  expiresIn?: number;
-  /** Who pays the fees; omitted, the profile's choice applies. */
-  feesPaidBy?: FeesPaidBy;
-  returnUrl?: string;
-  metadata?: CreateInvoice["metadata"];
-  customer?: Pick<NonNullable<CreateInvoice["client"]>, "name" | "email">;
-  items?: CreateInvoice["lines"];
-}
-
-export interface ListPayments extends ListCheckoutSessions {
-  q?: string;
-  source?: PaymentSource;
-  linkId?: string;
-  status?: ListStatus;
-  paymentStatus?: PaymentStatus;
-  settlementStatus?: SettlementStatus;
-  refundStatus?: RefundStatus;
-  state?: PaymentState;
-  wallet?: WalletState;
-  /** Exactly your order's reference. */
-  reference?: string;
-}
-
-export interface ListCheckoutSessions {
-  limit?: number;
-  cursor?: string;
-  storeId?: string;
-}
-
-/** An invoice in its owner's list; its terms are the first-paid option's, else the first option's. */
-export interface Invoice extends OptionFees {
-  amounts?: PaymentAmounts;
-  purpose: PaymentPurpose;
-  documentKind: DocumentKind;
-  linkId?: string;
-  invoiceId: string;
-  payToken: string | null;
-  /** The option the terms are in; invoiceId for a fixed invoice. */
-  optionId: string;
-  /** Final payments here reached 1.00 USD: money sent to other options is held. */
-  optionLocked: boolean;
-  /** The option the payer last picked; only payments decide the option. */
-  pickedOptionId: string | null;
-  optionCount: number;
-  /** A payment before the close is not final yet: show partially_paid as confirming. */
-  confirming: boolean;
-  /** The checkout closed unpaid; paymentStatus turns expired once the chain is final. */
-  closed: boolean;
-  /** Null for a payment-link invoice before its first deposit. */
-  number: number | null;
-  title: string | null;
-  note: string | null;
-  dueDate: string | null;
-  supplyDate: string | null;
-  reference: string | null;
-  /** A price agreed in fiat; amount is in the currency's minor units. */
-  agreedValue: { currency: string; amount: string; decimals: number; date: string } | null;
-  client: {
-    name: string | null;
-    email: string | null;
-    address: string | null;
-    country: string | null;
-    taxId: string | null;
-  };
-  store?: { storeId: string; name: string };
-  metadata: Record<string, string>;
-  brand: { storeId: string; color: string | null; logoAt: string | null } | null;
-  /** The profile's billing details when the invoice was made. */
-  issuer: {
-    name: string;
-    address: string;
-    country: string;
-    taxId: string | null;
-    email: string;
-  } | null;
-  senderName: string | null;
-  returnUrl: string | null;
-  chainId: number;
-  livemode: boolean;
-  token: string;
-  amount: string;
-  /** The profile wallet that settlement pays. */
-  recipient: string;
-  factory: string;
-  receiveAddress: string;
-  expiresAt: string;
-  closesAt: string;
-  settleDeadline: string;
-  paymentStatus: PaymentStatus;
-  settlementStatus: SettlementStatus;
-  refundStatus: RefundStatus;
-  /** The list's state filter matches it. */
-  state: PaymentState;
-  wallet: WalletState;
-  settlementTxHash: string | null;
-  createdAt: string;
-}
-
-/** A token and network an invoice accepts, with its own id, amount and receive address. */
-export interface InvoiceOption extends OptionFees {
-  optionId: string;
-  chainId: number;
-  /** The chain's name, such as base-sepolia. */
-  network: string;
-  token: string;
-  symbol: string;
-  decimals: number;
-  amount: string;
-  receiveAddress: string;
-  closesAt: string;
-  amounts?: PaymentAmounts;
-  depositSummary?: DepositSummary;
-  /** On an option other than the shown one, they are held for the payer. */
-  deposits: Deposit[];
-}
-
-/** The other invoice of a Revise; payToken is the replacement's pay link, null otherwise. */
-export interface Revision {
-  invoiceId: string;
-  number: number;
-  payToken: string | null;
-}
-
-/** An email to the client; sentAt and failedAt stay null while it waits. */
-export interface InvoiceSend {
-  requestedAt: string;
-  sentAt: string | null;
-  failedAt: string | null;
-}
-
 export const SETTLEMENT_WAITS = [
   "signing",
   "finalizing",
@@ -530,144 +122,50 @@ export type HistoryActor = (typeof HISTORY_ACTORS)[number];
 export type UpdateField = (typeof UPDATE_FIELDS)[number];
 export type EditedField = (typeof EDITED_FIELDS)[number];
 
-/** A change to an invoice; the fields its kind does not use are null. */
-export interface InvoiceHistory {
-  id: number;
-  /** Such as invoice.created, invoice.paid or crosschain.converted. */
-  kind: string;
-  actor: HistoryActor;
-  at: string;
-  optionId: string | null;
-  /** In asset's base units when asset is set, else in the option's token. */
-  amount: string | null;
-  /** The 1Click asset a cross-chain amount is in. */
-  asset: string | null;
-  txHash: string | null;
-  step: ReminderStep | null;
-  field: EditedField | null;
-  from: string | null;
-  to: string | null;
-  until: string | null;
-  related: Revision | null;
-}
-
+export type PaymentAmounts = Schemas["PaymentAmounts"];
+/** An option's fees, in its token's base units. */
+export type OptionFees = Pick<
+  Schemas["Payment"],
+  "networkFee" | "platformFee" | "netAmount" | "feesPaidBy"
+>;
+export type PaymentReceipt = Schemas["PaymentReceipt"];
+export type CrossChainTx = Schemas["CrossChainTx"];
+/** A NEAR Intents payment; amounts are base units of their token, null until 1Click reports them. */
+export type CrossChain = Schemas["CrossChainPayment"];
+export type Payment = Schemas["Payment"];
+/** One payment as payments.get returns it. */
+export type PaymentDetails = Schemas["PaymentDetails"];
+/** A token and network the payer may pay with. */
+export type PaymentOption = Schemas["PaymentOption"];
+export type PaymentCoverage = Schemas["PaymentCoverage"];
+export type PaymentSettlement = Schemas["PaymentSettlement"];
+export type PaymentReturn = PaymentOption["returns"][number];
+export type Deposit = Schemas["Deposit"];
+export type DepositSummary = Schemas["DepositSummary"];
+export type PaymentDelivery = Schemas["PaymentDelivery"];
+/** Something about a payment that needs a look, and what to do. */
+export type PaymentProblem = Schemas["PaymentProblem"];
+/** A merchant profile's store. storeId is public and grants nothing. */
+export type Store = Schemas["Store"];
+export type CheckoutSession = Schemas["CheckoutSession"];
+export type CreateCheckoutSession = Schemas["CreateCheckoutSession"];
+export type ListPayments = Query<"listPayments">;
+export type ListCheckoutSessions = Query<"listCheckoutSessions">;
+/** An invoice in its owner's list. */
+export type Invoice = Schemas["InvoiceSummary"];
+/** A token and network an invoice accepts, with its own id, amount and receive address. */
+export type InvoiceOption = Schemas["InvoiceDetail"]["options"][number];
+export type Revision = Schemas["Revision"];
+export type InvoiceSend = Schemas["Invoice"]["sends"][number];
+export type InvoiceHistory = Schemas["Invoice"]["history"][number];
 /** One invoice, as create, get, cancel, reopen, send and webhooks return it. */
-export interface InvoiceDetails extends Invoice {
-  paidAt: string | null;
-  settledAt: string | null;
-  canceledAt: string | null;
-  depositSummary?: DepositSummary;
-  /** At most 100 transfers, in chain order; depositSummary has the totals. */
-  deposits: Deposit[];
-  options: InvoiceOption[];
-  /** Base units of the invoiceId option's token. */
-  lines: PaymentDetails["items"];
-  /** When Check status may run again; null when it may now. */
-  nextCheckAt: string | null;
-  /** The edits the payer sees, newest first; from and to are a due date's. */
-  updates: { at: string; field: UpdateField; from: string | null; to: string | null }[];
-  replacedBy: Revision | null;
-  replaces: Revision | null;
-  /** A NEAR Intents payment. */
-  crossChain: CrossChain | null;
-  /** The payee takes payments from other chains. */
-  crossChainOn: boolean;
-  /** Why paid money has not reached the profile wallet yet; null when it is not waiting. */
-  settlementWait: { kind: SettlementWait; until: string | null; secondsLeft: number | null } | null;
-  sends: InvoiceSend[];
-  reminders: {
-    on: boolean;
-    stoppedAt: string | null;
-    emails: (InvoiceSend & { step: ReminderStep })[];
-  };
-  /** Null when the invoice doesn't repeat. */
-  retainer: {
-    endDate: string | null;
-    nextDueDate: string | null;
-    nextOn: string | null;
-    stoppedAt: string | null;
-  } | null;
-  /** Newest first. */
-  history: InvoiceHistory[];
-  /** Pay page loads. */
-  views: { count: number; firstAt: string | null; lastAt: string | null };
-  memo: string | null;
-  /** The close a reopen would give now; null when it can't reopen. */
-  reopenUntil: string | null;
-}
-
-/** What a create takes; the API checks each value. */
-export interface CreateInvoice {
-  chainId?: number;
-  token?: string;
-  /** Base units of the token, as a string. */
-  amount?: string;
-  /** Or a USD amount the payer pays in any accepted stablecoin. */
-  amountUsd?: string;
-  expiresIn?: number;
-  /** Who pays the fees; omitted, the profile's choice applies. */
-  feesPaidBy?: FeesPaidBy;
-  title?: string;
-  note?: string;
-  dueDate?: string;
-  supplyDate?: string;
-  reference?: string;
-  senderName?: string;
-  returnUrl?: string;
-  storeId?: string;
-  metadata?: Record<string, string>;
-  client?: { name?: string; email?: string; address?: string; country?: string; taxId?: string };
-  /** Line items that add up exactly to amount or amountUsd. */
-  lines?: { description: string; quantity: string; unitPrice: string }[];
-  /** A price agreed in fiat: decimal major units, e.g. "10.50" for EUR 10.50. */
-  agreedValue?: { currency: string; amount: string; date: string };
-  reminders?: boolean;
-  /** The profile's invoice this one replaces. */
-  replaces?: string;
-  /** Repeat every month until endDate, or until stopped. */
-  repeat?: { endDate?: string };
-}
-
-export interface ListInvoices {
-  /** Items per page, 1 to 100. */
-  limit?: number;
-  status?: ListStatus;
-  state?: PaymentState;
-  /** Search text, as the owner's invoice list takes it. */
-  q?: string;
-  cursor?: string;
-}
-
-export interface ListWebhookEvents {
-  /** Events per page, 1 to 100. */
-  limit?: number;
-  type?: WebhookEventType;
-  cursor?: string;
-}
-
+export type InvoiceDetails = Schemas["Invoice"];
+export type CreateInvoice = Schemas["CreateInvoiceRequest"];
+export type ListInvoices = Query<"listInvoices">;
+export type ListWebhookEvents = Query<"listWebhookEvents">;
 /** Money held for the payer, on invoice.held. */
-export interface Held {
-  amount: string;
-  reason: HeldReason;
-  optionId: string | null;
-}
-
+export type Held = NonNullable<Schemas["WebhookEvent"]["data"]["held"]>;
 /** An invoice change, as a webhook carries it and the events list returns it. */
-export interface WebhookEvent {
-  id: string;
-  type: WebhookEventType;
-  livemode: boolean;
-  /** The invoice's events in order, from 1. */
-  sequence: number;
-  timestamp: string;
-  data: { invoice: InvoiceDetails; held: Held | null };
-}
-
+export type WebhookEvent = Schemas["WebhookEvent"];
 /** The owner's check of an endpoint: it names no invoice. */
-export interface TestWebhookEvent {
-  id: string;
-  type: "webhook.test";
-  livemode: boolean;
-  timestamp: string;
-  data: Record<string, never>;
-}
+export type TestWebhookEvent = Schemas["WebhookTestEvent"];

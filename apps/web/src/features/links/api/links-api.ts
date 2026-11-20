@@ -17,6 +17,7 @@ import type {
   PublicLink,
 } from "@/features/links/types/links";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const LINKS_TAG = "Links";
 
@@ -65,7 +66,11 @@ export const linksApi = apiSlice.enhanceEndpoints({ addTagTypes: [LINKS_TAG] }).
       query: ({ slug, amountUsd, expectedAmountUsd, expectedVersion, idempotencyKey }) => ({
         url: `/v1/links/${encodeURIComponent(slug)}/pay`,
         method: "POST",
-        body: { ...(amountUsd ? { amountUsd } : {}), expectedAmountUsd, expectedVersion },
+        body: {
+          ...(amountUsd ? { amountUsd } : {}),
+          expectedAmountUsd,
+          expectedVersion,
+        } satisfies ApiBody<"/v1/links/{slug}/pay", "post">,
         headers: { "Idempotency-Key": idempotencyKey },
       }),
       argSchema: linkPayArgSchema,

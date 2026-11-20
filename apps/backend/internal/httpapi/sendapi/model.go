@@ -85,3 +85,11 @@ func toSendJSON(s send.Send) sendJSON {
 	}
 	return out
 }
+
+type prepareSendBody struct {
+	ChainID     uint64 `json:"chainId"`
+	Token       string `json:"token"`
+	To          string `json:"to"`
+	ToProfileID string `json:"toProfileId"`
+	Amount      string `json:"amount"`
+}

@@ -15,6 +15,7 @@
       "!packages/contracts/lib",
       "!packages/contracts/vectors",
       "!apps/backend/internal/intents/testdata",
+      "!**/openapi.gen.ts",
       "!**/*.md",
       "!**/*.yaml",
       "!**/*.yml"

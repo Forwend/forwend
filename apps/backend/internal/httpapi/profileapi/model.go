@@ -199,3 +199,8 @@ type notificationsJSON struct {
 func toNotificationsJSON(n profile.Notifications) notificationsJSON {
 	return notificationsJSON{Email: n.Email, Address: httpio.OrNull(n.Address)}
 }
+
+type tokensBody struct {
+	Off        *[]tokenJSON `json:"off"`
+	CrossChain *bool        `json:"crossChain"`
+}

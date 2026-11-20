@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/apikey"
-	"github.com/forwend/forwend/apps/backend/internal/auth"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 )
@@ -30,11 +29,7 @@ func listKeys(keys *apikey.Service) http.HandlerFunc {
 
 func createKey(keys *apikey.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Name    string            `json:"name"`
-			StoreID string            `json:"storeId"`
-			Scopes  []auth.Permission `json:"scopes"`
-		}
+		var body createKeyBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -51,9 +46,7 @@ func createKey(keys *apikey.Service) http.HandlerFunc {
 
 func rollKey(keys *apikey.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			OverlapHours *int `json:"overlapHours"`
-		}
+		var body rollKeyBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

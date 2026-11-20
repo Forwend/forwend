@@ -91,9 +91,7 @@ func deleteJob(jobs *job.Service) http.HandlerFunc {
 
 func markDone(jobs *job.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			DeliveryLink string `json:"deliveryLink"`
-		}
+		var body markDoneBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -119,11 +117,7 @@ func proposeChange(jobs *job.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		var body struct {
-			Title     string `json:"title"`
-			AmountUSD string `json:"amountUsd"`
-			DueDays   int    `json:"dueDays"`
-		}
+		var body changeBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -159,10 +153,7 @@ func withdrawChange(jobs *job.Service) http.HandlerFunc {
 
 func acceptChange(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			acceptBody
-			ProposedAt string `json:"proposedAt"`
-		}
+		var body acceptChangeBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

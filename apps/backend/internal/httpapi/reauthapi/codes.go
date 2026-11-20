@@ -31,9 +31,7 @@ func sendCode(codes *reauth.Service) http.HandlerFunc {
 
 func verifyCode(codes *reauth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Code string `json:"code"`
-		}
+		var body codeBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -49,9 +47,7 @@ func verifyCode(codes *reauth.Service) http.HandlerFunc {
 // recordTwoStep records only MFA types Privy lists for the user.
 func recordTwoStep(codes *reauth.Service, users *privy.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Methods []string `json:"methods"`
-		}
+		var body twoStepBody
 		err := httpio.DecodeJSON(w, r, &body)
 		if err == nil && (len(body.Methods) == 0 || len(body.Methods) > 3 || slices.ContainsFunc(body.Methods,
 			func(m string) bool { return m != "passkey" && m != "totp" && m != "sms" })) {

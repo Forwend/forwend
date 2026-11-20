@@ -12,13 +12,7 @@ import (
 
 func prepareSend(sends *send.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			ChainID     uint64 `json:"chainId"`
-			Token       string `json:"token"`
-			To          string `json:"to"`
-			ToProfileID string `json:"toProfileId"`
-			Amount      string `json:"amount"`
-		}
+		var body prepareSendBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

@@ -11,6 +11,7 @@ import type {
   TransactionsPage,
 } from "@/features/transactions/types/transactions";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const TRANSACTIONS_TAG = "Transactions";
 const RECORDS_CURRENCY_TAG = "RecordsCurrency";
@@ -60,7 +61,10 @@ export const transactionsApi = apiSlice
         query: ({ profileId, transaction: t, label }) => ({
           url: profilePath(profileId, `transactions/${t.chainId}/${t.txHash}/${t.logIndex}/label`),
           method: "PUT",
-          body: { label },
+          body: { label } satisfies ApiBody<
+            "/v1/profiles/{profileId}/transactions/{chainId}/{txHash}/{logIndex}/label",
+            "put"
+          >,
         }),
         invalidatesTags: [TRANSACTIONS_TAG],
       }),
@@ -76,7 +80,7 @@ export const transactionsApi = apiSlice
         query: ({ profileId, currency }) => ({
           url: profilePath(profileId, "records-currency"),
           method: "PUT",
-          body: { currency },
+          body: { currency } satisfies ApiBody<"/v1/profiles/{profileId}/records-currency", "put">,
         }),
         responseSchema: recordsCurrencySchema,
         invalidatesTags: [TRANSACTIONS_TAG, RECORDS_CURRENCY_TAG],

@@ -278,6 +278,26 @@
       "versions": [["node", "--version"], ["pnpm", "--version"]]
     },
     {
+      "id": "api-contract",
+      "argv": ["sh", "scripts/api-types.sh", "--check"],
+      "required": true,
+      "precommit": true,
+      "cache": true,
+      "inputs": [
+        "apps/backend/api/openapi.yaml",
+        "apps/backend/internal/httpapi/openapi/*",
+        "packages/node/src/openapi.gen.ts",
+        "apps/web/src/shared/types/openapi.gen.ts",
+        "scripts/api-types.sh",
+        "package.json",
+        "pnpm-lock.yaml",
+        ".pnpmfile.cjs",
+        "apps/backend/go.mod",
+        "apps/backend/go.sum"
+      ],
+      "versions": [["node", "--version"], ["pnpm", "--version"], ["go", "version"]]
+    },
+    {
       "id": "web-build",
       "argv": ["pnpm", "--filter", "@forwend/web", "build"],
       "cache": true,
@@ -334,6 +354,16 @@
       {
         "paths": ["*.md", "docs/archive/*.json", "docs/tasks.json"],
         "checks": []
+      },
+      {
+        "paths": [
+          "apps/backend/api/openapi.yaml",
+          "apps/backend/internal/httpapi/openapi/*",
+          "packages/node/src/openapi.gen.ts",
+          "apps/web/src/shared/types/openapi.gen.ts",
+          "scripts/api-types.sh"
+        ],
+        "checks": ["api-contract", "lint", "typecheck", "unit"]
       },
       {
         "paths": [

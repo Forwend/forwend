@@ -57,6 +57,7 @@ export function heldHint(problems: readonly PaymentProblem[]): string | null {
 }
 
 export function receivedAmount(amounts: Payment["amounts"]): string {
+  if (!amounts) return "0";
   return (
     BigInt(amounts.payable) +
     BigInt(amounts.held) +

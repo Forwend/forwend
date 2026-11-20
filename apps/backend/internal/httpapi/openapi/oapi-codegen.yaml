@@ -1,0 +1,17 @@
+package: openapi
+generate:
+  models: true
+output-options:
+  # Keeps the schemas only the spec's webhooks section uses.
+  skip-prune: true
+  # Its oneOf body would import github.com/oapi-codegen/runtime.
+  exclude-operation-ids: [submitSend]
+  # The API sends these as strings; time.Time would add fractional seconds.
+  type-mapping:
+    string:
+      formats:
+        date: { type: string }
+        date-time: { type: string }
+        email: { type: string }
+        uuid: { type: string }
+  generate-types-for-anonymous-schemas: true

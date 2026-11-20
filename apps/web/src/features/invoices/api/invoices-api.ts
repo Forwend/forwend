@@ -7,6 +7,7 @@ import {
   invoiceSchema,
   invoicesPageSchema,
   owedListSchema,
+  payerEmailSchema,
   recheckSchema,
   stoppedRemindersSchema,
 } from "@/features/invoices/schemas/invoices";
@@ -22,6 +23,7 @@ import type {
 } from "@/features/invoices/types/invoices";
 import type { FeesPaidBy } from "@/features/profiles/types/profile";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 import type { ApiPaymentState } from "@/shared/types/payment-state";
 
 export const INVOICES_TAG = "Invoices";
@@ -135,7 +137,10 @@ export const invoicesApi = apiSlice
         query: ({ profileId, invoiceId, on }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/reminders`,
           method: "PUT",
-          body: { on },
+          body: { on } satisfies ApiBody<
+            "/v1/profiles/{profileId}/invoices/{invoiceId}/reminders",
+            "put"
+          >,
         }),
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
@@ -159,7 +164,10 @@ export const invoicesApi = apiSlice
         query: ({ profileId, invoiceId, body }) => ({
           url: `${profileInvoices(profileId)}/${encodeURIComponent(invoiceId)}/details`,
           method: "PUT",
-          body,
+          body: body satisfies ApiBody<
+            "/v1/profiles/{profileId}/invoices/{invoiceId}/details",
+            "put"
+          >,
         }),
         responseSchema: invoiceSchema,
         invalidatesTags: [INVOICES_TAG],
@@ -204,16 +212,16 @@ export const invoicesApi = apiSlice
         query: ({ payToken, email }) => ({
           url: `/v1/invoices/${encodeURIComponent(payToken)}/payer-email`,
           method: "PUT",
-          body: { email },
+          body: { email } satisfies ApiBody<"/v1/invoices/{payToken}/payer-email", "put">,
         }),
-        responseSchema: z.object({ email: z.string() }),
+        responseSchema: payerEmailSchema,
       }),
       /** Public; 409 once money is seen, which the next read shows. */
       pickOption: build.mutation<void, { payToken: string; optionId: string }>({
         query: ({ payToken, optionId }) => ({
           url: `/v1/invoices/${encodeURIComponent(payToken)}/pick`,
           method: "PUT",
-          body: { optionId },
+          body: { optionId } satisfies ApiBody<"/v1/invoices/{payToken}/pick", "put">,
         }),
       }),
       /** One invoice per idempotency key, so a retried request never makes two. */

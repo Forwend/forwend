@@ -7,8 +7,8 @@ import {
   inviteBodySchema,
   inviteSchema,
   memberSchema,
+  removedMemberSchema,
   teamSchema,
-  toRollSchema,
 } from "@/features/team/schemas/team";
 import type {
   GrantBody,
@@ -78,7 +78,7 @@ export const teamApi = apiSlice.enhanceEndpoints({ addTagTypes: [TEAM_TAG] }).in
         url: profilePath(profileId, `members/${encodeURIComponent(memberId)}`),
         method: "DELETE",
       }),
-      rawResponseSchema: z.object({ toRoll: toRollSchema }),
+      rawResponseSchema: removedMemberSchema,
       transformResponse: (data: { toRoll: ToRoll }) => data.toRoll,
       invalidatesTags: [TEAM_TAG],
       onQueryStarted: (_, { dispatch, queryFulfilled }) => readMeAgain(dispatch, queryFulfilled),

@@ -150,9 +150,7 @@ func getTransactionsCSV(activities *activity.Service) http.HandlerFunc {
 
 func putTransactionLabel(activities *activity.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Label *string `json:"label"`
-		}
+		var body labelBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

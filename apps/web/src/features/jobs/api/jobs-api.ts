@@ -8,6 +8,7 @@ import {
 } from "@/features/jobs/schemas/jobs";
 import type { CreateJobBody, Job, JobsPage, PublicJob } from "@/features/jobs/types/jobs";
 import { apiSlice, profilePath } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 const JOBS_TAG = "Jobs";
 const PUBLIC_JOB_TAG = "PublicJob";
@@ -68,7 +69,7 @@ export const jobsApi = apiSlice
         query: ({ token, name, email }) => ({
           url: `/v1/jobs/${encodeURIComponent(token)}/accept`,
           method: "POST",
-          body: { name, email },
+          body: { name, email } satisfies ApiBody<"/v1/jobs/{token}/accept", "post">,
         }),
         responseSchema: publicJobSchema,
         invalidatesTags: [PUBLIC_JOB_TAG],
@@ -80,7 +81,10 @@ export const jobsApi = apiSlice
         query: ({ profileId, jobId, position, deliveryLink }) => ({
           url: `${jobUrl(profileId, jobId)}/payments/${position}/done`,
           method: "POST",
-          body: { deliveryLink },
+          body: { deliveryLink } satisfies ApiBody<
+            "/v1/profiles/{profileId}/jobs/{jobId}/payments/{position}/done",
+            "post"
+          >,
         }),
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
@@ -98,7 +102,7 @@ export const jobsApi = apiSlice
           url: `${jobUrl(profileId, jobId)}/payments`,
           method: "POST",
           headers: { "Idempotency-Key": idempotencyKey },
-          body,
+          body: body satisfies ApiBody<"/v1/profiles/{profileId}/jobs/{jobId}/payments", "post">,
         }),
         responseSchema: jobSchema,
         invalidatesTags: [JOBS_TAG],
@@ -117,7 +121,10 @@ export const jobsApi = apiSlice
         query: ({ token, position, proposedAt, name, email }) => ({
           url: `/v1/jobs/${encodeURIComponent(token)}/payments/${position}/accept`,
           method: "POST",
-          body: { name, email, proposedAt },
+          body: { name, email, proposedAt } satisfies ApiBody<
+            "/v1/jobs/{token}/payments/{position}/accept",
+            "post"
+          >,
         }),
         responseSchema: publicJobSchema,
         invalidatesTags: [PUBLIC_JOB_TAG],

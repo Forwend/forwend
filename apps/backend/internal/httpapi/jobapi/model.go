@@ -151,3 +151,18 @@ func toJobSummaryJSON(s job.Summary) jobSummaryJSON {
 		Payments: s.Payments, Paid: s.Paid, AcceptedAt: httpio.OrNullTime(s.AcceptedAt),
 		CreatedAt: s.CreatedAt.Format(time.RFC3339)}
 }
+
+type markDoneBody struct {
+	DeliveryLink string `json:"deliveryLink"`
+}
+
+type changeBody struct {
+	Title     string `json:"title"`
+	AmountUSD string `json:"amountUsd"`
+	DueDays   int    `json:"dueDays"`
+}
+
+type acceptChangeBody struct {
+	acceptBody
+	ProposedAt string `json:"proposedAt"`
+}

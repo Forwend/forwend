@@ -94,7 +94,7 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
       }),
     );
   if (lead && figures) {
-    const refunded = BigInt(lead.amounts.refunded);
+    const refunded = BigInt(lead.amounts?.refunded ?? "0");
     if (refunded > 0n) cells.push(cell(SUM_CELLS.returned, refunded, lead));
     if (figures.extra > 0n) cells.push(cell(SUM_CELLS.held, figures.extra, lead));
     else if (figures.due > 0n && figures.received > 0n && !over)
@@ -107,7 +107,11 @@ export function paymentMoney(payment: PaymentDetail): PaymentMoney {
     if (fees.platform > 0n) cells.push(cell(SUM_CELLS.platformFee, fees.platform, paidWith));
     if (fees.total > 0n || paid || settled)
       cells.push(
-        cell(SUM_CELLS.wallet, settled ? BigInt(paidWith.amounts.settled) : fees.net, paidWith),
+        cell(
+          SUM_CELLS.wallet,
+          settled && paidWith.amounts ? BigInt(paidWith.amounts.settled) : fees.net,
+          paidWith,
+        ),
       );
   }
   const first = cells[0];

@@ -124,11 +124,7 @@ func payLink(links *link.Service, all *mid.Buckets) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		var body struct {
-			AmountUSD         string `json:"amountUsd"`
-			ExpectedAmountUSD string `json:"expectedAmountUsd"`
-			ExpectedVersion   string `json:"expectedVersion"`
-		}
+		var body payLinkBody
 		if err := httpio.DecodeJSON(w, r, &body); err != nil {
 			httpio.WriteError(w, r, err)
 			return

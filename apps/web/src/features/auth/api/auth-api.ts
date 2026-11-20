@@ -1,5 +1,6 @@
 import type { MfaMethod } from "@privy-io/react-auth";
 import { apiSlice } from "@/shared/api/api-slice";
+import type { ApiBody } from "@/shared/types/api-contract";
 
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
@@ -19,10 +20,18 @@ export const authApi = apiSlice.injectEndpoints({
       query: () => ({ url: "/v1/me/fresh-sign-in", method: "GET" }),
     }),
     recordTwoStep: build.mutation<void, readonly MfaMethod[]>({
-      query: (methods) => ({ url: "/v1/me/two-step", method: "PUT", body: { methods } }),
+      query: (methods) => ({
+        url: "/v1/me/two-step",
+        method: "PUT",
+        body: { methods: [...methods] } satisfies ApiBody<"/v1/me/two-step", "put">,
+      }),
     }),
     verifyFreshCode: build.mutation<void, string>({
-      query: (code) => ({ url: "/v1/me/fresh-sign-in/verify", method: "POST", body: { code } }),
+      query: (code) => ({
+        url: "/v1/me/fresh-sign-in/verify",
+        method: "POST",
+        body: { code } satisfies ApiBody<"/v1/me/fresh-sign-in/verify", "post">,
+      }),
     }),
   }),
 });

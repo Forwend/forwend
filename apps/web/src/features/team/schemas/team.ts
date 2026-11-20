@@ -12,6 +12,8 @@ export const toRollSchema = z.object({
   webhooks: z.array(z.object({ endpointId: z.guid(), url: z.string() })),
 });
 
+export const removedMemberSchema = z.object({ toRoll: toRollSchema });
+
 export const memberSchema = z.object({
   memberId: z.guid(),
   email: z.string().nullable(), // null when the account has none

@@ -116,7 +116,10 @@ features own product behavior, and shared UI components are grouped by purpose. 
   no CORS. The rewrite is fixed at `next build`, so `API_URL` must be set when building; Turbo hashes `.env*` and
   these variables for the web build. Requests and responses are Zod schemas written from `apps/backend/api/openapi.yaml`
   in their feature's `schemas/` (`features/invoices/schemas/invoices.ts`), on shared blocks in `shared/schemas/api.ts`
-  (base units, addresses, hashes, times); the types in `types/` are inferred from them. Every RTK Query endpoint
+  (base units, addresses, hashes, times); the types in `types/` are inferred from them. Each feature's
+`tests/<feature>-contract.test-d.ts` fails the typecheck when a response schema rejects an answer openapi.yaml
+allows, or a request body schema makes one it refuses. A body built in an endpoint uses `satisfies ApiBody<path, method>`
+from `shared/types/api-contract.ts`. Every RTK Query endpoint
   checks its response (`responseSchema`) and its request body (`argSchema`): a response that breaks its schema is a
   failed request, shown like any other failure, and logged by endpoint and field, never by value; a body that breaks
   its schema is never sent. `openapi-typescript` is not used: it needs the TypeScript compiler API, which TypeScript 7

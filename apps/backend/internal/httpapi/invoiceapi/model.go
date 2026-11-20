@@ -479,3 +479,30 @@ func EventBody(e webhook.Event, inv invoice.Invoice) ([]byte, error) {
 	}
 	return json.Marshal(out)
 }
+
+type crossQuoteBody struct {
+	OriginAsset string `json:"originAsset"`
+	RefundTo    string `json:"refundTo"`
+	Preview     bool   `json:"preview"`
+}
+
+type remindersBody struct {
+	On *bool `json:"on"`
+}
+
+type payerEmailBody struct {
+	Email string `json:"email"`
+}
+
+type pickBody struct {
+	OptionID string `json:"optionId"`
+}
+
+type detailsBody struct {
+	Memo        string `json:"memo"`
+	ClientEmail string `json:"clientEmail"`
+	ReturnURL   string `json:"returnUrl"`
+	Reference   string `json:"reference"`
+	Note        string `json:"note"`
+	DueDate     string `json:"dueDate"`
+}

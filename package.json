@@ -14,11 +14,13 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "e2e": "turbo run e2e",
-    "prepare": "husky"
+    "prepare": "husky",
+    "api:generate": "sh scripts/api-types.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.2",
     "husky": "9.1.7",
+    "openapi-typescript": "7.13.0",
     "turbo": "2.11.10",
     "typescript": "7.0.2"
   }

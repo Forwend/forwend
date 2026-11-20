@@ -235,6 +235,8 @@ export const invoiceViewsSchema = z.object({
   lastAt: apiTime.nullable(),
 });
 
+export const payerEmailSchema = z.object({ email: z.string() });
+
 export const stoppedRemindersSchema = z.object({
   number: z.number().int().positive(),
   from: z.string().nullable(),
