@@ -528,6 +528,8 @@ R-139, D-93; the full schema is in openapi.yaml. A merchant profile's members an
   - The report sums the ledger. It compares no chain balance itself.
 - `verifiedReceivers` counts receivers with nothing unbooked, no balance alert and no negative balance.
   - The others are `unreconciledReceivers`; the two add up to `receiverCount`.
+- `scanCurrent` is false while the chain's scan is over 45 minutes behind the clock.
+  - A deposit the scan has not read is in no count, so the report is not verified then.
 - `unprovedDeposits` counts receivers whose finalized balance holds more than every recorded deposit.
   - That is a deposit the scan missed, until `ops deposit` records it.
   - A payment's option `coverage.unprovedDeposits` is 1 in the same case.

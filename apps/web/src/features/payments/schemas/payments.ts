@@ -208,6 +208,7 @@ export const reconciliationSchema = z.object({
       minVerifiedBlock: count.nullable(),
       maxVerifiedBlock: count.nullable(),
       chainFinalizedBlock: count.nullable(),
+      scanCurrent: z.boolean(),
     }),
   ),
 });

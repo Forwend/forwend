@@ -13,6 +13,9 @@ import (
 
 type PaymentBalances struct{ Receiver, Payable, Held *big.Int }
 
+// ScanStalledAfter: a finalized cursor this far behind the clock has stopped; Base and Arbitrum finalize ~20 min behind.
+const ScanStalledAfter = 45 * time.Minute
+
 type ReconciliationAsset struct {
 	StoreID, StoreName string
 	chain.Asset
@@ -23,6 +26,8 @@ type ReconciliationAsset struct {
 	ReceiverCount, VerifiedReceivers, UnreconciledReceivers                                                                       int64
 	PendingDeposits, UnbookedDeposits, UnprovedDeposits, UnbookedOutflows, OtherAssetMovements, PolicyExceptions, BookedMovements int64
 	MinVerifiedBlock, MaxVerifiedBlock, ChainFinalizedBlock                                                                       *uint64
+	// ScanCurrent is false while the chain's scan lags, because a deposit it has not read is in no count above.
+	ScanCurrent bool
 }
 
 type PaymentReconciliation struct {
@@ -129,7 +134,8 @@ func reconciliationSQL(scope string, from, to int) string {
  count(*),count(*) FILTER (WHERE NOT proof.unreconciled),count(*) FILTER (WHERE proof.unreconciled),
  coalesce(sum(proof.pending),0)::bigint,coalesce(sum(proof.unbooked),0)::bigint,count(*) FILTER (WHERE proof.missed),
  coalesce(sum(proof.outflows),0)::bigint,coalesce(sum(proof.other_assets),0)::bigint,coalesce(sum(proof.exceptions),0)::bigint,
- coalesce(sum(e.movements),0)::bigint,min(proof.scanned_block),max(proof.scanned_block),max(progress.last_finalized_block)
+ coalesce(sum(e.movements),0)::bigint,min(proof.scanned_block),max(proof.scanned_block),max(progress.last_finalized_block),
+ coalesce(extract(epoch FROM now())::bigint - max(progress.last_finalized_time) <= ` + strconv.FormatInt(int64(ScanStalledAfter/time.Second), 10) + `,false)
  FROM options receiver JOIN tokens token ON token.chain_id = receiver.chain_id AND token.contract = receiver.token_contract JOIN chains c ON c.chain_id = receiver.chain_id
  LEFT JOIN entries e ON e.invoice_id = receiver.id JOIN evidence proof ON proof.id = receiver.id LEFT JOIN chain_cursors progress ON progress.chain_id = receiver.chain_id
  GROUP BY receiver.store_id,receiver.store_name,receiver.chain_id,receiver.token_contract,token.symbol,token.decimals,c.livemode
@@ -143,7 +149,7 @@ func scanReconciliationAsset(row pgx.CollectableRow) (ReconciliationAsset, error
 	err := row.Scan(&asset.StoreID, &asset.StoreName, &asset.ChainID, &asset.Token, &asset.Symbol, &asset.Decimals, &asset.Livemode,
 		&texts[0], &texts[1], &texts[2], &texts[3], &texts[4], &texts[5], &texts[6], &texts[7], &texts[8], &texts[9], &texts[10], &texts[11], &checkpoint,
 		&asset.ReceiverCount, &asset.VerifiedReceivers, &asset.UnreconciledReceivers, &asset.PendingDeposits, &asset.UnbookedDeposits, &asset.UnprovedDeposits,
-		&asset.UnbookedOutflows, &asset.OtherAssetMovements, &asset.PolicyExceptions, &asset.BookedMovements, &asset.MinVerifiedBlock, &asset.MaxVerifiedBlock, &asset.ChainFinalizedBlock)
+		&asset.UnbookedOutflows, &asset.OtherAssetMovements, &asset.PolicyExceptions, &asset.BookedMovements, &asset.MinVerifiedBlock, &asset.MaxVerifiedBlock, &asset.ChainFinalizedBlock, &asset.ScanCurrent)
 	if err != nil {
 		return ReconciliationAsset{}, err
 	}

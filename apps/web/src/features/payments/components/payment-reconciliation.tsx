@@ -192,10 +192,11 @@ export function PaymentReconciliation({ profileId, filters }: PaymentReconciliat
   );
 }
 
-function health(asset: Asset): { label: string; tone: (typeof TONES)[keyof typeof TONES] } {
+export function health(asset: Asset): { label: string; tone: (typeof TONES)[keyof typeof TONES] } {
   if (asset.policyExceptions > 0 || asset.otherAssetMovements > 0)
     return { label: COPY.review, tone: TONES.warning };
   const settled =
+    asset.scanCurrent &&
     asset.verifiedReceivers === asset.receiverCount &&
     asset.unreconciledReceivers === 0 &&
     asset.pendingDeposits === 0 &&
@@ -315,6 +316,7 @@ function Proof({ asset }: { asset: Asset }) {
         )}
         .
       </p>
+      {asset.scanCurrent ? null : <p className="text-sm text-muted">{COPY.scanBehind}</p>}
       <DetailList>
         <DetailRow term={COPY.unverified}>{asset.unreconciledReceivers}</DetailRow>
         <DetailRow term={COPY.pending}>{asset.pendingDeposits}</DetailRow>

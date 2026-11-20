@@ -3,8 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { PaymentAmount } from "@/features/payments/components/payment-amount";
 import { PaymentReceived } from "@/features/payments/components/payment-received";
+import { health } from "@/features/payments/components/payment-reconciliation";
 import { HELD_REASONS } from "@/features/payments/constants/payments";
-import { PAYMENT_DETAIL_COPY } from "@/features/payments/constants/payments-copy";
+import {
+  PAYMENT_DETAIL_COPY,
+  RECONCILIATION_COPY,
+} from "@/features/payments/constants/payments-copy";
 import {
   heldHint,
   leadOption,
@@ -167,5 +171,23 @@ describe("held money", () => {
       PAYMENT_DETAIL_COPY.held("0.50 USDC", undefined),
     );
     expect(heldHint([problem("webhook_delivery")])).toBeNull();
+  });
+});
+
+describe("the balance report's status", () => {
+  const settled = {
+    receiverCount: 1,
+    verifiedReceivers: 1,
+    unreconciledReceivers: 0,
+    pendingDeposits: 0,
+    unbookedDeposits: 0,
+    unbookedOutflows: 0,
+    otherAssetMovements: 0,
+    policyExceptions: 0,
+    scanCurrent: true,
+  } as Parameters<typeof health>[0];
+  it("is verified only while the network's scan is current", () => {
+    expect(health(settled).label).toBe(RECONCILIATION_COPY.verified);
+    expect(health({ ...settled, scanCurrent: false }).label).toBe(RECONCILIATION_COPY.checking);
   });
 });

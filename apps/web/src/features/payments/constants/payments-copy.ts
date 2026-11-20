@@ -207,6 +207,7 @@ export const RECONCILIATION_COPY = {
     `${verified} of ${all} payment addresses have nothing unbooked or unexplained`,
   blocks: (from: string, to: string, final: string) =>
     `Checked blocks ${from}–${to}, final block ${final}`,
+  scanBehind: "This network's scan is behind, so a recent deposit may not show yet.",
   pending: "Pending deposits",
   unbookedIn: "Unbooked deposits",
   unbookedOut: "Unbooked outflows",

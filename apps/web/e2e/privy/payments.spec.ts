@@ -223,6 +223,7 @@ const report = {
       minVerifiedBlock: 100,
       maxVerifiedBlock: 100,
       chainFinalizedBlock: 100,
+      scanCurrent: true,
     },
   ],
 };

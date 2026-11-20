@@ -4479,7 +4479,7 @@ components:
         held: { type: "string" }
     PaymentReconciliationAsset:
       type: "object"
-      required: ["storeId", "storeName", "chainId", "token", "symbol", "decimals", "livemode", "opening", "changes", "closing", "settled", "fees", "refunded", "checkpointBalance", "checkpointDifference", "receiverCount", "verifiedReceivers", "unreconciledReceivers", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows", "otherAssetMovements", "policyExceptions", "bookedMovements", "minVerifiedBlock", "maxVerifiedBlock", "chainFinalizedBlock"]
+      required: ["storeId", "storeName", "chainId", "token", "symbol", "decimals", "livemode", "opening", "changes", "closing", "settled", "fees", "refunded", "checkpointBalance", "checkpointDifference", "receiverCount", "verifiedReceivers", "unreconciledReceivers", "pendingDeposits", "unbookedDeposits", "unprovedDeposits", "unbookedOutflows", "otherAssetMovements", "policyExceptions", "bookedMovements", "minVerifiedBlock", "maxVerifiedBlock", "chainFinalizedBlock", "scanCurrent"]
       properties:
         storeId:
           anyOf:
@@ -4530,6 +4530,7 @@ components:
           anyOf:
             - type: "integer"
             - type: "null"
+        scanCurrent: { type: "boolean", description: "False while the chain's scan is more than 45 minutes behind the clock: a deposit it has not read is in none of these counts." }
     PaymentWebhookProblem:
       type: "object"
       required: ["endpointId", "storeId", "description", "enabled", "livemode", "failed", "disabledPending", "lastProblemAt", "action"]

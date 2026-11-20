@@ -644,6 +644,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - One row per token and store: Asset, Store, Status (a dot and Verified, Still checking or Needs review), the
       closing balance of each account, and Moved to wallet in the period. It shows no read time.
     - Search is always there; a segmented control filters by status with counts. Rows show 20 at a time.
+    - A row is Verified only while its network's scan is current; a lagging scan reads Still checking and the breakdown says so.
     - A row's button opens its breakdown: each account's opening, changes and closing, then the checks.
     - The period is one `DateRangePicker`, as on both exports (Payments, Transactions).
     - Built for thousands of tokens: a search past 10, tokens with nothing in them folded away, 20 groups at a time.

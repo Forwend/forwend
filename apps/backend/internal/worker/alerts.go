@@ -13,9 +13,8 @@ import (
 )
 
 const (
-	AlertEvery = 5 * time.Minute
-	// StalledAfter: a finalized cursor this far behind the clock has stopped; Base and Arbitrum finalize ~20 min behind.
-	StalledAfter = 45 * time.Minute
+	AlertEvery   = 5 * time.Minute
+	StalledAfter = invoice.ScanStalledAfter
 	// UnsettledAfter: a paid invoice still not settled waits on something an operator must look at.
 	UnsettledAfter = 30 * time.Minute
 	// DeadlineSoon: after its settle deadline only the refund authority can move the money, so a day before it alerts.

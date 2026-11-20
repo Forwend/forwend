@@ -556,6 +556,27 @@ func TestPaymentReconciliationVerifiesOnlyReceiversWithNothingUnexplained(t *tes
 	}
 }
 
+func TestPaymentReconciliationReportsAScanThatLagsTheClock(t *testing.T) {
+	e := invoiceAPI(t)
+	const alice = "did:privy:alice"
+	shop := e.merchant(t)
+	made := e.post(t, alice, shop, "report-scan-lag", `{"chainId":84532,"token":"`+usdc+`","amount":"2000000"}`)
+	if made.status != http.StatusCreated {
+		t.Fatalf("create: %d %v", made.status, made.body)
+	}
+	path := "/v1/profiles/" + shop + "/payments/" + made.body["invoiceId"].(string) + "/reconciliation"
+	for behind, want := range map[time.Duration]bool{time.Minute: true, invoice.ScanStalledAfter + time.Minute: false} {
+		e.exec(t, "UPDATE chain_cursors SET last_finalized_time = extract(epoch FROM now())::bigint - $1 WHERE chain_id = 84532", int64(behind/time.Second))
+		report := e.call(t, "GET", path, alice, "", "")
+		if report.status != http.StatusOK {
+			t.Fatalf("report: %d %v", report.status, report.body)
+		}
+		if got := report.body["assets"].([]any)[0].(map[string]any)["scanCurrent"]; got != want {
+			t.Fatalf("scan %v behind: scanCurrent %v, want %v", behind, got, want)
+		}
+	}
+}
+
 func TestPaymentSummaryOmitsUnusedOptionsWithoutCertifyingTheirHistory(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
