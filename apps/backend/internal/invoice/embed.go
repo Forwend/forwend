@@ -9,9 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// EmbedAllowed reports whether a page at origin may frame the checkout of the invoice with payToken (R-168): an
-// exact origin of the store the invoice records, and https unless the invoice is in test mode. It never lists the
-// store's origins: anyone with the pay token may ask.
+// EmbedAllowed never lists the store's origins: anyone with the pay token may ask.
 func (s *Service) EmbedAllowed(ctx context.Context, payToken, origin string) (bool, error) {
 	id, ok := idOf(payToken)
 	if !ok {

@@ -9,13 +9,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Caller is who a request's key acts for.
 type Caller struct {
 	KeyID, ProfileID string
 	Access           auth.Access
 }
 
-// Authenticate finds the working key whose text this is (R-144); its last use is kept to the minute.
+// Authenticate keeps the key's last use to the minute.
 func (s *Service) Authenticate(ctx context.Context, text string) (Caller, error) {
 	hash, ok := hashOf(text)
 	if !ok {

@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// R-156, D-87: an invoice's options are all of one mode, and a key reaches only invoices of its own mode.
 func TestKeyMode(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -44,8 +43,6 @@ func TestKeyMode(t *testing.T) {
 		return out
 	}
 
-	// From the app in live mode, a USD invoice takes only the live options; with the test key, only the test ones (D-120).
-	// Both are overdue.
 	mode := func(live bool) {
 		t.Helper()
 		if r := e.call(t, "PUT", profile+"/mode", alice, "", `{"livemode": `+map[bool]string{true: "true", false: "false"}[live]+`}`); r.status != http.StatusOK {
@@ -67,7 +64,6 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("a test key's live-mode token: %d %v", r.status, r.body)
 	}
 	appID, testID := app.body["invoiceId"].(string), test.body["invoiceId"].(string)
-	// A key's Revise of the other mode's invoice finds none, and leaves it as it was.
 	if r := byKey("key-revise", `{"amountUsd": "6", "replaces": "`+appID+`"}`); errorCode(r) != "invoice_not_found" {
 		t.Errorf("the test key's Revise of the live invoice: %d %v", r.status, r.body)
 	}
@@ -75,7 +71,6 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("the live invoice after the refused Revise: %v", r.body["paymentStatus"])
 	}
 
-	// Reads with the key see only test mode; the owner sees the profile's mode, live now.
 	ids := func(r reply) []string {
 		t.Helper()
 		if r.status != http.StatusOK {
@@ -110,7 +105,6 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("GET the test invoice with the test key: %d %v", r.status, r.body)
 	}
 
-	// What's owed, the activity feed and the webhook events narrow the same way.
 	if got := ids(e.withKey(t, "GET", profile+"/owed", key, "")); !slices.Equal(got, []string{testID}) {
 		t.Errorf("owed with the key: %v, want only %s", got, testID)
 	}
@@ -136,7 +130,7 @@ func TestKeyMode(t *testing.T) {
 		}
 	}
 
-	// Money held for the payer, which a canceled invoice still owes, is the payer's: never owed (D-114).
+	// A booked deposit held for the payer on each canceled invoice.
 	e.exec(t, `WITH t AS (INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		        block_hash, block_number, block_time, from_address, to_address, amount, status)
 		    SELECT chain_id, 'evm', token_contract, id, id, 0, id, 90, extract(epoch FROM now())::bigint, $2,
@@ -152,7 +146,6 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("held money for the owner: %v, want none owed", got)
 	}
 
-	// The same key in live mode replays none of its test-mode creates, and sees only live mode.
 	e.exec(t, "UPDATE api_keys SET livemode = true")
 	if r := byKey("key-usd", usd); errorCode(r) != "idempotency_conflict" {
 		t.Errorf("a live key's replay of a test-mode create: %d %v", r.status, r.body)
@@ -161,7 +154,6 @@ func TestKeyMode(t *testing.T) {
 		t.Errorf("the live key's list: %v, want only %s", got, appID)
 	}
 
-	// A Revise keeps the mode of the invoice it replaces, and a retainer's later month the mode of its first.
 	mode(false)
 	fixed := e.post(t, alice, e.aliceProfile, "app-fixed", basicBody).body["invoiceId"].(string)
 	revised := e.post(t, alice, e.aliceProfile, "app-revise", `{"amountUsd": "6", "replaces": "`+fixed+`"}`)
@@ -213,7 +205,6 @@ func TestPaymentLinksStayInTheirMode(t *testing.T) {
 	}
 	e.enableArbUSDC(t)
 	e.exec(t, "UPDATE chains SET livemode = true WHERE chain_id = 421614")
-	// The dashboard makes a link in the profile's mode (D-120), and a key in it too.
 	e.exec(t, "UPDATE profiles SET livemode = true WHERE id = $1", e.aliceProfile)
 	live := e.call(t, "PUT", path+"/links/"+liveID, alice, "", `{"title": "Live", "amountUsd": "5"}`)
 	if live.status != http.StatusCreated || live.body["livemode"] != true {

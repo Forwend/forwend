@@ -21,20 +21,16 @@ import (
 
 var inviteToken = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// tokenHash is what profile_invites keeps of a link token.
 func tokenHash(token string) []byte {
 	sum := sha256.Sum256([]byte(token))
 	return sum[:]
 }
 
-// OpenInviteSQL keeps a profile_invites row whose link still works: not accepted, revoked or expired.
 const OpenInviteSQL = "accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()"
 
-// Invite queues an email inviting the address to the team with g (D-63: the caller asked for a fresh sign-in). An open
-// invite to the same address is revoked. Invites count toward the client email cap (R-116).
+// Invite revokes an open invite to the same address; invites count toward the client email cap.
 func (s *Service) Invite(ctx context.Context, profileID, privyUserID, email string, g Grant) (Invite, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
-	// As a client email is checked: plain text, and exactly one address with nothing around it.
 	if a, err := mail.ParseAddress(email); err != nil || a.Address != email || len(email) > profile.MaxClientEmail ||
 		!utf8.ValidString(email) || !profile.PlainText(email, false) {
 		return Invite{}, fmt.Errorf("%w: email: enter an address like name@example.com", ErrInvalid)
@@ -88,7 +84,6 @@ func (s *Service) Invite(ctx context.Context, profileID, privyUserID, email stri
 	return v, err
 }
 
-// Revoke closes an open invite, so its link no longer works.
 func (s *Service) Revoke(ctx context.Context, profileID, inviteID string) error {
 	if !lowercaseUUID.MatchString(inviteID) {
 		return ErrInviteNotFound
@@ -104,7 +99,6 @@ func (s *Service) Revoke(ctx context.Context, profileID, inviteID string) error 
 	return nil
 }
 
-// Invitation is the open invite a link token names, for any signed-in user who has the link.
 func (s *Service) Invitation(ctx context.Context, token string) (Invitation, error) {
 	if !inviteToken.MatchString(token) {
 		return Invitation{}, ErrInviteNotFound
@@ -121,20 +115,18 @@ func (s *Service) Invitation(ctx context.Context, token string) (Invitation, err
 	return v, nil
 }
 
-// Accept puts the signed-in user on the team with the invite's role and stores, once, when their verified login email
-// is the invited address. It returns the profile's id.
+// Accept needs the user's verified login email to be the invited address; it returns the profile's id.
 func (s *Service) Accept(ctx context.Context, token, privyUserID string) (string, error) {
 	if !inviteToken.MatchString(token) {
 		return "", ErrInviteNotFound
 	}
-	// Read before the transaction: a Privy call holds no row lock.
 	email, err := s.users.LoginEmail(ctx, privyUserID)
 	if err != nil {
 		return "", err
 	}
 	var profileID string
 	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// The profile row first, as Invite and the role changes lock it, then the invite: no two wait on each other.
+		// Lock order: the profile row, then the invite, as Invite and the role changes do.
 		err := tx.QueryRow(ctx, "SELECT profile_id::text FROM profile_invites WHERE token_hash = $1",
 			tokenHash(token)).Scan(&profileID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -181,7 +173,7 @@ func (s *Service) Accept(ctx context.Context, token, privyUserID string) (string
 			stores); err != nil {
 			return fmt.Errorf("add member stores: %w", err)
 		}
-		// The member came for the team, so the first run's profile choice is not asked (R-50).
+		// The member came for the team, so the first run's profile choice is not asked.
 		if _, err := tx.Exec(ctx, `UPDATE users SET onboarded_at = coalesce(onboarded_at, now()) WHERE id = $1`,
 			userID); err != nil {
 			return fmt.Errorf("mark user onboarded: %w", err)

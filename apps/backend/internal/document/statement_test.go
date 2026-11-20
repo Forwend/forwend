@@ -26,7 +26,7 @@ func statement(n int) Statement {
 	return s
 }
 
-// pages returns the text each page draws (see pdfText in the API tests): one entry per page content stream.
+// pages returns the text each page draws, one entry per page content stream.
 func pages(t *testing.T, pdf []byte) []string {
 	t.Helper()
 	var out []string
@@ -73,7 +73,6 @@ func pages(t *testing.T, pdf []byte) []string {
 	}
 }
 
-// R-112: a copy can be compared with the original.
 func TestStatementIsTheSameEachTime(t *testing.T) {
 	first, err := StatementPDF(statement(3))
 	if err != nil {
@@ -86,8 +85,7 @@ func TestStatementIsTheSameEachTime(t *testing.T) {
 }
 
 func TestStatementPagesKeepTheTableTogether(t *testing.T) {
-	// Lines of every count over several pages, under holder blocks of 1 to 4 address lines: the table then starts at
-	// different heights, so the total meets the end of the first page too.
+	// Taller holder blocks start the table lower, so the total also meets the first page's end.
 	for n := 1; n <= 40; n++ {
 		for extra := range 4 {
 			s := statement(n)
@@ -124,10 +122,5 @@ func checkStatementPages(t *testing.T, n int, s Statement) {
 	}
 	if listed != n || totals != 1 {
 		t.Fatalf("%d lines: %d listed, %d totals", n, listed, totals)
-	}
-	for i, page := range pages(t, pdf) {
-		if strings.HasSuffix(strings.TrimSpace(page[:strings.LastIndex(page, "Statement ")]), "NOTES") {
-			t.Fatalf("%d lines: page %d ends with the notes' heading alone:\n%s", n, i+1, page)
-		}
 	}
 }

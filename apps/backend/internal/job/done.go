@@ -18,7 +18,7 @@ const MaxDeliveryLink = 2000
 // errScheduleChanged rolls back an invoice made for a schedule a change altered meanwhile.
 var errScheduleChanged = errors.New("the job's payments changed")
 
-// MarkDone answers the same once the payment has its invoice; the final one waits for no pending change.
+// MarkDone is idempotent once the payment has its invoice; the final one waits for no pending change.
 func (s *Service) MarkDone(ctx context.Context, profileID, id string, position int, link string) (Job, error) {
 	if link != "" {
 		// url.Parse lowers the scheme; the database takes only "https://" as written.
@@ -52,7 +52,6 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 		}
 	}
 	r := s.paymentRequest(j, p)
-	// The final invoice is the last payment the client agreed to; a change still waiting comes first.
 	last := len(j.Payments)
 	if pending := j.Payments[last-1]; !pending.ProposedAt.IsZero() && pending.AcceptedAt.IsZero() {
 		if position == last-1 {
@@ -79,7 +78,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 			WHERE job_id = $1 AND position = $2`, j.ID, position, invoiceID, link)
 		return err
 	}
-	// A concurrent call the same UTC day makes the same request and key, so it gets this invoice back.
+	// A concurrent call the same UTC day sends the same key and request, so it gets this invoice back.
 	_, _, err = s.invoices.Create(ctx, profileID, paymentKey(j.ID, position), r)
 	if errors.Is(err, errScheduleChanged) {
 		return s.MarkDone(ctx, profileID, id, position, link)
@@ -95,7 +94,6 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	return s.Get(ctx, profileID, id)
 }
 
-// finalNote fits the invoice's note length.
 func finalNote(j Job, final Payment) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Final invoice for %s. Job total: %s USD.\nEarlier payments:", j.Title, invoice.USD(j.TotalCents()))

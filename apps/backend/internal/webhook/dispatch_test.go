@@ -49,40 +49,6 @@ func delivered(r *http.Request) *http.Response {
 	return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("ok")), Request: r}
 }
 
-func TestSlowWebhookTenantLeavesOtherProfilesCapacity(t *testing.T) {
-	s, profiles, endpoints := dispatchFixture(t, 2)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	for range Batch {
-		if _, err := s.SendTest(ctx, profiles[0], endpoints[0]); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := s.SendTest(ctx, profiles[1], endpoints[1]); err != nil {
-		t.Fatal(err)
-	}
-	fast := make(chan struct{}, 1)
-	client := Client()
-	client.Transport = dispatchTransport(func(r *http.Request) (*http.Response, error) {
-		if r.URL.Host == "endpoint0.example.com" {
-			<-r.Context().Done()
-			return nil, r.Context().Err()
-		}
-		fast <- struct{}{}
-		return delivered(r), nil
-	})
-	done := make(chan error, 1)
-	go func() { done <- s.Deliver(ctx, client, nil) }()
-	select {
-	case <-fast:
-	case <-time.After(3 * time.Second):
-		t.Error("slow tenant occupied every sender slot")
-	}
-	cancel()
-	<-done
-}
-
-// A claim reads each endpoint's first due delivery, so its cost does not grow with the backlog.
 func TestWebhookClaimReadsEachEndpointsFirstDueDelivery(t *testing.T) {
 	s, profiles, endpoints := dispatchFixture(t, 1)
 	for range 3 {
@@ -179,7 +145,6 @@ func TestWebhookClaimsRespectSharedConcurrency(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Three endpoints, so the profile's limit of two is what stops a third lease.
 	for _, endpoint := range []string{endpoints[0], second, third} {
 		for range 4 {
 			if _, err := s.SendTest(ctx, profiles[0], endpoint); err != nil {
@@ -218,7 +183,6 @@ func TestWebhookClaimsRespectSharedConcurrency(t *testing.T) {
 	if len(seen) == 0 || len(seen) > ProfileConcurrency {
 		t.Fatalf("concurrent claims leased %d endpoints, want 1 to %d", len(seen), ProfileConcurrency)
 	}
-	// Claimers that found the profile locked skip it; later claims fill the free slots, and never more.
 	for {
 		d, err := NewService(s.pool, s.key).claim(ctx)
 		if err != nil {

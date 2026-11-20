@@ -1,4 +1,3 @@
-// Package priceapi serves the stablecoins' display prices of docs/backend/api.md (R-178).
 package priceapi
 
 import (

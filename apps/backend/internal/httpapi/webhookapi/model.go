@@ -12,15 +12,14 @@ type endpointBody struct {
 	Description string   `json:"description"`
 	StoreID     string   `json:"storeId"`
 	Events      []string `json:"events"`
-	// Left out: on.
-	Enabled *bool `json:"enabled"`
+	Enabled     *bool    `json:"enabled"` // nil: on
 }
 
 type endpointJSON struct {
 	EndpointID  string   `json:"endpointId"`
 	URL         string   `json:"url"`
 	Description string   `json:"description"`
-	StoreID     *string  `json:"storeId"` // null for all of a merchant's stores, and for a freelancer
+	StoreID     *string  `json:"storeId"` // null: all stores, or a freelancer
 	Events      []string `json:"events"`
 	Enabled     bool     `json:"enabled"`
 	Livemode    bool     `json:"livemode"`
@@ -37,10 +36,9 @@ func toEndpointJSON(e webhook.Endpoint) endpointJSON {
 type secretJSON struct {
 	Secret    string  `json:"secret"`
 	CreatedAt string  `json:"createdAt"`
-	ExpiresAt *string `json:"expiresAt"` // set once rotated: it signs until then
+	ExpiresAt *string `json:"expiresAt"` // set once rotated: signs until then
 }
 
-// secretsJSON lists the working secrets, newest first.
 type secretsJSON struct {
 	Secrets []secretJSON `json:"secrets"`
 }
@@ -57,7 +55,6 @@ func toSecretsJSON(list []webhook.Secret) secretsJSON {
 	return out
 }
 
-// R-149: nextAttemptAt is null unless pending; statusCode is null when no answer came.
 type deliveryJSON struct {
 	EventID       string        `json:"eventId"`
 	Type          string        `json:"type"`

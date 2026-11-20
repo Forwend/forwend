@@ -74,7 +74,6 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 		t.Fatalf("rows open %d, canceled %d; want 0 open and every option canceled", open, canceled)
 	}
 
-	// Money on any option, not only the shown one, is too late to cancel.
 	paid := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"amountUsd": "12.5"}`).body["invoiceId"].(string)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)
@@ -84,7 +83,6 @@ func TestCancelPayerChoosesInvoice(t *testing.T) {
 		t.Fatalf("money on a second option: %d %v, want 409", r.status, r.body)
 	}
 
-	// R-119: 0.01 USDC from anyone with the pay link chooses nothing, so it doesn't stop the owner canceling.
 	dusted := e.post(t, "did:privy:alice", e.aliceProfile, "key-3", `{"amountUsd": "12.5"}`).body["invoiceId"].(string)
 	e.exec(t, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash, log_index,
 		    block_hash, block_number, block_time, from_address, to_address, amount, status)

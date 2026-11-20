@@ -55,18 +55,17 @@ var StatusColumnsSQL = map[string]string{
 	"canceled":   "invoices.payment_status = 'canceled'",
 }
 
-// Must stay the expression of the invoices_search trigram index (migration 00032) on the main row's columns.
+// Must stay the expression of the invoices_search trigram index.
 const searchText = `('INV-' || lpad(number::text, greatest(length(number::text), 4), '0') || ' ' || coalesce(title, '')
 	|| ' ' || coalesce(note, '') || ' ' || coalesce(client_name, '') || ' ' || coalesce(client_email, '') || ' '
 	|| main_receive_address || ' ' || coalesce(reference, ''))`
 
-// Page is one page of invoices without deposits; NextCursor is "" on the last one.
 type Page struct {
 	Items      []Invoice
-	NextCursor string
+	NextCursor string // "" on the last page
 }
 
-// Newest first by number; stores and live, when not nil, narrow it. The caller checks profile access.
+// List is newest first by number; non-nil stores and live narrow it. The caller checks profile access.
 func (s *Service) List(ctx context.Context, profileID, cursor string, limit int, status, state string, q search.Query,
 	stores []string, live *bool) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
@@ -88,7 +87,6 @@ func (s *Service) List(ctx context.Context, profileID, cursor string, limit int,
 	}
 	// Each condition is added only when used: a cached generic plan of "$n IS NULL OR ..." never uses the index.
 	args := []any{profileID, before, limit + 1}
-	// A link invoice reaches the owner with its number, at its first deposit.
 	where := "profile_id = $1 AND number IS NOT NULL AND ($2::bigint IS NULL OR number < $2)"
 	if status != "" {
 		args = append(args, status)

@@ -40,8 +40,7 @@ func TestTokenSavePreservesUnavailablePreferences(t *testing.T) {
 	}
 }
 
-// enableArbUSDC turns on a second token: Arbitrum Sepolia USDC comes switched off (migration 00015), and the worker
-// would add the cursor.
+// enableArbUSDC turns on Arbitrum Sepolia USDC, off by default, with the cursor the worker adds.
 func (e invoiceEnv) enableArbUSDC(t *testing.T) {
 	t.Helper()
 	e.exec(t, `
@@ -51,7 +50,6 @@ func (e invoiceEnv) enableArbUSDC(t *testing.T) {
 		UPDATE tokens SET enabled = true WHERE chain_id = 421614 AND contract = $1`, arbUSDC)
 }
 
-// R-136.
 func TestTokensOff(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -158,7 +156,6 @@ func TestTokensOff(t *testing.T) {
 		t.Fatalf("store turns off the profile's last token: %d %v", r.status, r.body)
 	}
 
-	// A token an operator disables later leaves the lists, so what a read gives back saves again.
 	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/tokens", alice, "", `{"off": []}`); r.status != http.StatusOK {
 		t.Fatal(r.body)
 	}
@@ -173,7 +170,6 @@ func TestTokensOff(t *testing.T) {
 		http.StatusOK {
 		t.Fatalf("PUT the store as read: %d %v", r.status, r.body)
 	}
-	// With no token enabled, as on a new database, stores and the switches still save.
 	if _, err := e.pool.Exec(context.Background(), "UPDATE tokens SET enabled = false"); err != nil {
 		t.Fatal(err)
 	}

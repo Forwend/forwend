@@ -22,10 +22,6 @@ type feeOptionJSON struct {
 	PlatformFee string `json:"platformFee"`
 }
 
-// R-227: the fees a new invoice of a price would carry on each option, and who pays them by default, so a form shows
-// what the client pays and what the owner receives before it saves. ?chainId, token and amount, or ?amountUsd;
-// ?feesPaidBy as the form has it, since a client's fees on top let a smaller price carry them; ?storeId, whose tokens a
-// merchant's invoice keeps.
 func getFees(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()

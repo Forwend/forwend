@@ -12,7 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/email"
 )
 
-// signedUpWith stores address as user's login email, as sign-up does, and as their email at Privy.
 func (e invoiceEnv) signedUpWith(t *testing.T, user, address string) {
 	t.Helper()
 	e.exec(t, "UPDATE users SET login_email = $2 WHERE privy_user_id = $1", user, address)
@@ -21,7 +20,6 @@ func (e invoiceEnv) signedUpWith(t *testing.T, user, address string) {
 	e.wallets.Unlock()
 }
 
-// inSession calls the API with a token of the Privy session sid, issued at iat.
 func (e invoiceEnv) inSession(t *testing.T, method, path, user, sid string, iat time.Time, body string) reply {
 	t.Helper()
 	req, err := http.NewRequest(method, e.srv.URL+path, strings.NewReader(body))
@@ -34,8 +32,6 @@ func (e invoiceEnv) inSession(t *testing.T, method, path, user, sid string, iat 
 	return e.do(t, req)
 }
 
-// R-137, D-49: Privy keeps the session and the sign-in time when someone signs in again while signed in, so a stale
-// session proves itself with Forwend's emailed code; the confirm then covers that session, and only it, for 15 min.
 func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -75,7 +71,6 @@ func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
 	if r := verify("session-1", wrong); r.status != http.StatusUnprocessableEntity || errorCode(r) != "wrong_code" {
 		t.Errorf("a wrong code: %d %v", r.status, r.body)
 	}
-	// The code belongs to its session: another one can't use it.
 	if r := verify("session-2", code); r.status != http.StatusUnprocessableEntity {
 		t.Errorf("another session's code: %d %v", r.status, r.body)
 	}
@@ -91,14 +86,12 @@ func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
 	if r := makeKey("session-2"); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
 		t.Errorf("another stale session: %d %v", r.status, r.body)
 	}
-	// 15 minutes later the confirm no longer counts.
 	e.exec(t, "UPDATE fresh_sign_ins SET confirmed_at = confirmed_at - interval '16 minutes'")
 	if r := makeKey("session-1"); r.status != http.StatusUnauthorized {
 		t.Errorf("a confirm 16 minutes ago: %d %v", r.status, r.body)
 	}
 }
 
-// D-49: a code can't be guessed: five wrong tries or ten minutes end it.
 func TestACodeEndsAfterFiveTriesOrTenMinutes(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -139,7 +132,6 @@ func TestACodeEndsAfterFiveTriesOrTenMinutes(t *testing.T) {
 	}
 }
 
-// D-49: one inbox gets at most 10 codes an hour, whatever the sessions, and requests at once send one email.
 func TestCodesAreLimitedPerUser(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -192,8 +184,6 @@ func TestCodesAreLimitedPerUser(t *testing.T) {
 	}
 }
 
-// D-49: the hour's cap counts codes never confirmed, which is what guessing and a flooded inbox take; an owner who
-// confirms each code is never stopped by it.
 func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -212,8 +202,6 @@ func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
 	}
 }
 
-// R-217, Q-13: an account change Privy makes in the browser, such as adding or removing a passkey, first asks the api
-// whether the session is fresh; a stale one gets reauth_required, and a confirmed code makes it pass.
 func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -245,7 +233,6 @@ func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
 	}
 }
 
-// R-137: a code whose email failed was never sent, so asking again sends one at once.
 func TestACodeWhoseEmailFailedIsNotSent(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -267,7 +254,6 @@ func TestACodeWhoseEmailFailedIsNotSent(t *testing.T) {
 	}
 }
 
-// R-137: the code goes to a signed-in person's login email; an account with none, a key or no token gets none.
 func TestCodesNeedASignedInPersonWithAnEmail(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -295,7 +281,6 @@ func TestCodesNeedASignedInPersonWithAnEmail(t *testing.T) {
 	}
 }
 
-// D-49: the code goes to the email stored at sign-up. A session that links its own email at Privy gets no code.
 func TestCodesGoToTheSignUpEmailNotOneLinkedLater(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -312,9 +297,6 @@ func TestCodesGoToTheSignUpEmailNotOneLinkedLater(t *testing.T) {
 	}
 }
 
-// D-49, Q-13: an email or passkey linked in the last day isn't a sign-in, and neither is an email other than the one
-// stored at sign-up. A stolen session could link or swap in its own and sign in with it. The account the user signed
-// up with counts at once.
 func TestARecentlyLinkedAccountIsNotAFreshSignIn(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -354,8 +336,6 @@ func TestARecentlyLinkedAccountIsNotAFreshSignIn(t *testing.T) {
 	}
 }
 
-// D-49: a code can be checked only once its email went out, so no guess reaches it on its way, and a caller who gives
-// up then can't take back a code that reached the inbox.
 func TestACodeOnItsWayCantBeGuessedOrTakenBack(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

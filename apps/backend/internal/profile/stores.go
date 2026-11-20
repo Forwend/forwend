@@ -14,13 +14,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxStores is per merchant profile; the list is read whole. MaxOrigins is per store.
+// MaxStores is per merchant profile; MaxOrigins is per store.
 const (
 	MaxStores  = 20
 	MaxOrigins = 20
 )
 
-// A store's default checkout close is within an invoice's expiresIn bounds (D-18), in seconds.
+// A store's default checkout close, in seconds: an invoice's expiresIn bounds.
 const (
 	MinStoreExpiresIn = 900
 	MaxStoreExpiresIn = 31_536_000
@@ -28,53 +28,44 @@ const (
 
 var (
 	ErrStoreNotFound = errors.New("store not found")
-	// Stores are a merchant profile's (D-30).
-	ErrNotMerchant = errors.New("only a merchant profile has stores")
+	ErrNotMerchant   = errors.New("only a merchant profile has stores")
 )
 
-// StoreDetails are what the owner saves (R-134). An invoice made without expiresIn closes after DefaultExpiresIn
-// seconds; a return link must start with one of AllowedOrigins.
 type StoreDetails struct {
 	Name             string
 	DefaultExpiresIn int64
 	AllowedOrigins   []string
-	BrandColor       string // "#rrggbb" or "" (R-135)
-	// More tokens off for the store's invoices than the profile has off (R-136).
-	TokensOff []TokenPair
-	// TokensFixed refuses a change to TokensOff: only an Admin turns a store's tokens on or off (D-93).
-	TokensFixed bool
+	BrandColor       string      // "#rrggbb" or ""
+	TokensOff        []TokenPair // on top of the profile's
+	TokensFixed      bool        // only an Admin may change TokensOff
 }
 
-// Store's ID is its project ID: public, with no authority (D-31).
+// Store's ID is its project ID: public, with no authority.
 type Store struct {
 	StoreDetails
 	ID        string
 	UpdatedAt time.Time
-	LogoAt    *time.Time // when the logo was saved; nil without one (R-135)
+	LogoAt    *time.Time // nil without a logo
 }
 
-// Allows reports whether link's origin is one of the store's allowed origins.
 func (s Store) Allows(link string) bool {
 	o, _ := origin(link)
 	return o != "" && slices.Contains(s.AllowedOrigins, o)
 }
 
-// FramedBy reports whether a page at browserOrigin may frame the checkout of a store with these allowed origins
-// (R-168). browserOrigin must be exactly as a browser writes it, so it can go into a header unchanged. A loopback
-// http origin is for test mode only.
+// FramedBy: browserOrigin must be exactly as a browser writes it, so it can go into a header unchanged.
 func FramedBy(allowed []string, browserOrigin string, live bool) bool {
 	o, ok := origin(browserOrigin)
 	return ok && o == browserOrigin && slices.Contains(allowed, o) && (!live || strings.HasPrefix(o, "https://"))
 }
 
-// origin is link's origin in lower case, without the default port: https, or http on a loopback host for test mode
-// (R-168). ok is false when link has more than an origin (a path, query or fragment).
+// origin is https, or http on a loopback host for test mode; ok is false when link has more than an origin.
 func origin(link string) (o string, ok bool) {
 	u, err := url.Parse(link)
 	if err != nil || u.Host == "" || u.User != nil || u.Opaque != "" {
 		return "", false
 	}
-	// Only a hostname and a port: an origin goes into a page's frame-ancestors, where "*" or ";" would mean more.
+	// Only a hostname and a port: it goes into frame-ancestors, where "*" or ";" would mean more.
 	host := strings.ToLower(u.Host)
 	if !originHost.MatchString(host) {
 		return "", false
@@ -91,7 +82,6 @@ func origin(link string) (o string, ok bool) {
 		!strings.HasSuffix(link, "#")
 }
 
-// check validates d and puts its origins in their stored form, without repeats.
 func (d *StoreDetails) check() error {
 	d.Name = strings.TrimSpace(d.Name)
 	if d.Name == "" || !ValidText(d.Name, MaxNameLength, false) {
@@ -152,10 +142,8 @@ func scanStore(row pgx.CollectableRow) (Store, error) {
 	return s, err
 }
 
-// The callers below have checked the user's access to the profile; every query also names the profile, so a store id
-// from another profile is not found.
+// Callers below have checked access; every query also names the profile, so another profile's store is not found.
 
-// Stores lists the profile's stores, the first one first; a personal or freelancer profile has none.
 func (s *Service) Stores(ctx context.Context, profileID string) ([]Store, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+storeColumns+` FROM stores WHERE profile_id = $1 ORDER BY created_at, id`,
 		profileID)
@@ -187,8 +175,7 @@ func (s *Service) Store(ctx context.Context, profileID, id string) (Store, error
 	return st, nil
 }
 
-// SaveStore upserts by the id the caller chose, so sending the same request twice saves one store. Invoices made
-// earlier keep their close; a changed list of origins applies to return links set from now on.
+// SaveStore upserts by the caller's id, so a repeat saves one store.
 func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDetails) (Store, bool, error) {
 	if err := d.check(); err != nil {
 		return Store{}, false, err
@@ -201,7 +188,7 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 		return Store{}, false, fmt.Errorf("save store: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	// The profile row lock makes concurrent saves count one after another, so none passes the cap on a stale count.
+	// The profile row lock serializes saves, so none passes the cap on a stale count.
 	var kind string
 	if err := tx.QueryRow(ctx, "SELECT kind FROM profiles WHERE id = $1 FOR UPDATE", profileID).Scan(&kind); err != nil {
 		return Store{}, false, fmt.Errorf("lock profile: %w", err)
@@ -213,10 +200,10 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	if err != nil {
 		return Store{}, false, err
 	}
-	// An id that belongs to another profile neither inserts (the conflict) nor updates (the WHERE), so no row comes back.
+	// Another profile's id neither inserts (the conflict) nor updates (the WHERE): no row comes back.
 	var st Store
 	var created bool
-	var was []string // the tokens off before this save, as "chainId:token"
+	var was []string // "chainId:token"
 	err = tx.QueryRow(ctx, `
 		INSERT INTO stores (id, profile_id, name, default_expires_in, allowed_origins, brand_color)
 		SELECT $2, $1, $3, $4, $5, nullif($7, '')
@@ -252,7 +239,7 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 			return Store{}, false, fmt.Errorf("%w: only an Admin turns a store's tokens on or off", auth.ErrForbidden)
 		}
 	} else {
-		// Unavailable tokens are hidden from the form, so their saved restrictions stay intact.
+		// The form hides unavailable tokens, so their saved restrictions stay.
 		if _, err := tx.Exec(ctx, `DELETE FROM store_tokens_off o USING tokens t, chains c
 			WHERE o.store_id = $1 AND o.chain_id = t.chain_id AND o.token_contract = t.contract
 			AND c.chain_id = t.chain_id AND t.enabled AND c.enabled`, id); err != nil {
@@ -275,8 +262,7 @@ func (s *Service) SaveStore(ctx context.Context, profileID, id string, d StoreDe
 	return st, created, nil
 }
 
-// InvoiceStore is the store a merchant invoice records: id, or the profile's first store when id is "". An id that is
-// not one of the profile's stores is ErrStoreNotFound.
+// InvoiceStore is id's store, or the profile's first store when id is "".
 func InvoiceStore(ctx context.Context, tx pgx.Tx, profileID, id string) (Store, error) {
 	if id != "" && !lowercaseUUID.MatchString(id) {
 		return Store{}, ErrStoreNotFound

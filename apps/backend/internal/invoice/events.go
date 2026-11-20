@@ -12,8 +12,7 @@ import (
 
 const MaxEvents = 50
 
-// Event is a paid, settled or held-money event of one of the profile's invoices (R-81), the same as the owner's email
-// (R-80). Amount is the option's amount; for a settlement, what reached the wallet; for held money, the amount newly held.
+// Event is a paid, settled or held-money event; Amount is the option's, the settled or the newly held amount.
 type Event struct {
 	Purpose      Purpose
 	DocumentKind DocumentKind
@@ -22,13 +21,12 @@ type Event struct {
 	Kind         string
 	InvoiceID    string
 	Number       *int64
-	chain.Asset  // symbol and decimals of the option it happened on
-	Amount       *big.Int
-	At           time.Time
+	chain.Asset
+	Amount *big.Int
+	At     time.Time
 }
 
-// The caller must check the user's access to the profile.
-// stores, when not nil, keeps only those stores' invoices (R-138); live, when not nil, only that mode's (D-87).
+// Events: the caller checks access to the profile; non-nil stores and live narrow it.
 func (s *Service) Events(ctx context.Context, profileID string, limit int, stores []string, live *bool) ([]Event,
 	error) {
 	if limit < 1 || limit > MaxEvents {

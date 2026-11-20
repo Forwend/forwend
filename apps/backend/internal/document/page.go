@@ -1,6 +1,4 @@
-// Package document renders invoices, receipts and income statements as PDFs, and writes the amounts, dates, numbers
-// and network names they share with emails and exports. Nothing is read from the network or disk, and the same input
-// always gives the same bytes.
+// Package document renders PDFs and the formats emails share; the same input always gives the same bytes.
 package document
 
 import (
@@ -15,14 +13,13 @@ import (
 	"github.com/boombuler/barcode/qr"
 )
 
-// Noto Sans covers Latin with its accents, Greek and Cyrillic, and its digits share one width, so amounts line up;
-// the license is fonts/OFL.txt.
+// Noto Sans: Latin, Greek and Cyrillic, with same-width digits; license in fonts/OFL.txt.
 var (
 	//go:embed fonts/NotoSans-Regular.ttf
 	regular []byte
 	//go:embed fonts/NotoSans-Bold.ttf
 	bold []byte
-	// The Forwend mark, a copy of packages/ui-web/src/icons/logo-data.ts (a test keeps them equal).
+	// A copy of packages/ui-web/src/icons/logo-data.ts; a test keeps them equal.
 	//go:embed logo.path
 	logoPath string
 )
@@ -31,17 +28,16 @@ var (
 const (
 	pageHeight = 297.0
 	margin     = 20.0
-	width      = 170.0 // between the margins
+	width      = 170.0
 	lineHeight = 5.0
-	rowLine    = 4.6 // a table line, set in 9.5 pt
+	rowLine    = 4.6
 	rowPad     = 2.2
-	gutter     = 4.0 // between table columns
+	gutter     = 4.0
 	font       = "Noto"
-	mono       = "Courier" // a core font: hashes and addresses are ASCII
+	mono       = "Courier" // core font: hashes and addresses are ASCII
 )
 
-// The product's light theme (packages/design-tokens/src/tokens.css): near-black ink and neutral greys, so a page
-// prints the same in black and white. Lime only marks the status.
+// Light theme from packages/design-tokens/src/tokens.css; lime only marks the status.
 var (
 	ink      = [3]int{0x0e, 0x0f, 0x0e}
 	muted    = [3]int{0x5b, 0x5e, 0x5a}
@@ -56,8 +52,6 @@ var (
 
 type doc struct{ *fpdf.Fpdf }
 
-// label is an invoice's number, if it has one, or a statement's period; logo replaces Forwend's mark and name when set.
-// Every page's footer says test mode when test, and the invoice id when id is set.
 func open(kind, label, author string, date time.Time, logo []byte, test bool, id string) doc {
 	name := strings.TrimSpace(kind + " " + label)
 	d := doc{fpdf.New("P", "mm", "A4", "")}
@@ -73,7 +67,6 @@ func open(kind, label, author string, date time.Time, logo []byte, test bool, id
 	d.SetCreationDate(date)
 	d.SetModificationDate(date)
 	d.SetCatalogSort(true)
-	// Every page names the document and its place, so a printed page that comes loose is still traceable.
 	d.AliasNbPages("{pages}")
 	foot := name
 	if test {
@@ -94,7 +87,6 @@ func open(kind, label, author string, date time.Time, logo []byte, test bool, id
 	d.AddPage()
 
 	if logo != nil {
-		// Fitted into the space Forwend's mark and name take, keeping its shape.
 		opts := fpdf.ImageOptions{ImageType: "PNG"}
 		info := d.RegisterImageOptionsReader("logo", opts, bytes.NewReader(logo))
 		w, h := 50.0, 10.0
@@ -124,7 +116,6 @@ func open(kind, label, author string, date time.Time, logo []byte, test bool, id
 func (d doc) color(c [3]int) { d.SetFillColor(c[0], c[1], c[2]) }
 func (d doc) text(c [3]int)  { d.SetTextColor(c[0], c[1], c[2]) }
 
-// hexColor reads a store's "#rrggbb" (R-135).
 func hexColor(s string) ([3]int, bool) {
 	var c [3]int
 	_, err := fmt.Sscanf(s, "#%02x%02x%02x", &c[0], &c[1], &c[2])
@@ -139,7 +130,7 @@ func (d doc) hairline(c [3]int) {
 	d.Line(margin, d.GetY(), margin+width, d.GetY())
 }
 
-// logo draws the mark, size mm square, from its SVG path (only M and C commands, absolute).
+// logo draws the mark from its SVG path, which has only absolute M and C commands.
 func (d doc) logo(x, y, size float64) {
 	const minX, minY, box = 117.2, 11.5, 1812.6
 	f := strings.FieldsFunc(logoPath, func(r rune) bool { return r == ' ' || r == ',' || r == '\n' })
@@ -172,7 +163,6 @@ func (d doc) logo(x, y, size float64) {
 	d.DrawPath("F")
 }
 
-// party is a From or Billed to block; empty details are left out, so no label stands alone.
 func (d doc) party(x, y float64, heading, name string, details ...string) float64 {
 	w := width/2 - 5
 	d.SetXY(x, y)
@@ -198,7 +188,6 @@ func (d doc) party(x, y float64, heading, name string, details ...string) float6
 	return d.GetY()
 }
 
-// facts writes up to four label and value pairs in one row; an empty value leaves its pair out.
 func (d doc) facts(pairs ...[2]string) {
 	y, x, w := d.GetY(), margin, width/4
 	for _, p := range pairs {
@@ -217,7 +206,6 @@ func (d doc) facts(pairs ...[2]string) {
 	d.SetXY(margin, y+2*lineHeight+6)
 }
 
-// fact is one label and value across the page, for a value too long for a facts column; none when value is "".
 func (d doc) fact(label, value string) {
 	if value == "" {
 		return
@@ -233,8 +221,7 @@ func (d doc) fact(label, value string) {
 	d.Ln(6)
 }
 
-// table draws rows under a header that repeats on every page the table continues on. Columns from right on are
-// right-aligned.
+// table repeats its header on every page; columns from right on are right-aligned.
 type table struct {
 	d     doc
 	cols  []float64
@@ -251,7 +238,6 @@ func (t table) align(i int) string {
 	return "L"
 }
 
-// x is where column i's text starts: a gutter separates columns, none sits at the page's edges.
 func (t table) x(i int) float64 {
 	x := margin
 	for _, c := range t.cols[:i] {
@@ -288,7 +274,6 @@ func (t table) header() {
 	d.text(ink)
 }
 
-// room starts a new page, under the header again, unless h more mm fit on this one.
 func (t table) room(h float64) {
 	if t.d.GetY()+h > pageHeight-margin {
 		t.d.AddPage()
@@ -304,8 +289,6 @@ func height(cells [][]string) float64 {
 	return float64(n)*rowLine + 2*rowPad
 }
 
-// row writes each column's lines from the row's top and leaves extra mm under them; it returns where that space
-// starts.
 func (t table) row(cells [][]string, extra float64) float64 {
 	d := t.d
 	top := d.GetY() + rowPad
@@ -346,7 +329,6 @@ func (d doc) totalsHeight(rows [][2]string) float64 {
 	return h
 }
 
-// totals are label and amount rows in the right w mm, amounts on the right edge; with strong the last one is bold.
 func (d doc) totals(rows [][2]string, w float64, strong bool) {
 	x := margin + width - w
 	for i, r := range rows {
@@ -397,7 +379,6 @@ func (d doc) note(text string) {
 	d.Ln(6)
 }
 
-// code is a box with the link's QR code, the title and lines beside it, the first line in ink, then the link.
 func (d doc) code(link, title string, lines ...string) {
 	const size, pad, gap = 28.0, 4.5, 7.0
 	x, w := margin+pad+size+gap, width-2*pad-size-gap
@@ -443,7 +424,7 @@ func (d doc) code(link, title string, lines ...string) {
 	d.SetXY(margin, y+h+6)
 }
 
-// qr draws the code's dark modules as filled runs; a scanner reads dark on light, so it is always ink on white.
+// qr is always ink on white: scanners read dark on light.
 func (d doc) qr(text string, x, y, size float64) {
 	code, err := qr.Encode(text, qr.M, qr.Auto)
 	if err != nil {
@@ -510,8 +491,7 @@ func (d doc) output() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// testnet is the band under the header of a test-mode PDF: a forwarded one must not pass testnet tokens off as money
-// (D-87).
+// testnet bands a test-mode PDF, so a forwarded one can't pass testnet tokens off as money.
 func (d doc) testnet() {
 	y := d.GetY()
 	d.color(surface)

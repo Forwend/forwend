@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// The caller has checked the user's access to the profile; every query also names the profile.
+// Callers check access to the profile; every query also filters by it.
 
 // A link's paid count is its invoices paid or settled.
 const linkColumns = `l.id::text, coalesce(l.store_id::text, ''), l.slug, l.title, coalesce(l.amount_cents, 0),
@@ -23,7 +23,7 @@ const linkColumns = `l.id::text, coalesce(l.store_id::text, ''), l.slug, l.title
 	(SELECT reserved FROM payment_link_usage u WHERE u.link_id = l.id),
 	l.created_at, l.updated_at, l.livemode, l.revision, coalesce(l.fees_paid_by, '')`
 
-// fields are l's scan targets in linkColumns order.
+// fields must follow linkColumns' order.
 func (l *Link) fields() []any {
 	return []any{&l.ID, &l.StoreID, &l.Slug, &l.Title, &l.AmountCents, &l.MinCents, &l.MaxCents, &l.EndsAt,
 		&l.MaxPayments, &l.Active, &l.Visits, &l.Paid, &l.Reserved, &l.CreatedAt, &l.UpdatedAt, &l.Livemode, &l.Revision,
@@ -41,14 +41,12 @@ const (
 	MaxLimit     = 100
 )
 
-// Page is one page of links; NextCursor is "" on the last one.
 type Page struct {
 	Links      []Link
-	NextCursor string
+	NextCursor string // "" on the last page
 }
 
-// List is the profile's links, newest first, limit after cursor. stores, when not nil, keeps only those stores' links
-// (R-138).
+// List is the profile's links, newest first; a non-nil stores keeps only those stores' links.
 func (s *Service) List(ctx context.Context, profileID string, stores []string, live *bool, cursor string, limit int) (Page, error) {
 	if limit < 1 || limit > MaxLimit {
 		return Page{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)

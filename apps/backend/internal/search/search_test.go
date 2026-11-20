@@ -8,7 +8,7 @@ import (
 
 func TestParse(t *testing.T) {
 	for _, c := range []struct {
-		text, like, amount string // amount "" is none
+		text, like, amount string
 	}{
 		{" Kettle ", "%Kettle%", ""},
 		{"50%_a\\b", `%50\%\_a\\b%`, ""},

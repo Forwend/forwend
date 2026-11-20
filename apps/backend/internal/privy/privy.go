@@ -1,6 +1,4 @@
-// Package privy wraps the official Privy Go SDK (D-12) for what the backend needs: one user-owned EVM wallet per
-// profile (R-31, D-21). The server never signs for these wallets (D-46): it only sends on a request the user's own key
-// signed in the browser.
+// Package privy wraps the Privy SDK: one user-owned EVM wallet per profile, which the server never signs for.
 package privy
 
 import (
@@ -19,28 +17,24 @@ import (
 	"github.com/privy-io/go-sdk/option"
 )
 
-// ErrNoWallet means the profile has no Privy wallet yet.
 var ErrNoWallet = errors.New("privy returned no wallet")
 
-// Timeout bounds one ProfileWallet call, retries included, so a hanging Privy fails the request before the api's
-// 30 s write timeout instead of holding it for the SDK's 10 minutes.
+// Timeout bounds one call with retries: under the api's 30 s write timeout, not the SDK's 10 minutes.
 var Timeout = 20 * time.Second
 
-// Wallet is a profile's Privy wallet; Address is lowercase.
 type Wallet struct {
 	ID      string
-	Address string
+	Address string // lowercase
 }
 
 type Client struct {
-	sdk *privyclient.PrivyClient
-	// raw sends a body as given: the user's signature covers its exact JSON.
-	raw     privyclient.Client
+	sdk     *privyclient.PrivyClient
+	raw     privyclient.Client // sends a body as given: the user's signature covers its exact JSON
 	appID   string
 	baseURL string
 }
 
-// NewClient uses Privy's production API unless apiURL is set (tests point it at a fake).
+// NewClient uses Privy's production API unless apiURL is set.
 func NewClient(appID, appSecret, apiURL string) *Client {
 	base := apiURL
 	if base == "" {
@@ -54,23 +48,20 @@ func NewClient(appID, appSecret, apiURL string) *Client {
 	}
 }
 
-// Request is a wallet API request for the user's key to sign: the browser signs it as Privy's authorization signature
-// payload (version 1, POST), and Send sends exactly this body and these headers.
+// Request is what the browser signs as Privy's authorization payload (v1, POST); Send sends exactly this.
 type Request struct {
 	URL     string            `json:"url"`
 	Body    json.RawMessage   `json:"body"`
 	Headers map[string]string `json:"headers"`
 }
 
-// RPC is the wallet RPC request with body. The idempotency key makes a second send of it a no-op at Privy, and Privy
-// refuses it after expires.
+// RPC: the idempotency key makes a second send a no-op at Privy, and Privy refuses it after expires.
 func (c *Client) RPC(walletID string, body json.RawMessage, idempotencyKey string, expires time.Time) Request {
 	return Request{URL: c.baseURL + "/v1/wallets/" + url.PathEscape(walletID) + "/rpc", Body: body,
 		Headers: map[string]string{"privy-app-id": c.appID, "privy-idempotency-key": idempotencyKey,
 			"privy-request-expiry": strconv.FormatInt(expires.UnixMilli(), 10)}}
 }
 
-// Send sends the request with the user's signature over it, and returns Privy's transaction id.
 func (c *Client) Send(ctx context.Context, req Request, signature string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
@@ -97,9 +88,8 @@ func (c *Client) Send(ctx context.Context, req Request, signature string) (strin
 	return out.Data.TransactionID, nil
 }
 
-// Transaction is a transaction Privy sent: its hash once known, else "", Privy's status for it, and what it was for.
 type Transaction struct {
-	Hash, Status, WalletID, Caip2, ReferenceID string
+	Hash, Status, WalletID, Caip2, ReferenceID string // Hash is "" until known
 }
 
 func (c *Client) Transaction(ctx context.Context, id string) (Transaction, error) {
@@ -113,8 +103,7 @@ func (c *Client) Transaction(ctx context.Context, id string) (Transaction, error
 		Caip2: t.Caip2, ReferenceID: t.ReferenceID}, nil
 }
 
-// ProfileWallet finds the wallet by external_id = profile id and owner, else creates it. No idempotency key: Privy
-// replays a cached error for a key for 24 hours, so one failed create would block the wallet.
+// ProfileWallet uses no idempotency key: Privy replays a cached error for a key for 24 hours.
 func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID string) (Wallet, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
@@ -136,7 +125,7 @@ func (c *Client) ProfileWallet(ctx context.Context, privyUserID, profileID strin
 	return Wallet{ID: created.ID, Address: strings.ToLower(created.Address)}, nil
 }
 
-// LoginEmail is the user's verified login email; "" for a passkey alone.
+// LoginEmail is "" for a passkey alone.
 func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
@@ -158,23 +147,15 @@ func (c *Client) LoginEmail(ctx context.Context, privyUserID string) (string, er
 	return google, nil
 }
 
-// user reads the user as Privy has them now. Privy's edge caches a user read by its URL for 10 s, despite
-// Cache-Control: no-store, so a read soon after another misses a change made in between, such as two-step just set up.
-// A query of its own keeps each read off that cache.
+// Privy's edge caches a user read by URL for 10 s despite no-store; a random query keeps each read fresh.
 func (c *Client) user(ctx context.Context, privyUserID string) (*privyclient.User, error) {
 	return c.sdk.Users.Get(ctx, privyUserID, option.WithQuery("read", rand.Text()))
 }
 
-// NewAccountAge: an email or passkey linked this recently isn't a sign-in for D-49. A stolen session can link its own
-// at Privy and sign in with it (Q-13). The one the user signed up with counts at once: a passkey alone has no email
-// for a code.
+// NewAccountAge: a stolen session can link its own email or passkey at Privy, so a new one isn't a sign-in yet.
 const NewAccountAge = 24 * time.Hour
 
-// SignInTimes are the latest_verified_at of the user's passkeys and of their email account at loginEmail, the one
-// Forwend stored at sign-up, in Unix seconds (D-49), except those linked within NewAccountAge after sign-up. Another
-// email doesn't count: a stolen session can change the email at Privy, which may keep the old account's times.
-// twoStep names the user's MFA methods at Privy, sorted, each as type:verified_at: Privy asks for one before it signs
-// or exports, and setting one up again changes its time (R-219).
+// SignInTimes reads passkeys and the stored login email only (a stolen session can change Privy's); twoStep is sorted.
 func (c *Client) SignInTimes(ctx context.Context, privyUserID, loginEmail string) (times []int64, twoStep []string,
 	err error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
@@ -199,9 +180,7 @@ func (c *Client) SignInTimes(ctx context.Context, privyUserID, loginEmail string
 	return times, twoStep, nil
 }
 
-// EndSessions freezes the user, which ends every session and refresh token at Privy, then unfreezes them so they can
-// sign in again (D-49). ended reports that the freeze succeeded. Neither call stops when the caller gives up, and the
-// unfreeze is sent even after a failed freeze, which may still have landed: a frozen user can't sign in.
+// EndSessions freezes then unfreezes the user; the unfreeze runs even after a failed freeze, which may have landed.
 func (c *Client) EndSessions(ctx context.Context, privyUserID string) (ended bool, err error) {
 	ctx = context.WithoutCancel(ctx)
 	freezeCtx, cancelFreeze := context.WithTimeout(ctx, Timeout)

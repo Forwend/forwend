@@ -10,7 +10,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// Public: the payer presses Check status.
 func recheckInvoice(invoices *invoice.Service, balances ledger.BalanceOf, rechecks, owners *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allow := func(owner string) time.Duration {

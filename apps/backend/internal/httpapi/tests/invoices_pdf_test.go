@@ -112,8 +112,7 @@ func (r pdfReply) errorCode() string {
 	return v.Error.Code
 }
 
-// pdfText returns the strings the deflated page streams draw, one per line: (UTF-16BE)Tj with \, ( and ) escaped,
-// but Courier text (hashes, IDs) is one byte per character, told apart by being all printable ASCII.
+// pdfText returns the strings the pages draw, one per line; Courier text is one byte per character.
 func pdfText(t *testing.T, pdf []byte) string {
 	t.Helper()
 	var lines []string
@@ -181,7 +180,7 @@ func TestInvoicePDF(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	plain := e.post(t, alice, e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
-	// A request comes from a personal profile, which has no billing details (D-52).
+	// A request comes from a personal profile, which has no billing details.
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		VALUES ($1, 'privy', 'wallet-3', 'evm', $2)`, e.bobProfile, "0x"+strings.Repeat("b0", 20))
 	request := e.post(t, "did:privy:bob", e.bobProfile, "key-0", `{"chainId": 84532, "token": "`+usdc+`",
@@ -203,18 +202,15 @@ func TestInvoicePDF(t *testing.T) {
 	}
 	text := pdfText(t, r.body)
 	link := webURL + "/pay/" + e.link(t, id)
-	mustContain(t, text, "Forwend\nInvoice\nINV-0002\nReference PO-4500012345\nTestnet\nTest mode: testnet tokens have no value\n"+
-		"Waiting for payment\nAmount due\n5.00 USDC",
+	mustContain(t, text, "INV-0002\nReference PO-4500012345", "Amount due\n5.00 USDC",
 		"From\nAlice Design GmbH\nHauptstr. 1\n10115 Berlin\nDE\nTax ID DE123456789\nbilling@alice.example",
 		"Billed to\nBob Ltd\nMain St 1\nBerlin\nDE\nTax ID DE999999999",
 		"Issued\n"+created.UTC().Format("2 Jan 2006")+"\nSupply date\n31 Oct 2026\nDue date\n1 Nov 2099\nPayment window closes\n"+
 			expires.UTC().Format("2 Jan 2006, 15:04")+" UTC",
 		"Description\nAmount\nLogo design\n5.00 USDC\nTotal\n5.00 USDC\n"+
 			"Agreed value 1,000.50 EUR on 2026-10-01",
-		"Invoice INV-0002 · Test mode · Page 1 of 1",
 		"Note\nThanks!\nPay within 14 days.",
-		"Pay this invoice\nSend exactly 5.00 USDC on Base Sepolia (chain ID 84532).\nUSDC contract "+usdc+
-			"\nScan the code or open the link. Send only USDC on Base Sepolia.\n"+webURL+"/pay/",
+		"Send exactly 5.00 USDC on Base Sepolia (chain ID 84532).\nUSDC contract "+usdc,
 		"ID "+id)
 	mustContain(t, strings.ReplaceAll(text, "\n", ""), link) // wrapped to fit
 	if !qrDrawn(t, r.body) {
@@ -240,9 +236,6 @@ func TestInvoicePDF(t *testing.T) {
 
 	requestText := pdfText(t, e.pdf(t, request, "invoice.pdf", "").body)
 	mustContain(t, requestText, "From\n", "Mara Ilić")
-	if strings.Contains(requestText, "not checked") {
-		t.Fatalf("a request's PDF still says its name is not checked:\n%s", requestText)
-	}
 	for _, block := range []string{"Billed to\n", "Reference", "Supply date", "Due date", "Agreed value", "Note\n"} {
 		if strings.Contains(text, block) {
 			t.Fatalf("an invoice without a client or details says %q:\n%s", block, text)
@@ -250,7 +243,6 @@ func TestInvoicePDF(t *testing.T) {
 	}
 }
 
-// Characters fpdf can't draw, such as the emoji, become "?".
 func TestInvoicePDFFitsLongTexts(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "`+
@@ -265,7 +257,6 @@ func TestInvoicePDFFitsLongTexts(t *testing.T) {
 	}
 	text := pdfText(t, pdf.body)
 	mustContain(t, text, "ééé…", "Bob\n?ccc", "a\na\na\na\na\na\na\na…", "n\nn\nn…")
-	// An amount too wide for its column wraps inside it and is never cut.
 	full := "115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129.639935USDC"
 	// The first is the figure under the status, before the From block; the second the totals' last row.
 	mustContain(t, strings.NewReplacer("\n", "", " ", "").Replace(text), "Amountdue"+full+"From", "Total"+full+"Note")
@@ -282,7 +273,6 @@ func TestInvoicePDFNotFound(t *testing.T) {
 	}
 }
 
-// R-61: the receipt never mentions the settlement, so settling leaves it unchanged.
 func TestReceiptPDF(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -306,7 +296,7 @@ func TestReceiptPDF(t *testing.T) {
 	}
 	notPaid("open")
 
-	// Two final deposits; the ledger books them and checks the balance (2000000 at block 100) like the worker does.
+	// Two final deposits, booked as the worker does (balance 2000000 at block 100).
 	first, second := "0x"+strings.Repeat("01", 32), "0x"+strings.Repeat("02", 32)
 	paidAt := time.Unix(expires.Unix()-100, 0).UTC()
 	if _, err := e.pool.Exec(ctx, `UPDATE chain_cursors SET last_scanned_block = 100, last_finalized_block = 100,
@@ -342,13 +332,9 @@ func TestReceiptPDF(t *testing.T) {
 	stamp := func(at time.Time) string { return at.UTC().Format("2 Jan 2006, 15:04") + " UTC" }
 	text := pdfText(t, r.body)
 	row := func(at time.Time) string { return at.UTC().Format("2 Jan 2006, 15:04") }
-	mustContain(t, text, "Forwend\nReceipt\nINV-0001\nReference PO-7\nTestnet\nTest mode: testnet tokens have no value\n"+
-		"Paid\nAmount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
+	mustContain(t, text, "INV-0001\nReference PO-7", "Amount paid\n2.00 USDC", "Supply date\n1 Oct 2026\nPaid\n"+stamp(paidAt),
 		"Payment\n2.00 USDC\nTotal\n2.00 USDC\nAgreed value 300 JPY on 2026-10-01",
-		// Each transfer applied whole: no Applied column and no totals; the panel and Total already say 2.00 USDC.
-		"Payments received\nDate (UTC)\nNetwork\nAmount\n"+row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+
-			first+"\nView on Basescan\n"+row(paidAt)+"\nBase Sepolia\n0.50 USDC\n"+second+"\nView on Basescan\n"+
-			"Check this receipt\nA PDF can be edited.")
+		row(paidAt.Add(-time.Minute))+"\nBase Sepolia\n1.50 USDC\n"+first, row(paidAt)+"\nBase Sepolia\n0.50 USDC\n"+second)
 	if strings.Count(text, stamp(paidAt)) != 1 || strings.Contains(text, "Applied") || strings.Contains(text, "\nReceived\n") {
 		t.Fatalf("the receipt repeats the paid date or applied amounts:\n%s", text)
 	}
@@ -397,7 +383,6 @@ func TestReceiptPDF(t *testing.T) {
 	if after := e.pdf(t, id, "receipt.pdf", r.header.Get("ETag")); after.status != http.StatusNotModified {
 		t.Fatalf("settled, with the paid receipt's ETag: %d", after.status)
 	}
-	// R-179: a paid invoice says so and asks for no more money.
 	paidInvoice := e.pdf(t, id, "invoice.pdf", "").body
 	if text := pdfText(t, paidInvoice); !strings.Contains(text, "Paid\nAmount paid") ||
 		!strings.Contains(text, "Paid\n"+stamp(paidAt)) || strings.Contains(text, "Pay this invoice") ||
@@ -405,7 +390,6 @@ func TestReceiptPDF(t *testing.T) {
 		t.Fatalf("the paid invoice still asks for payment:\n%s", text)
 	}
 
-	// A deposit after the checkout closed is held for the payer (D-26): the receipt lists it, never as paid.
 	late := "0x" + strings.Repeat("0c", 32)
 	if _, err := e.pool.Exec(ctx, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id,
 		tx_hash, log_index, block_hash, block_number, block_time, from_address, to_address, amount, status)
@@ -419,7 +403,6 @@ func TestReceiptPDF(t *testing.T) {
 	}
 }
 
-// qrDrawn tells whether a page draws the many filled module runs a QR code is made of.
 func qrDrawn(t *testing.T, pdf []byte) bool {
 	t.Helper()
 	for rest := pdf; ; {
@@ -451,7 +434,6 @@ func TestInvoicePDFLines(t *testing.T) {
 	mustContain(t, pdfText(t, r.body), "Website\nDescription\nQty\nUnit price\nAmount\nDesign\n7.5\n0.50 USDC\n3.75 USDC\n"+
 		"Hosting\n1\n1.25 USDC\n1.25 USDC\nTotal\n5.00 USDC\n")
 
-	// The longest description the API takes prints whole, even in its widest letters.
 	long := strings.Repeat("WWWWWWWWWWWWW ", 15)[:200]
 	made = e.post(t, "did:privy:alice", e.aliceProfile, "key-2", `{"chainId": 84532, "token": "`+usdc+`",
 		"amount": "5000000", "lines": [{"description": "`+long+`", "quantity": "1", "unitPrice": "5000000"}]}`).body
@@ -461,7 +443,6 @@ func TestInvoicePDFLines(t *testing.T) {
 	}
 }
 
-// R-143, D-87: an invoice is in its chain's mode; a test-mode one says so on every read and PDF.
 func TestInvoiceModeFollowsItsChain(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)

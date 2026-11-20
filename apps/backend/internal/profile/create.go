@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Create is idempotent per (user, idempotency key); created is false when the stored profile is returned.
+// Create is idempotent per (user, idempotency key).
 func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind, name string) (p Profile, created bool, err error) {
 	if kind != Freelancer && kind != Merchant {
 		return Profile{}, false, fmt.Errorf("%w: kind must be %s or %s", ErrInvalid, Freelancer, Merchant)
@@ -23,8 +23,7 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 	if err != nil {
 		return Profile{}, false, err
 	}
-	// A wallet Privy fails to make now is made by the next signup call; the profile itself is created, so the user
-	// sees it (wallet not ready) and a retry with other values can't make a second one.
+	// A failed wallet is made by the next signup; the profile stays, so a retry can't make a second one.
 	if err := s.ensureWallet(ctx, privyUserID, id); err != nil {
 		slog.Warn("make profile wallet", "profile", id, "err", err)
 	}
@@ -40,7 +39,6 @@ func (s *Service) Create(ctx context.Context, privyUserID, idempotencyKey, kind,
 	return Profile{}, false, fmt.Errorf("profile %s is not listed", id)
 }
 
-// checkName holds a profile name to what New profile and the first run both accept; empty means no name.
 func checkName(name string) error {
 	if !ValidText(name, MaxNameLength, false) {
 		return fmt.Errorf("%w: name must be at most %d characters of plain text", ErrInvalid, MaxNameLength)
@@ -51,7 +49,7 @@ func checkName(name string) error {
 	return nil
 }
 
-// The user row lock makes the cap hold against concurrent requests: each profile's wallet is scanned forever.
+// The user row lock makes the cap hold against concurrent requests.
 func (s *Service) insert(ctx context.Context, privyUserID, idempotencyKey, kind, name string, hash []byte) (string, bool, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -66,7 +64,7 @@ func (s *Service) insert(ctx context.Context, privyUserID, idempotencyKey, kind,
 	if err != nil {
 		return "", false, fmt.Errorf("insert profile: %w", err)
 	}
-	// Counted after the lock, in its own statement, so it sees profiles other requests committed while we waited.
+	// Its own statement after the lock, so it sees profiles committed while we waited.
 	var count int
 	if err := tx.QueryRow(ctx, "SELECT count(*) FROM profiles WHERE user_id = $1", userID).Scan(&count); err != nil {
 		return "", false, fmt.Errorf("insert profile: %w", err)

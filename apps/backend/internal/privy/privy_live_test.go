@@ -14,7 +14,6 @@ import (
 	"github.com/privy-io/go-sdk/option"
 )
 
-// Against the Privy test app: go test -tags privylive ./internal/privy/ with PRIVY_APP_ID and PRIVY_APP_SECRET set.
 func TestLiveProfileWallet(t *testing.T) {
 	id, secret := os.Getenv("PRIVY_APP_ID"), os.Getenv("PRIVY_APP_SECRET")
 	if id == "" || secret == "" {
@@ -35,7 +34,7 @@ func TestLiveProfileWallet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The SDK's Archive sends no body and Privy answers 415; an explicit {} works (S-1…S-3).
+	// The SDK's Archive sends no body and Privy answers 415; an explicit {} works.
 	t.Cleanup(func() {
 		_, _ = sdk.Wallets.Archive(ctx, first.ID, option.WithRequestBody("application/json", []byte("{}")))
 	})

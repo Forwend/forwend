@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// closedPartly makes invoice n, which closed with 2 of 5 USDC paid; its receiver was deployed at deployedAt, 0 if not.
+// closedPartly: invoice n closed with 2 of 5 USDC paid; deployedAt 0 means not deployed.
 func closedPartly(t *testing.T, pool *pgxpool.Pool, s *Service, profile string, n int, deployedAt uint64) Invoice {
 	t.Helper()
 	ctx := context.Background()
@@ -41,14 +41,12 @@ func closedPartly(t *testing.T, pool *pgxpool.Pool, s *Service, profile string, 
 	return inv
 }
 
-// R-130: reopening needs ReopenMargin before the settle deadline and no refund under way; the reopened close is that
-// margin before the deadline.
 func TestReopenNeedsADayBeforeTheSettleDeadline(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()
 	s := NewService(pool)
 	inv := closedPartly(t, pool, s, profile, 1, 0)
-	until := inv.SettleDeadline.Add(-ReopenMargin)
+	until := inv.SettleDeadline.Add(-24 * time.Hour)
 	s.now = func() time.Time { return until }
 	if _, err := s.Reopen(ctx, profile, inv.ID); !errors.Is(err, ErrNotReopenable) {
 		t.Fatalf("at the last moment: %v, want ErrNotReopenable", err)
@@ -70,15 +68,13 @@ func TestReopenNeedsADayBeforeTheSettleDeadline(t *testing.T) {
 	}
 }
 
-// R-130: a receiver deployed early settles only until deployedAt + 30 days, so a reopen ends a day before that, or
-// can't happen. Nor can it while the deploy time was never read.
 func TestReopenEndsBeforeAnEarlyDeployStopsSettling(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()
 	s := NewService(pool)
 	month := 30 * 24 * time.Hour
 	early := closedPartly(t, pool, s, profile, 1, 0)
-	// Settles until 3 days after the close, 4 days before its settle deadline.
+	// Settles until 3 days after the close.
 	if _, err := pool.Exec(ctx, "UPDATE invoices SET receiver_deployed_at = $2 WHERE id = $1", early.ID,
 		early.ExpiresAt.Add(3*24*time.Hour-month).Unix()); err != nil {
 		t.Fatal(err)
@@ -132,7 +128,7 @@ func TestReopenCannotTakeAnotherCustomersReservedLinkSlot(t *testing.T) {
 	}
 }
 
-func TestLegacyLinkReopenAllowsConcurrentProfileCoordination(t *testing.T) {
+func TestLinkReopenDoesNotWaitForTheProfileLock(t *testing.T) {
 	pool, profileID := open(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()

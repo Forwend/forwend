@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// Role is what the signed-in user is on a profile (D-93). The owner is not a member and has every permission.
+// The owner is not a member and has every permission.
 type Role string
 
 const (
@@ -20,8 +20,7 @@ const (
 	Finance   Role = "finance"
 )
 
-// Permission is what a {profileId} route asks for (R-138), never a role. The invoice and store permissions reach only
-// a Developer's or Finance member's assigned stores.
+// Permission is what a {profileId} route asks for, never a role.
 type Permission string
 
 const (
@@ -31,34 +30,25 @@ const (
 	StoresWrite   Permission = "stores.write"
 	ClientsRead   Permission = "clients.read"
 	ClientsWrite  Permission = "clients.write"
-	// Balances, activity, transactions and their exports.
-	MoneyRead Permission = "money.read"
-	// Transaction labels and the records currency.
-	MoneyWrite Permission = "money.write"
-	// Sending and transferring out of the profile's wallet. No role has it: only the owner moves money (D-61).
-	MoneyMove    Permission = "money.move"
-	BillingRead  Permission = "billing.read"
-	BillingWrite Permission = "billing.write"
-	TokensRead   Permission = "tokens.read"
-	TokensWrite  Permission = "tokens.write"
-	// Jobs have no store, so only Admins reach them (D-93).
-	Jobs Permission = "jobs"
-	// The profile's email setting, which emails the owner alone (D-93).
+	MoneyRead     Permission = "money.read"
+	MoneyWrite    Permission = "money.write" // labels and the records currency
+	MoneyMove     Permission = "money.move"  // no role has it: only the owner moves money
+	BillingRead   Permission = "billing.read"
+	BillingWrite  Permission = "billing.write"
+	TokensRead    Permission = "tokens.read"
+	TokensWrite   Permission = "tokens.write"
+	Jobs          Permission = "jobs"
 	Notifications Permission = "notifications"
-	// The team's members, roles and stores, and its invites (R-139).
-	Team Permission = "team"
-	// Leaving the team. The owner has it as every permission, but can't leave (D-93).
-	Leave Permission = "team.leave"
-	// The profile's secret API keys (R-144).
-	Keys Permission = "keys"
-	// The profile's webhook endpoints and their secrets (R-146).
-	Webhooks Permission = "webhooks"
+	Team          Permission = "team"
+	Leave         Permission = "team.leave"
+	Keys          Permission = "keys"
+	Webhooks      Permission = "webhooks"
 )
 
 var permissions = []Permission{InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead,
 	MoneyWrite, MoneyMove, BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Notifications, Team, Leave, Keys, Webhooks}
 
-// The one map of who may do what (D-93). The owner has every permission, these and the ones no role has.
+// The one map of who may do what; the owner has every permission.
 var rolePermissions = map[Role][]Permission{
 	Admin: {InvoicesRead, InvoicesWrite, StoresRead, StoresWrite, ClientsRead, ClientsWrite, MoneyRead, MoneyWrite,
 		BillingRead, BillingWrite, TokensRead, TokensWrite, Jobs, Team, Leave, Keys, Webhooks},
@@ -69,13 +59,9 @@ var rolePermissions = map[Role][]Permission{
 
 // Access is what the signed-in user, or a secret API key, may do on one profile.
 type Access struct {
-	Role Role
-	// Stores is nil when every store is in reach; otherwise a Developer's or Finance member's assigned stores, or a
-	// merchant key's store.
-	Stores []string
-	// Scopes are a key's permissions (R-144); nil for a person, whose role decides.
-	Scopes []Permission
-	// Livemode is the mode the caller reaches (D-87): a key's own, or for a person the profile's (D-120, R-221).
+	Role     Role
+	Stores   []string     // nil when every store is in reach
+	Scopes   []Permission // a key's; nil for a person, whose role decides
 	Livemode *bool
 }
 
@@ -86,23 +72,19 @@ func (a Access) Can(p Permission) bool {
 	return a.Role == Owner || slices.Contains(rolePermissions[a.Role], p)
 }
 
-// Permissions are all a has, so the app shows only the pages it can use.
 func (a Access) Permissions() []Permission {
 	return slices.DeleteFunc(slices.Clone(permissions), func(p Permission) bool { return !a.Can(p) })
 }
 
-// StoreScoped reports whether p reaches only a member's assigned stores.
 func StoreScoped(p Permission) bool {
 	return p == InvoicesRead || p == InvoicesWrite || p == StoresRead || p == StoresWrite
 }
 
-// InStores reports whether a store id (or "" for none) is in reach.
 func (a Access) InStores(storeID string) bool {
 	return a.Stores == nil || slices.Contains(a.Stores, storeID)
 }
 
-// roleSQL is the user's Role on the profile; onProfileSQL finds profile $1 for Privy user $2 only when they own it or
-// are a member.
+// onProfileSQL finds profile $1 for Privy user $2 only when they own it or are a member.
 const (
 	roleSQL      = "CASE WHEN p.user_id = u.id THEN 'owner' ELSE m.role END"
 	onProfileSQL = `FROM profiles p JOIN users u ON u.privy_user_id = $2
@@ -110,8 +92,7 @@ const (
 		WHERE p.id = $1 AND (p.user_id = u.id OR m.user_id IS NOT NULL)`
 )
 
-// CheckAccess is the user's access to the profile: owner or member. Anyone else, and a malformed or unknown profile
-// ID, is ErrForbidden, so callers can't probe which profiles exist.
+// CheckAccess: anyone else, or a malformed or unknown profile ID, is ErrForbidden, so nobody can probe ids.
 func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string) (Access, error) {
 	var id pgtype.UUID
 	if err := id.Scan(profileID); err != nil {
@@ -135,9 +116,7 @@ func (s *Service) CheckAccess(ctx context.Context, privyUserID, profileID string
 	return a, nil
 }
 
-// StillCan checks again, holding the profile row a team change locks, that the user holds p: a request checked before
-// its user was removed, or lost the role, grants nothing lasting after it. The role is read after the lock, in a
-// statement of its own, so it sees a change the lock waited for.
+// StillCan rechecks p under the profile lock, in its own statement, so a removal it waited for counts.
 func StillCan(ctx context.Context, tx pgx.Tx, profileID, privyUserID string, p Permission) error {
 	if _, err := tx.Exec(ctx, "SELECT 1 FROM profiles WHERE id = $1 FOR KEY SHARE", profileID); err != nil {
 		return fmt.Errorf("lock profile: %w", err)
@@ -153,7 +132,6 @@ func StillCan(ctx context.Context, tx pgx.Tx, profileID, privyUserID string, p P
 	return nil
 }
 
-// LinkStore is the store of the profile's payment link; found is false for an unknown or malformed link id.
 func (s *Service) LinkStore(ctx context.Context, profileID, linkID string) (store string, live, found bool, err error) {
 	var id pgtype.UUID
 	if id.Scan(linkID) != nil {
@@ -170,8 +148,6 @@ func (s *Service) LinkStore(ctx context.Context, profileID, linkID string) (stor
 	return store, live, true, nil
 }
 
-// InvoiceStore is the store of the profile's invoice with this id, "" when it has none, and whether it is live mode;
-// found is false for an id the profile doesn't have.
 func (s *Service) InvoiceStore(ctx context.Context, profileID, invoiceID string) (store string, live, found bool,
 	err error) {
 	err = s.pool.QueryRow(ctx, `SELECT coalesce(store_id::text, ''),

@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Longest billing details, in characters (R-43).
+// Longest billing details, in characters.
 const (
 	MaxBillingName    = 200
 	MaxBillingAddress = 500
@@ -22,7 +22,6 @@ const (
 
 var ErrNoBillingDetails = errors.New("no billing details")
 
-// R-43: only TaxID is optional ("" means none).
 type Issuer struct {
 	Name    string
 	Address string
@@ -36,7 +35,7 @@ type BillingDetails struct {
 	UpdatedAt time.Time
 }
 
-// countries are the assigned ISO 3166-1 alpha-2 codes (249, as in the tz database's iso3166.tab).
+// The 249 assigned ISO 3166-1 alpha-2 codes, as in the tz database's iso3166.tab.
 const countries = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT " +
 	"BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ " +
 	"FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS " +
@@ -83,7 +82,7 @@ func (d BillingDetails) check() error {
 	return nil
 }
 
-// Invoices made earlier keep their own copy. The caller has checked the user's access to the profile.
+// The caller has checked access. Invoices made earlier keep their own copy.
 func (s *Service) SaveBillingDetails(ctx context.Context, profileID string, d BillingDetails) (BillingDetails, error) {
 	if err := d.check(); err != nil {
 		return BillingDetails{}, err
@@ -101,7 +100,6 @@ func (s *Service) SaveBillingDetails(ctx context.Context, profileID string, d Bi
 	return d, nil
 }
 
-// The caller has checked the user's access to the profile.
 func (s *Service) BillingDetails(ctx context.Context, profileID string) (BillingDetails, error) {
 	var d BillingDetails
 	err := s.pool.QueryRow(ctx, `SELECT name, address, country, coalesce(tax_id, ''), contact_email, updated_at FROM profile_billing_details WHERE profile_id = $1`, profileID).

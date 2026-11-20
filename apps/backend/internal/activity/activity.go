@@ -35,17 +35,17 @@ var ErrInvalid = errors.New("invalid activity request")
 
 // Item is an invoice or a non-reorged deposit.
 type Item struct {
-	PaymentStatus              string
-	Confirming                 bool
-	Kind                       string
-	At                         time.Time
-	InvoiceID                  string
-	chain.Asset                // symbol and decimals also for a token no longer enabled
+	PaymentStatus string
+	Confirming    bool
+	Kind          string
+	At            time.Time
+	InvoiceID     string
+	chain.Asset
 	Amount                     *big.Int
 	Status                     string
 	SettlementStatus           string
 	TxHash                     string
-	OptionCount                int      // above 1 the client chooses; 1 for a deposit
+	OptionCount                int
 	Closed                     bool     // false for a deposit
 	Held                       bool     // false for an invoice
 	MerchantAmount, HeldAmount *big.Int // add up to Amount; nil until booked
@@ -81,7 +81,7 @@ const heldSQL = `CASE WHEN t.booked THEN NOT EXISTS (SELECT 1 FROM ledger_transa
 // depositAtSQL is transfer t's block time, never before its option row i was made (whole seconds).
 const depositAtSQL = `greatest(to_timestamp(t.block_time), i.created_at)`
 
-// settleTxSQL is the hash of the confirmed settle transaction of invoice row "invoices"; empty before it settles.
+// settleTxSQL reads invoice row "invoices"; "" before it settles.
 const settleTxSQL = `coalesce((SELECT s.tx_hash FROM settlement_intents s WHERE s.invoice_id = invoices.option_id
   AND s.status = 'confirmed'), '')`
 

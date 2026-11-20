@@ -9,12 +9,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// searchText and paymentSearchText must stay their index expressions (migrations 00032, 00088), or every search reads
-// all invoices.
 func TestSearchCanUseItsIndex(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()
-	// Enough invoices that reading them all costs more than the index, as for a real profile.
+	// Enough rows that the planner prefers the index.
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO invoices (id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
 		    recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash, title)
@@ -50,8 +48,6 @@ func TestSearchCanUseItsIndex(t *testing.T) {
 	}
 }
 
-// A filter tests its raw columns before its CASE, so the columns must hold for every payment the CASE names, or the
-// filter drops it.
 func TestFilterColumnTestsKeepEveryMatch(t *testing.T) {
 	pool, profile := open(t)
 	ctx := context.Background()
@@ -61,7 +57,6 @@ func TestFilterColumnTestsKeepEveryMatch(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Every raw status, settled or not, open or closed, checkout or not.
 	n := 0
 	for _, payment := range []string{"open", "detected", "partially_paid", "paid", "expired", "expired_partially_paid", "canceled"} {
 		for _, settlement := range []string{"none", "pending", "settled"} {
@@ -82,7 +77,7 @@ func TestFilterColumnTestsKeepEveryMatch(t *testing.T) {
 			}
 		}
 	}
-	// Money held for the payer on a paid one, and unsettled paid ones whose settle waits or was refused.
+	// Held money on one paid invoice; a refused and a capped settle on two others.
 	exec(`WITH paid AS (SELECT id, row_number() OVER (ORDER BY id) AS n FROM invoices
 	        WHERE payment_status = 'paid' AND settlement_status <> 'settled'),
 	    x AS (INSERT INTO ledger_transactions (invoice_id, kind) SELECT id, 'expiry' FROM paid WHERE n = 1 RETURNING id),

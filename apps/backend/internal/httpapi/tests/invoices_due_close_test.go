@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// R-152: a due date with no expiresIn closes 60 days past it, whatever the store's own default close.
 func TestDueDateOutranksTheStoreDefault(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -23,7 +22,6 @@ func TestDueDateOutranksTheStoreDefault(t *testing.T) {
 		r.body["closesAt"] != want {
 		t.Fatalf("due %s: %d expires %v closes %v, want %s", due, r.status, r.body["expiresAt"], r.body["closesAt"], want)
 	}
-	// Without a due date the store's default stays.
 	r = e.post(t, alice, shop, "key-2", body+`}`)
 	expires, _ := time.Parse(time.RFC3339, r.body["expiresAt"].(string))
 	if r.status != http.StatusCreated || time.Until(expires) > time.Hour+time.Minute || time.Until(expires) < 58*time.Minute {

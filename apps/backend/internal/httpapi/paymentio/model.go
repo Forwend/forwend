@@ -62,7 +62,7 @@ type Payment struct {
 	CrossChain       *CrossChain `json:"crossChain"` // in a list, only when a deposit pays it
 }
 
-// CrossChain is how a payment through NEAR Intents went; Signed is 1Click's answer the pay page checks.
+// CrossChain is a payment through NEAR Intents; Signed is 1Click's answer the pay page checks.
 type CrossChain struct {
 	Provider       string          `json:"provider"`
 	QuoteID        string          `json:"quoteId"`
@@ -90,7 +90,6 @@ type CrossChain struct {
 	Signed         json.RawMessage `json:"signed"`
 }
 
-// FromCrossChain is nil without a quote.
 func FromCrossChain(c *invoice.CrossChainPayment) *CrossChain {
 	if c == nil {
 		return nil

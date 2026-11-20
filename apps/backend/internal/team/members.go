@@ -10,13 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// The caller has checked the user's access to the profile.
-
 const memberStoresSQL = `coalesce((SELECT array_agg(ms.store_id::text ORDER BY s.created_at, s.id)
 	FROM member_stores ms JOIN stores s ON s.id = ms.store_id
 	WHERE ms.profile_id = m.profile_id AND ms.user_id = m.user_id), '{}')`
 
-// List is the profile's team: the owner, the members and the open invites.
 func (s *Service) List(ctx context.Context, profileID string) (Team, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT u.id::text, coalesce(u.login_email, ''), 'owner', '{}'::text[], p.created_at, 0 AS rank
@@ -48,8 +45,7 @@ func (s *Service) List(ctx context.Context, profileID string) (Team, error) {
 	return Team{Members: members, Invites: invites}, nil
 }
 
-// ToRoll is what a member who no longer may could still use: API keys they made that work, and, for a former Admin,
-// every webhook endpoint, whose signing secret they could reveal. The owner rolls them (D-93).
+// ToRoll is what a former member could still use: their working API keys and, if Admin, every webhook secret.
 type ToRoll struct {
 	Keys      []RollKey
 	Endpoints []RollEndpoint
@@ -83,8 +79,6 @@ func toRoll(ctx context.Context, tx pgx.Tx, profileID, userID string, wasAdmin b
 	return out, nil
 }
 
-// SetMember gives a member another role and stores (D-63: the caller asked for a fresh sign-in). An Admin given
-// another role leaves what they could still use (ToRoll).
 func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID string, g Grant) (Member, ToRoll, error) {
 	if !lowercaseUUID.MatchString(userID) {
 		return Member{}, ToRoll{}, ErrMemberNotFound
@@ -140,15 +134,13 @@ func (s *Service) SetMember(ctx context.Context, profileID, userID, privyUserID 
 	return m, roll, err
 }
 
-// RemoveMember takes a member off the team. Their next request no longer reaches the profile; what they could still
-// use comes back for the owner to roll (ToRoll).
 func (s *Service) RemoveMember(ctx context.Context, profileID, userID string) (ToRoll, error) {
 	if !lowercaseUUID.MatchString(userID) {
 		return ToRoll{}, ErrMemberNotFound
 	}
 	var roll ToRoll
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// The profile lock orders this after or before an invite the member is sending, so revoking catches it.
+		// The profile lock orders this with an invite the member is sending, so revoking catches it.
 		if err := lockMerchant(ctx, tx, profileID); err != nil {
 			return err
 		}
@@ -173,7 +165,7 @@ func (s *Service) RemoveMember(ctx context.Context, profileID, userID string) (T
 	return roll, err
 }
 
-// Leave takes the signed-in member off the team. The owner can't leave, so a team always keeps an Admin (D-93).
+// The owner can't leave, so a team always keeps an Admin.
 func (s *Service) Leave(ctx context.Context, profileID, privyUserID string) error {
 	var userID string
 	if err := s.pool.QueryRow(ctx, "SELECT id::text FROM users WHERE privy_user_id = $1", privyUserID).

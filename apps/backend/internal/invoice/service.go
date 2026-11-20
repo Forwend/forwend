@@ -64,7 +64,7 @@ var invoiceColumns = `id, option_id, chosen_id IS NOT NULL,
  (SELECT o.platform_fee::text FROM invoices o WHERE o.id = invoices.option_id),
  (SELECT o.fees_paid_by FROM invoices o WHERE o.id = invoices.option_id)`
 
-// The invoices_current view (migration 00020) aliased as invoices, so filters written for the table work on it.
+// Aliased as invoices, so filters written for the table work on the view.
 const invoicesCurrent = "invoices_current invoices"
 
 func scanInvoice(row pgx.Row) (Invoice, error) {

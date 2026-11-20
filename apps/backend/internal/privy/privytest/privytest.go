@@ -1,5 +1,4 @@
-// Package privytest is a fake Privy wallet API for tests: create and list wallets, unique external_id per app,
-// owner filter, and cached errors replayed per idempotency key like Privy; wallet RPC requests and their transactions.
+// Package privytest is a fake Privy API that replays errors per idempotency key like Privy does.
 package privytest
 
 import (
@@ -23,49 +22,31 @@ const (
 type Fake struct {
 	URL string
 
-	mu      sync.Mutex
-	t       *testing.T
-	wallets map[string]map[string]any
-	Creates []map[string]any // POST bodies, in order
-	Keys    []string         // privy-idempotency-key headers, in order
-	// HideOnce makes the next list miss an existing wallet, as when another request created it in between.
-	HideOnce bool
-	// FailCreates answers that many creates with 500; an error for an idempotency key is replayed for that key.
-	FailCreates int
-	failedKeys  map[string]bool
-	// Delay holds every answer that long (or until the caller gives up), like a slow Privy.
-	Delay time.Duration
-	// Emails are the users' verified email accounts by Privy user ID; UserReads counts GET /v1/users/{id}.
-	Emails    map[string]string
-	UserReads int
-	// FailUserReads answers that many user reads with 500.
-	FailUserReads int
-	// EdgeCache answers a user read again for its exact URL, as Privy's edge does for 10 s whatever has changed.
-	EdgeCache bool
-	edge      map[string][]byte
-	// SignedInAt is a user's email latest_verified_at (1 when unset). PasskeySignIn, when set, gives every user a
-	// passkey account verified at that time.
-	SignedInAt    map[string]int64
-	PasskeySignIn int64
-	// LinkedAt is a user's email first_verified_at (1 when unset); PasskeyLinkedAt is the passkey's. CreatedAt is every
-	// user's created_at (1 when unset).
-	LinkedAt        map[string]int64
-	PasskeyLinkedAt int64
-	CreatedAt       int64
-	// Mfa is each user's MFA methods at Privy: verified_at by type (totp, passkey).
-	Mfa map[string]map[string]int64
-	// GoogleSignIn, when set, gives every user a Google account verified at that time.
-	GoogleSignIn int64
-	// Freezes lists "freeze <id>" and "unfreeze <id>" calls in order. FailFreezes and FailUnfreezes answer that many
-	// freezes and unfreezes with 500; the calls are listed either way.
-	Freezes       []string
-	FailFreezes   int
-	FailUnfreezes int
-	// RPCs are the wallet RPC requests in order. Each answers transaction "tx-" plus its idempotency key, whose hash is
-	// Hashes' entry, else none yet; Statuses' entry is its status, else broadcasted. A transaction names the wallet,
-	// caip2 and reference_id of its request, unless Owners overrides its wallet. FailTransactions answers every read
-	// with 500.
-	RPCs             []RPC
+	mu               sync.Mutex
+	t                *testing.T
+	wallets          map[string]map[string]any
+	Creates          []map[string]any // POST bodies, in order
+	Keys             []string         // privy-idempotency-key headers, in order
+	HideOnce         bool             // the next list misses an existing wallet
+	FailCreates      int
+	failedKeys       map[string]bool
+	Delay            time.Duration
+	Emails           map[string]string // by Privy user ID
+	UserReads        int
+	FailUserReads    int
+	EdgeCache        bool // a user read answers again for its exact URL
+	edge             map[string][]byte
+	SignedInAt       map[string]int64 // email latest_verified_at; 1 when unset
+	PasskeySignIn    int64            // 0: no passkey
+	LinkedAt         map[string]int64 // email first_verified_at; 1 when unset
+	PasskeyLinkedAt  int64
+	CreatedAt        int64                       // 1 when unset
+	Mfa              map[string]map[string]int64 // verified_at by type
+	GoogleSignIn     int64                       // 0: no Google account
+	Freezes          []string                    // "freeze <id>" and "unfreeze <id>", in order
+	FailFreezes      int
+	FailUnfreezes    int
+	RPCs             []RPC // each answers transaction "tx-" + its idempotency key
 	Hashes           map[string]string
 	Statuses         map[string]string
 	Owners           map[string]string
@@ -73,7 +54,6 @@ type Fake struct {
 	sent             map[string]map[string]any
 }
 
-// RPC is a wallet RPC request as Privy got it.
 type RPC struct {
 	Path    string
 	Body    []byte
@@ -97,7 +77,6 @@ func (f *Fake) Wallets() int {
 	return len(f.wallets)
 }
 
-// Lock and Unlock let a test change the knobs safely while requests run.
 func (f *Fake) Lock()   { f.mu.Lock() }
 func (f *Fake) Unlock() { f.mu.Unlock() }
 

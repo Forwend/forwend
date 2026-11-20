@@ -17,13 +17,12 @@ type inviteBody struct {
 }
 
 type memberJSON struct {
-	MemberID  string   `json:"memberId"`
-	Email     *string  `json:"email"` // null when the account has no login email
-	Role      string   `json:"role"`
-	Stores    []string `json:"stores"`
-	CreatedAt string   `json:"createdAt"`
-	// Set when a role change left the member with less: what they could still use, for the owner to roll.
-	ToRoll *toRollJSON `json:"toRoll,omitempty"`
+	MemberID  string      `json:"memberId"`
+	Email     *string     `json:"email"` // null when the account has no login email
+	Role      string      `json:"role"`
+	Stores    []string    `json:"stores"`
+	CreatedAt string      `json:"createdAt"`
+	ToRoll    *toRollJSON `json:"toRoll,omitempty"` // set when a role change left the member with less
 }
 
 type toRollJSON struct {

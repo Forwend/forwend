@@ -25,8 +25,7 @@ func Events(t *testing.T, db *pgxpool.Pool, option string) []string {
 	return events
 }
 
-// Webhooks lists the webhook events of option's invoice in order (R-147): "sequence type", a held event's reason, and
-// the descriptions of the endpoints it goes to, or none.
+// Webhooks lists option's invoice webhook events as "sequence type [reason] to endpoint descriptions".
 func Webhooks(t *testing.T, db *pgxpool.Pool, option string) []string {
 	t.Helper()
 	rows, err := db.Query(context.Background(), `SELECT e.sequence || ' ' || e.type ||

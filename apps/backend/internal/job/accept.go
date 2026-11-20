@@ -28,7 +28,7 @@ func (s *Service) Accept(ctx context.Context, token, name, email string, allow f
 	return s.accept(ctx, j, name, email)
 }
 
-// A job deleted since j was read is ErrNotFound, and its deposit invoice is not made.
+// A job deleted since j was read gives ErrNotFound and no deposit invoice.
 func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, error) {
 	var err error
 	accept := func(ctx context.Context, tx pgx.Tx) error {
@@ -37,7 +37,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 		if err != nil || tag.RowsAffected() == 1 {
 			return err
 		}
-		// Nothing changed: another accept won, which answers the same, or the owner deleted the job.
+		// No row: another accept won (same answer) or the owner deleted the job.
 		var exists bool
 		if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM jobs WHERE id = $1)", j.ID).Scan(&exists); err != nil {
 			return err
@@ -61,7 +61,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 				j.ID, deposit.Position, invoiceID)
 			return err
 		}
-		// A concurrent accept the same UTC day makes the same request and key, so it gets this invoice back.
+		// A concurrent accept the same UTC day sends the same key and request, so it gets this invoice back.
 		_, _, err = s.invoices.Create(ctx, j.profileID, paymentKey(j.ID, deposit.Position), r)
 		if errors.Is(err, invoice.ErrConflict) {
 			if again, readErr := s.ByToken(ctx, j.Token); readErr == nil && !again.AcceptedAt.IsZero() {
@@ -70,7 +70,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 		}
 	}
 	if err != nil {
-		// The client sees a 422's text: it names no job id.
+		// The client sees this text in a 422, so it names no job id.
 		return Job{}, fmt.Errorf("accept job: %w", err)
 	}
 	return s.ByToken(ctx, j.Token)

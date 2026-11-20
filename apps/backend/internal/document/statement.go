@@ -9,28 +9,26 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// USDCents is the USD value in cents; Other the records-currency value in minor units, nil without a rate (R-112).
 type StatementLine struct {
 	At       time.Time
 	What     string // the invoice's number and client, or Income
 	ChainID  uint64
 	Amount   string // in its token, such as 1,250.00 USDC
 	USDCents *big.Int
-	Other    *big.Int
+	Other    *big.Int // records currency, minor units; nil without a rate
 	TxHash   string
 }
 
-// Statement is a profile's income (R-112) for the UTC days From to To, both included, oldest first. Unclassified
-// counts the money in it leaves out; Currency is the records currency ("" for none) with Decimals minor digits.
+// Statement is a profile's income for the UTC days From to To, both included, oldest first.
 type Statement struct {
 	Holder       profile.Issuer
 	From, To     time.Time
 	Issued       time.Time
-	Currency     string
+	Currency     string // records currency, "" for none
 	Decimals     int
-	Test         bool // made in Developer mode, of testnet money (R-143, R-221)
+	Test         bool // testnet money
 	Lines        []StatementLine
-	Unclassified int
+	Unclassified int // payments the statement leaves out
 }
 
 func StatementPDF(s Statement) ([]byte, error) {
@@ -49,7 +47,6 @@ func StatementPDF(s Statement) ([]byte, error) {
 	bottom := d.party(margin, d.GetY(), "Account holder", s.Holder.Name, s.Holder.Address, s.Holder.Country, tax,
 		s.Holder.Email)
 	d.SetXY(margin, bottom+6)
-	// The period heads the page, so the facts leave it out: it is wider than a fact's column.
 	d.facts([2]string{"Issued", stamp(s.Issued)}, [2]string{"Payments", strconv.Itoa(len(s.Lines))},
 		[2]string{"Records currency", s.Currency})
 
@@ -62,7 +59,7 @@ func StatementPDF(s Statement) ([]byte, error) {
 		heads = append(heads, s.Currency)
 	}
 	const pad, rowHeight = 2.0, 3*lineHeight + 3
-	// A number too wide for its column gets a smaller size, never a cut.
+	// A number too wide for its column shrinks; it is never cut.
 	row := func(cells []string, style string, y float64) {
 		x := margin
 		for i, c := range cells {
@@ -103,7 +100,6 @@ func StatementPDF(s Statement) ([]byte, error) {
 	usd, total := new(big.Int), new(big.Int)
 	complete := true
 	for _, l := range s.Lines {
-		// Three lines that stay together: what and its values, the amount on its network, the transaction.
 		if d.GetY()+rowHeight > pageHeight-margin {
 			d.AddPage()
 			header()
@@ -137,7 +133,6 @@ func StatementPDF(s Statement) ([]byte, error) {
 		d.CellFormat(width-cols[0]-2*pad, lineHeight, l.TxHash, "", 0, "L", false, 0, link)
 		d.SetY(y + rowHeight)
 	}
-	// The rule and the total stay on one page, under the header that names their columns.
 	if d.GetY()+2+lineHeight+2 > pageHeight-margin {
 		d.AddPage()
 		header()
@@ -170,7 +165,6 @@ func StatementPDF(s Statement) ([]byte, error) {
 	}
 	notes = append(notes, "Income is confirmed money in that paid an invoice or that the account holder labelled "+
 		"income. A PDF can be edited: each transaction can be checked on its network's explorer.")
-	// The heading never ends a page alone: it moves with its first note.
 	d.SetFont(font, "", 9.5)
 	d.pageFor(3*lineHeight + float64(len(d.fit(notes[0], width, 6)))*lineHeight)
 	d.heading("Notes")
@@ -178,7 +172,7 @@ func StatementPDF(s Statement) ([]byte, error) {
 	d.text(muted)
 	for _, n := range notes {
 		lines := d.fit(n, width, 6)
-		d.pageFor(float64(len(lines)) * lineHeight) // a note stays on one page
+		d.pageFor(float64(len(lines)) * lineHeight)
 		for _, l := range lines {
 			d.CellFormat(width, lineHeight, l, "", 1, "L", false, 0, "")
 		}
@@ -188,7 +182,6 @@ func StatementPDF(s Statement) ([]byte, error) {
 	return d.output()
 }
 
-// plain is minor units as a grouped decimal without a currency, for a column the header names.
 func plain(minor *big.Int, decimals int) string {
 	return strings.TrimSuffix(Amount(minor, decimals, ""), " ")
 }

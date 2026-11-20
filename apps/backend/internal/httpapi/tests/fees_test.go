@@ -16,8 +16,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger/ledgertest"
 )
 
-// quote is a chain's network fee in USD, or err for a chain that can't be priced: every chain, or failing alone. per
-// quotes a chain apart from the others.
+// quote prices every chain at usd or err; per overrides a chain; failing can't be priced.
 type quote struct {
 	usd     *big.Rat
 	err     error
@@ -35,8 +34,6 @@ func (q *quote) NetworkFee(_ context.Context, chainID uint64) (*big.Rat, error) 
 	return q.usd, q.err
 }
 
-// R-227: a new invoice's network fee is in its terms. The owner pays it by default, deducted at settlement; the
-// client pays it on top when the invoice or the profile says so.
 func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 	q := &quote{usd: big.NewRat(5, 100)}
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: q})
@@ -54,7 +51,6 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 	if got := fees(owner); got != "5000000 50000 0 4950000 owner" {
 		t.Fatalf("owner pays: %s", got)
 	}
-	// The stored terms, fees included, compute the receive address the API gave.
 	var id, recipient string
 	var network, platform, amount string
 	var exp, deadline uint64
@@ -71,7 +67,6 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 		t.Fatalf("receive address %v, the stored terms compute %x (%v)", owner.body["receiveAddress"], receive, err)
 	}
 
-	// The client pays on top; the lines still add up to the price.
 	client := e.post(t, alice, e.aliceProfile, "fee-2", `{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000",
 		"feesPaidBy": "client", "lines": [{"description": "Logo", "quantity": "1", "unitPrice": "3000000"},
 		{"description": "Icons", "quantity": "2", "unitPrice": "1000000"}]}`)
@@ -83,7 +78,6 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 		t.Fatalf("feesPaidBy payer: %d %v, want 422", r.status, r.body)
 	}
 
-	// The profile's choice applies when the request makes none; a form reads it with the quote.
 	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/fees", alice, "", `{"feesPaidBy": "client"}`); r.status != http.StatusOK {
 		t.Fatalf("set the profile's payer: %d %v", r.status, r.body)
 	}
@@ -98,7 +92,7 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 		t.Fatalf("quote: %d %v", quoted.status, quoted.body)
 	}
 
-	// settle() takes at most a tenth of the amount in fees: an invoice past it is refused, never made.
+	// settle() takes at most a tenth of the amount in fees.
 	q.usd = big.NewRat(11, 100)
 	if r := e.post(t, alice, e.aliceProfile, "fee-5", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000",
 		"feesPaidBy": "owner"}`); r.status != http.StatusUnprocessableEntity || !strings.Contains(fmt.Sprint(r.body["error"]), "too small for its fees") {
@@ -111,7 +105,6 @@ func TestInvoicesCarryTheirNetworkFee(t *testing.T) {
 	}
 }
 
-// R-228: a settlement that paid fees shows them on its Transactions row and in the CSV, under the net it paid.
 func TestTransactionsShowASettlementsFees(t *testing.T) {
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100)}})
 	const alice = "did:privy:alice"
@@ -137,8 +130,6 @@ func TestTransactionsShowASettlementsFees(t *testing.T) {
 	}
 }
 
-// D-122: a payment link may choose who pays its invoices' fees, over the profile's choice; its payer's invoice
-// follows it, and a change to it is a new revision of what the payer pays.
 func TestAPaymentLinkChoosesWhoPaysTheFees(t *testing.T) {
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100)}})
 	const alice = "did:privy:alice"
@@ -166,8 +157,6 @@ func TestAPaymentLinkChoosesWhoPaysTheFees(t *testing.T) {
 	}
 }
 
-// R-227: a payer-chooses invoice leaves out a network it can't price now, as one not scanned yet; a fixed invoice on
-// it has no other to offer, so it waits for the quote.
 func TestAChainThatCantBePricedLeavesThePayerTheOthers(t *testing.T) {
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: &quote{usd: big.NewRat(5, 100), failing: 421614}})
 	const alice, arbitrum = "did:privy:alice", "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"
@@ -187,8 +176,6 @@ func TestAChainThatCantBePricedLeavesThePayerTheOthers(t *testing.T) {
 	}
 }
 
-// D-122: every option of a payer-chooses invoice carries the highest fee its networks quote, so one amount pays the
-// fee on whichever network the client picks. The quote a form shows prices it the same way.
 func TestEveryOptionCarriesTheHighestNetworkFee(t *testing.T) {
 	q := &quote{usd: big.NewRat(1, 100), per: map[uint64]*big.Rat{421614: big.NewRat(6, 100)}}
 	e := invoiceAPIPriced(t, 0, webhookKey, nil, invoice.Pricing{Quotes: q})
@@ -224,7 +211,6 @@ func TestEveryOptionCarriesTheHighestNetworkFee(t *testing.T) {
 		t.Fatalf("quote for feesPaidBy payer: %d %v, want 422", r.status, r.body)
 	}
 
-	// A store that turns the costlier network off gets the other's fee, in the quote as in the invoice.
 	shop := e.merchant(t)
 	store := storeIDs(t, e, shop)[0]
 	if r := e.call(t, "PUT", "/v1/profiles/"+shop+"/stores/"+store, alice, "", `{"name": "Shop", "defaultExpiresIn": 3600,

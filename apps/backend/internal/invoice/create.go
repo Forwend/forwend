@@ -21,27 +21,23 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// Each watched receive address is in every scan until 30 days after its settle deadline. The owner's invoices, the
-// invoices payers make on the profile's payment links, and its checkout sessions each have these limits (R-188).
+// Per source; a watched address stays in every scan until 30 days after its settle deadline.
 const (
 	MaxOpen   = 1000
 	MaxPerDay = 500
 )
 
 type accepted struct {
-	chainID       uint64
-	family, token string
-	live          bool
-	amount        *big.Int
-	// scale turns request amounts into base units: 0 for a fixed invoice, the token's decimals for USD.
-	scale    int
-	decimals int
-	// The fees in the option's terms; amount includes them when the client pays.
-	networkFee, platformFee *big.Int
+	chainID                 uint64
+	family, token           string
+	live                    bool
+	amount                  *big.Int
+	scale                   int // 0 for a fixed invoice, the token's decimals for USD
+	decimals                int
+	networkFee, platformFee *big.Int // amount includes them when the client pays
 }
 
-// Create is idempotent per (profile, key): a repeat returns the stored invoice with created false.
-// The caller must check the user's access to the profile.
+// Create is idempotent per (profile, key); the caller checks the user's access to the profile.
 func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, r Request) (inv Invoice, created bool, err error) {
 	if r.Caller.Purpose != "" && r.Caller.Purpose != PurposeCheckout {
 		return Invoice{}, false, fmt.Errorf("%w: unsupported payment purpose", ErrInvalid)
@@ -64,8 +60,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, err
 	}
 	r.Replaces, r.StoreID = strings.ToLower(r.Replaces), strings.ToLower(r.StoreID)
-	// Without expiresIn the hash has DefaultExpiresIn, not the store's default, so a retry after the store changed
-	// still replays.
+	// The hash uses DefaultExpiresIn, not the store's default, so a retry after the store changed still replays.
 	var hash []byte
 	if usd != nil {
 		hash = requestHash(r, 0, "usd", usd, expiresIn, lines)
@@ -81,9 +76,8 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("insert invoice: %w", err)
 	}
 	defer tx.Rollback(ctx)
-	// The profile row lock makes concurrent creates count one after another, so none passes a cap on a stale count.
-	// NO KEY UPDATE allows payment events to check their profile foreign key while holding invoice or link locks.
-	// Billing details are never removed, so once there they stay for the insert trigger to copy.
+	// The profile lock serializes creates, so none passes a cap on a stale count; NO KEY UPDATE still lets payment
+	// events check their profile foreign key while holding invoice or link locks.
 	var kind, feesPaidBy string
 	var billed, live bool
 	if err := tx.QueryRow(ctx, `SELECT kind,
@@ -142,7 +136,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if r.ExpiresInSeconds == nil {
 			expiresIn = time.Duration(store.DefaultExpiresIn) * time.Second
 		}
-		// A retainer's later month copies the first one's link, so it stays as Edit keeps an unchanged one.
+		// A retainer's later month keeps the first month's link, as Edit keeps an unchanged one.
 		if r.ReturnURL != "" && r.cycle == nil && !store.Allows(r.ReturnURL) {
 			return Invoice{}, false, fmt.Errorf("%w: returnUrl must start with one of the store's allowed origins",
 				ErrInvalid)
@@ -167,9 +161,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			return Invoice{}, false, fmt.Errorf("%w: every token is turned off for this profile or its store", ErrInvalid)
 		}
 	}
-	// An invoice's options are all of one mode, so its livemode never changes. A key's invoice is of the key's
-	// mode, a job's of the job's, and a Revise or a retainer's later month keeps the mode of the invoice it follows. Any
-	// other create takes the profile's mode.
+	// One mode for all options: the key's, the job's or the followed invoice's, else the profile's.
 	follows, err := followedMode(ctx, tx, profileID, r)
 	if err != nil {
 		return Invoice{}, false, err
@@ -192,13 +184,11 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		return Invoice{}, false, fmt.Errorf("%w: this invoice must be %s mode, and no token of that mode is enabled",
 			ErrInvalid, modeName(live))
 	}
-	// The fees are on the price: the client pays them on top, or the owner has them deducted at settlement.
 	r.FeesPaidBy = cmp.Or(r.FeesPaidBy, feesPaidBy)
 	if options, err = s.withFees(ctx, options, usd != nil, r.FeesPaidBy == FeesPaidByClient); err != nil {
 		return Invoice{}, false, err
 	}
-	// Payers on payment links and shoppers behind the checkout API each have their own quota, so strangers can't use
-	// up what the owner's own invoices need (R-188).
+	// Link payers and checkout shoppers have their own quotas, so strangers can't use up the owner's.
 	source, whose, has, creates := "invoice", "a profile", "has", "creates"
 	switch {
 	case r.Caller.LinkID != "":
@@ -206,8 +196,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	case r.Caller.Purpose == PurposeCheckout:
 		source, whose, has, creates = "checkout", "a profile's checkout sessions", "have", "create"
 	}
-	// A stranger's checkout that expired unpaid leaves the day's count, so opening checkouts and never paying can't
-	// turn them off for the day. The open count still bounds what is watched at once.
+	// A stranger's expired unpaid checkout leaves the day's count, so unpaid checkouts can't block the day.
 	var open, today int
 	if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE closes_at > $2),
 		count(*) FILTER (WHERE created_at > now() - interval '1 day' AND NOT ($3 <> 'invoice' AND payment_status = 'expired'))
@@ -217,7 +206,6 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		profileID, s.currentTime().Unix(), source).Scan(&open, &today); err != nil {
 		return Invoice{}, false, fmt.Errorf("count open invoices: %w", err)
 	}
-	// Each option is a watched receive address, so it counts.
 	if open+len(options) > MaxOpen {
 		return Invoice{}, false, fmt.Errorf("%w: %s %s at most %d receive addresses open at once", ErrInvalid, whose, has, MaxOpen)
 	}
@@ -243,8 +231,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 	}
 	now = now.UTC().Truncate(time.Second)
 	expiresAt := now.Add(expiresIn)
-	// A due date with no expiresIn keeps the checkout open to the end of its 60th UTC day after (D-80), within
-	// the expiry limits from now. The hash took the request as sent, so a retry a minute later still replays.
+	// A due date without expiresIn keeps the checkout open to the end of the 60th UTC day after, within the limits.
 	if r.ExpiresInSeconds == nil && r.DueDate != "" {
 		due, _ := time.Parse(time.DateOnly, r.DueDate) // checked with the details
 		expiresAt = due.AddDate(0, 0, DueGraceDays+1)
@@ -270,7 +257,6 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 		if err != nil {
 			return Invoice{}, false, err
 		}
-		// A document-free checkout never takes a number. Options copy their main row's purpose, document kind and number.
 		details, pay := r.Details, hex.EncodeToString(payToken[:])
 		if mainID != nil {
 			details, pay = Details{}, ""
@@ -313,8 +299,7 @@ func (s *Service) Create(ctx context.Context, profileID, idempotencyKey string, 
 			*mainID = hexID(id)
 		}
 	}
-	// Lines are kept in the main option's base units, which its amount converted to exactly; the database checks they
-	// add up to it when the transaction commits (migration 00030).
+	// Lines are in the main option's base units; the database checks at commit that they add up to its amount.
 	for i, l := range lines {
 		unitPrice := usdUnits(l.price, options[0].scale)
 		amount := usdUnits(new(big.Rat).Mul(l.quantity, l.price), options[0].scale)
@@ -398,8 +383,7 @@ func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token
 		}
 		return []accepted{{chainID: chainID, family: family, token: token, live: live, amount: amount, decimals: decimals}}, nil
 	}
-	// A chain the worker has not scanned yet is left out: a payment there before its first scan would never be seen
-	// (SEC-02). Only EVM chains for now: one recipient wallet serves them all.
+	// An unscanned chain is left out: a payment before its first scan would never be seen.
 	rows, err := tx.Query(ctx, `
 		SELECT c.chain_id, c.chain_family, c.livemode, t.contract, t.symbol, t.decimals
 		FROM chains c JOIN tokens t ON t.chain_id = c.chain_id
@@ -433,7 +417,7 @@ func (s *Service) accepted(ctx context.Context, tx pgx.Tx, chainID uint64, token
 	return out, nil
 }
 
-// replay returns the invoice an earlier create with this key made. A key of the other mode can't read it.
+// replay returns the invoice an earlier create with this key made; a key of the other mode can't read it.
 func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, hash []byte, live *bool) (Invoice,
 	error) {
 	var id string
@@ -456,8 +440,7 @@ func (s *Service) replay(ctx context.Context, profileID, idempotencyKey string, 
 	return inv, err
 }
 
-// replace cancels the profile's invoice old for next, made in tx, and returns what next's created row says.
-// With stores set, an old invoice of another store is not found; so is one without a number yet.
+// replace cancels old for next in tx; with stores set, another store's or an unnumbered invoice is not found.
 func (s *Service) replace(ctx context.Context, tx pgx.Tx, profileID, old, next string, stores []string) (history.Data,
 	error) {
 	var oldNumber, nextNumber int64
@@ -485,7 +468,7 @@ func derefOr(s *string) string {
 	return *s
 }
 
-// metadataJSON is the column's value: NULL for none, so an option row and an invoice made before it read as {}.
+// metadataJSON is NULL for none, so rows without metadata read as {}.
 func metadataJSON(m map[string]string) []byte {
 	if len(m) == 0 {
 		return nil
@@ -494,7 +477,6 @@ func metadataJSON(m map[string]string) []byte {
 	return b
 }
 
-// followedMode is the mode of the invoice a Revise replaces, or of a retainer's first month; nil for neither.
 func followedMode(ctx context.Context, tx pgx.Tx, profileID string, r Request) (*bool, error) {
 	var live bool
 	var err error
@@ -525,8 +507,7 @@ func modeName(live bool) string {
 	return "test"
 }
 
-// receiveAddress computes the terms' receive address and refuses terms that settle() would refuse, so no payer is ever
-// shown an address whose money could only be refunded (docs/backend/money-safety.md).
+// receiveAddress refuses terms settle() would refuse, so no payer sees an address whose money can only be refunded.
 func receiveAddress(id [32]byte, chainID uint64, token, recipient string, amount, networkFee, platformFee *big.Int,
 	expiresAt, settleDeadline time.Time) (string, error) {
 	t := address.Terms{

@@ -13,7 +13,6 @@ import (
 
 var keyText = regexp.MustCompile(`^fw_test_[0-9A-Za-z]{36}$`)
 
-// withKey calls the API with a secret API key as the bearer.
 func (e invoiceEnv) withKey(t *testing.T, method, path, key, body string) reply {
 	t.Helper()
 	req, err := http.NewRequest(method, e.srv.URL+path, strings.NewReader(body))
@@ -43,7 +42,6 @@ func TestAPIKeys(t *testing.T) {
 		t.Fatalf("a new key: %d %v", made.status, made.body)
 	}
 	id := made.body["keyId"].(string)
-	// Only its SHA-256 is kept.
 	var row string
 	var hash []byte
 	if err := e.pool.QueryRow(context.Background(), "SELECT row_to_json(k)::text, secret_hash FROM api_keys k WHERE id = $1",
@@ -55,8 +53,8 @@ func TestAPIKeys(t *testing.T) {
 	}
 
 	for body, code := range map[string]string{
-		`{"name": "A", "scopes": ["invoices.read"]}`:                                     "invalid_value", // no store
-		`{"name": "A", "storeId": "` + storeA + `", "scopes": ["invoices.read"]}`:        "invalid_value", // another profile's
+		`{"name": "A", "scopes": ["invoices.read"]}`:                                     "invalid_value",
+		`{"name": "A", "storeId": "` + storeA + `", "scopes": ["invoices.read"]}`:        "invalid_value",
 		`{"name": "A", "storeId": "` + first + `", "scopes": []}`:                        "invalid_value",
 		`{"name": "A", "storeId": "` + first + `", "scopes": ["money.write"]}`:           "invalid_value",
 		`{"name": "A", "storeId": "` + first + `", "scopes": ["invoices.read", "team"]}`: "invalid_value",
@@ -76,7 +74,6 @@ func TestAPIKeys(t *testing.T) {
 		t.Errorf("a freelancer's key: %d %v", r.status, r.body)
 	}
 
-	// The key reaches its profile's routes that its scopes allow, for its store.
 	invoices := "/v1/profiles/" + shop + "/invoices"
 	other := e.call(t, "POST", invoices, alice, "other-store", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000",
 		"storeId": "`+storeB+`"}`)
@@ -92,11 +89,11 @@ func TestAPIKeys(t *testing.T) {
 		t.Fatalf("the key's invoice list: %d %v", list.status, list.body)
 	}
 	for _, c := range []struct{ method, path, body, code string }{
-		{"GET", invoices + "/" + other.body["invoiceId"].(string), "", "invoice_not_found"}, // another store's
-		{"GET", "/v1/profiles/" + shop + "/balances", "", "forbidden"},                      // no money scope
-		{"GET", keys, "", "forbidden"},                                                      // keys don't manage keys
-		{"PUT", "/v1/profiles/" + shop + "/billing-details", billingBody, "forbidden"},      // no billing scope
-		{"GET", "/v1/profiles/" + e.aliceProfile + "/invoices", "", "forbidden"},            // another profile
+		{"GET", invoices + "/" + other.body["invoiceId"].(string), "", "invoice_not_found"},
+		{"GET", "/v1/profiles/" + shop + "/balances", "", "forbidden"},
+		{"GET", keys, "", "forbidden"},
+		{"PUT", "/v1/profiles/" + shop + "/billing-details", billingBody, "forbidden"},
+		{"GET", "/v1/profiles/" + e.aliceProfile + "/invoices", "", "forbidden"},
 		{"GET", "/v1/me", "", "unauthorized"},
 	} {
 		if r := e.withKey(t, c.method, c.path, secret, c.body); errorCode(r) != c.code {
@@ -115,7 +112,6 @@ func TestAPIKeys(t *testing.T) {
 		t.Fatalf("the keys after use: %v", listed.body)
 	}
 
-	// Another profile's owner can neither roll nor revoke it.
 	for _, method := range []string{"POST", "DELETE"} {
 		path := "/v1/profiles/" + e.aliceProfile + "/keys/" + id
 		if method == "POST" {
@@ -126,7 +122,6 @@ func TestAPIKeys(t *testing.T) {
 		}
 	}
 
-	// Rolling makes a new key; the old one works for the overlap, then stops.
 	rolled := e.call(t, "POST", keys+"/"+id+"/roll", alice, "", `{"overlapHours": 1}`)
 	next, _ := rolled.body["secret"].(string)
 	if rolled.status != http.StatusCreated || !keyText.MatchString(next) || next == secret || rolled.body["storeId"] != first {
@@ -149,7 +144,6 @@ func TestAPIKeys(t *testing.T) {
 		t.Errorf("after the overlap: %d %v", r.status, r.body)
 	}
 
-	// Revoking stops a key at once.
 	if r := e.call(t, "DELETE", keys+"/"+rolled.body["keyId"].(string), alice, "", ""); r.status != http.StatusNoContent {
 		t.Fatalf("revoke: %d %v", r.status, r.body)
 	}
@@ -164,7 +158,6 @@ func TestAPIKeys(t *testing.T) {
 	}
 }
 
-// R-144, D-93: only the owner and Admins manage keys.
 func TestAPIKeysNeedTheKeysPermission(t *testing.T) {
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
@@ -181,7 +174,6 @@ func TestAPIKeysNeedTheKeysPermission(t *testing.T) {
 	}
 }
 
-// D-93: a request checked before its Admin was removed makes no key or webhook endpoint after the removal.
 func TestRequestsCheckedBeforeARemovalGrantNothing(t *testing.T) {
 	for name, c := range map[string]struct{ method, path, body string }{
 		"key": {"POST", "/keys", `{"name": "Late", "storeId": "%s", "scopes": ["invoices.read"]}`},

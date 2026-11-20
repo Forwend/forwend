@@ -25,7 +25,7 @@ func (e invoiceEnv) recheck(t *testing.T, srv *httptest.Server, id string) reply
 	return e.do(t, req)
 }
 
-// R-55. The env's address holds 2500000 finalized.
+// The env's address holds 2500000 finalized.
 func TestRecheckInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()
@@ -51,7 +51,6 @@ func TestRecheckInvoice(t *testing.T) {
 		t.Fatalf("read nextCheckAt %v, want %v", got, r.body["nextCheckAt"])
 	}
 
-	// After the wait, with the deposit recorded and the rescan done, nothing more is asked.
 	if _, err := e.pool.Exec(ctx, `
 		WITH r AS (UPDATE invoice_rechecks SET checked_at = now() - interval '301 seconds', rescan_requested_at = NULL
 		           WHERE invoice_id = $1)
@@ -65,7 +64,6 @@ func TestRecheckInvoice(t *testing.T) {
 		t.Fatalf("up to date: %d %v", r.status, r.body)
 	}
 
-	// A rescan that finished a minute ago is not started again, though the address holds more than recorded.
 	if _, err := e.pool.Exec(ctx, `
 		WITH t AS (DELETE FROM chain_transfers WHERE invoice_id = $1)
 		UPDATE invoice_rechecks SET checked_at = now() - interval '301 seconds', rescanned_at = now() - interval '1 minute'

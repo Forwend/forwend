@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// signedAt calls the API with a token issued at iat.
 func (e invoiceEnv) signedAt(t *testing.T, method, path, user string, iat time.Time, body string) reply {
 	t.Helper()
 	req, err := http.NewRequest(method, e.srv.URL+path, strings.NewReader(body))
@@ -22,7 +21,6 @@ func (e invoiceEnv) signedAt(t *testing.T, method, path, user string, iat time.T
 	return e.do(t, req)
 }
 
-// D-49, D-63: making an API key needs a sign-in from the last 15 minutes; a refreshed token isn't one.
 func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -54,7 +52,6 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	if r := makeKey(refreshed); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" || keys() != 1 {
 		t.Fatalf("a refreshed token: %d %v, %d keys", r.status, r.body, keys())
 	}
-	// One sign-in covers the next changes for the whole window.
 	recent := time.Now().Add(-14 * time.Minute)
 	setPasskey(recent.Unix())
 	if r := makeKey(recent); r.status != http.StatusCreated || keys() != 2 {
@@ -65,7 +62,6 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	if r := makeKey(old); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
 		t.Fatalf("a sign-in 16 minutes ago: %d %v", r.status, r.body)
 	}
-	// A Google sign-in can't be asked for again (S-8), so it never counts.
 	setPasskey(0)
 	e.wallets.Lock()
 	e.wallets.GoogleSignIn = refreshed.Unix()
@@ -73,7 +69,6 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	if r := makeKey(refreshed); r.status != http.StatusUnauthorized || errorCode(r) != "reauth_required" {
 		t.Fatalf("a token from a Google sign-in: %d %v", r.status, r.body)
 	}
-	// The sign-in time of the email stored at sign-up counts too.
 	e.signedUpWith(t, alice, "alice@example.com")
 	e.wallets.Lock()
 	e.wallets.SignedInAt[alice] = refreshed.Unix()
@@ -90,7 +85,6 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 	e.wallets.Lock()
 	e.wallets.FailUserReads = 0
 	e.wallets.Unlock()
-	// Billing details print on documents and move no money: an older sign-in saves them.
 	billing := "/v1/profiles/" + e.aliceProfile + "/billing-details"
 	if r := e.signedAt(t, "PUT", billing, alice, old, billingBody); r.status != http.StatusOK {
 		t.Fatalf("billing details with an older sign-in: %d %v", r.status, r.body)
@@ -112,7 +106,6 @@ func TestSignOutEverywhere(t *testing.T) {
 		http.StatusInternalServerError || me(alice, before) != http.StatusOK {
 		t.Fatalf("Privy fails: %d %v; the session must stay", r.status, r.body)
 	}
-	// A freeze that failed may still have landed, and a frozen user can't sign in: the unfreeze is always sent.
 	if n := len(e.wallets.Freezes); n == 0 || e.wallets.Freezes[n-1] != "unfreeze "+alice {
 		t.Fatalf("after a failed freeze, Privy calls %v, want an unfreeze last", e.wallets.Freezes)
 	}
@@ -135,7 +128,6 @@ func TestSignOutEverywhere(t *testing.T) {
 		http.StatusOK {
 		t.Fatalf("another user's older token: %d", got)
 	}
-	// Once the freeze worked, a failed unfreeze still ends the tokens already issued.
 	e.wallets.Lock()
 	e.wallets.FailUnfreezes = 10 // more than the SDK's retries
 	e.wallets.Unlock()

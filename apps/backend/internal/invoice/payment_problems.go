@@ -79,8 +79,7 @@ func optionProblems(inv Invoice, option PaymentOption, at time.Time) []PaymentPr
 		result[len(result)-1].Amount = new(big.Int).Sub(option.Amount, amounts.Payable)
 	}
 	if amounts.Held.Sign() > 0 {
-		// A reason only when the ledger's one reason covers all of it: on-time dust, older holds and a part
-		// return write none, or don't add up, so no sentence names a reason for money it doesn't describe.
+		// A reason only when the ledger's one reason covers the whole sum; dust and part returns write none.
 		var reason string
 		if h := option.HeldHistory; h.Amount != nil && h.Amount.Cmp(amounts.Held) == 0 {
 			reason = h.Reason

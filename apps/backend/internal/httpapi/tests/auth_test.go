@@ -23,7 +23,6 @@ import (
 
 const appID = "test-app"
 
-// Tokens signed by the returned key carry kid "key-1".
 func testVerifier(t *testing.T) (*auth.Verifier, *ecdsa.PrivateKey) {
 	t.Helper()
 	privy := authtest.NewPrivy(t)
@@ -63,8 +62,7 @@ func authServer(t *testing.T) (srv *httptest.Server, privyKey *ecdsa.PrivateKey,
 	return srv, privyKey, aliceProfile
 }
 
-// signedInAt is every test token's iat. invoiceAPI sets it when a test starts, and its Privy fake reports a passkey
-// sign-in at it, so a token counts as fresh (R-137) unless the test says otherwise. No test here runs in parallel.
+// Every test token's iat; invoiceAPI's Privy fake reports a passkey sign-in at it, so tokens are fresh.
 var signedInAt = time.Now()
 
 func claims(subject string) jwt.MapClaims {
@@ -124,7 +122,6 @@ func TestOnlyValidPrivyTokensPass(t *testing.T) {
 		t.Fatal(err)
 	}
 	valid := signES256(t, privyKey, claims("did:privy:alice"))
-	// Bob's claims under Alice's signature.
 	parts, bobParts := strings.Split(valid, "."), strings.Split(signES256(t, privyKey, claims("did:privy:bob")), ".")
 	tampered := parts[0] + "." + bobParts[1] + "." + parts[2]
 

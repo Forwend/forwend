@@ -36,10 +36,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// balances reads each chain's RPC pool (D-15), and sendClients gives its clients (nil leaves sends unable to read a
-// chain); webURL is the pay links' origin; userBurst 0 keeps mid.UserBurst;
-// webhookKey seals webhook secrets, and nil leaves webhooks off (R-146); pricing gives new invoices their fees (R-227);
-// crossChain is 1Click for payers paying from other chains (D-123), nil for none.
+// userBurst 0 keeps mid.UserBurst; a nil webhookKey or crossChain turns that feature off.
 func NewMux(pool *pgxpool.Pool, verifier *auth.Verifier, wallets *privy.Client, balances ledger.BalanceOf,
 	sendClients send.Clients, codes *reauth.Service, webURL string, userBurst int, webhookKey []byte,
 	trustProxy bool, pricing invoice.Pricing, crossChain *intents.Client) http.Handler {

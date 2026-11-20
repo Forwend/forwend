@@ -20,7 +20,7 @@ var (
 	usd = regexp.MustCompile(`^([0-9]{1,12})(?:\.([0-9]{1,2}))?$`)
 )
 
-// cents is a USD decimal in cents; "" is 0, for none.
+// cents parses a USD decimal into cents; "" is 0.
 func cents(field, s string) (int64, error) {
 	if s == "" {
 		return 0, nil

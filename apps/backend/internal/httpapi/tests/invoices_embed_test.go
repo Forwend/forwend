@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// R-168: only the exact origins of the invoice's store may frame its checkout, and loopback http only in test mode.
 func TestEmbedAllowedOnlyForTheStoresExactOrigins(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -66,7 +65,7 @@ func TestEmbedAllowedOnlyForTheStoresExactOrigins(t *testing.T) {
 		}
 	}
 
-	// A wildcard saved before origins were checked this strictly still frames nothing.
+	// A wildcard already stored still frames nothing.
 	e.exec(t, "UPDATE stores SET allowed_origins = allowed_origins || '{https://*}' WHERE id = $1", storeB)
 	if allowed(token, "https://*") {
 		t.Error("a stored wildcard frames the checkout")

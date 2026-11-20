@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// R-57: the payer's pick opens the pay link on that option again, until money is seen.
 func TestPayerPickIsKeptUntilMoneyIsSeen(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -27,7 +26,6 @@ func TestPayerPickIsKeptUntilMoneyIsSeen(t *testing.T) {
 		t.Fatalf("after a pick: picked %v, option %v; want the pick shown and the terms unchanged",
 			got.body["pickedOptionId"], got.body["optionId"])
 	}
-	// The same pick again changes nothing, so the owner's history holds it once.
 	if r := pick(e.link(t, id), second); r.status != http.StatusNoContent {
 		t.Fatalf("same pick: %d %v", r.status, r.body)
 	}
@@ -45,7 +43,6 @@ func TestPayerPickIsKeptUntilMoneyIsSeen(t *testing.T) {
 	if r := pick(e.link(t, id), other); r.status != http.StatusUnprocessableEntity {
 		t.Fatalf("another invoice's id: %d %v, want 422", r.status, r.body)
 	}
-	// A Fixed invoice has nothing to pick.
 	if r := pick(e.link(t, other), other); r.status != http.StatusUnprocessableEntity {
 		t.Fatalf("a Fixed invoice: %d %v, want 422", r.status, r.body)
 	}

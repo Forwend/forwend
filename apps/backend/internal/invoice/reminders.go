@@ -23,21 +23,18 @@ const (
 )
 
 var (
-	ErrDueDateRequired = errors.New("invoice has no due date")
-	// ErrRemindersStopped: the client stopped the reminders, so the owner can't turn them on again.
+	ErrDueDateRequired  = errors.New("invoice has no due date")
 	ErrRemindersStopped = errors.New("the client stopped the reminders")
 )
 
-// Reminders is an invoice's reminder state, for its owner: StoppedAt is zero until the client stops them.
 type Reminders struct {
 	On        bool
-	StoppedAt time.Time
-	Emails    []Send // each reminder queued, with its Step
+	StoppedAt time.Time // zero until the client stops them
+	Emails    []Send
 }
 
 var stopToken = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// SetReminders: the first call makes the stop token; later calls keep it.
 func (s *Service) SetReminders(ctx context.Context, profileID, id string, on bool) (Invoice, error) {
 	id = strings.ToLower(id)
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
@@ -137,7 +134,6 @@ func (s *Service) StopReminders(ctx context.Context, token string) (number int64
 
 // QueueReminders queues only the latest step due, once, within what is left of outbox.MaxClientEmails.
 func (s *Service) QueueReminders(ctx context.Context) error {
-	// $1 to $4: the kind and the steps.
 	due := `SELECT invoices.id, invoices.option_id, invoices.due_date, s.step, p.user_id
 		FROM invoice_reminders r JOIN ` + invoicesCurrent + ` ON invoices.id = r.invoice_id
 		JOIN profiles p ON p.id = invoices.profile_id

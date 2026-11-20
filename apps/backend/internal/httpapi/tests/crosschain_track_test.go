@@ -19,7 +19,6 @@ import (
 
 const originTx = "4d1b2c3a9f8e7d6c5b4a39281706f5e4d3c2b1a09f8e7d6c5b4a39281706f5e4"
 
-// tracked is a live invoice with a cross-chain quote from Tron USDT, and the worker's service that reads its status.
 func tracked(t *testing.T) (invoiceEnv, *intentstest.Fake, *invoice.Service, string, map[string]any) {
 	t.Helper()
 	e, fake := crossChainEnv(t)
@@ -33,7 +32,6 @@ func tracked(t *testing.T) (invoiceEnv, *intentstest.Fake, *invoice.Service, str
 	return e, fake, worker, pay, r.body
 }
 
-// listTagged counts the payments list's rows that carry quote.
 func listTagged(t *testing.T, e invoiceEnv, quote string) int {
 	t.Helper()
 	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
@@ -46,7 +44,6 @@ func listTagged(t *testing.T, e invoiceEnv, quote string) int {
 	return tagged
 }
 
-// checkAt runs the worker's round as if at, and returns the quote's next check (nil for none).
 func checkAt(t *testing.T, e invoiceEnv, worker *invoice.Service, quote string, at time.Time) *time.Time {
 	t.Helper()
 	if err := worker.TrackCrossChain(context.Background(), at); err != nil {
@@ -77,11 +74,9 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	// Postgres keeps microseconds: an exact next check compares equal only to a time at that precision.
 	start := time.Now().Truncate(time.Microsecond)
 
-	// Waiting in its price window: every 30 s.
 	if next := checkAt(t, e, worker, id, start); next == nil || next.Sub(start) != 30*time.Second {
 		t.Fatalf("waiting: next %v", next)
 	}
-	// 1Click saw the deposit: every 10 s, a history row, and the pick, an edit and a cancel wait.
 	fake.SetStatus(address, intents.KnownDepositTx, map[string]any{"depositedAmount": "101120000",
 		"originChainTxHashes":      []any{map[string]any{"hash": originTx, "explorerUrl": "https://tronscan.org/#/transaction/" + originTx}},
 		"destinationChainTxHashes": []any{}, "refundedAmount": "0"})
@@ -89,7 +84,6 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 10*time.Second {
 		t.Fatalf("converting: next %v", next)
 	}
-	// History's txHash is a Base transaction: Tron's own is in crossChain only, so every reader can read the row.
 	seen := historyKinds(t, e, pay)["crosschain.deposit_seen"]
 	if seen == nil || seen["asset"] != tronUSDT || seen["amount"] != "101120000" || seen["txHash"] != nil {
 		t.Fatalf("deposit history %v", seen)
@@ -111,12 +105,10 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 	if r := e.call(t, "POST", crossPath+pay+"/crosschain/quotes", "", "", `{"originAsset": "`+ethAsset+`", "refundTo": "0x6fd1c6b3f0b7a5b4e5d6a3c2b1a0f9e8d7c6b5a4"}`); r.status != http.StatusConflict {
 		t.Fatalf("second quote while converting: %d %v", r.status, r.body)
 	}
-	// Nothing is booked yet, so the list already tags it.
 	if n := listTagged(t, e, id); n != 1 {
 		t.Fatalf("payments list while converting: %d tagged, want 1", n)
 	}
 
-	// Converted: the Base transaction, then every 2 minutes for an hour for a refund of the unused slippage.
 	baseTx := "0x" + originTx
 	fake.SetStatus(address, intents.Success, map[string]any{"depositedAmount": "101120000", "amountOut": "100000000",
 		"originChainTxHashes":      []any{map[string]any{"hash": originTx, "explorerUrl": "https://tronscan.org/#/transaction/" + originTx}},
@@ -139,7 +131,6 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 		refunded["asset"] != tronUSDT {
 		t.Fatalf("refund history %v", refunded)
 	}
-	// The same status again writes nothing: each event is in the history once.
 	checkAt(t, e, worker, id, start.Add(20*time.Minute))
 	var rows map[string]int
 	rows = map[string]int{}
@@ -164,7 +155,6 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 		t.Fatalf("an hour after the conversion: next %v", next)
 	}
 
-	// The USDC arrives on Base in 1Click's transaction: the payment's movements name what the payer sent.
 	options = e.get(t, pay).body["options"].([]any)
 	var base string
 	for _, o := range options {
@@ -190,7 +180,6 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 		t.Fatalf("csv: %d %s", csv.status, csv.raw)
 	}
 
-	// Paid: the receipt names what the payer paid with, and the payments list tags it (R-239).
 	if got := e.get(t, pay).body["paymentStatus"]; got != "paid" {
 		t.Fatalf("status %v, want paid", got)
 	}
@@ -200,7 +189,6 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 		t.Fatalf("payments list: %d tagged, want 1", n)
 	}
 
-	// Every reader carries it: the pay page, the owner, the payment.
 	for name, r := range map[string]reply{
 		"public":  e.get(t, pay),
 		"owner":   e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/invoices/"+main, "did:privy:alice", "", ""),
@@ -231,8 +219,7 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	id := quote["quoteId"].(string)
 	shown, _ := time.Parse(time.RFC3339, quote["shownUntil"].(string))
 	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
-	// After the price window every 5 minutes, still 30 minutes past the deadline; every 30 minutes from an hour past
-	// it, while 1Click's address takes deposits (72 hours at the fake); then none.
+	// Every 5 minutes until 30 past the deadline, every 30 from an hour past while 1Click takes deposits (72 h).
 	for _, at := range []time.Time{shown.Add(time.Second), deadline.Add(30 * time.Minute)} {
 		if next := checkAt(t, e, worker, id, at); next == nil || next.Sub(at) != 5*time.Minute {
 			t.Fatalf("at %s: next %v", at, next)
@@ -246,7 +233,6 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 		t.Fatalf("past the address's deadline: next %v", next)
 	}
 
-	// Another invoice whose swap fails: one history row, and the worker stops.
 	e2, fake2, worker2, pay2, quote2 := tracked(t)
 	fake2.SetStatus(quote2["depositAddress"].(string), intents.Failed, map[string]any{"depositedAmount": "101120000",
 		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}, "refundedAmount": "0"})
@@ -261,8 +247,7 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 		t.Fatalf("status %v", got)
 	}
 
-	// 1Click down: the quote is read again a minute later, and hourly past its end: only an answer ends it, as a
-	// deposit made meanwhile would go unseen.
+	// 1Click down: read again a minute later, hourly past its end; only an answer ends it.
 	e3, fake3, worker3, pay3, quote3 := tracked(t)
 	id3 := quote3["quoteId"].(string)
 	fake3.Down = true
@@ -275,7 +260,6 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	if next := checkAt(t, e3, worker3, id3, at); next == nil || next.Sub(at) != time.Hour {
 		t.Fatalf("down past the end: next %v", next)
 	}
-	// A quote 1Click never answers about, with no deposit seen, is not read for ever.
 	e4, fake4, worker4, _, quote4 := tracked(t)
 	fake4.Down = true
 	deadline4, _ := time.Parse(time.RFC3339, quote4["deadline"].(string))
@@ -293,8 +277,6 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 	}
 }
 
-// 1Click's address takes deposits until its own deadline, days past the one the quote asked for: a slow deposit that
-// arrives hours later is still followed.
 func TestWorkerFollowsADepositMadeAfterTheDeadline(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
@@ -314,7 +296,6 @@ func TestWorkerFollowsADepositMadeAfterTheDeadline(t *testing.T) {
 	}
 }
 
-// A status this code doesn't know may hold a payer's deposit: it alerts, and the quote is read on past its end.
 func TestWorkerAlertsOnAStatusItDoesNotKnow(t *testing.T) {
 	e, fake, worker, _, quote := tracked(t)
 	id := quote["quoteId"].(string)
@@ -333,8 +314,6 @@ func TestWorkerAlertsOnAStatusItDoesNotKnow(t *testing.T) {
 	}
 }
 
-// 1Click holds a short deposit until the deadline, and the rest sent to its address may still convert it: until it
-// ends, the invoice waits as for a deposit it converts.
 func TestAShortDepositHoldsTheInvoice(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	fake.SetStatus(quote["depositAddress"].(string), intents.IncompleteDeposit, map[string]any{"depositedAmount": "99000000",
@@ -350,8 +329,6 @@ func TestAShortDepositHoldsTheInvoice(t *testing.T) {
 	}
 }
 
-// One round reads the deposits 1Click saw first, then the rest, many at once: a slow 1Click or many idle quotes
-// can't delay a payer's conversion.
 func TestOneRoundReadsDepositsFirstAndManyAtOnce(t *testing.T) {
 	e, _ := crossChainEnv(t)
 	pay, options := liveInvoice(t, e, "key-1", 86400)
@@ -393,7 +370,6 @@ func TestOneRoundReadsDepositsFirstAndManyAtOnce(t *testing.T) {
 	}
 }
 
-// A seen deposit is read until it ends, past its deadline too; a refund 1Click names no amount for still has its row.
 func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
@@ -411,7 +387,6 @@ func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 	if refunded, ok := historyKinds(t, e, pay)["crosschain.refunded"]; !ok || refunded["amount"] != nil || refunded["asset"] != tronUSDT {
 		t.Fatalf("refund history %v", refunded)
 	}
-	// Returned money didn't pay the invoice, so the payments list doesn't tag it (R-239).
 	list := e.call(t, "GET", "/v1/profiles/"+e.aliceProfile+"/payments", "did:privy:alice", "", "")
 	for _, item := range list.body["items"].([]any) {
 		if c := item.(map[string]any)["crossChain"]; c != nil {
@@ -420,8 +395,6 @@ func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 	}
 }
 
-// R-239: when the payer also pays directly on another option and that money is booked first, 1Click's USDC is held
-// on Base: the payments list and the receipt don't say the payment went through NEAR Intents.
 func TestADirectPaymentBookedFirstIsNotPaidThroughNEARIntents(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
@@ -457,7 +430,6 @@ func TestADirectPaymentBookedFirstIsNotPaidThroughNEARIntents(t *testing.T) {
 	}
 }
 
-// The pick the payer last made moves to the Base option once 1Click saw their deposit (R-233).
 func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	var arbitrum, base string
@@ -478,7 +450,6 @@ func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 	if got := e.get(t, pay).body["pickedOptionId"]; got != base {
 		t.Fatalf("picked %v, want the Base option %s", got, base)
 	}
-	// A destination hash that isn't a Base transaction stays out of the history's txHash.
 	fake.SetStatus(quote["depositAddress"].(string), intents.Success, map[string]any{"depositedAmount": "101120000",
 		"amountOut": "100000000", "originChainTxHashes": []any{},
 		"destinationChainTxHashes": []any{map[string]any{"hash": originTx}}})
@@ -488,7 +459,6 @@ func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 	}
 }
 
-// R-240: a profile turns payments from other chains off for new quotes; an open quote still finishes.
 func TestProfileTurnsCrossChainOff(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
@@ -502,7 +472,6 @@ func TestProfileTurnsCrossChainOff(t *testing.T) {
 		r.body["crossChain"] != false {
 		t.Fatalf("turn off: %d %v", r.status, r.body)
 	}
-	// Each part saves alone and keeps the other as it is.
 	tokens := e.call(t, "GET", path, "did:privy:alice", "", "").body["tokens"].([]any)
 	other := tokens[len(tokens)-1].(map[string]any)
 	off := fmt.Sprintf(`{"off": [{"chainId": %v, "token": %q}]}`, other["chainId"], other["token"])
@@ -527,7 +496,6 @@ func TestProfileTurnsCrossChainOff(t *testing.T) {
 		!strings.Contains(r.body["error"].(map[string]any)["message"].(string), "turned it off") {
 		t.Fatalf("quote while off: %d %v", r.status, r.body)
 	}
-	// The quote made before still finishes.
 	fake.SetStatus(quote["depositAddress"].(string), intents.Processing, map[string]any{"depositedAmount": "101120000",
 		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
 	checkAt(t, e, worker, quote["quoteId"].(string), time.Now())
@@ -536,7 +504,6 @@ func TestProfileTurnsCrossChainOff(t *testing.T) {
 	}
 }
 
-// An api started with CROSSCHAIN_OFF has no 1Click: the pay page isn't offered it, and new quotes are refused.
 func TestAnAPIWithout1ClickOffersNoCrossChain(t *testing.T) {
 	e := invoiceAPICrossChain(t, 0, webhookKey, nil, invoice.Pricing{}, nil)
 	e.exec(t, `UPDATE chains SET enabled = true WHERE chain_id IN (8453, 42161)`)
@@ -552,8 +519,6 @@ func TestAnAPIWithout1ClickOffersNoCrossChain(t *testing.T) {
 	}
 }
 
-// A deposit 1Click never finishes holds the invoice only until an hour past its deadline, when its alert fires: then
-// the owner can cancel it.
 func TestADeposit1ClickNeverFinishesStopsHoldingTheInvoice(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	id := quote["quoteId"].(string)
@@ -576,8 +541,6 @@ func TestADeposit1ClickNeverFinishesStopsHoldingTheInvoice(t *testing.T) {
 	}
 }
 
-// 1Click delivering another amount than its quote alerts. Once that delivery is booked on Base, the quote no longer
-// holds the invoice: the rest can be paid from another chain too.
 func TestADeliveryOfAnotherAmountAlertsAndLeavesTheRestPayable(t *testing.T) {
 	e, fake, worker, pay, quote := tracked(t)
 	id := quote["quoteId"].(string)

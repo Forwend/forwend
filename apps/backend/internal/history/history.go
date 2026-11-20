@@ -1,5 +1,4 @@
-// Package history keeps what happened to each invoice (R-123, D-92): one append-only row per change, written in the
-// transaction that makes it, so the history can't miss a change or show one that rolled back.
+// Package history keeps one append-only row per invoice change, written in the change's own transaction.
 package history
 
 import (
@@ -16,34 +15,33 @@ import (
 const (
 	Created              = "invoice.created"
 	Canceled             = "invoice.canceled"
-	PayerEmail           = "payer.email_given"   // the payer gave an address for their receipt (R-82)
-	OptionChosen         = "payer.option_chosen" // the option the money came to first (D-76); data names it
-	OptionPicked         = "payer.option_picked" // the option the payer showed the address for (R-57); data names it
-	Held                 = "invoice.held"        // money held for the payer; data has its amount in base units and reason
+	PayerEmail           = "payer.email_given"
+	OptionChosen         = "payer.option_chosen" // the option money came to first
+	OptionPicked         = "payer.option_picked" // the option whose address the payer showed
+	Held                 = "invoice.held"
 	SettlementQueued     = "invoice.settlement_queued"
 	ReceiverSettled      = "receiver.settled"
 	CheckoutCloseChanged = "checkout.close_changed"
 	Refunded             = "invoice.refunded"
-	ReturnQueued         = "invoice.return_queued"   // support queued a return of held money; data has amount, To and TxHash
-	ReturnReleased       = "invoice.return_released" // support dropped a queued return the refund authority won't send
-	Settled              = "invoice.settled"         // data has the settle transaction's hash
+	ReturnQueued         = "invoice.return_queued"
+	ReturnReleased       = "invoice.return_released"
+	Settled              = "invoice.settled"
 	RemindersOn          = "reminders.on"
 	RemindersOff         = "reminders.off"
-	RemindersStopped     = "reminders.stopped" // by the client's stop link (R-96)
+	RemindersStopped     = "reminders.stopped"
 	RepeatStopped        = "repeat.stopped"
-	Edited               = "invoice.edited"   // data names the field, never its value (R-127)
-	Replaced             = "invoice.replaced" // canceled by a Revise; data names the new invoice (R-129)
-	Reopened             = "invoice.reopened" // data has the new close in until (R-130)
-	Numbered             = "invoice.numbered" // a link invoice took its number with its first deposit (R-141)
-	// A cross-chain payment through NEAR Intents (R-234): 1Click saw the payer's deposit on its chain, delivered the
-	// USDC on Base, returned money to the refund address, or failed. Data has the asset an amount is in.
+	Edited               = "invoice.edited"   // data names the field, never its value
+	Replaced             = "invoice.replaced" // canceled by a Revise
+	Reopened             = "invoice.reopened"
+	Numbered             = "invoice.numbered"
+	// Cross-chain payments through NEAR Intents' 1Click; data has the asset an amount is in.
 	CrossChainDeposit   = "crosschain.deposit_seen"
 	CrossChainConverted = "crosschain.converted"
 	CrossChainRefunded  = "crosschain.refunded"
 	CrossChainFailed    = "crosschain.failed"
 )
 
-// Emails the worker sent to the client or payer, or gave up on (R-126); a reminder's data has its step.
+// Emails the worker sent to the client or payer, or gave up on.
 const (
 	InvoiceEmailed      = "email.invoice_sent"
 	InvoiceEmailFailed  = "email.invoice_failed"
@@ -63,22 +61,21 @@ const (
 
 // Data has only these fields, so a row can never take a secret, a request body or an email.
 type Data struct {
-	Option string `json:"option,omitempty"` // the option chosen, or the one money is held on, when there are several
-	Amount string `json:"amount,omitempty"` // base units of the invoice token, or of Asset when set
-	Asset  string `json:"asset,omitempty"`  // the 1Click asset a cross-chain amount is in (R-234)
-	Reason string `json:"reason,omitempty"` // why held money is the payer's: one of the ledger's Held reasons
-	TxHash string `json:"txHash,omitempty"`
-	Step   string `json:"step,omitempty"` // a reminder's step (R-96)
-	Field  string `json:"field,omitempty"`
-	From   string `json:"from,omitempty"` // an edited due date's old and new value (R-128); To is also a return's destination
-	To     string `json:"to,omitempty"`
-	Until  string `json:"until,omitempty"` // a reopen's new close (R-130), RFC 3339 in UTC
-	// The other invoice of a Revise (R-129): on the old one the new, on the new one's created row the old.
-	Invoice string `json:"invoice,omitempty"`
+	Option  string `json:"option,omitempty"`
+	Amount  string `json:"amount,omitempty"` // base units; of Asset when set
+	Asset   string `json:"asset,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	TxHash  string `json:"txHash,omitempty"`
+	Step    string `json:"step,omitempty"`
+	Field   string `json:"field,omitempty"`
+	From    string `json:"from,omitempty"`
+	To      string `json:"to,omitempty"`
+	Until   string `json:"until,omitempty"`   // RFC 3339, UTC
+	Invoice string `json:"invoice,omitempty"` // a Revise's other invoice
 	Number  int64  `json:"number,omitempty"`
 }
 
-// Add writes the event for the invoice that option belongs to, and its webhook event when it has one (R-147).
+// Add writes option's invoice event, and its webhook event and deliveries when it has one.
 func Add(ctx context.Context, tx pgx.Tx, option, kind string, by Actor, data Data) error {
 	payload, _ := json.Marshal(data) // only strings: it can't fail
 	var id int64
@@ -107,13 +104,10 @@ func Add(ctx context.Context, tx pgx.Tx, option, kind string, by Actor, data Dat
 	return nil
 }
 
-// WebhookEvents are the changes a webhook endpoint can take (R-147), in the order the API lists them. A payment status
-// is the ledger's name for it; invoice.confirmed is not one (owner decision 6). "invoice.open": a reorg took away the
-// payment the invoice was detected with, so it waits again.
+// WebhookEvents are the API's event types in order; invoice.open means a reorg undid the detected payment.
 var WebhookEvents = []string{"invoice.detected", "invoice.partially_paid", "invoice.paid", Settled, "invoice.expired",
 	Canceled, Held, "invoice.open", Reopened}
 
-// webhookType is the webhook event a change of kind sends, or "" for none. A Revise cancels the invoice it replaces.
 func webhookType(kind string) string {
 	switch {
 	case kind == "invoice.expired_partially_paid":

@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// Converting +Inf, or a wait past the longest duration, differs by CPU: amd64 gives the most negative duration, which
-// let an empty bucket's requests through on CI while arm64 waited.
 func TestAnEmptyBucketThatDoesNotRefillWaitsOnEveryCPU(t *testing.T) {
 	for _, rate := range []float64{0, 1e-12} {
 		b := NewBuckets(rate, 1)
@@ -22,7 +20,6 @@ func TestAnEmptyBucketThatDoesNotRefillWaitsOnEveryCPU(t *testing.T) {
 	}
 }
 
-// A public route's key comes from its path: made-up keys, long or many, share one bucket instead of growing memory.
 func TestMadeUpKeysShareOneBucket(t *testing.T) {
 	b := NewBuckets(0.001, 1)
 	for i := range MaxKeys {

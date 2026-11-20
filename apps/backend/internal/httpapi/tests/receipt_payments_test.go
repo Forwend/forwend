@@ -11,7 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/ledger"
 )
 
-// R-121, R-179, D-26: every deposit is listed, but only the part paid to the creator counts as applied.
 func TestReceiptListsEveryDepositAndOnlyPaidMoneyAsApplied(t *testing.T) {
 	e := invoiceAPI(t)
 	ctx := context.Background()

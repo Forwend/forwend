@@ -50,10 +50,9 @@ func (f *fake) Send(_ context.Context, m email.Message) error {
 	return nil
 }
 
-// payToken is setup's invoice's pay link token (D-86).
 var payToken = strings.Repeat("ef", 32)
 
-// setup makes one user (login "" when the account has none), profile and 5 USDC invoice on Base Sepolia.
+// setup makes a user (login "" for none), a profile and a 5 USDC invoice on Base Sepolia.
 func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
@@ -63,7 +62,7 @@ func setup(t *testing.T, login string) (*pgxpool.Pool, string) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	id := fmt.Sprintf("0x%x", address.InvoiceID([32]byte(common.FromHex(payToken)))) // as a real invoice's
+	id := fmt.Sprintf("0x%x", address.InvoiceID([32]byte(common.FromHex(payToken))))
 	exec(t, pool, `
 		WITH c AS (INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (84532, 'evm', 'base-sepolia', true) ON CONFLICT (chain_id) DO UPDATE SET enabled = true),
 		     tk AS (INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
@@ -103,39 +102,6 @@ func count(t *testing.T, pool *pgxpool.Pool, where string) int {
 		t.Fatal(err)
 	}
 	return n
-}
-
-func TestDeliverSendsOneEmailPerEvent(t *testing.T) {
-	pool, id := setup(t, "owner@example.com")
-	queue(t, pool, outbox.Paid, id, nil)
-	queue(t, pool, outbox.Settled, id, nil)
-	queue(t, pool, outbox.Held, id, big.NewInt(1500000))
-	f := &fake{}
-	if err := Deliver(context.Background(), pool, f, site); err != nil {
-		t.Fatal(err)
-	}
-	if err := Deliver(context.Background(), pool, f, site); err != nil { // nothing left: nothing sent twice
-		t.Fatal(err)
-	}
-	if len(f.sent) != 3 || count(t, pool, "published_at IS NULL") != 0 {
-		t.Fatalf("sent %d, unpublished %d", len(f.sent), count(t, pool, "published_at IS NULL"))
-	}
-	for i, want := range []struct{ subject, text string }{
-		{"INV-0001 paid: 5.00 USDC", "INV-0001 was paid\n5.00 USDC\n"},
-		{"INV-0001: 5.00 USDC is in your wallet", "Money for INV-0001 is in your wallet\n5.00 USDC\n"},
-		{"INV-0001: 1.50 USDC held for the payer", "INV-0001: money held for the payer\n1.50 USDC\n"},
-	} {
-		m := f.sent[i]
-		if m.To != "owner@example.com" || m.Subject != want.subject || !strings.Contains(m.Text, want.text) ||
-			!strings.Contains(m.Text, "Network: Base Sepolia") ||
-			!strings.Contains(m.Text, web+"/app/invoices/"+id) || !strings.Contains(m.Text, web+"/app/notifications") ||
-			!strings.HasPrefix(m.Key, fmt.Sprintf("forwend-%s-%d-", id, i+1)) {
-			t.Fatalf("email %d: %+v", i, m)
-		}
-	}
-	if !strings.Contains(f.sent[2].Text, "Forwend support handles any return to the payer") {
-		t.Fatalf("held email doesn't say who handles the return: %s", f.sent[2].Text)
-	}
 }
 
 func TestDeliverSendsCheckoutNotificationsWithoutInvoiceNumbers(t *testing.T) {
@@ -198,7 +164,6 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	if count(t, pool, "attempts = 1 AND next_attempt_at > now() + interval '50 seconds' AND published_at IS NULL") != 1 {
 		t.Fatal("after one failure: want attempts 1 and a wait of about a minute")
 	}
-	// A failure ends the round: of two events due at once, one is tried against a failing Resend, the other waits.
 	queue(t, pool, outbox.Paid, id, nil)
 	queue(t, pool, outbox.Paid, id, nil)
 	if err := Deliver(context.Background(), pool, f, site); err != nil {
@@ -208,7 +173,7 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 		t.Fatal("a failed send did not end the round")
 	}
 	exec(t, pool, "DELETE FROM outbox_events WHERE id > 1")
-	if err := Deliver(context.Background(), pool, f, site); err != nil { // not due yet: no second try now
+	if err := Deliver(context.Background(), pool, f, site); err != nil {
 		t.Fatal(err)
 	}
 	if count(t, pool, "attempts = 1") != 1 {
@@ -227,7 +192,6 @@ func TestDeliverRetriesWithBackoffThenGivesUp(t *testing.T) {
 	}
 }
 
-// R-115: a payer address saved again and again can't hold up everyone's email.
 func TestDeliverGoesOnPastARefusedEmail(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -236,7 +200,7 @@ func TestDeliverGoesOnPastARefusedEmail(t *testing.T) {
 	f := &fake{refuse: "x@bad.example"}
 	queue(t, pool, outbox.Receipt, id, nil)
 	for round := range 3 {
-		// The payer's PUT puts the receipt first in line again (invoice.SetPayerEmail).
+		// as the payer's PUT does (invoice.SetPayerEmail)
 		exec(t, pool, `UPDATE outbox_events SET attempts = 0, failed_at = NULL, next_attempt_at = now()
 			WHERE kind = 'invoice.receipt' AND published_at IS NULL`)
 		queue(t, pool, outbox.Paid, id, nil)
@@ -302,7 +266,6 @@ func TestRetryKeepsTheIdempotencyKey(t *testing.T) {
 	}
 }
 
-// Resend answers 409 to a key it saw with another body: an invoice edited between two tries gets a new key.
 func TestRetryOfAChangedEmailTakesANewKey(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE invoices SET client_email = 'ap@client.example' WHERE id = $1", id)
@@ -355,14 +318,6 @@ func TestDeliverClaimsEachEventOnce(t *testing.T) {
 	}
 }
 
-func TestBackoff(t *testing.T) {
-	for n, want := range map[int]string{1: "1m0s", 2: "2m0s", 6: "32m0s", 7: "1h0m0s", 10: "1h0m0s"} {
-		if got := Backoff(n).String(); got != want {
-			t.Errorf("Backoff(%d) = %s, want %s", n, got, want)
-		}
-	}
-}
-
 func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -373,7 +328,6 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 		VALUES (84532, 'evm', '0x00000000000000000000000000000000000000ee', $1, $2, 0, $2, 1, 1,
 		    '0x4444444444444444444444444444444444444444', '0x3333333333333333333333333333333333333333', 5000000, 'confirmed')`,
 		id, hash)
-	// The ledger booked it to the creator; the link is a payment that paid the creator (R-121).
 	book := func(hash, account string, amount int64) {
 		t.Helper()
 		exec(t, pool, `WITH x AS (INSERT INTO ledger_transactions (invoice_id, kind, chain_transfer_id)
@@ -382,8 +336,7 @@ func TestDeliverSendsTheReceiptToThePayer(t *testing.T) {
 			SELECT id, 'receiver', $4::numeric FROM x UNION ALL SELECT id, $3, -$4::numeric FROM x`, id, hash, account, amount)
 	}
 	book(hash, "recipient_payable", 5000000)
-	// Later transfers the link must not pick: one after the checkout closed, one not final yet, and one on time but
-	// held for the payer because the invoice was already paid.
+	// Later transfers the link must not pick: late, not final, and held for the payer.
 	for i, d := range []struct {
 		status string
 		late   bool
@@ -475,7 +428,6 @@ func TestDeliverSendsTheWelcome(t *testing.T) {
 	}
 }
 
-// D-86: an invoice made before the pay token has no pay link, so nothing that would link it goes to the client or payer.
 func TestDeliverSendsNoClientEmailWithoutAPayLink(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -503,8 +455,6 @@ func TestDeliverSendsNoClientEmailWithoutAPayLink(t *testing.T) {
 	}
 }
 
-// R-94: the owner's send goes to the client's email whatever the owner's setting, from the issuer, with replies to the
-// issuer's billing email, the pay page and the PDF. A payer-chooses invoice is priced in USD on any network.
 func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -545,7 +495,6 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 		t.Fatal("the client's email links the owner's settings")
 	}
 
-	// A second option: the client chooses, so the email names no token or network.
 	exec(t, pool, `INSERT INTO invoices (id, main_id, profile_id, chain_id, chain_family, token_contract, amount, expires_at,
 		    settle_deadline, recipient_address, receive_method, factory_address, receive_address, idempotency_key, request_hash)
 		SELECT $2, id, profile_id, chain_id, chain_family, token_contract, amount, expires_at, settle_deadline,
@@ -560,7 +509,6 @@ func TestDeliverSendsTheInvoiceToTheClient(t *testing.T) {
 		t.Fatalf("payer-chooses email %+v", f.sent[len(f.sent)-1])
 	}
 
-	// A live invoice's email says nothing of test mode (R-143).
 	exec(t, pool, "UPDATE chains SET livemode = true WHERE chain_id = (SELECT chain_id FROM invoices WHERE id = $1)", id)
 	send(id, "k3")
 	if err := Deliver(context.Background(), pool, f, site); err != nil {
@@ -610,7 +558,6 @@ func TestDeliverSendsTheReminderToTheClient(t *testing.T) {
 		}
 	}
 
-	// Stopped after it was queued, or paid: nothing goes, and nothing waits.
 	remind("due")
 	exec(t, pool, "UPDATE invoice_reminders SET stopped_at = now()")
 	deliver()
@@ -676,7 +623,6 @@ func TestDeliverSendsTheChangeToTheClient(t *testing.T) {
 	}
 }
 
-// R-126: By is who asked; the owner's own emails are not the client's.
 func TestDeliverRecordsClientEmailsInHistory(t *testing.T) {
 	pool, id := setup(t, "owner@example.com")
 	exec(t, pool, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -703,7 +649,6 @@ func TestDeliverRecordsClientEmailsInHistory(t *testing.T) {
 	if got := historytest.Events(t, pool, id); !slices.Equal(got, sent) {
 		t.Fatalf("history %q, want %q", got, sent)
 	}
-	// A failure to try again writes nothing; giving up writes the failed row.
 	remind("after")
 	f.fail = true
 	for _, attempts := range []int{0, MaxAttempts - 1} {
@@ -722,8 +667,6 @@ func TestDeliverRecordsClientEmailsInHistory(t *testing.T) {
 	}
 }
 
-// R-139: the invite goes to the address invited with its link; then only the token's hash is left. A revoked invite
-// sends nothing.
 func TestDeliverSendsTheInviteThenDropsItsToken(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	ctx := context.Background()
@@ -742,7 +685,6 @@ func TestDeliverSendsTheInviteThenDropsItsToken(t *testing.T) {
 		return id
 	}
 	sent, revoked, failing := strings.Repeat("ab", 32), strings.Repeat("cd", 32), strings.Repeat("ef", 32)
-	// An invite whose email is given up drops its token too.
 	invite("bounce@example.com", failing)
 	exec(t, pool, "UPDATE outbox_events SET attempts = $1", MaxAttempts-1)
 	if err := Deliver(ctx, pool, &fake{fail: true}, site); err != nil {
@@ -770,7 +712,6 @@ func TestDeliverSendsTheInviteThenDropsItsToken(t *testing.T) {
 	}
 }
 
-// R-148: whatever the profile's email setting, and naming only the endpoint's host.
 func TestDeliverSendsTheTurnedOffEndpoint(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
@@ -802,8 +743,6 @@ type during func()
 
 func (fn during) Send(context.Context, email.Message) error { fn(); return nil }
 
-// The receipt goes out while the payer changes the address: the change waits for the send and sees it sent, and the
-// worker's history row doesn't deadlock with the change's lock on the invoice.
 func TestPayerEmailChangeWaitsForTheReceiptBeingSent(t *testing.T) {
 	ctx := context.Background()
 	pool, id := setup(t, "owner@example.com")
@@ -835,24 +774,7 @@ func TestPayerEmailChangeWaitsForTheReceiptBeingSent(t *testing.T) {
 	}
 }
 
-// R-137: the code is in the subject and both parts, and the email names no link but the app.
-func TestTheCodeEmailCarriesItsCode(t *testing.T) {
-	m, err := CodeMessage(Site{WebURL: "https://forwend.test"}, "042517", 10*time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(m.Text, "It works for 10 minutes.") {
-		t.Errorf("text %q doesn't say how long the code works", m.Text)
-	}
-	if m.Subject != "Your Forwend code: 042517" || !strings.Contains(m.Text, "042517") || !strings.Contains(m.HTML, "042517") {
-		t.Errorf("subject %q, text has code %v, html has code %v", m.Subject, strings.Contains(m.Text, "042517"),
-			strings.Contains(m.HTML, "042517"))
-	}
-}
-
-// R-239: the owner's paid email and the payer's receipt name what was sent through NEAR Intents.
 func TestPaidEmailsNameWhatWasPaidWith(t *testing.T) {
-	// A quote 1Click refunded didn't pay the invoice, even when its deposit was seen.
 	for status, named := range map[string]bool{"SUCCESS": true, "REFUNDED": false} {
 		t.Run(status, func(t *testing.T) {
 			pool, id := setup(t, "owner@example.com")

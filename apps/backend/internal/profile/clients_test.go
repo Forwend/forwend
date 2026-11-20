@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 )
 
-// With 999 clients and another save about to commit the 1000th, the next new client waits and is refused (R-86).
 func TestSaveClientCapCountsASaveInFlight(t *testing.T) {
 	s, _, pool := newService(t)
 	ctx := context.Background()
@@ -22,7 +20,7 @@ func TestSaveClientCapCountsASaveInFlight(t *testing.T) {
 		SELECT $1, 'filler ' || n FROM generate_series(1, $2::int) n`, profileID, MaxClients-1); err != nil {
 		t.Fatal(err)
 	}
-	// Another save, as SaveClient makes it, holds the profile lock with the 1000th client not yet committed.
+	// Another save holds the profile lock with the 1000th client not yet committed.
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -39,10 +37,16 @@ func TestSaveClientCapCountsASaveInFlight(t *testing.T) {
 		_, _, err := s.SaveClient(ctx, profileID, "33333333-3333-4333-8333-333333333333", ClientDetails{Name: "late"})
 		done <- err
 	}()
-	select {
-	case err := <-done:
-		t.Fatalf("SaveClient finished while another save held the profile: %v", err)
-	case <-time.After(300 * time.Millisecond):
+	for waiting := false; !waiting; {
+		select {
+		case err := <-done:
+			t.Fatalf("SaveClient finished while another save held the profile: %v", err)
+		default:
+		}
+		if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()
+			AND wait_event_type = 'Lock')`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)

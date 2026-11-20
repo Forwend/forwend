@@ -16,26 +16,22 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Transfer is an enabled-token transfer of the profile's wallet (R-38); reorged ones are left out. At is the block
-// time; Invoice, Label and own classify it (R-108): see Classification.
+// Transfer is an enabled-token, non-reorged transfer of the profile's wallet; At is the block time.
 type Transfer struct {
 	chain.Asset
-	Direction    string
-	Amount       *big.Int
-	Counterparty string
-	TxHash       string
-	LogIndex     uint64
-	BlockNumber  uint64
-	At           time.Time
-	Status       string
-	Invoice      *TransferInvoice
-	Payment      *TransferPayment
-	Label        string
-	// FeePaid is the gas the wallet paid for the Forwend send behind an outgoing transfer, in the token's base units
-	// (R-224): 0 where Forwend paid, nil for other transfers or a fee not known yet.
-	FeePaid *big.Int
-	// RecordsCurrency is the profile's other records currency, "" for none (R-110); fx its ECB rates for this transfer.
-	RecordsCurrency string
+	Direction       string
+	Amount          *big.Int
+	Counterparty    string
+	TxHash          string
+	LogIndex        uint64
+	BlockNumber     uint64
+	At              time.Time
+	Status          string
+	Invoice         *TransferInvoice
+	Payment         *TransferPayment
+	Label           string
+	FeePaid         *big.Int // base units; 0 if Forwend paid, nil if unknown
+	RecordsCurrency string   // "" for none
 	fx              *rates
 	own             bool
 	id              int64
@@ -47,9 +43,6 @@ type rates struct {
 	usd, cur *big.Rat
 }
 
-// transferSQL selects a profile's transfers ($1) with what classifies them (R-108): the invoice paid from one of
-// its receive addresses (a link invoice once it has a number, R-141), an own-profile counterparty, the user's label,
-// and the ECB rates that value it (R-110).
 var transferSQL = `
 	SELECT t.id, t.chain_id, t.token_contract, tk.symbol, tk.decimals, t.direction, t.amount::text, t.counterparty,
 	       t.tx_hash, t.log_index, t.block_number, t.block_time, t.status, inv.id, inv.number, inv.client_name,
@@ -89,21 +82,17 @@ var transferSQL = `
 	                   ORDER BY u.day DESC LIMIT 1) fx ON true
 	WHERE w.profile_id = $1 AND t.status <> 'reorged' AND ` + inMode("t.chain_id") + " AND " + notFee
 
-// notFee leaves out a send's network fee: a Tempo send's fee to the fee manager, or a paymaster's for a relayed send.
-// The send's row shows it as the fee paid (R-224), not as money sent. The balance history still counts it, as the
-// balance does.
+// notFee leaves out a send's network fee (Tempo fee manager, paymaster): the send's row shows it as fee paid.
 var notFee = `NOT EXISTS (SELECT 1 FROM sends fs WHERE (` + chain.TempoFee("t", "fs") + `) OR (` +
 	chain.PaymasterFee("t", "fs") + `))`
 
-// inMode keeps the rows on a chain of profile $1's mode: the dashboard shows one mode at a time (D-120, R-221).
+// inMode keeps rows on chains of profile $1's current mode.
 func inMode(chainID string) string {
 	return "EXISTS (SELECT 1 FROM chains mc JOIN profiles mp ON mp.id = $1 WHERE mc.chain_id = " + chainID +
 		" AND mc.livemode = mp.livemode)"
 }
 
-// listed leaves out an incoming transfer under 0.10 USD (R-38): such transfers are mostly spam that plants a
-// look-alike address in the history. A settlement from one of the profile's invoices and a transfer from another of
-// the user's profiles always show. The balance still counts every transfer; it is read from the chain.
+// listed hides incoming dust under 0.10 USD (look-alike address spam), except settlements and own transfers.
 const listed = `(t.direction = 'out' OR t.amount >= (10::numeric ^ (tk.decimals - 1))
 	OR EXISTS (SELECT 1 FROM receiver_outflows o WHERE o.kind = 'settlement' AND o.chain_id = t.chain_id
 	    AND o.tx_hash = t.tx_hash AND o.block_hash = t.block_hash AND o.transfer_log_index = t.log_index
@@ -157,14 +146,12 @@ func scanTransfer(row pgx.CollectableRow) (Transfer, error) {
 	return t, err
 }
 
-// NextCursor is "" on the last page.
 type TransferPage struct {
 	Items      []Transfer
-	NextCursor string
+	NextCursor string // "" on the last page
 }
 
-// Transfers returns a page in direction ("" for both) matching q, newest block time first. The caller has checked
-// the user's access to the profile.
+// Transfers returns a page, newest first; direction "" means both. The caller has checked access.
 func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit int, direction string,
 	q search.Query) (TransferPage, error) {
 	if limit < 1 || limit > MaxLimit {
@@ -185,9 +172,8 @@ func (s *Service) Transfers(ctx context.Context, profileID, cursor string, limit
 		}
 		afterTime, afterID = &at, &id
 	}
-	// The row id breaks ties within one block time, so pages never skip or repeat a transfer. The page is chosen first,
-	// wallet by wallet along the wallet_transfers_wallet index; the invoice, label and rate joins then run for those rows
-	// alone, fetched by id.
+	// The row id breaks ties so pages never skip or repeat. The page is picked first, along wallet_transfers_wallet;
+	// the joins then run for those rows alone.
 	rows, err := s.pool.Query(ctx, `WITH page AS (
 		SELECT p.id, p.block_time FROM profile_wallets w CROSS JOIN LATERAL (
 		    SELECT t.id, t.block_time FROM wallet_transfers t

@@ -12,11 +12,9 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
-// AttemptTimeout bounds one attempt, from the dial to the answer's headers.
 const AttemptTimeout = 15 * time.Second
 
-// Client sends webhooks. It checks the address it connects to, after DNS, so a name that resolves to a private
-// address, or starts to (DNS rebinding), is refused. It uses no proxy and follows no redirect: a 3xx fails.
+// Client refuses private addresses after DNS (so DNS rebinding fails), uses no proxy and fails on a redirect.
 func Client() *http.Client {
 	dialer := outbound.Dialer(false)
 	dialer.Timeout = 10 * time.Second
@@ -29,8 +27,7 @@ func Client() *http.Client {
 	}
 }
 
-// sign is the webhook-signature header (Standard Webhooks): "v1," and the base64 HMAC-SHA256 of id.timestamp.body
-// under each secret, space-separated, so a receiver holding either secret of a rotation can check it.
+// sign is the Standard Webhooks signature: one v1 HMAC per secret, so either secret of a rotation verifies.
 func sign(secrets []string, id string, timestamp int64, body []byte) string {
 	signed := []byte(id + "." + strconv.FormatInt(timestamp, 10) + ".")
 	signed = append(signed, body...)

@@ -18,7 +18,6 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	const alice = "did:privy:alice"
 	ctx := context.Background()
 	id := e.post(t, alice, e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
-	// The checkout closed two hours ago, so every reader must take the reopened close, not expiresAt.
 	expires := time.Now().Add(-2 * time.Hour).Truncate(time.Second).UTC()
 	deadline := expires.Add(7 * 24 * time.Hour)
 	e.exec(t, "ALTER TABLE invoices DISABLE TRIGGER invoices_guard, DISABLE TRIGGER invoices_number")
@@ -60,7 +59,6 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	}
 	mustContain(t, pdfText(t, e.pdf(t, id, "invoice.pdf", "").body),
 		"Payment window closes\n"+deadline.Add(-24*time.Hour).UTC().Format("2 Jan 2006, 15:04")+" UTC")
-	// The late 2 USDC pays now, and 1 more in the new window completes it.
 	deposit(3, expires.Unix()+90, 1000000)
 	if err := ledgers.Process(ctx, id); err != nil {
 		t.Fatal(err)
@@ -85,7 +83,6 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 		`invoice.reopened by owner {"until": "`+until+`"}`) {
 		t.Fatalf("no reopen in the history: %q", events)
 	}
-	// The exact close, so the page shows it in the reader's time; to is an edited due date's.
 	if !slices.ContainsFunc(paid["history"].([]any), func(row any) bool {
 		h := row.(map[string]any)
 		return h["kind"] == "invoice.reopened" && h["until"] == until && h["to"] == nil
@@ -95,7 +92,6 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	if public := e.get(t, id).body; public["closesAt"] != until {
 		t.Fatalf("the public read closes at %v, want %v", public["closesAt"], until)
 	}
-	// Once, and only after a partly paid close; another profile's invoice is not found.
 	open := e.post(t, alice, e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
 	for _, path := range []string{owned, "/v1/profiles/" + e.aliceProfile + "/invoices/" + open} {
 		if r := e.call(t, "POST", path+"/reopen", alice, "", ""); r.status != http.StatusConflict ||
@@ -111,8 +107,6 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 	}
 }
 
-// R-130: a payer-chooses invoice reopens the option the payer paid with, not its main row. Money on the other option
-// after its close stays late.
 func TestReopenThePaidOptionOfAPayerChoosesInvoice(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

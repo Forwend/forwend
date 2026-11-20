@@ -12,13 +12,12 @@ import (
 )
 
 type createInvoiceBody struct {
-	ChainID   uint64 `json:"chainId"`
-	Token     string `json:"token"`
-	Amount    string `json:"amount"`
-	AmountUSD string `json:"amountUsd"`
-	ExpiresIn *int64 `json:"expiresIn"`
-	// owner or client (D-122); left out: the profile's choice.
-	FeesPaidBy  string           `json:"feesPaidBy"`
+	ChainID     uint64           `json:"chainId"`
+	Token       string           `json:"token"`
+	Amount      string           `json:"amount"`
+	AmountUSD   string           `json:"amountUsd"`
+	ExpiresIn   *int64           `json:"expiresIn"`
+	FeesPaidBy  string           `json:"feesPaidBy"` // "": the profile's choice
 	Title       string           `json:"title"`
 	Note        string           `json:"note"`
 	DueDate     string           `json:"dueDate"`
@@ -54,44 +53,43 @@ type invoiceJSON struct {
 	DocumentKind   invoice.DocumentKind `json:"documentKind"`
 	LinkID         *string              `json:"linkId,omitempty"`
 	InvoiceID      string               `json:"invoiceId"`
-	PayToken       *string              `json:"payToken"` // null for an invoice made before D-86
+	PayToken       *string              `json:"payToken"`
 	OptionID       string               `json:"optionId"`
 	OptionLocked   bool                 `json:"optionLocked"`
 	PickedOptionID *string              `json:"pickedOptionId"`
 	OptionCount    int                  `json:"optionCount"`
 	Confirming     bool                 `json:"confirming"`
 	Closed         bool                 `json:"closed"`
-	Number         *int64               `json:"number"` // null for a link invoice before its first deposit (R-141)
+	Number         *int64               `json:"number"` // null for a link invoice before its first deposit
 	Title          *string              `json:"title"`
 	Note           *string              `json:"note"`
 	DueDate        *string              `json:"dueDate"`
 	SupplyDate     *string              `json:"supplyDate"`
 	Reference      *string              `json:"reference"`
 	AgreedValue    *agreedJSON          `json:"agreedValue"`
-	Client         *clientJSON          `json:"client,omitempty"` // owner routes only
-	Store          *storeJSON           `json:"store,omitempty"`  // owner routes only; a merchant invoice's (R-134)
-	// Owner routes only; {} when none was sent (R-151).
-	Metadata   *map[string]string `json:"metadata,omitempty"`
-	Brand      *brandJSON         `json:"brand"` // a merchant invoice's store branding (R-135)
-	Issuer     *issuerJSON        `json:"issuer"`
-	SenderName *string            `json:"senderName"`
-	ReturnURL  *string            `json:"returnUrl"`
-	ChainID    uint64             `json:"chainId"`
-	Livemode   bool               `json:"livemode"` // false on a testnet: test mode, whose tokens have no value (D-87)
-	Token      string             `json:"token"`
-	Amount     string             `json:"amount"`
+	Client         *clientJSON          `json:"client,omitempty"`
+	Store          *storeJSON           `json:"store,omitempty"`
+	Metadata       *map[string]string   `json:"metadata,omitempty"` // {} when none was sent
+	Brand          *brandJSON           `json:"brand"`
+	Issuer         *issuerJSON          `json:"issuer"`
+	SenderName     *string              `json:"senderName"`
+	ReturnURL      *string              `json:"returnUrl"`
+	ChainID        uint64               `json:"chainId"`
+	Livemode       bool                 `json:"livemode"`
+	Token          string               `json:"token"`
+	Amount         string               `json:"amount"`
 	paymentio.Fees
 	Recipient        string  `json:"recipient"`
 	Factory          string  `json:"factory"`
 	ReceiveAddress   string  `json:"receiveAddress"`
 	ExpiresAt        string  `json:"expiresAt"`
-	ClosesAt         string  `json:"closesAt"` // expiresAt, or the reopened close (R-130)
+	ClosesAt         string  `json:"closesAt"` // expiresAt, or the reopened close
 	SettleDeadline   string  `json:"settleDeadline"`
 	PaymentStatus    string  `json:"paymentStatus"`
 	SettlementStatus string  `json:"settlementStatus"`
 	RefundStatus     string  `json:"refundStatus"`
-	State            string  `json:"state,omitempty"`  // owner routes only (D-114)
-	Wallet           string  `json:"wallet,omitempty"` // owner routes only (D-114)
+	State            string  `json:"state,omitempty"`
+	Wallet           string  `json:"wallet,omitempty"`
 	SettlementTxHash *string `json:"settlementTxHash"`
 	CreatedAt        string  `json:"createdAt"`
 }
@@ -141,26 +139,19 @@ func toDepositSummaryJSON(summary *invoice.DepositSummary) *depositSummaryJSON {
 type invoiceDetailJSON struct {
 	DepositSummary *depositSummaryJSON `json:"depositSummary,omitempty"`
 	invoiceJSON
-	PaidAt     *string             `json:"paidAt"`
-	SettledAt  *string             `json:"settledAt"`
-	CanceledAt *string             `json:"canceledAt"`
-	Deposits   []paymentio.Deposit `json:"deposits"`
-	Options    []optionJSON        `json:"options"`
-	// In the base units of the option whose id is the invoice's (R-88); empty without a breakdown.
-	Lines []lineJSON `json:"lines"`
-	// When Check status may run again; null when it may now (R-55).
-	NextCheckAt *string `json:"nextCheckAt"`
-	// Newest first.
-	Updates []updateJSON `json:"updates"`
-	// R-129: null unless a Revise replaced it.
-	ReplacedBy *revisionJSON `json:"replacedBy"`
-	// R-235: the shown payment through NEAR Intents; null without one.
-	CrossChain *paymentio.CrossChain `json:"crossChain"`
-	// R-240: the payee takes payments from other chains; the pay page offers it only on a live Base USDC option too.
-	CrossChainOn bool `json:"crossChainOn"`
+	PaidAt       *string               `json:"paidAt"`
+	SettledAt    *string               `json:"settledAt"`
+	CanceledAt   *string               `json:"canceledAt"`
+	Deposits     []paymentio.Deposit   `json:"deposits"`
+	Options      []optionJSON          `json:"options"`
+	Lines        []lineJSON            `json:"lines"`       // base units of the invoice's option
+	NextCheckAt  *string               `json:"nextCheckAt"` // null: Check status may run now
+	Updates      []updateJSON          `json:"updates"`     // newest first
+	ReplacedBy   *revisionJSON         `json:"replacedBy"`
+	CrossChain   *paymentio.CrossChain `json:"crossChain"`
+	CrossChainOn bool                  `json:"crossChainOn"`
 }
 
-// R-129: payToken is the replacement's pay link; null for the invoice it replaced.
 type revisionJSON struct {
 	InvoiceID string  `json:"invoiceId"`
 	Number    int64   `json:"number"`
@@ -174,7 +165,7 @@ func toRevisionJSON(r *invoice.Revision) *revisionJSON {
 	return &revisionJSON{InvoiceID: r.ID, Number: r.Number, PayToken: httpio.OrNull(r.PayToken)}
 }
 
-// R-128: from and to are a due date's old and new value, null for the other fields.
+// From and To are a due date's old and new value, null for other fields.
 type updateJSON struct {
 	At    string  `json:"at"`
 	Field string  `json:"field"`
@@ -182,10 +173,9 @@ type updateJSON struct {
 	To    *string `json:"to"`
 }
 
-// R-93: Amount is in the currency's minor units.
 type agreedJSON struct {
 	Currency string `json:"currency"`
-	Amount   string `json:"amount"`
+	Amount   string `json:"amount"` // minor units
 	Decimals int    `json:"decimals"`
 	Date     string `json:"date"`
 }
@@ -213,7 +203,6 @@ type optionJSON struct {
 	Deposits       []paymentio.Deposit `json:"deposits"`
 }
 
-// Owner reads only; settlementWait is null when the money is not waiting.
 type ownerInvoiceJSON struct {
 	invoiceDetailJSON
 	SettlementWait *settlementWaitJSON `json:"settlementWait"`
@@ -227,15 +216,12 @@ type ownerInvoiceJSON struct {
 	ReopenUntil    *string             `json:"reopenUntil"`
 }
 
-// R-125: firstAt and lastAt are null before the first load.
 type viewsJSON struct {
 	Count   int64   `json:"count"`
 	FirstAt *string `json:"firstAt"`
 	LastAt  *string `json:"lastAt"`
 }
 
-// R-124: optionId, amount, asset, txHash, step, field, from, to, until and related are null when the row has none.
-// asset is the 1Click asset a cross-chain amount is in (R-234); amount is otherwise in the invoice token.
 type historyJSON struct {
 	ID       int64         `json:"id"`
 	Kind     string        `json:"kind"`
@@ -243,7 +229,7 @@ type historyJSON struct {
 	At       string        `json:"at"`
 	OptionID *string       `json:"optionId"`
 	Amount   *string       `json:"amount"`
-	Asset    *string       `json:"asset"`
+	Asset    *string       `json:"asset"` // a cross-chain amount's 1Click asset
 	TxHash   *string       `json:"txHash"`
 	Step     *string       `json:"step"`
 	Field    *string       `json:"field"`
@@ -253,7 +239,6 @@ type historyJSON struct {
 	Related  *revisionJSON `json:"related"`
 }
 
-// R-98: nextDueDate and nextOn are null once the retainer ended or stopped.
 type retainerJSON struct {
 	EndDate     *string `json:"endDate"`
 	NextDueDate *string `json:"nextDueDate"`
@@ -261,7 +246,6 @@ type retainerJSON struct {
 	StoppedAt   *string `json:"stoppedAt"`
 }
 
-// R-94, R-96: sentAt and failedAt stay null while the email waits.
 type sendJSON struct {
 	RequestedAt string  `json:"requestedAt"`
 	SentAt      *string `json:"sentAt"`
@@ -324,7 +308,6 @@ func toInvoiceJSON(inv invoice.Invoice, withClient bool) invoiceJSON {
 	if withClient {
 		out.LinkID = httpio.OrNull(inv.LinkID)
 		out.State, out.Wallet = inv.State, inv.Wallet
-		// The owner's only (R-151): the pay page's answer has no metadata at all.
 		metadata := inv.Metadata
 		if metadata == nil {
 			metadata = map[string]string{}
@@ -420,7 +403,6 @@ type owedListJSON struct {
 	Totals []owedTotalJSON `json:"totals"`
 }
 
-// R-95: Amount is what is left to pay.
 type owedJSON struct {
 	Kind         string               `json:"kind"`
 	InvoiceID    string               `json:"invoiceId"`
@@ -468,7 +450,6 @@ type eventJSON struct {
 	At           string               `json:"at"`
 }
 
-// R-147: held is null except on invoice.held.
 type webhookEventJSON struct {
 	ID        string          `json:"id"`
 	Type      string          `json:"type"`
@@ -480,7 +461,7 @@ type webhookEventJSON struct {
 
 type webhookDataJSON struct {
 	Invoice ownerInvoiceJSON `json:"invoice"`
-	Held    *heldJSON        `json:"held"`
+	Held    *heldJSON        `json:"held"` // null except on invoice.held
 }
 
 type heldJSON struct {
@@ -489,7 +470,7 @@ type heldJSON struct {
 	OptionID *string `json:"optionId"`
 }
 
-// EventBody is what a webhook event sends (R-147): the event, and its invoice as the owner reads it when it is sent.
+// EventBody is a webhook event with its invoice as the owner reads it at send time.
 func EventBody(e webhook.Event, inv invoice.Invoice) ([]byte, error) {
 	out := webhookEventJSON{ID: e.ID, Type: e.Type, Livemode: e.Livemode, Sequence: e.Sequence,
 		Timestamp: e.CreatedAt.UTC().Format(time.RFC3339), Data: webhookDataJSON{Invoice: toOwnerInvoiceJSON(inv)}}

@@ -29,7 +29,6 @@ func TestPaymentLinks(t *testing.T) {
 		fixed.body["minUsd"] != nil || fixed.body["endsAt"] != nil || fixed.body["maxPayments"] != nil {
 		t.Fatalf("a fixed link: %d %v", fixed.status, fixed.body)
 	}
-	// The same id again replaces every field; the slug stays.
 	again := e.call(t, "PUT", path(shop, fixedID), alice, "", `{"title": "Logo design", "amountUsd": "75.5",
 		"endsAt": "2027-01-31T00:00:00Z", "maxPayments": 3, "active": false}`)
 	if again.status != http.StatusOK || again.body["slug"] != fixed.body["slug"] || again.body["amountUsd"] != "75.50" ||
@@ -42,7 +41,6 @@ func TestPaymentLinks(t *testing.T) {
 		open.body["maxUsd"] != "500.00" || open.body["slug"] == fixed.body["slug"] {
 		t.Fatalf("an open link: %d %v", open.status, open.body)
 	}
-	// Amounts are base 10 whatever their zeros: never octal.
 	for sent, saved := range map[string]string{"12.08": "12.08", "19.09": "19.09", "010": "10.00", "01.08": "1.08",
 		"000000000012": "12.00", "7.5": "7.50"} {
 		if r := e.call(t, "PUT", path(shop, openID), alice, "", `{"title": "Top up", "maxUsd": "`+sent+`"}`); r.status !=
@@ -78,7 +76,6 @@ func TestPaymentLinks(t *testing.T) {
 		"invalid_value" {
 		t.Errorf("an upper-case link id: %d %v", r.status, r.body)
 	}
-	// A freelancer's link has no store; a personal profile asks with requests instead (D-52).
 	if r := e.call(t, "PUT", path(e.aliceProfile, someID), alice, "", `{"title": "Hourly", "amountUsd": "80"}`); r.status !=
 		http.StatusCreated || r.body["storeId"] != nil {
 		t.Fatalf("a freelancer's link: %d %v", r.status, r.body)
@@ -91,7 +88,6 @@ func TestPaymentLinks(t *testing.T) {
 		errorCode(r) != "personal_profile" {
 		t.Errorf("a personal profile's link: %d %v", r.status, r.body)
 	}
-	// Another profile's link id is not found, and nothing changes.
 	if r := e.call(t, "PUT", path(e.aliceProfile, fixedID), alice, "", `{"title": "Taken"}`); errorCode(r) !=
 		"link_not_found" {
 		t.Errorf("the shop's link id on another profile: %d %v", r.status, r.body)
@@ -110,7 +106,6 @@ func TestPaymentLinks(t *testing.T) {
 		t.Errorf("GET another profile's link: %d %v", r.status, r.body)
 	}
 
-	// The paid count is the link's paid and settled invoices.
 	for i, status := range []string{"paid", "open", "paid"} {
 		made := e.post(t, alice, shop, "link-"+status+string(rune('a'+i)), `{"chainId": 84532, "token": "`+usdc+`",
 			"amount": "1000000"}`)
@@ -122,7 +117,6 @@ func TestPaymentLinks(t *testing.T) {
 	if r := e.call(t, "GET", path(shop, fixedID), alice, "", ""); r.body["paid"] != 2.0 {
 		t.Errorf("the paid count: %v", r.body["paid"])
 	}
-	// Another profile's invoice can't name the link, so it never counts.
 	other := e.post(t, alice, e.aliceProfile, "link-other", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`)
 	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
 	_, err := e.pool.Exec(context.Background(), `UPDATE invoices SET link_id = $2 WHERE id = $1`,
@@ -133,7 +127,6 @@ func TestPaymentLinks(t *testing.T) {
 	}
 }
 
-// A page of links reads as the whole list does, and one link reads as its list item.
 func TestPaymentLinkPages(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -199,7 +192,6 @@ func TestPaymentLinkPages(t *testing.T) {
 	}
 }
 
-// R-138: a Developer or Finance member reaches only their stores' links.
 func TestPaymentLinksOfAMembersStores(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, dev = "did:privy:alice", "did:privy:erin"
@@ -237,7 +229,6 @@ func TestPaymentLinksOfAMembersStores(t *testing.T) {
 	}
 }
 
-// R-141, D-50: a link invoice is its payer's alone until its first deposit gives it the profile's next number.
 func TestLinkInvoiceNumbers(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -264,7 +255,6 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 		t.Fatalf("numbers %v and %v, want 1 and 2", first.body["number"], second.body["number"])
 	}
 
-	// The payer's pay page and PDF show it without a number.
 	paying := e.get(t, linked)
 	if paying.status != http.StatusOK || paying.body["number"] != nil {
 		t.Fatalf("the payer's read: %d %v", paying.status, paying.body)
@@ -274,13 +264,11 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 		got != `attachment; filename="forwend-invoice.pdf"` || strings.Contains(pdfText(t, pdf.body), "INV-") {
 		t.Fatalf("the PDF: %d %q", pdf.status, got)
 	}
-	// Money can reach the owner's wallet from its address with no booked deposit: a settle or recover after its
-	// deadline.
+	// A transfer from its address to the owner's wallet, with no booked deposit behind it.
 	e.exec(t, `INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction,
 		    counterparty, tx_hash, log_index, block_hash, block_number, block_time, amount, status)
 		VALUES (84532, 'evm', $1, $2, 'in', $3, $4, 0, $4, 90, 90, 1000000, 'confirmed')`,
 		usdc, aliceWallet, paying.body["receiveAddress"], "0x"+strings.Repeat("e", 64))
-	// Billing reads and wallet attribution do not invent a document before its first booked payment.
 	owner := "/v1/profiles/" + e.aliceProfile
 	unseen := func(when string) {
 		t.Helper()
@@ -316,7 +304,6 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 		t.Fatalf("funded link attempt missing from Activity: %v", activity.body)
 	}
 
-	// Its first booked deposit gives it the next number; later invoices follow it with no gap.
 	e.deposit(t, linked, "1000000")
 	got := e.call(t, "GET", owner+"/invoices/"+linked, alice, "", "")
 	third := e.post(t, alice, e.aliceProfile, "third", body)
@@ -342,12 +329,10 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 	if r := e.get(t, linked); r.body["number"] != 3.0 {
 		t.Errorf("the payer's read: %v", r.body["number"])
 	}
-	// Another link invoice, still without money, doesn't use a number.
 	viaLink("unpaid")
 	if r := e.post(t, alice, e.aliceProfile, "fifth", body); r.body["number"] != 5.0 {
 		t.Errorf("the next number: %v", r.body["number"])
 	}
-	// When the payer picks the token, money on the second option numbers the whole invoice.
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`)
 	choosing, _, err := invoice.NewService(e.pool).Create(t.Context(), e.aliceProfile, "choosing",
@@ -362,7 +347,6 @@ func TestLinkInvoiceNumbers(t *testing.T) {
 		numbers[0] == nil || *numbers[0] != 6 || numbers[1] == nil || *numbers[1] != 6 {
 		t.Fatalf("the main row's and its options' numbers: %v %v", numbers, err)
 	}
-	// The number never changes once set.
 	if _, err := e.pool.Exec(context.Background(), "UPDATE invoices SET number = NULL WHERE id = $1", linked); err == nil ||
 		!strings.Contains(err.Error(), "never change") {
 		t.Errorf("clearing the number: %v", err)

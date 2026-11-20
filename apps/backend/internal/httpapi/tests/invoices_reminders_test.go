@@ -71,7 +71,6 @@ func TestPaymentReminders(t *testing.T) {
 	}
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, paid)
 
-	// The latest step whose day has come, once: a second round queues nothing more.
 	want := map[string]string{before: "before", due: "due", late2: "due", late7: "after"}
 	for range 2 {
 		if got := queued(); !maps.Equal(got, want) {

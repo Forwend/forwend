@@ -216,7 +216,6 @@ func writeAccepted(w http.ResponseWriter, r *http.Request, j job.Job, err error)
 	httpio.WriteJSON(w, http.StatusOK, toPublicJobJSON(j))
 }
 
-// paymentPosition is the payment's place in the schedule; a value that is no number names no payment.
 func paymentPosition(r *http.Request) (int, error) {
 	n, err := strconv.Atoi(r.PathValue("position"))
 	if err != nil {

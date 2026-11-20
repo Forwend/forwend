@@ -22,7 +22,7 @@ import (
 // With Backoff, MaxAttempts ends within a few hours, inside Resend's 24-hour idempotency window.
 const MaxAttempts = 10
 
-// Batch bounds the events one call sends, so a backlog never holds up the worker's chain rounds.
+// Batch caps one call, so a backlog never holds up the worker's chain rounds.
 const Batch = 20
 
 func Backoff(n int) time.Duration {
@@ -39,7 +39,7 @@ func Deliver(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, site 
 	return nil
 }
 
-// FromConfig returns c's Resend sender, nil without a key, and the site its emails link to.
+// FromConfig's sender is nil without a Resend key.
 func FromConfig(c config.Email) (email.Sender, Site) {
 	site := Site{WebURL: c.PublicWebURL, PostalAddress: c.PostalAddress, Support: c.Support}
 	if c.ResendKey == "" {
@@ -52,7 +52,7 @@ func FromConfig(c config.Email) (email.Sender, Site) {
 	return r, site
 }
 
-// dropToken removes an invite's link token once the email is sent, skipped or given up: only its hash stays.
+// dropToken removes an invite's link token once its email is done; only its hash stays.
 const dropToken = "payload = payload - 'token'"
 
 // event is an outbox row; the ids it isn't about are "" or 0.
@@ -103,7 +103,6 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 		return false, fmt.Errorf("deliver email: %w", err)
 	}
 	if !on || to == nil || *to == "" {
-		// Email off, or no login email ('' when the account has none, NULL when never read): nothing to send.
 		if _, err := tx.Exec(ctx, "UPDATE outbox_events SET published_at = now(), "+dropToken+" WHERE id = $1",
 			e.id); err != nil {
 			return false, fmt.Errorf("skip email event %d: %w", e.id, err)
@@ -155,7 +154,6 @@ func failed(ctx context.Context, tx pgx.Tx, e event, cause error, next bool) (bo
 	return next, tx.Commit(ctx)
 }
 
-// The client's and payer's emails go in the invoice's history: sent, or failed once given up.
 var emailed = map[string]struct{ sent, failed string }{
 	outbox.Sent:     {history.InvoiceEmailed, history.InvoiceEmailFailed},
 	outbox.Reminder: {history.ReminderEmailed, history.ReminderEmailFailed},

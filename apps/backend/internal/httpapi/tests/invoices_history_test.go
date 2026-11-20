@@ -49,7 +49,6 @@ func TestOwnerReadsTheInvoiceHistory(t *testing.T) {
 	}
 }
 
-// R-126: a row only when the setting changes, and each stop once.
 func TestSettingChangesAreInTheHistory(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -87,7 +86,6 @@ func TestSettingChangesAreInTheHistory(t *testing.T) {
 	}
 }
 
-// Two first changes at once: the second sees the first's row, so the history says what the setting became.
 func TestFirstReminderChangesAtOnceAreBothInTheHistory(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"

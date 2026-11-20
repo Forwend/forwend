@@ -317,7 +317,6 @@ func TestLimitedLinkReservesTheLastPurchaseSlotOnce(t *testing.T) {
 	}
 }
 
-// Anyone can start a purchase: one with no deposit holds its slot only briefly, while its checkout stays open.
 func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -343,7 +342,7 @@ func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
 	if state := e.call(t, "GET", "/v1/invoices/"+first.body["payToken"].(string), "", "", ""); state.body["paymentStatus"] != "open" {
 		t.Fatalf("the hold closed the checkout: %v", state.body)
 	}
-	// A slow payer's deposit takes a slot again: the link reads full, as it sold one over its cap.
+	// The first purchase's deposit is seen: it holds a slot again beside the buyer's.
 	e.exec(t, `INSERT INTO chain_transfers (chain_id,chain_family,token_contract,invoice_id,tx_hash,log_index,block_hash,block_number,block_time,from_address,to_address,amount,status)
  SELECT chain_id,chain_family,token_contract,id,id,0,id,90,extract(epoch FROM now())::bigint,$2,receive_address,2000000,'detected' FROM invoices WHERE id=$1`, unpaid, aliceWallet)
 	if owner := e.call(t, "GET", path, alice, "", ""); owner.body["reserved"] != 2.0 {

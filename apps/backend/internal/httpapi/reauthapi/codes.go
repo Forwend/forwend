@@ -46,7 +46,7 @@ func verifyCode(codes *reauth.Service) http.HandlerFunc {
 	}
 }
 
-// recordTwoStep: methods names the MFA types the user just set up, which Privy must list before they are recorded.
+// recordTwoStep records only MFA types Privy lists for the user.
 func recordTwoStep(codes *reauth.Service, users *privy.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
