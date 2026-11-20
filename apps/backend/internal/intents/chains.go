@@ -2,14 +2,12 @@ package intents
 
 import "strings"
 
-// LeftOutChains are not offered to payers (D-127).
 var LeftOutChains = map[string]bool{"btc": true}
 
-// MemoChains need a memo beside the address, which a payer can forget and lose the money; they are left out (D-123).
+// MemoChains need a memo beside the address, which a payer can forget and lose the money; they are left out.
 var MemoChains = map[string]bool{"stellar": true, "xrp": true, "ton": true}
 
-// SlowChains can take about an hour to mine a deposit, and 1Click's deadline must exceed that, so their quotes get a
-// longer one (D-125).
+// SlowChains can take about an hour to mine a deposit, so their quotes get a longer 1Click deadline.
 var SlowChains = map[string]bool{"btc": true, "ltc": true, "doge": true, "bch": true, "zec": true, "dash": true,
 	"cardano": true}
 

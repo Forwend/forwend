@@ -14,8 +14,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
-// On Arc, USDC is the native coin; every movement also logs Transfer from ArcEmitter in 18 decimals, and a plain
-// native send logs only that (docs.arc.io/arc/references/usdc-system-events). ArcEmitter has no code.
+// On Arc, USDC is native: every movement also logs Transfer from ArcEmitter (18 decimals), a native send only that.
 var (
 	arcUSDC    = common.HexToAddress("0x3600000000000000000000000000000000000000")
 	ArcEmitter = common.HexToAddress("0xfffffffffffffffffffffffffffffffffffffffe")
@@ -56,8 +55,7 @@ func twins(logs []types.Log) map[int]bool {
 	return twin
 }
 
-// nativeSends turns each Arc system log without a token twin, a native send, into a 6-decimal token log.
-// ponytail: floored to 6 decimals per send, so sub-micro parts book up to a unit less; sum per receiver if it matters.
+// nativeSends turns each native send's system log into a 6-decimal token log. ponytail: floored per send, not per sum.
 func nativeSends(logs []types.Log) []types.Log {
 	twin := twins(logs)
 	var out []types.Log

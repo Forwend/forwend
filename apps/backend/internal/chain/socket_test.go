@@ -16,8 +16,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// socketServer serves JSON-RPC over WebSocket and over HTTP on one host. answer gets each call other than eth_chainId
-// and returns its result as JSON, or "" for no answer at all.
 type socketServer struct {
 	*httptest.Server
 	upgrades atomic.Int32
@@ -26,7 +24,6 @@ type socketServer struct {
 	conns    []*websocket.Conn
 }
 
-// drop closes every WebSocket connection, as a provider dropping idle ones does.
 func (s *socketServer) drop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -61,7 +58,7 @@ func newSocketServer(t *testing.T, answer func(method string, overSocket bool) s
 			if err != nil {
 				return
 			}
-			go func() { // answer out of order, as a provider may
+			go func() {
 				if out := s.reply(body, true); out != nil {
 					write.Lock()
 					conn.WriteMessage(websocket.TextMessage, out)
@@ -128,7 +125,6 @@ func TestSocketEndpointMatchesConcurrentAnswersToTheirCalls(t *testing.T) {
 	}
 }
 
-// PublicNode answers one WebSocket batch over several frames.
 func TestSocketBatchAnsweredOverSeveralFramesIsWhole(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +169,7 @@ func TestSocketEndpointRedialsAfterTheServerDropsIt(t *testing.T) {
 	r := newRPCs(t, s.ws())
 	number(t, t.Context(), r.Client)
 	s.drop()
-	time.Sleep(50 * time.Millisecond) // the reader sees the close
+	time.Sleep(50 * time.Millisecond)
 	if n := number(t, t.Context(), r.Client); n != 16 {
 		t.Fatalf("block %d after a dropped connection", n)
 	}
@@ -189,11 +185,11 @@ func TestSilentSocketFailsOverWithoutRestingItsHTTPSTwin(t *testing.T) {
 		}
 		return `"0x10"`
 	})
-	r := newRPCs(t, s.ws(), s.URL) // one host, so a host-wide rest would catch the twin
+	r := newRPCs(t, s.ws(), s.URL)
 	r.pool.timeout = 300 * time.Millisecond
 	socket, twin := r.pool.endpoints[0], r.pool.endpoints[1]
 	r.pool.mu.Lock()
-	twin.latency, twin.usedAt = time.Second, time.Now() // the socket is tried first
+	twin.latency, twin.usedAt = time.Second, time.Now()
 	r.pool.mu.Unlock()
 	if n := number(t, t.Context(), r.Client); n != 16 {
 		t.Fatalf("block %d", n)
@@ -299,7 +295,7 @@ func TestCallersOwnDeadlineLeavesTheSharedSocketToOthers(t *testing.T) {
 		return `"0x10"`
 	})
 	r := newRPCs(t, s.ws())
-	number(t, t.Context(), r.Client) // connects and measures
+	number(t, t.Context(), r.Client)
 	slow := make(chan error, 1)
 	go func() {
 		_, err := tryNumber(t.Context(), r.Client)
@@ -337,7 +333,7 @@ func TestSocketAnswerOverItsSizeLimitDropsTheConnection(t *testing.T) {
 				conn.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, `{"jsonrpc":"2.0","id":%s,"result":"0x7a69"}`, calls[0]["id"]))
 				continue
 			}
-			for _, c := range calls { // each frame fits, together they don't
+			for _, c := range calls {
 				conn.WriteMessage(websocket.TextMessage, fmt.Appendf(nil, `[{"jsonrpc":"2.0","id":%s,"result":"0x%s"}]`, c["id"], strings.Repeat("ab", 250)))
 			}
 		}
@@ -357,7 +353,7 @@ func TestSocketAnswerOverItsSizeLimitDropsTheConnection(t *testing.T) {
 func TestRequestsWaitingForADialKeepTheirDeadlines(t *testing.T) {
 	release := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select { // the upgrade hangs
+		select {
 		case <-release:
 		case <-r.Context().Done():
 		}

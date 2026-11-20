@@ -103,8 +103,7 @@ func (s *Service) finishOpen(ctx context.Context, wallet string, chainID uint64)
 	return nil
 }
 
-// refresh moves the send on from what the chain shows. Only the watcher's matching wallet transfer makes it
-// sent; nothing here ever sends again.
+// refresh moves the send on from what the chain shows; only the watcher's wallet transfer makes it sent.
 func (s *Service) refresh(ctx context.Context, out Send) (Send, error) {
 	now := s.now()
 	switch out.Status {
@@ -202,8 +201,7 @@ func moves(r *types.Receipt, out Send) bool {
 	return false
 }
 
-// unreported settles an approved send the browser never reported: a matching recorded transfer becomes its hash;
-// with none, the approval ends after ApproveHold. A paymaster send gets a hash only from Privy.
+// unreported settles an approved send the browser never reported: a matching transfer gives its hash.
 func (s *Service) unreported(ctx context.Context, out Send) (Send, error) {
 	// The watcher's place is read before its transfers, so a scan that commits in between only adds a transfer.
 	var read bool
@@ -238,8 +236,7 @@ func (s *Service) unreported(ctx context.Context, out Send) (Send, error) {
 	return s.refresh(ctx, next)
 }
 
-// waiting reports whether the wallet has a transaction no block holds yet, or the node can't tell: a new send
-// would go out after it.
+// waiting reports whether the wallet has a transaction no block holds yet, or the node can't tell.
 func (s *Service) waiting(ctx context.Context, out Send) bool {
 	client, err := s.client(out.ChainID)
 	if err != nil {
@@ -280,8 +277,7 @@ func (s *Service) finishMined(ctx context.Context, out Send, status Status, fail
 	return s.finishPaid(ctx, out, status, failure, paid)
 }
 
-// paymasterTook is what a paymaster send's wallet paid beyond the send, counted only when the transaction moved
-// the send and the rest is within PaymasterFeeSlack times the quoted fee: anything else is money out.
+// paymasterTook is what a paymaster send's wallet paid beyond the send, if within PaymasterFeeSlack; else money out.
 func paymasterTook(r *types.Receipt, out Send) *big.Int {
 	took, back := new(big.Int), new(big.Int)
 	if !moves(r, out) {

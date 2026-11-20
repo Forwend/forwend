@@ -11,8 +11,7 @@ import (
 	"testing"
 )
 
-// Written by Foundry from factory.predict; see packages/contracts/script/ReceiveAddressVectors.s.sol. The v1.1 file
-// keeps the vectors of the factory before the fees, which its invoices still use.
+// Written by packages/contracts/script/ReceiveAddressVectors.s.sol; v1.1 holds the pre-fee factory's vectors.
 const (
 	vectorsPath     = "../../../../packages/contracts/vectors/receive-address.json"
 	vectorsV1_1Path = "../../../../packages/contracts/vectors/receive-address-v1.1.json"
@@ -51,7 +50,6 @@ func readVectors(t *testing.T, path string) vectorsFile {
 	return f
 }
 
-// checkVectors computes every vector's receiver at the file's factory.
 func checkVectors(t *testing.T, f vectorsFile) {
 	t.Helper()
 	factory := [20]byte(decodeHex(t, f.Factory))
@@ -92,7 +90,6 @@ func TestReceiveMatchesFactoryPredict(t *testing.T) {
 	checkVectors(t, f)
 }
 
-// R-230: the watcher matches a platform fee to the refund authority the factory was deployed with.
 func TestTheFactorysRefundAuthorityIsTheDeployedOne(t *testing.T) {
 	raw, err := os.ReadFile("../../../../packages/contracts/deployments.json")
 	if err != nil {
@@ -123,7 +120,6 @@ func TestTheFactorysRefundAuthorityIsTheDeployedOne(t *testing.T) {
 	}
 }
 
-// R-226: invoices made before the fees keep their v1.1 factory and its seven-field terms.
 func TestV1_1InvoicesKeepTheirAddresses(t *testing.T) {
 	f := readVectors(t, vectorsV1_1Path)
 	spec, ok := Known[[20]byte(decodeHex(t, f.Factory))]
@@ -131,14 +127,12 @@ func TestV1_1InvoicesKeepTheirAddresses(t *testing.T) {
 		t.Fatalf("v1.1 factory %s: known %v, spec %+v", f.Factory, ok, spec)
 	}
 	checkVectors(t, f)
-	// A fee can't be put in terms that have no place for it.
 	_, err := ReceiveAt([20]byte(decodeHex(t, f.Factory)), Terms{Amount: big.NewInt(1), NetworkFee: big.NewInt(1)})
 	if !errors.Is(err, ErrFees) {
 		t.Errorf("a fee on v1.1 terms: got %v, want ErrFees", err)
 	}
 }
 
-// The calls the signer and a Safe make carry each factory's own tuple; Foundry's cast wrote the v2 calldata.
 func TestCallsUseTheFactorysTerms(t *testing.T) {
 	terms := Terms{InvoiceID: [32]byte(decodeHex(t, strings.Repeat("05", 32))),
 		Recipient: [20]byte(decodeHex(t, "1a2B3c4D5e6F708192a3B4c5D6e7F80912A3b4C5")),

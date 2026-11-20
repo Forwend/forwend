@@ -48,8 +48,7 @@ var (
 	reasonText = regexp.MustCompile(`^[A-Z0-9_]{1,64}$`)
 )
 
-// Status reads 1Click's status of the swap at depositAddress. It is for showing progress only: paid still comes from
-// the Base balance (R-119, R-234).
+// Status reads 1Click's swap status, for progress only: paid still comes from the Base balance.
 func (c *Client) Status(ctx context.Context, depositAddress string) (Status, error) {
 	answer, err := c.call(ctx, "GET", "/v0/status?depositAddress="+url.QueryEscape(depositAddress), nil)
 	if err != nil {
@@ -105,8 +104,6 @@ func txs(in []Tx) []Tx {
 	return out
 }
 
-// Final reports whether 1Click is done with a swap.
 func Final(status string) bool { return status == Success || status == Refunded || status == Failed }
 
-// DepositSeen reports whether 1Click saw the payer's deposit.
 func DepositSeen(status string) bool { return status != PendingDeposit }

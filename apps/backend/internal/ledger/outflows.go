@@ -19,8 +19,7 @@ type movement struct {
 
 const MovementBatch = 100
 
-// pendingMovements are booked in chain order: one waits while an earlier deposit is still detected, so the earliest
-// payers are paid to the creator first and later ones held (D-27).
+// pendingMovements are booked in chain order: one waits while an earlier deposit is detected (earlier payers first).
 func pendingMovements(ctx context.Context, tx pgx.Tx, invoiceID string) ([]movement, bool, error) {
 	rows, err := tx.Query(ctx, `WITH candidates AS MATERIALIZED (
  SELECT * FROM (
@@ -76,7 +75,7 @@ func attachLegacySettlement(ctx context.Context, tx pgx.Tx, invoiceID string) er
 	return err
 }
 
-// bookOutflow books a settlement as the amount less the fees, and each fee as its own kind (R-230).
+// bookOutflow books a settlement as the amount less the fees, and each fee as its own kind.
 func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, amount *big.Int, shown bool) (bool, error) {
 	var token, intended, destination, recipient, hash, reason, networkFee, platformFee string
 	if err := tx.QueryRow(ctx, `SELECT o.token_contract, i.token_contract, o.destination, i.recipient_address,
@@ -114,9 +113,8 @@ func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, a
 	if later {
 		return outflowRefusal(ctx, tx, m.ID, "historical_order")
 	}
-	// While the chain holds more than booked, a refund may return a deposit the scan missed: booked now, it would take
-	// another payer's money. It books once that deposit is recorded (ops deposit), which clears the alert. A deposit
-	// recorded after the refund in chain order can't be what it returned, and books only after it.
+	// While the chain holds more than booked, a refund may return a missed deposit: booked now, it would take another
+	// payer's money. It books once that deposit is recorded; a deposit after it in chain order can't be what it returned.
 	if m.Kind == "refund" {
 		var excess bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM invoice_balance_alerts WHERE invoice_id = $1 AND excess)
@@ -192,7 +190,7 @@ func bookOutflow(ctx context.Context, tx pgx.Tx, invoiceID string, m movement, a
 		return true, history.Add(ctx, tx, invoiceID, history.ReceiverSettled, history.System,
 			history.Data{Amount: value.String(), TxHash: hash, Reason: policy, Option: invoiceID})
 	}
-	// What reached the wallet: the amount less the fees (R-228).
+	// What reached the wallet: the amount less the fees.
 	if err := outbox.Queue(ctx, tx, outbox.Settled, invoiceID, value); err != nil {
 		return false, err
 	}

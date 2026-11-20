@@ -61,7 +61,6 @@ func (q *Quotes) NetworkFee(ctx context.Context, chainID uint64) (*big.Rat, erro
 }
 
 // Keep reads each chain's quote now and every QuoteRefresh until ctx ends.
-// ponytail: chains are read in turn, so a hung one delays the others by up to chain.RequestTimeout.
 func (q *Quotes) Keep(ctx context.Context, chainIDs []uint64) {
 	for {
 		for _, id := range chainIDs {

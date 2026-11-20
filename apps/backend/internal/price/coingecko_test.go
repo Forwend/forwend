@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// An answer from the live API on 2026-10-28.
 const sample = `{"usd-coin":{"usd":0.999542,"last_updated_at":1793212112},` +
 	`"tether":{"usd":0.999169,"last_updated_at":1793212126},"open-usd":{"usd":0.999173,"last_updated_at":1793212112}}`
 
@@ -28,7 +27,6 @@ func TestParse(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(coins, want) {
 		t.Fatalf("coins %+v %v", coins, err)
 	}
-	// A coin missing or with a null price has none; the others stay.
 	coins, err = parse([]byte(`{"usd-coin":{"usd":1.000000000000000001,"last_updated_at":1},"tether":{"usd":null},`+
 		`"origin-dollar":{"usd":0.99,"last_updated_at":1}}`), ids)
 	if err != nil || len(coins) != 1 || coins[0].USD != "1.000000000000000001" {
@@ -116,7 +114,6 @@ func TestKeeperReadsWhenDue(t *testing.T) {
 		t.Fatalf("stored %v", got)
 	}
 	tick(now.Add(every-time.Minute), 1, false)
-	// Tether comes back null: its last price stays, with its old read time.
 	body = `{"usd-coin":{"usd":1.0001,"last_updated_at":1793213000},"tether":{"usd":null},"open-usd":{"usd":0.9992,"last_updated_at":1793213000}}`
 	tick(now.Add(every), 2, false)
 	if got := stored(); !reflect.DeepEqual(got, map[string]string{"usd-coin": "1.0001 10:15",

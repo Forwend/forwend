@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Each worker has its own pool, as a separate process would.
 func TestLockRunsOneWorkerAtATime(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t)
@@ -113,8 +112,6 @@ func TestLockRunsOneWorkerAtATime(t *testing.T) {
 	}
 }
 
-// A connection that stops answering without closing (a network break) is reported lost at once, not when TCP gives up
-// hours later: until then no round starts.
 func TestHeldGivesUpOnASilentConnection(t *testing.T) {
 	ctx := context.Background()
 	cfg, err := pgxpool.ParseConfig(databasetest.New(t))

@@ -19,8 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Returns of held money by hand (PLAN 11.10.3, D-118): support finds the case, this checks it against the ledger and
-// the chain and locks the money, and the refund authority sends the calls it gives. Nothing here signs or holds a key.
+// Returns of held money by hand: support finds the case, this checks it and locks the money; nothing here signs.
 
 const refundSignature = "refund(address,uint256)"
 
@@ -46,10 +45,7 @@ var (
 	ErrMissedDeposit  = errors.New("the receiver holds more than the ledger booked: wait for a worker round; if it stays, record the missed deposit with ops deposit")
 )
 
-// Payment is a final payment to an invoice option. Quote is set when NEAR Intents delivered it: From is then NEAR
-// Intents' address, and the payer paid OriginTx on OriginChain with RefundTo as their own address there. Relayed is
-// set when no quote names it but NEAR Intents may have sent it: From delivered another NEAR Intents payment on this
-// chain, or a quote of the option that did not fail or refund saw a deposit and names no delivery yet.
+// Payment is a final payment to an option; with Quote or Relayed set, From is NEAR Intents, not the payer.
 type Payment struct {
 	TxHash, From                           string
 	Amount                                 *big.Int
@@ -102,8 +98,7 @@ type CaseOption struct {
 	ChainID uint64
 }
 
-// CaseOptions finds the invoice options a support case points to: a pay link or its token, a receive address, a
-// payment's transaction hash, or an invoice id from the owner's dashboard.
+// CaseOptions finds the options a case points to: a pay link or token, receive address, payment hash or invoice id.
 func CaseOptions(ctx context.Context, db *pgxpool.Pool, ref string) ([]CaseOption, error) {
 	ref = strings.ToLower(strings.TrimSpace(ref))
 	var query string
@@ -203,10 +198,7 @@ func ReadHeld(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, i
 	return h, nil
 }
 
-// QueueReturn checks a return of held money against the ledger and the chain, locks the money and gives the calls
-// for the refund authority. The destination defaults to the address that made the payment (D-118), except for one NEAR
-// Intents delivered; the amount, to everything held and refundable when one payer made every payment. The amount is
-// at most what the payment's payer paid, less what was returned to them.
+// QueueReturn checks a return, locks the money and gives the refund authority's calls; to defaults to the payer.
 func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client, invoiceID, txHash string,
 	to *common.Address, amount *big.Int) (Return, error) {
 	h, err := ReadHeld(ctx, db, client, invoiceID)
@@ -298,7 +290,7 @@ func QueueReturn(ctx context.Context, db *pgxpool.Pool, client *ethclient.Client
 		}
 		r.Amount = minBig(limit, payerLeft)
 	}
-	// 0.10 USD: every token Forwend takes is a stablecoin worth 1 USD (D-75).
+	// 0.10 USD: every token Forwend takes is a stablecoin worth 1 USD.
 	least := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(h.Decimals)), nil)
 	if r.Amount.Cmp(least.Div(least, big.NewInt(10))) < 0 {
 		return Return{}, ErrTooLittle
@@ -382,8 +374,7 @@ func ReleaseReturn(ctx context.Context, db *pgxpool.Pool, invoiceID string) erro
 	return err
 }
 
-// payer names who made a payment. NEAR Intents sends every cross-chain payer's money from one address: each quote,
-// and each payment it may have relayed, is its own payer.
+// payer names who made a payment; NEAR Intents sends all cross-chain payments from one address, so each quote is one.
 func payer(p Payment) string {
 	switch {
 	case p.Quote != "":
@@ -398,8 +389,7 @@ type querier interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-// returnedTo sums an option's booked refunds to a payer: to own, the address they paid from directly, or to a
-// destination support queued a return of one of their payments to.
+// returnedTo sums an option's booked refunds to a payer: to own, or where support queued a return of their payment.
 func returnedTo(ctx context.Context, db querier, invoiceID, own string, hashes []string) (*big.Int, error) {
 	var sum string
 	if err := db.QueryRow(ctx, `SELECT coalesce(sum(o.amount), 0)::text FROM receiver_outflows o
@@ -430,8 +420,7 @@ func checkBooked(ctx context.Context, db querier, invoiceID string) error {
 
 var errUnchanged = errors.New("refund status changed meanwhile")
 
-// setRefundStatus moves the status from one value to another, with its history row in the same transaction. check,
-// when given, runs holding the row, which the ledger also locks to book.
+// setRefundStatus moves the status with its history row; check, if given, runs holding the row the ledger locks.
 func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to, kind string, data history.Data,
 	check func(pgx.Tx) error) error {
 	return pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
@@ -452,8 +441,7 @@ func setRefundStatus(ctx context.Context, db *pgxpool.Pool, invoiceID, from, to,
 	})
 }
 
-// refuseDestination is ErrDestination for an address money can't be returned to: none, the receiver, the token,
-// Forwend's contracts, or another invoice's receiver, where it would be held again.
+// refuseDestination refuses zero, the receiver, the token, our contracts or another receiver (held there again).
 func refuseDestination(ctx context.Context, db *pgxpool.Pool, to, receiver, token common.Address) error {
 	if to == (common.Address{}) || to == receiver || to == token || address.Ours(to) {
 		return ErrDestination

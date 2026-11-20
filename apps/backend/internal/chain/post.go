@@ -84,7 +84,7 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	}
 	res := answer(http.StatusOK, safe)
 	if bytes.Contains(safe, []byte(`"message":"`+missing+`"`)) {
-		return nil, refusal{res: res, missing: true} // not counted as an answer: a fast miss must not make it look fast
+		return nil, refusal{res: res, missing: true}
 	}
 	// Only answers count toward the answer time: a fast error must not make an endpoint look fast.
 	p.measured(e, took)
@@ -94,7 +94,6 @@ func (p *pool) post(ctx context.Context, e *endpoint, header http.Header, body [
 	return res, nil
 }
 
-// exchange sends body to one endpoint over its transport and returns the raw answer with its status.
 func (p *pool) exchange(ctx context.Context, e *endpoint, header http.Header, body []byte) ([]byte, int, http.Header, error) {
 	if e.sock != nil {
 		raw, status, answerHeader, err := e.sock.send(ctx, body)
@@ -163,8 +162,7 @@ func (p *pool) unanswered(e *endpoint, err error) error {
 	return hostDown{fmt.Errorf("%s: connection failed", e.name)}
 }
 
-// hostDown is a request its host didn't answer (a timeout, a refused or broken connection): every endpoint of that
-// host rests with it.
+// hostDown is a request its host didn't answer (timeout, refused or broken connection): the host's endpoints rest.
 type hostDown struct{ error }
 
 func (h hostDown) Unwrap() error { return h.error }

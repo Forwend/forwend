@@ -66,7 +66,7 @@ func factoryStatus(ctx context.Context, client *ethclient.Client, factory common
 	}, nil
 }
 
-// finalized is the block tag for reads that must not be undone by a reorg (D-45).
+// finalized is the block tag for reads a reorg must not undo.
 var finalized = big.NewInt(int64(rpc.FinalizedBlockNumber))
 
 // receiverSettled reads the receiver's own settled flag at block (nil: latest); false before it is deployed.
@@ -91,8 +91,7 @@ func settledBy(r *types.Receipt, receiver common.Address) bool {
 	return false
 }
 
-// termsOf builds an invoice option's terms and checks that a Forwend factory computes its stored receive address from
-// them: money moves only by those terms. It returns that factory.
+// termsOf builds an option's terms and checks a Forwend factory computes its stored receive address; returns it.
 func termsOf(invoiceID, factory, recipient, token, receive string, amount *big.Int, fees [2]*big.Int, expires, deadline,
 	chainID uint64) ([20]byte, address.Terms, error) {
 	known, ok := address.KnownFactory(factory)

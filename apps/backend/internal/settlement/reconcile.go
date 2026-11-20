@@ -21,8 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// reconcile: our receipt with the Settled log decides first; a reverted settle settled at the finalized block is
-// recorded without our hash, waits if only at latest, else is re-signed.
+// reconcile: our receipt's Settled log decides; else settled at finalized is recorded, at latest waits, else re-signed.
 func (s *Signer) reconcile(ctx context.Context, client *ethclient.Client, in intent) error {
 	tx := new(types.Transaction)
 	hash := common.HexToHash(*in.txHash)
@@ -148,8 +147,7 @@ func (s *Signer) unmined(ctx context.Context, client *ethclient.Client, in inten
 	return s.await(ctx, client, tx.Hash())
 }
 
-// "already known" on geth and reth, "AlreadyKnown" on Nethermind, "transaction already imported" on Anvil;
-// not just "known": "unknown account" is a real error.
+// holds: "already known" (geth, reth), "AlreadyKnown" (Nethermind), "already imported" (Anvil); not "unknown".
 func holds(err error) bool {
 	msg := strings.ToLower(err.Error())
 	for _, known := range []string{"already known", "alreadyknown", "already imported"} {
@@ -189,8 +187,7 @@ func (s *Signer) fillGap(ctx context.Context, client *ethclient.Client, chainID 
 // FinalWait bounds how long a mined settle waits before its block is read again for finality.
 const FinalWait = 10 * time.Minute
 
-// Records only once the receiver is settled at the finalized block and r's block, if any, is final; a reorg that
-// drops our settle leaves it without a receipt.
+// confirmIfFinal records once the receiver is settled at the finalized block and r's block is final.
 func (s *Signer) confirmIfFinal(ctx context.Context, client *ethclient.Client, in intent, r *types.Receipt) error {
 	head, err := client.HeaderByNumber(ctx, finalized)
 	if err != nil {

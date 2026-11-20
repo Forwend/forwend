@@ -48,7 +48,6 @@ const DepositKindsSQL = "('deposit', 'reopen', 'chosen')"
 // MayHoldMoneySQL is the invoices_money_* partial indexes' predicate: rows that can still owe or hold money.
 const MayHoldMoneySQL = `refund_status IN ('held', 'refund_pending') OR settlement_status <> 'settled' AND payment_status <> 'expired'`
 
-// split divides a deposit into what is still owed to the creator and what is held for the payer.
 func split(amount, owedSoFar, deposit *big.Int, late, final bool) (toCreator, toHeld *big.Int) {
 	toCreator = new(big.Int)
 	if !late && !final {

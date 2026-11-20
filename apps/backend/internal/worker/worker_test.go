@@ -50,10 +50,10 @@ func TestRoundSurvivesAnRPCGoing429MidRound(t *testing.T) {
 	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID,
 		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Private, Priority: 0, URL: limited.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: a.URL, BudgetGroup: "budget-1"}, {ID: "rpc-2", Provider: "provider-2", Role: chain.Primary, Tier: chain.Public, Priority: 2, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-2"}}}}, 1000, nil)
 	defer w.Close()
-	w.Round(ctx) // the first scan starts the chain's cursor
+	w.Round(ctx)
 
 	a.Transfer(token, receive, "5000000")
-	a.Mine(2) // the deposit's block is finalized
+	a.Mine(2)
 	earlier := len(limited.Calls())
 	going := false
 	limited.Fail(func(c chaintest.Call) chaintest.Fault {
@@ -111,7 +111,7 @@ func TestRoundBooksRecordedMoneyWhenItsScanFails(t *testing.T) {
 		Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Private,
 			Priority: 0, URL: proxy.URL, BudgetGroup: "budget-0"}}}}, 1000, nil)
 	defer w.Close()
-	w.Round(ctx) // the first scan starts the chain's cursor
+	w.Round(ctx)
 	a.Transfer(token, receive, "5000000")
 	a.Mine(2)
 	if _, err := pool.Exec(ctx, `INSERT INTO chain_transfers (chain_id, chain_family, token_contract, invoice_id, tx_hash,
@@ -134,7 +134,6 @@ func TestRoundBooksRecordedMoneyWhenItsScanFails(t *testing.T) {
 	}
 }
 
-// missedDeposit pays an invoice in a block the regular scan has already passed.
 func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pgxpool.Pool, *Worker, *chaintest.Anvil, func() string) {
 	t.Helper()
 	a := chaintest.Start(t)
@@ -163,8 +162,8 @@ func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pg
 	w := New(pool, map[uint64]chain.Spec{chaintest.ChainID: {ChainID: chaintest.ChainID,
 		AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: a.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(a.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}}}, 1000, nil)
 	t.Cleanup(w.Close)
-	w.Round(ctx) // the first scan starts the chain's cursor
-	// Round leaves the recovery scan running. Run after the deposit, it books the money this test has the scan miss.
+	w.Round(ctx)
+	// Round leaves the recovery scan running; it books the deposit this test has the scan miss.
 	w.historical.Wait()
 	a.Transfer(token, receive, "5000000")
 	a.Mine(watcher.RescanDepth + 20)
@@ -186,7 +185,6 @@ func missedDeposit(t *testing.T, ctx context.Context, settleDeadline int64) (*pg
 	return pool, w, a, status
 }
 
-// missedToken is the invoice's pay link token, and missedID its id.
 const missedToken = "0101010101010101010101010101010101010101010101010101010101010101"
 
 var missedID = crypto.Keccak256Hash(common.FromHex(missedToken)).Hex()
@@ -220,7 +218,6 @@ func TestRecheckBooksADepositTheScanMissed(t *testing.T) {
 	if got := status(); got != "paid" {
 		t.Fatalf("after the recheck's rescan: invoice %s, want paid", got)
 	}
-	// The rescan records the deposit, then clears the request: a round can book it in between.
 	w.historical.Wait()
 	var pending bool
 	if err := pool.QueryRow(ctx, "SELECT rescan_requested_at IS NOT NULL FROM invoice_rechecks").Scan(&pending); err != nil || pending {

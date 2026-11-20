@@ -9,7 +9,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
-// A deposit the scan missed is recorded from its receipt once final, as the scan would have recorded it, and only once.
 func TestMissedDepositIsRecordedFromItsReceiptOnce(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()

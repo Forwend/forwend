@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Deposit at Base Sepolia block 47889653 (2 s blocks), from the S-4 measurements.
 var deposit = Block{Number: 47889653, Time: 1791547594}
 
 func behind(blocks uint64) Block {
@@ -21,9 +20,7 @@ func TestProgressOf(t *testing.T) {
 		{"finalized 461 blocks behind", behind(461), Progress{BlocksLeft: 461, TimeLeft: 922 * time.Second}},
 		{"one block left", behind(1), Progress{BlocksLeft: 1, TimeLeft: 2 * time.Second}},
 		{"finalized passes the deposit block", Block{Number: deposit.Number + 50, Time: deposit.Time + 100}, Progress{}},
-		// Arbitrum makes several blocks per second, so a block left can still share the head's second.
 		{"same second, block not final", Block{Number: deposit.Number - 3, Time: deposit.Time}, Progress{BlocksLeft: 3}},
-		// Arc and Tempo: the finalized head is the latest block, so a deposit is final when it is seen.
 		{"finalized equals latest", deposit, Progress{}},
 	}
 	for _, tt := range tests {

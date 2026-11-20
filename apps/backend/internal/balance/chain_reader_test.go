@@ -24,7 +24,6 @@ func hung(t *testing.T) string {
 	return url
 }
 
-// hungCounting is hung, and counts the connections it accepted.
 func hungCounting(t *testing.T) (string, *atomic.Int32) {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -66,7 +65,7 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 		_, _, err := c.Read(ctx, dead, usdc, holder)
 		stuck <- err
 	}()
-	time.Sleep(200 * time.Millisecond) // the dead chain is being read
+	time.Sleep(200 * time.Millisecond)
 	start := time.Now()
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil || time.Since(start) > time.Second {
 		t.Fatalf("healthy chain while another hangs: %v after %v", err, time.Since(start))
@@ -99,7 +98,7 @@ func TestReadDuringAHungReadSharesItsFailure(t *testing.T) {
 		_, _, err := c.Read(first, dead, usdc, holder)
 		failed <- err
 	}()
-	for began := time.Now(); accepted.Load() == 0; time.Sleep(time.Millisecond) { // then the first read waits on the hung RPC
+	for began := time.Now(); accepted.Load() == 0; time.Sleep(time.Millisecond) {
 		if time.Since(began) > 5*time.Second {
 			t.Fatal("the first read never reached the RPC")
 		}

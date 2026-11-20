@@ -22,15 +22,13 @@ import (
 )
 
 const (
-	// The line's invoice's pay link token (D-86).
-	payToken  = "1c0ffee0000000000000000000000000000000000000000000000000000000ab"
-	recipient = "0x1111111111111111111111111111111111111111"
-	token     = "0x2222222222222222222222222222222222222222"
-	amount    = "2500000"
-	expiresAt = 1893456000 // 2030-01-01
-	deadline  = expiresAt + 86400
-	wrong     = "0x3333333333333333333333333333333333333333"
-	// The pay link's token of a payer-chooses invoice that has id as one of its options.
+	payToken   = "1c0ffee0000000000000000000000000000000000000000000000000000000ab"
+	recipient  = "0x1111111111111111111111111111111111111111"
+	token      = "0x2222222222222222222222222222222222222222"
+	amount     = "2500000"
+	expiresAt  = 1893456000
+	deadline   = expiresAt + 86400
+	wrong      = "0x3333333333333333333333333333333333333333"
 	otherToken = "2c0ffee0000000000000000000000000000000000000000000000000000000cd"
 )
 
@@ -46,14 +44,12 @@ func lineOf(pay string) string {
 		expiresAt, deadline, pay, expiresAt)
 }
 
-// withFees is line with its network_fee and platform_fee fields set.
 func withFees(line, network, platform string) string {
 	f := strings.Fields(line)
 	f[11], f[12] = network, platform
 	return strings.Join(f, " ")
 }
 
-// withClose is line with its closes_at field set to at.
 func withClose[T int | int64 | uint64](line string, at T) string {
 	f := strings.Fields(line)
 	f[10] = fmt.Sprint(at)
@@ -66,7 +62,6 @@ type setup struct {
 	api                                                       map[string]any
 }
 
-// option is the api's first listed option, the one the line names.
 func (s setup) option() map[string]any { return s.api["options"].([]map[string]any)[0] }
 
 func TestCheck(t *testing.T) {
@@ -94,10 +89,9 @@ func TestCheck(t *testing.T) {
 		name   string
 		change func(*setup)
 		alert  string
-		quote  string // a quote line for the option (R-235)
+		quote  string
 	}{
 		{name: "addresses match"},
-		// Anvil is not Base, so the quote's check runs and alerts once the option's own check passed.
 		{name: "quote checked", quote: "quote " + id + " 0xdeposit 2500000", alert: "quote 0xdeposit: quote on chain 31337"},
 		{name: "quote line malformed", quote: "quote " + id + " 0xdeposit 0", alert: "input line"},
 		{name: "api address changed", change: func(s *setup) { s.option()["receiveAddress"] = wrong },
@@ -160,21 +154,18 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckRejectsMalformedInput(t *testing.T) {
-	// The line ends with its close (R-130).
 	closing := func(at int) string { return withClose(line, at) }
 	for _, bad := range []string{id, closing(0), closing(deadline), strings.Replace(line, recipient, "0x11", 1), strings.Replace(line, amount, "-1", 1),
 		strings.Replace(line, amount, "0", 1), strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(deadline+1), 1),
 		strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+2*86400), 1),
 		strings.Replace(line, recipient, "0x0000000000000000000000000000000000000000", 1),
 		strings.Replace(line, recipient, token, 1),
-		// R-226: fees over a tenth of the amount, which settle() refuses.
 		withFees(line, "200000", "50001")} {
 		alerts := canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{bad})
 		if len(alerts) != 1 || !strings.Contains(alerts[0], "input line") {
 			t.Errorf("%q: got alerts %q", bad, alerts)
 		}
 	}
-	// D-18: invoices made before the 7-day window settle 1 day after expiry; both are create's rules.
 	week := strings.Replace(line, fmt.Sprint(deadline), fmt.Sprint(expiresAt+7*86400), 1)
 	for _, good := range []string{week, closing(deadline - 1), closing(expiresAt - 1), withFees(line, "200000", "50000")} {
 		for _, alert := range canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{good}) {
@@ -183,15 +174,12 @@ func TestCheckRejectsMalformedInput(t *testing.T) {
 			}
 		}
 	}
-	// A factory whose terms have no fees can't have made terms with them.
 	alerts := canary.Check(context.Background(), config.Canary{AllowLoopback: true}, []string{withFees(line, "1", "0")})
 	if !slices.ContainsFunc(alerts, func(a string) bool { return strings.Contains(a, "factory's terms have none") }) {
 		t.Errorf("fees on a factory without them: %q", alerts)
 	}
 }
 
-// The canary must not share address code or constants with the api, so only these packages of this repository
-// may build it.
 func TestImportsNoAppCode(t *testing.T) {
 	out, err := exec.Command("go", "list", "-deps", "../../cmd/canary").CombinedOutput()
 	if err != nil {
@@ -207,8 +195,6 @@ func TestImportsNoAppCode(t *testing.T) {
 	}
 }
 
-// serve fakes the api's invoice and a pay page that shows address and its QR once Show address is pressed; the page
-// needs ?option=<id>, and address "" makes it a closed invoice.
 func serve(t *testing.T, pay string, api map[string]any, address, qr, network string) string {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/pay/"+pay && r.URL.Query().Get("option") != id {
@@ -239,7 +225,6 @@ document.querySelector('[aria-labelledby="pay-before"] button').onclick = () => 
 	return srv.URL
 }
 
-// qrPath draws address as packages/ui-web's QrCode does.
 func qrPath(t *testing.T, address string) string {
 	t.Helper()
 	cmd := exec.Command("node", "--input-type=module", "-e", `import { encode } from "uqr";
@@ -333,7 +318,6 @@ func TestCheckSkipsInvoicesThePayPageClosed(t *testing.T) {
 	if alerts := canary.Check(context.Background(), cfg, []string{input}); len(alerts) != 0 {
 		t.Fatalf("an invoice 2 minutes from expiry alerts: %q", alerts)
 	}
-	// R-130: a reopened invoice is checked until its new close, so this empty answer alerts.
 	past := time.Now().Add(-time.Hour).Unix()
 	reopened := fmt.Sprintf("%s %d %s %s %s %d %d USDC anvil %s %d 0 0", id, chaintest.ChainID, recipient, token, amount,
 		past, past+604800, payToken, past+518400)

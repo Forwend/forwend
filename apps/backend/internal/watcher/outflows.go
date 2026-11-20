@@ -64,8 +64,7 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 	return out, nil
 }
 
-// outflows keeps new events of canonical finalized blocks and reads their transfers; one recorded without its
-// transfer, as when a node answered part of the logs, is read again until it is found.
+// outflows keeps new events of canonical finalized blocks with their transfers; one recorded without it is read again.
 func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint64]header,
 	invoices map[common.Address]receiver, finalized uint64) ([]Outflow, error) {
 	var hashes []string
@@ -246,8 +245,7 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 	return insertOutflow(ctx, tx, chainID, o, receive, token, kind, destination, amount, reason, transferIndex)
 }
 
-// recordFees records FeesPaid as an outflow per fee above 0; their transfers come after settle's to the recipient,
-// network fee first, and before Settled.
+// recordFees records FeesPaid as one outflow per fee above 0; their transfers follow settle's, network fee first.
 func recordFees(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, receive, token, factory string, terms [2]*big.Int) error {
 	l := o.Log
 	known, ok := address.KnownFactory(factory)
@@ -329,8 +327,7 @@ func insertOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, re
 	return nil
 }
 
-// deployTimes reads factory.deployedAt for receivers with events and no deploy time: an early deploy settles only
-// until address.MaxHold after it.
+// deployTimes reads factory.deployedAt for receivers with events: an early deploy settles only until MaxHold after it.
 func (c *Chain) deployTimes(ctx context.Context, outflows []Outflow, finalized uint64) (map[string]uint64, error) {
 	var ids []string
 	for _, o := range outflows {

@@ -11,8 +11,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
-// R-227, R-229: a price past its heartbeat and priceSlack, or read while the L2 sequencer is down or just back, sets no
-// fee and no swap floor.
 func TestEthPriceRefusesAStaleOrUntrustedPrice(t *testing.T) {
 	a := chaintest.Start(t)
 	client := ethclient.NewClient(a.RPC)

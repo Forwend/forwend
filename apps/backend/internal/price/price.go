@@ -1,5 +1,4 @@
-// Package price keeps CoinGecko's USD prices of the stablecoins (R-178, D-115). They are for display only: invoice
-// amounts, the ledger, records and exports never read them (D-75, D-82).
+// Package price keeps CoinGecko's USD prices of the stablecoins, for display only: money code never reads them.
 package price
 
 import (
@@ -11,19 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// coinIDs maps a token symbol in the allowlist to its CoinGecko coin; a test token shows its mainnet coin's price
-// (D-115). open-usd is Open USD, whose Tempo contract is our OUSD; origin-dollar is another coin also called OUSD.
+// coinIDs maps an allowlist symbol to its CoinGecko coin; open-usd is our Tempo OUSD, origin-dollar is another.
 var coinIDs = map[string]string{"USDC": "usd-coin", "USDT": "tether", "OUSD": "open-usd"}
 
-// A price is stale when the worker read it over maxFetchAge ago (four failed rounds), or CoinGecko last updated it
-// over maxSourceAge ago.
+// A price is stale when read over maxFetchAge ago (four failed rounds) or updated at CoinGecko over maxSourceAge ago.
 const (
 	maxFetchAge  = time.Hour
 	maxSourceAge = 24 * time.Hour
 )
 
-// Token is an enabled token's price. CoinID is "" for a symbol without a coin; USD and the times are empty without a
-// price. Stale is also true without one.
+// Token is an enabled token's price; CoinID is "" without a coin; without a price the rest is empty and Stale true.
 type Token struct {
 	ChainID         uint64
 	Token           string

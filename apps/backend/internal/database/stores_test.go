@@ -12,7 +12,6 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// R-134: each merchant profile gets a first store holding its invoices, and the origins of their return links.
 func TestStoresForExistingMerchants(t *testing.T) {
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
@@ -48,7 +47,6 @@ func TestStoresForExistingMerchants(t *testing.T) {
 		{"merchant", "Acme", "https://Shop.Example.com:443/thanks?order=1"},
 		{"merchant", "Acme", "https://dev.example.com:8443/done"},
 		{"merchant", "Acme", "https://shop.example.com/again"},
-		// The column's check allows a link with no host; it gives no origin.
 		{"merchant", "Acme", "https:///no-host"},
 		{"merchant", "Acme", ""},
 		{"freelancer", "", "https://me.example/"},

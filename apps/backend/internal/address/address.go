@@ -19,7 +19,6 @@ var (
 	Implementation = mustHex20("81CdA02E469083fD14A75583257d9b721Ca76132")
 )
 
-// Spec is a factory's implementation, whether its terms carry fees, and its refund authority.
 type Spec struct {
 	Implementation  [20]byte
 	Fees            bool
@@ -96,7 +95,6 @@ func Encode(factory [20]byte, t Terms) ([]byte, error) {
 	return t.encode(spec.Fees)
 }
 
-// Call is the calldata of the factory's function fn (deploy, predict or status) with t.
 func Call(factory [20]byte, fn string, t Terms) ([]byte, error) {
 	signature, err := Signature(factory, fn)
 	if err != nil {
@@ -211,7 +209,6 @@ func OptionID(invoiceID [32]byte, chainID uint64, token [20]byte) [32]byte {
 	return [32]byte(keccak(invoiceID[:], words))
 }
 
-// KnownFactory parses a stored factory address and reports whether an invoice may use it.
 func KnownFactory(hexAddress string) ([20]byte, bool) {
 	raw, err := hex.DecodeString(strings.TrimPrefix(strings.ToLower(hexAddress), "0x"))
 	if err != nil || len(raw) != 20 {

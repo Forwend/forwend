@@ -66,7 +66,7 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 	}
 	_, arc := w.tokens[arcUSDC]
 	if arc {
-		tokens = append(tokens, ArcEmitter) // as the deposit scan: Arc USDC sent as the native coin logs only there
+		tokens = append(tokens, ArcEmitter) // Arc USDC sent as the native coin logs only there
 	}
 	var out []types.Log
 	seen := map[logKey]bool{}

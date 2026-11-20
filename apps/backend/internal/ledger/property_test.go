@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Random deposit sequences with expiry passing at any point; checkInvariants runs after every step.
 func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.Migrated(t, database.Migrate)
@@ -32,8 +31,8 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	onChain := map[string]*big.Int{} // the simulated receive address balances
-	lagging := false                 // the second RPC answers 0 from before the finalized block
+	onChain := map[string]*big.Int{}
+	lagging := false
 	service := NewService(pool, func(_ context.Context, _ uint64, _, holder string) (*big.Int, uint64, error) {
 		if lagging {
 			return new(big.Int), 99, nil
@@ -61,10 +60,10 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var detected []int64 // transfer ids not final yet
+		var detected []int64
 		type missed struct{ value, blockTime int64 }
-		var unseen []missed // on chain, but the watcher hasn't recorded them yet
-		var finalized int64 // chain time only moves forward
+		var unseen []missed
+		var finalized int64
 		insert := func(value, blockTime int64, status string) int64 {
 			txCounter++
 			var tid int64
@@ -84,7 +83,7 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 		}
 		for step := 0; step < 12; step++ {
 			switch rng.IntN(5) {
-			case 0, 1: // a transfer lands in a new block, on time or late, final or not, or missed by the watcher
+			case 0, 1:
 				value := int64(1 + rng.IntN(int(amount)))
 				blockTime := max(int64(expires-500+rng.IntN(1000)), finalized+1)
 				onChain[receive].Add(onChain[receive], big.NewInt(value))
@@ -93,7 +92,7 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 				} else {
 					insert(value, blockTime, []string{"detected", "confirmed"}[rng.IntN(2)])
 				}
-			case 2: // the watcher finds a missed transfer, or a pending one becomes final or is reorged away
+			case 2:
 				if len(unseen) > 0 && rng.IntN(2) == 0 {
 					insert(unseen[0].value, unseen[0].blockTime, "detected")
 					unseen = unseen[1:]
@@ -115,7 +114,7 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 				} else if _, err := pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", tid); err != nil {
 					t.Fatal(err)
 				}
-			case 3: // chain time moves forward, maybe past expiry
+			case 3:
 				finalized = max(finalized, int64(expires-300+rng.IntN(600)))
 				if _, err := pool.Exec(ctx, "UPDATE chain_cursors SET last_finalized_time = $2 WHERE chain_id = $1",
 					chainID, finalized); err != nil {
@@ -132,7 +131,7 @@ func TestLedgerMatchesTheReceiverBalance(t *testing.T) {
 		for _, m := range unseen {
 			insert(m.value, m.blockTime, "detected")
 		}
-		for _, tid := range detected { // everything becomes final
+		for _, tid := range detected {
 			if _, err := pool.Exec(ctx, "UPDATE chain_transfers SET status = 'confirmed' WHERE id = $1", tid); err != nil {
 				t.Fatal(err)
 			}
@@ -148,7 +147,6 @@ func checkInvariants(t *testing.T, pool *pgxpool.Pool, seed uint64, id string, a
 	t.Helper()
 	var payment string
 	var receiver, owed, held, confirmed, onTime, unbooked int64
-	// Bookable: confirmed, and booked already or with no earlier transfer still detected (chain order, D-27).
 	err := pool.QueryRow(context.Background(), `
 		WITH bookable AS (SELECT * FROM chain_transfers t WHERE status = 'confirmed' AND (booked OR NOT EXISTS (
 		    SELECT 1 FROM chain_transfers d WHERE d.invoice_id = t.invoice_id AND d.status = 'detected'

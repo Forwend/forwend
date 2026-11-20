@@ -14,16 +14,14 @@ var (
 	ErrNotFinal  = errors.New("that transaction's block is not final yet: try again later")
 )
 
-// RecordDeposits records the deposits of one transaction to the given invoices from its receipt, for a deposit the
-// scan missed (money-safety.md). The scan's checks hold: only the invoice's own token, in a finalized block of the
-// same hash. It returns how many it recorded; one already confirmed stays as it is.
+// RecordDeposits records a missed deposit from its receipt under the scan's checks; one already confirmed stays.
 func (c *Chain) RecordDeposits(ctx context.Context, txHash common.Hash, invoiceIDs []string) (int64, error) {
 	invoices, err := receiversOf(c.pool.Query(ctx, `SELECT receive_address, id, token_contract FROM invoices
 		WHERE chain_id = $1 AND id = ANY($2)`, c.chainID, invoiceIDs))
 	if err != nil {
 		return 0, fmt.Errorf("read chain %d invoices: %w", c.chainID, err)
 	}
-	// Only the logs: go-ethereum can't decode every chain's receipts (S-4).
+	// Only the logs: go-ethereum can't decode every chain's receipts.
 	var receipt *struct {
 		Logs []types.Log `json:"logs"`
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
-// Migrate runs first: its plain connection must not send pool_max_conns to Postgres as a setting.
 func TestPoolSizeFromTheURL(t *testing.T) {
 	ctx := context.Background()
 	url := databasetest.New(t) + "&pool_max_conns=3"

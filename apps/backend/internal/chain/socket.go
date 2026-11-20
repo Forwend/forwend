@@ -15,15 +15,13 @@ import (
 )
 
 const (
-	// socketIdle: a connection unused this long is replaced before the next request. PublicNode drops silent ones at
-	// 60 s, and a request sent as it does would be lost.
+	// socketIdle: replace a connection unused this long; PublicNode drops silent ones at 60 s, losing a request.
 	socketIdle = 45 * time.Second
 	// socketBatch: PublicNode never answers a WebSocket batch of more calls, and then stops answering on that connection.
 	socketBatch = 50
 )
 
-// socket is one persistent WebSocket connection to a wss endpoint, shared by its requests. Each call gets an id unique
-// on the connection, so answers find their requests whatever ids the callers chose.
+// socket is one shared WebSocket connection; each call gets a connection-unique id, whatever ids callers chose.
 type socket struct {
 	url    string // secret: never log or return
 	dialer *websocket.Dialer
@@ -40,7 +38,7 @@ type socket struct {
 type exchange struct {
 	ids    map[uint64]json.RawMessage // connection id → the caller's id
 	batch  bool
-	got    []map[string]json.RawMessage // answers so far: a provider may split a batch's answers over several frames
+	got    []map[string]json.RawMessage // a provider may split a batch over frames
 	size   int
 	answer chan []byte // closed when the connection drops first
 }
@@ -48,8 +46,7 @@ type exchange struct {
 // errAttemptTimeout is the cause of a pool attempt's timeout; a caller's own deadline leaves the connection to others.
 var errAttemptTimeout = errors.New("attempt timeout")
 
-// socketLost: the connection was open and then failed or went silent. Unlike a failed dial, it says nothing about the
-// host's HTTPS endpoints.
+// socketLost: an open connection failed or went silent; unlike a failed dial, it says nothing of HTTPS endpoints.
 type socketLost struct{ reason string }
 
 func (s socketLost) Error() string { return s.reason }
@@ -112,8 +109,7 @@ func (s *socket) send(ctx context.Context, body []byte) ([]byte, int, http.Heade
 	}
 }
 
-// connect returns the live connection, or dials one. One dial runs at a time, outside the lock, so requests that wait
-// for it keep their own deadlines.
+// connect returns the live connection or dials one outside the lock, so waiting requests keep their deadlines.
 func (s *socket) connect(ctx context.Context) (*websocket.Conn, int, http.Header, error) {
 	for {
 		s.mu.Lock()
@@ -171,9 +167,7 @@ func (s *socket) read(conn *websocket.Conn) {
 	}
 }
 
-// deliver gives each answer to its request with the caller's id back; a request is answered once all its calls are.
-// A whole-request error without an id goes to the only request waiting; with several, nobody can tell whose it is,
-// so the connection drops and they fail over.
+// deliver answers a request once all its calls are; an id-less error with several waiting drops the connection.
 func (s *socket) deliver(conn *websocket.Conn, raw []byte) error {
 	answers, batch, err := messages(raw)
 	if err != nil {

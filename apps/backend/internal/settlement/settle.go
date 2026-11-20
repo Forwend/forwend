@@ -235,8 +235,7 @@ func check(in intent) (address.Terms, string) {
 	return terms, ""
 }
 
-// sign trusts the chain's gas estimate with minGas as a floor; the nonce is never below after or the last sent
-// settle's, since a lagging node may miss our latest ones.
+// sign trusts the gas estimate above minGas; the nonce is at least after and the last sent settle's, as nodes lag.
 func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address, data []byte,
 	after, minGas uint64, block *big.Int) (*types.Transaction, error) {
 	nonce, err := client.PendingNonceAt(ctx, s.sender)
@@ -282,8 +281,7 @@ func (s *Signer) sign(ctx context.Context, client *ethclient.Client, chainID uin
 	return types.SignTx(tx, types.LatestSignerForChainID(new(big.Int).SetUint64(chainID)), s.key)
 }
 
-// replace raises tip and fee cap by at least an eighth and to today's fees, saved before it is sent with old's hash
-// kept; over MaxFeeFactor or MaxSettleGas it returns old, to send again as is.
+// replace raises tip and fee cap by at least an eighth, saved before sending; past MaxFeeFactor or MaxSettleGas, old.
 func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in intent, old *types.Transaction) (*types.Transaction, error) {
 	tip, feeCap, err := chain.Fees(ctx, client, in.chainID)
 	if err != nil {
@@ -334,8 +332,7 @@ func (s *Signer) replace(ctx context.Context, client *ethclient.Client, in inten
 	return tx, nil
 }
 
-// overStuck: an unsaved deploy stuck at the next mined nonce holds every later one; this one replaces it at twice
-// today's fee.
+// overStuck replaces an unsaved deploy stuck at the next mined nonce at twice today's fee: it holds every later one.
 func (s *Signer) overStuck(ctx context.Context, client *ethclient.Client, chainID uint64, tx *types.Transaction) (*types.Transaction, error) {
 	mined, err := client.NonceAt(ctx, s.sender, nil)
 	if err != nil {

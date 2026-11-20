@@ -45,19 +45,16 @@ type endpoint struct {
 	restUntil time.Time
 	next      time.Time // pacing: the earliest start of its next request
 
-	// Measured service: answer time and failure share, both moving averages.
-	latency  time.Duration
-	failRate float64
-	usedAt   time.Time
-	// The smallest log range, batch and address list it refused, forgotten after refusalMemory.
+	latency          time.Duration
+	failRate         float64
+	usedAt           time.Time
 	refusedBlocks    uint64
 	refusedCalls     int
 	refusedAddresses int
 	refusedAt        time.Time
 }
 
-// cost is how long an answer is expected to take once the endpoint is free; unmeasured endpoints cost nothing, so
-// each gets measured.
+// cost is the expected answer time once the endpoint is free; an unmeasured one costs nothing, so it gets measured.
 func (e *endpoint) cost(now time.Time) time.Duration {
 	if now.Sub(e.usedAt) > measureMemory {
 		return 0
@@ -87,7 +84,7 @@ type pool struct {
 
 	mu        sync.Mutex
 	changed   chan struct{}
-	endpoints []*endpoint // private before public, then priority and ID: the order before any measurement
+	endpoints []*endpoint // private first, then priority and ID
 }
 
 type transport struct {
@@ -105,8 +102,7 @@ func (r transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 var ErrUnavailable = errors.New("RPC endpoints unavailable")
 
-// A request one endpoint refuses as too large goes to the others first: plans differ, and the caller should narrow
-// only when no endpoint takes it. The refusal is returned only then.
+// do sends a too-large request to the other endpoints first; the caller narrows only when every one refuses.
 func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.Response, error) {
 	r, err := parseRequest(body)
 	if err != nil {
@@ -121,8 +117,7 @@ func (p *pool) do(ctx context.Context, header http.Header, body []byte) (*http.R
 	return res, err
 }
 
-// echo sends a signed transaction to one more endpoint, on another host: a node that takes it and never passes it on
-// must not hold a settlement back. The bytes are the same, so a second copy changes nothing on chain.
+// echo resends a signed transaction via another host, so a node that drops it can't hold a settlement back.
 func (p *pool) echo(header http.Header, body []byte, r request, sent *endpoint) {
 	// The request limit, not one attempt's: a hung endpoint then rests on its attempt timeout and the next one gets it.
 	ctx, cancel := context.WithTimeout(context.Background(), RequestTimeout)
@@ -138,13 +133,11 @@ func (p *pool) echo(header http.Header, body []byte, r request, sent *endpoint) 
 	}
 }
 
-// try sends body to the best endpoint not in tried, then the next, until one answers; it returns that endpoint, or
-// nil with the refusal every endpoint gave.
+// try sends body to the best untried endpoint until one answers; nil with the refusal every endpoint gave.
 func (p *pool) try(ctx context.Context, r request, header http.Header, body []byte, tried map[*endpoint]bool) (*http.Response, *endpoint, error) {
 	var refused *http.Response
 	refusedMissing, missed := false, 0
-	// A miss is the answer only when every endpoint serving the chain gave it: one that failed or rests may hold the
-	// data, and callers move past history only when no endpoint keeps it (R-191).
+	// A miss is the answer only when every endpoint gave it: one that failed or rests may hold the data.
 	answer := func() (*http.Response, *endpoint, error) {
 		if refusedMissing && missed < p.serving() {
 			refused.Body.Close()
@@ -219,8 +212,7 @@ func (p *pool) try(ctx context.Context, r request, header http.Header, body []by
 	return nil, nil, fmt.Errorf("chain %d: %w", p.chainID, ErrUnavailable)
 }
 
-// refusal is an answer refusing the request's size (a log range, its result, its address list or a batch), or saying
-// the endpoint lacks the block or state asked for: not a failing endpoint, and another may answer.
+// refusal is an answer refusing the request's size or lacking its block: the endpoint works, another may answer.
 type refusal struct {
 	res       *http.Response
 	batch     bool
@@ -274,8 +266,7 @@ func (p *pool) release(e *endpoint, probe bool) {
 	p.mu.Unlock()
 }
 
-// pick prefers, in order: an endpoint not known to refuse the request's size, a private one, then the soonest
-// expected answer (its pacing wait plus its measured answer time). The configured order breaks ties.
+// pick prefers an endpoint not known to refuse the size, then a private one, then the soonest expected answer.
 func (p *pool) pick(ctx context.Context, r request, tried map[*endpoint]bool) (*endpoint, time.Time, bool, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

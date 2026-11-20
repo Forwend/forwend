@@ -18,8 +18,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/outbound"
 )
 
-// quote is one "quote <option id> <deposit address> <amount out>" line: a cross-chain quote the pay page may show for
-// an option (R-235). The canary checks it against 1Click's own record with code of its own (D-124).
+// quote is one "quote <option id> <deposit address> <amount out>" line: a 1Click quote the pay page may show.
 type quote struct {
 	OptionID, DepositAddress, AmountOut string
 }
@@ -36,8 +35,7 @@ func parseQuote(line string) (quote, error) {
 	return quote{OptionID: f[1], DepositAddress: f[2], AmountOut: f[3]}, nil
 }
 
-// checkQuote reads 1Click's status of the deposit address and requires its signed quote to pay exactly AmountOut of
-// the option's token, USDC on Base, into receive, the address the factory predicts for the option.
+// checkQuote requires 1Click's signed quote to pay exactly AmountOut of the option's token into receive.
 func checkQuote(ctx context.Context, c config.Canary, t terms, receive string, q quote) error {
 	if t.ChainID != 8453 {
 		return fmt.Errorf("quote on chain %d: only Base takes cross-chain payments", t.ChainID)
@@ -90,8 +88,7 @@ func checkQuote(ctx context.Context, c config.Canary, t terms, receive string, q
 	return nil
 }
 
-// verifyQuote checks 1Click's ed25519 signature over a quote answer, as its SDK's verifyQuoteSignature builds the
-// message, and returns the signed request and quote read with exact keys.
+// verifyQuote checks 1Click's ed25519 signature, building the message as its SDK's verifyQuoteSignature does.
 func verifyQuote(signed []byte, key string) (request, answer map[string]json.RawMessage, err error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(signed, &top); err != nil {

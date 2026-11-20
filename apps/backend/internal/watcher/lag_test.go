@@ -17,8 +17,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chaintest"
 )
 
-// node forwards JSON-RPC to Anvil; hook may answer a single call itself (a non-empty result) or act before it is
-// forwarded. Batches go straight through.
 func node(t *testing.T, target string, hook func(method string) (result string)) *rpc.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +58,6 @@ func laggingNode(t *testing.T, target string, lag *atomic.Bool) *rpc.Client {
 	})
 }
 
-// Blocks mined between reading latest and finalized must not be skipped (Arc and Tempo finalize every block).
 func TestChainMovingDuringAScanLosesNothing(t *testing.T) {
 	e := setup(t)
 	var once atomic.Bool
@@ -110,7 +107,7 @@ func TestLaggingNodeDoesNotLoseADeposit(t *testing.T) {
 	var lag atomic.Bool
 	e.chain = NewChain(e.pool, chaintest.ChainID, laggingNode(t, e.anvil.URL, &lag))
 	tx := e.anvil.Transfer(e.token, receive, "5000000")
-	e.anvil.Mine(2) // already final when first scanned
+	e.anvil.Mine(2)
 
 	lag.Store(true)
 	e.scan(t)
@@ -141,7 +138,6 @@ func TestLaggingNodeDoesNotReorgADeposit(t *testing.T) {
 	}
 }
 
-// A -> B -> A: the chain returns to the first block; its row comes back and the B copy is reorged.
 func TestReorgBackToTheFirstBlock(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()

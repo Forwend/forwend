@@ -11,19 +11,15 @@ import (
 
 // Token is one asset 1Click can take, as its list gives it. USD is "" without a price.
 type Token struct {
-	AssetID    string
-	Blockchain string
-	Symbol     string
-	Decimals   int
-	Contract   string
-	USD        string
-	// Minimum is the Base USDC base units 1Click needs at least from it; "" when it named none (D-126).
-	Minimum string
-	// NoLiquidity: the last dry quote found no liquidity for it, so payers aren't offered it (R-245).
+	AssetID     string
+	Blockchain  string
+	Symbol      string
+	Decimals    int
+	Contract    string
+	USD         string
+	Minimum     string // Base USDC base units; "" if none named
 	NoLiquidity bool
-	// CoingeckoID is the coin's id at CoinGecko, by which the web finds a logo file it ships; "" when 1Click names
-	// none, or one that is no plain id.
-	CoingeckoID string
+	CoingeckoID string // "" if none or not a plain id
 }
 
 var (
@@ -32,8 +28,7 @@ var (
 	coinID = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
 )
 
-// Tokens reads 1Click's list. A malformed entry is left out, and so is a token 1Click is phasing out, which it marks
-// in the symbol, as USDC(DEPRECATED); a list without any usable entry fails.
+// Tokens reads 1Click's list without malformed entries or tokens marked like USDC(DEPRECATED); none usable fails.
 func (c *Client) Tokens(ctx context.Context) ([]Token, error) {
 	answer, err := c.call(ctx, "GET", "/v0/tokens", nil)
 	if err != nil {

@@ -48,7 +48,6 @@ func newRPCs(t *testing.T, urls ...string) RPCs {
 	return r
 }
 
-// localhost is the same Anvil under another host name.
 func localhost(u string) string { return strings.Replace(u, "127.0.0.1", "localhost", 1) }
 
 func number(t *testing.T, ctx context.Context, c *rpc.Client) uint64 {

@@ -21,8 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// New creates an empty database, dropped when the test ends. It strips DATABASE_URL's pool_ parameters: plain pgx
-// connections would send them to Postgres as settings.
+// New creates an empty database, dropped when the test ends; DATABASE_URL's pool_ parameters are not settings.
 func New(t *testing.T) string {
 	t.Helper()
 	u, err := create("")
@@ -32,9 +31,7 @@ func New(t *testing.T) string {
 	return cleanup(t, u)
 }
 
-// Migrated is New with every migration applied. It copies a template database migrated once per set of migration
-// files, which takes a fraction of migrating each test's database. migrate is database.Migrate: its own tests use this
-// package, so it can't import database.
+// Migrated copies a template migrated once per migration set; migrate is database.Migrate, which imports this.
 func Migrated(t *testing.T, migrate func(context.Context, string) error) string {
 	t.Helper()
 	name, err := tmpl.get(migrate, false)

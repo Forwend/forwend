@@ -9,8 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// EnableMainnets switches on the live chains ids names (R-222), all or none. It refuses an id that is not a live chain,
-// so a typo can't switch on a testnet as real money or pass unnoticed.
+// EnableMainnets switches on the live chains in ids, all or none; a non-live id is refused, so a typo fails.
 func EnableMainnets(ctx context.Context, db *pgxpool.Pool, ids []uint64) error {
 	want := make([]int64, len(ids))
 	for i, id := range ids {

@@ -22,7 +22,6 @@ import (
 
 const collector = "0x00000000000000000000000000000000000000ee"
 
-// paymaster makes the Anvil token pay its fee through Privy's paymaster, priced by a feed at 2,000 USD per ether.
 func (e env) paymaster(t *testing.T) {
 	t.Helper()
 	if _, err := e.pool.Exec(context.Background(), "UPDATE tokens SET native_gas = false, fee_asset = 'usdc'"); err != nil {
@@ -32,7 +31,6 @@ func (e env) paymaster(t *testing.T) {
 	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 }
 
-// relayTx stands in for the bundler's transaction: the send's transfer and the paymaster's fee pull.
 func (e env) relayTx(t *testing.T, amount, fee string, feeFirst bool) string {
 	t.Helper()
 	if feeFirst {
@@ -116,7 +114,6 @@ func TestAPaymasterSendIsSignedByTheUserAndSentByTheServer(t *testing.T) {
 		t.Errorf("Privy got %s %s %v", got.Path, got.Body, got.Headers)
 	}
 
-	// The bundler's transaction lands; only Privy's answer gives the send its hash, and the fee is what else left.
 	hash := e.relayTx(t, "3000000", "4000", true)
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
@@ -173,7 +170,7 @@ func TestATheftShapedLikeARelayedSendStillTellsTheOwner(t *testing.T) {
 	if s, err = e.sends.Relay(ctx, e.profile, s.ID, "sig"); err != nil {
 		t.Fatal(err)
 	}
-	e.relayTx(t, "3000000", "90000000", false) // the "fee" is the theft
+	e.relayTx(t, "3000000", "90000000", false)
 	e.anvil.Mine(3)
 	if err := e.watch.Scan(ctx); err != nil {
 		t.Fatal(err)
@@ -280,7 +277,6 @@ func TestPrivysAnswerCountsOnlyForItsSend(t *testing.T) {
 	e.sends.now = time.Now
 	e.privy.FailTransactions = false
 
-	// Privy gives a hash, then sends the operation again under another one, which is mined.
 	s = relay()
 	e.privy.Hashes[*s.RelayID] = other
 	if got, _ := e.sends.Get(ctx, e.profile, s.ID); got.TxHash == nil || *got.TxHash != other {
@@ -379,17 +375,16 @@ func TestPaymasterTookIsWhatElseLeftTheWallet(t *testing.T) {
 		log(out.Token, out.From, out.To, 3_000_000),
 		log(out.Token, out.From, collector, 5000),
 		log(out.Token, collector, out.From, 1000),
-		log(collector, out.From, collector, 7), // another token
+		log(collector, out.From, collector, 7),
 	}}
 	if got := paymasterTook(r, out); got.Int64() != 4000 {
 		t.Errorf("took %v, want 4000", got)
 	}
-	// Two outflows each within 3 times the quoted 4,000 but 13,000 together: no fee, it is money out.
 	r.Logs = append(r.Logs, log(out.Token, out.From, "0x00000000000000000000000000000000000000dd", 8000))
 	if got := paymasterTook(r, out); got.Sign() != 0 {
 		t.Errorf("took %v from outflows above the bound together, want 0", got)
 	}
-	r.Logs = r.Logs[1:4] // the send itself never moved
+	r.Logs = r.Logs[1:4]
 	if got := paymasterTook(r, out); got.Sign() != 0 {
 		t.Errorf("took %v from a transaction without the send, want 0", got)
 	}

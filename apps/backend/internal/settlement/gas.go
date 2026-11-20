@@ -39,8 +39,7 @@ const (
 // Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the executor's fee token, else PathUSD.
 var pathUSD = common.HexToAddress("0x20c0000000000000000000000000000000000000")
 
-// CheckGas alerts unless the executor holds MinGas at the current fee cap; a shortfall doesn't stop the signer.
-// A failed read tries the next client; it fails when none can read the gas.
+// CheckGas alerts unless the executor holds MinGas at the current fee cap; it errors only when no client can read.
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
@@ -116,8 +115,7 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 	return nil
 }
 
-// swapRoutes: where the signer buys ether with its USDC fees, Uniswap v3 SwapRouter02 and WETH in the 0.05% pool.
-// Arc and Tempo pay gas in the stablecoin itself.
+// swapRoutes: where the signer buys ether with its USDC fees (SwapRouter02, 0.05% WETH pool); Arc and Tempo need none.
 var swapRoutes = map[uint64]swapRoute{
 	8453: {router: common.HexToAddress("0x2626664c2603336E57B271c5C0b26F421741e481"),
 		weth: common.HexToAddress("0x4200000000000000000000000000000000000006"),
@@ -164,8 +162,7 @@ type exactInputSingle struct {
 // The router's Constants.ADDRESS_THIS: the swap leaves the WETH with the router, whose unwrapWETH9 pays the caller.
 var routerItself = common.HexToAddress("0x0000000000000000000000000000000000000002")
 
-// buyGas swaps USDC for ether up to topUpSettlements at the current fee cap; the router reverts below the Chainlink
-// price less swapSlack, and a swap its estimate refuses is never sent.
+// buyGas swaps USDC for ether up to topUpSettlements; the router reverts below the Chainlink price less swapSlack.
 func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID uint64, route swapRoute) error {
 	mined, err := client.NonceAt(ctx, s.sender, nil)
 	if err != nil {
@@ -255,8 +252,7 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 	return nil
 }
 
-// swapAmounts: in is the USDC (1 USD each, at most held) that buys wei at price, rounded up; least is the ether
-// in must buy, less swapSlack percent, rounded down.
+// swapAmounts: in is the USDC (at most held) buying wei at price, rounded up; least is less swapSlack, rounded down.
 func swapAmounts(wei, held, price *big.Int) (in, least *big.Int) {
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(18+chain.EthUSDDecimals-6), nil)
 	in = new(big.Int).Mul(wei, price)
@@ -269,8 +265,7 @@ func swapAmounts(wei, held, price *big.Int) (in, least *big.Int) {
 	return in, least
 }
 
-// sendAndWait signs at the executor's next nonce (at least after) and waits; one not mined in ReceiptWait stays
-// unsaved, and overStuck replaces it if it holds the nonce.
+// sendAndWait signs at the executor's next nonce (at least after) and waits; an unmined one stays unsaved.
 func (s *Signer) sendAndWait(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address,
 	data []byte, after uint64) (*types.Transaction, error) {
 	tx, err := s.sign(ctx, client, chainID, to, data, after, 0, nil)

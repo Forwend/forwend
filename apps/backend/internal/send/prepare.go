@@ -37,8 +37,7 @@ func transferCall(to string, amount *big.Int) []byte {
 		common.LeftPadBytes(amount.Bytes(), 32))
 }
 
-// Prepare checks a send out of the profile's wallet and keeps it for the browser to sign, replacing the
-// wallet's earlier unsigned send on the chain; ErrBusy while a signed one is still on its way.
+// Prepare keeps a checked send for the browser to sign, replacing the wallet's unsigned one; ErrBusy while one is out.
 func (s *Service) Prepare(ctx context.Context, profileID string, req Request) (Send, error) {
 	if req.Amount == nil || req.Amount.Sign() <= 0 {
 		return Send{}, fmt.Errorf("%w: amount must be a positive number of base units", ErrInvalid)
@@ -214,8 +213,7 @@ func checkOnChain(ctx context.Context, client *ethclient.Client, out *Send) erro
 	return nil
 }
 
-// refused tells a token's revert from any other failed read. The client sees only a decoded revert reason: the
-// provider's error text can name its URL, key or internals.
+// refused tells a token's revert from other failures; the client sees only a decoded reason, never provider text.
 func refused(err error) error {
 	if err == nil {
 		return nil
@@ -339,8 +337,7 @@ func covers(ctx context.Context, client *ethclient.Client, out Send) error {
 	return nil
 }
 
-// userOpGas is what a paymaster send adds to the transfer's gas: user op checks, fee pull, bundle overhead.
-// ponytail: a guess with room, not a measure; set it from the first live sends' receipts.
+// userOpGas is a paymaster send's gas over the transfer. ponytail: a roomy guess; set it from live receipts.
 const userOpGas = 400_000
 
 // paymasterFee estimates Privy's paymaster fee in token base units, rounded up; Privy quotes none (FeePaid records it).
@@ -364,8 +361,7 @@ func paymasterFee(ctx context.Context, client *ethclient.Client, chainID uint64,
 	return units, nil
 }
 
-// feeFor is the transfer's gas plus a fifth at the chain's fee cap: gas to sign, fee in token units (rounded up),
-// and in the gas coin's wei.
+// feeFor is the transfer's gas plus a fifth at the fee cap: gas to sign, fee in token units (rounded up) and in wei.
 func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from, token, to string, amount *big.Int,
 	decimals int) (Gas, *big.Int, *big.Int, error) {
 	tokenAddr := common.HexToAddress(token)
@@ -389,8 +385,7 @@ func feeFor(ctx context.Context, client *ethclient.Client, chainID uint64, from,
 	return Gas{Limit: gas, MaxFeePerGas: feeCap, MaxPriorityFeePerGas: tip}, fee, wei, nil
 }
 
-// Fee is what a send of the token to the address costs the wallet now, in base units, and whether a paymaster
-// takes it. An empty to estimates a send to the wallet itself.
+// Fee is what a send of the token costs the wallet now, in base units, and whether a paymaster takes it.
 func (s *Service) Fee(ctx context.Context, profileID string, chainID uint64, token, to string) (*big.Int, bool, error) {
 	terms, err := s.tokenTerms(ctx, profileID, chainID, token)
 	if err != nil {

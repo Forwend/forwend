@@ -117,7 +117,6 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	return errors.New(usage)
 }
 
-// showCase prints what each option of the case holds and, for a stray transfer, how to send it back.
 func showCase(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Writer, options []settlement.CaseOption,
 	stray bool, ref string, dest *common.Address) error {
 	quiet := 0
@@ -209,7 +208,6 @@ func queueReturn(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Wr
 	return nil
 }
 
-// release drops the case's queued returns, or a stray transaction's printed recovers.
 func release(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Writer, options []settlement.CaseOption,
 	stray bool, ref string) error {
 	if stray {
@@ -312,7 +310,6 @@ var (
 	decimalShape = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 )
 
-// toAddress reads -to; nil when it is not given.
 func toAddress(flag string) (*common.Address, error) {
 	if flag == "" {
 		return nil, nil

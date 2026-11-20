@@ -36,7 +36,6 @@ func TestDatabaseEndpointConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := specs[84532]
-	// The private endpoint and Base's four enabled public ones: official, PublicNode, Pocket and thirdweb (00094).
 	if s.Name != "base-sepolia" || len(s.Endpoints) != 5 || ordered(s.Endpoints)[0].ID != "private-a" {
 		t.Fatal("registry lost chain or endpoint priority")
 	}
@@ -85,7 +84,7 @@ func TestMainnetChainsStartOffInLiveMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	mainnets := map[uint64]int{8453: 3, 42161: 3, 5042: 4, 4217: 4} // enabled public endpoints (00105)
+	mainnets := map[uint64]int{8453: 3, 42161: 3, 5042: 4, 4217: 4}
 	var off int
 	if err := db.QueryRow(ctx, `SELECT count(*) FROM chains
  WHERE chain_id IN (8453, 42161, 5042, 4217) AND livemode AND NOT enabled`).Scan(&off); err != nil || off != 4 {

@@ -13,9 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// relayRequest is the Privy request that sends a paymaster send (R-225): the token transfer the review showed, its fee
-// taken in FeeAsset. The send's id is its idempotency key, so it goes out once, and Privy refuses it once the approval's
-// hold has ended and the wallet may have moved on.
+// relayRequest is the Privy request for a paymaster send; the send id is its idempotency key, so it goes out once.
 func (s *Service) relayRequest(out Send) (privy.Request, error) {
 	if s.privy == nil || out.walletID == "" || out.ApprovedAt == nil {
 		return privy.Request{}, fmt.Errorf("%w: this send can't be signed through Privy", ErrInvalid)
@@ -33,9 +31,7 @@ func (s *Service) relayRequest(out Send) (privy.Request, error) {
 	return s.privy.RPC(out.walletID, body, out.ID, out.ApprovedAt.Add(ApproveHold)), nil
 }
 
-// Relay sends an approved paymaster send with the user's signature over its Privy request (R-225). Privy answers with
-// its transaction, whose hash refresh reads later. A second Relay of the same send is the same request, which Privy
-// sends once.
+// Relay sends an approved paymaster send with the user's signature; a second Relay is the same request, sent once.
 func (s *Service) Relay(ctx context.Context, profileID, sendID, signature string) (Send, error) {
 	if signature == "" {
 		return Send{}, fmt.Errorf("%w: signature is missing", ErrInvalid)
@@ -93,9 +89,7 @@ func (s *Service) Relay(ctx context.Context, profileID, sendID, signature string
 	}
 }
 
-// relayed brings a relayed send's hash from Privy, or ends a send Privy gave up on before any block held it. Only
-// Privy gives it: a matching transfer on the chain may be a theft's (D-49). A dropped send whose hash comes later goes
-// on as one mined late.
+// relayed reads a relayed send's hash from Privy only: a matching chain transfer may be a theft's.
 func (s *Service) relayed(ctx context.Context, out Send) (Send, error) {
 	moved, next, status, err := s.rehash(ctx, out)
 	if moved || err != nil {
@@ -112,9 +106,7 @@ func (s *Service) relayed(ctx context.Context, out Send) (Send, error) {
 	return out, nil
 }
 
-// rehash asks Privy for a relayed send's transaction. Its hash, when it is new to the send (the first, or one that
-// replaced the first), becomes the send's, and the send is brought up to date again. Privy's answer counts only for
-// this send's wallet, chain and id. status is Privy's, "" when it can't be read.
+// rehash asks Privy for the send's transaction; a new hash becomes the send's. status is Privy's, "" when unread.
 func (s *Service) rehash(ctx context.Context, out Send) (moved bool, next Send, status string, err error) {
 	if s.privy == nil || out.RelayID == nil {
 		return false, out, "", nil

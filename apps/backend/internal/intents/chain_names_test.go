@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// The web names 1Click's chains as the receipt, emails and export do (R-239).
 func TestChainNamesMatchTheWeb(t *testing.T) {
 	src, err := os.ReadFile("../../../web/src/shared/constants/chains.ts")
 	if err != nil {

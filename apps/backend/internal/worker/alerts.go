@@ -13,10 +13,8 @@ import (
 )
 
 const (
-	// AlertEvery bounds how often the alert checks run and log.
 	AlertEvery = 5 * time.Minute
-	// StalledAfter: a chain's finalized cursor this far behind the clock has stopped. Base and Arbitrum finalize about
-	// 20 minutes behind their newest block, Tempo and Arc at once.
+	// StalledAfter: a finalized cursor this far behind the clock has stopped; Base and Arbitrum finalize ~20 min behind.
 	StalledAfter = 45 * time.Minute
 	// UnsettledAfter: a paid invoice still not settled waits on something an operator must look at.
 	UnsettledAfter = 30 * time.Minute
@@ -24,9 +22,7 @@ const (
 	DeadlineSoon = 24 * time.Hour
 )
 
-// alert logs an ALERT for symptoms that hold money: a chain whose scan stopped, a deposit that stays detected below
-// the finalized block, a receiver's settle or refund the ledger can't book, money owed in full that never becomes
-// paid, and paid money not settled in time, close to its settle deadline, or past it.
+// alert logs an ALERT for symptoms that hold money: a stopped scan, stuck deposits, unbookable events, unsettled money.
 func (w *Worker) alert(ctx context.Context) error {
 	rows, err := w.pool.Query(ctx, `SELECT c.chain_id, extract(epoch FROM now())::bigint - cur.last_finalized_time,
 		    (SELECT count(*) FROM chain_transfers t WHERE t.chain_id = c.chain_id AND t.status = 'detected'
@@ -120,11 +116,7 @@ func (w *Worker) alert(ctx context.Context) error {
 	return w.alertCrossChain(ctx)
 }
 
-// alertCrossChain logs an ALERT for a cross-chain payment that holds a payer's money (R-234): 1Click failed it in the
-// last week, a deposit it saw is unfinished an hour past the deadline, it delivered and no Base deposit with its
-// transaction came in 30 minutes, or in the last week another quote of the invoice saw a deposit too: each delivers
-// all that is due, so one is held for its payer. Only a quote seen in the last week or still read alerts, so indexes
-// find them without reading every quote; the newest come first.
+// alertCrossChain logs an ALERT for a cross-chain payment holding a payer's money: failed, stuck, undelivered, doubled.
 func (w *Worker) alertCrossChain(ctx context.Context) error {
 	rows, err := w.pool.Query(ctx, `SELECT c.id::text, c.invoice_id, c.status, twice FROM crosschain_quotes c,
 		    LATERAL (SELECT coalesce(c.deposit_seen_at > now() - interval '7 days', false)

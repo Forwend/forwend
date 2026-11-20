@@ -1,4 +1,4 @@
-// Package intents talks to NEAR Intents' 1Click API (D-123): its token list, quotes it signs, and swap status.
+// Package intents talks to NEAR Intents' 1Click API: its token list, quotes it signs, and swap status.
 package intents
 
 import (
@@ -27,7 +27,7 @@ var (
 	errUnavailable = errors.New("1Click unavailable")
 	// ErrRefused: 1Click refused the request, as for a refund address it can't use.
 	ErrRefused = errors.New("1Click refused the quote")
-	// ErrNoLiquidity: a refusal for want of a route or liquidity for the token (R-245); it is an ErrRefused too.
+	// ErrNoLiquidity: a refusal for want of a route or liquidity for the token; it is an ErrRefused too.
 	ErrNoLiquidity = errors.New("no liquidity")
 )
 
@@ -36,15 +36,13 @@ type BelowMinimum struct{ Minimum string }
 
 func (e *BelowMinimum) Error() string { return "below the route's minimum of " + e.Minimum }
 
-// Client calls 1Click. Key is the optional partner key (Q-18): never log it. Signer is the key quotes must be signed
-// with: managerKey, or a test fake's.
+// Client calls 1Click; Signer is the key quotes must be signed with: managerKey, or a test fake's.
 type Client struct {
-	HTTP   *http.Client
-	URL    string
-	Key    string
-	Signer string
-	// rejected: 1Click's last answer refused Key, so its alert is logged once, not at every call.
-	rejected atomic.Bool
+	HTTP     *http.Client
+	URL      string
+	Key      string // optional partner key; never log
+	Signer   string
+	rejected atomic.Bool // alert on a refused Key once, not every call
 }
 
 // NewClient refuses non-public addresses, as every client to a third party does; allowLoopback is for a test's fake.
@@ -58,10 +56,8 @@ func NewClient(url, key string, allowLoopback bool) *Client {
 
 var (
 	minimum = regexp.MustCompile(`try at least ([0-9]{1,78})`)
-	// 1Click's temporary limits name dollars; the destination is Base USDC (D-123), a dollar for each 10^6 units.
-	minimumUSD = regexp.MustCompile(`minimum swap amount is \$([0-9][0-9,]{0,30}(?:\.[0-9]{1,6})?)`)
-	// 1Click's answers when it has no route to Base USDC now: "No liquidity available", or "Quoting for this pair is
-	// not available".
+	// 1Click's temporary limits name dollars; the destination is Base USDC, a dollar per 10^6 units.
+	minimumUSD  = regexp.MustCompile(`minimum swap amount is \$([0-9][0-9,]{0,30}(?:\.[0-9]{1,6})?)`)
 	noLiquidity = regexp.MustCompile(`(?i)no liquidity|pair is not available`)
 )
 

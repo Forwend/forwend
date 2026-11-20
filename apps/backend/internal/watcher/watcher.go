@@ -70,8 +70,7 @@ func (c *Chain) Scan(ctx context.Context) error {
 	return c.scanRange(ctx, from, min(latest, from+scanChunks*c.span-1), nil, from, from)
 }
 
-// scanRange records what it read up to latest, or the last whole range read in scanShare of the deadline, always
-// past must; ranges read before a provider error are recorded too.
+// scanRange records what it read up to latest, or whole ranges read within scanShare of the deadline, always past must.
 func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *recoveryProgress, walletFrom, must uint64) error {
 	invoices, err := c.invoices(ctx)
 	if err != nil {
@@ -86,7 +85,7 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		return err
 	}
 	logs, walletLogs, outflowLogs, next, readErr := c.scanLogs(ctx, from, latest, walletFrom, must, invoices, receivers, wallets)
-	if next == from && from <= latest { // nothing read; a range already past latest is recorded so recovery completes
+	if next == from && from <= latest { // nothing read; past latest is recorded so recovery ends
 		return readErr
 	}
 	latest = next - 1
@@ -189,15 +188,14 @@ func (c *Chain) scanRange(ctx context.Context, from, latest uint64, recovery *re
 		}
 		final = head
 	}
-	if !ok { // a node behind the one that answered latest: the scanned time stays safe, at the finalized block's
+	if !ok { // a lagging node: keep the finalized block's time
 		head = header{Number: hexutil.Uint64(latest), Timestamp: final.Timestamp}
 	}
 	return errors.Join(c.record(ctx, reorgedOf(open), deposits, reorgedOf(openWallet), transfers, outflows, deployed, final, head,
 		recovery), readErr)
 }
 
-// scanLogs reads deposits and receivers' events from from and wallet logs from walletFrom, in whole log ranges;
-// past must it stops at scanShare of the deadline, and a failed read stops it anywhere.
+// scanLogs reads whole log ranges from from (wallets from walletFrom); past must it stops at scanShare of the deadline.
 func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uint64, invoices, receivers map[common.Address]receiver,
 	wallets wallets) (logs, walletLogs, outflowLogs []types.Log, next uint64, err error) {
 	began := time.Now()
@@ -232,8 +230,7 @@ func (c *Chain) scanLogs(ctx context.Context, from, latest, walletFrom, must uin
 	return logs, walletLogs, outflowLogs, lo, nil
 }
 
-// A new chain starts at its finalized block: earlier deposits are never looked for.
-// ponytail: add a start block to chains if a chain is enabled after invoices on it exist.
+// start: a new chain begins at its finalized block. ponytail: add a start block if invoices exist before enabling.
 func (c *Chain) start(ctx context.Context) (uint64, error) {
 	var from int64
 	err := c.pool.QueryRow(ctx, `SELECT greatest(last_finalized_block + 1 - $2, 0) FROM chain_cursors WHERE chain_id = $1`,

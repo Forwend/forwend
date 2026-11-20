@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// The canary encodes factory.predict itself (R-51): seven fields for a v1.1 factory, nine for v2 (R-226). cast wrote
-// both expected calldatas.
 func TestPredictCallMatchesEachFactorysTerms(t *testing.T) {
 	line := terms{ID: "0x" + repeat("05", 32), Recipient: "0x1a2B3c4D5e6F708192a3B4c5D6e7F80912A3b4C5",
 		Token: "0x00000000000000000000000000000000000000bb", Amount: "5000000", ExpiresAt: 1800000000,
@@ -24,7 +22,6 @@ func TestPredictCallMatchesEachFactorysTerms(t *testing.T) {
 	if got := hex.EncodeToString(line.predictCall(true)); got != "ab97e44a"+words+repeat("0", 128) {
 		t.Errorf("v2 predict\n got %s", got)
 	}
-	// R-227: the option's fees, as the database holds them, end the v2 terms.
 	line.NetworkFee, line.PlatformFee = "30000", "20000"
 	if got, want := hex.EncodeToString(line.predictCall(true)), "ab97e44a"+words+repeat("0", 60)+"7530"+repeat("0", 60)+"4e20"; got != want {
 		t.Errorf("v2 predict with fees\n got %s\nwant %s", got, want)

@@ -10,9 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Plans runs run with a pool to url that records the queries sent through it, then returns their plans read with
-// sequential scans off, joined. A test checks that a query can use its index on tables too small for the planner to
-// choose it.
+// Plans runs run on a pool that records its queries, then returns their plans read with sequential scans off.
 func Plans(t *testing.T, url string, run func(*pgxpool.Pool)) string {
 	t.Helper()
 	ctx := context.Background()

@@ -133,16 +133,15 @@ func (c *Chain) Recover(ctx context.Context) error {
 	if prunedErr != nil || !ok {
 		return errors.Join(err, prunedErr)
 	}
-	// Waiting can't read blocks no RPC keeps, and would hold the second look at every later block (R-191). The fast
-	// scan read them once; an operator who adds an endpoint with full history can move next_block back.
+	// Waiting can't read blocks no RPC keeps, and would hold the second look at every later block. The fast scan read
+	// them once; an operator who adds an endpoint with full history can move next_block back.
 	slog.Error("ALERT recovery skips blocks no RPC keeps any more", "chain", c.chainID, "from", from, "to", kept-1)
 	_, err = c.pool.Exec(ctx, "UPDATE chain_recoveries SET next_block = $3 WHERE chain_id = $1 AND next_block = $2",
 		c.chainID, from, kept)
 	return err
 }
 
-// pruned finds the first block from from on that some RPC still serves logs for, halving the gap with one-block reads.
-// ok is false when from is served, or the finalized block isn't: then the miss is no pruning, and waiting is right.
+// pruned finds the first block from from on some RPC serves logs for; ok is false if from is served or finalized isn't.
 func (c *Chain) pruned(ctx context.Context, from uint64) (kept uint64, ok bool, err error) {
 	var finalized uint64
 	if err := c.pool.QueryRow(ctx, "SELECT last_finalized_block FROM chain_cursors WHERE chain_id = $1", c.chainID).

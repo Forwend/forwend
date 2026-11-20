@@ -36,7 +36,6 @@ func TestNetworkFeeIsADeployAndSettleAtTheFeeCap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// At 20 USD an ether Anvil's gas makes a fee above a cent, so the margin and the price both show.
 	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: a.PriceFeed(big.NewInt(20e8)), Heartbeat: time.Hour}
 	t.Cleanup(func() { delete(chain.EthUSD, chaintest.ChainID) })
 	want := new(big.Rat).SetFrac(new(big.Int).Mul(feeCap, big.NewInt(MinGas*NetworkFeeMargin*20)), big.NewInt(1e18))
@@ -114,7 +113,6 @@ func TestAStalePriceKeepsTheLastGoodQuote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The feed last answered two hours ago.
 	a.Feed(chain.EthUSD[chaintest.ChainID].Address, big.NewInt(20e8), time.Now().Add(-3*time.Hour).Unix(),
 		time.Now().Add(-2*time.Hour).Unix())
 	q.kept[chaintest.ChainID] = quote{usd: good, at: time.Now().Add(-QuoteAge)}

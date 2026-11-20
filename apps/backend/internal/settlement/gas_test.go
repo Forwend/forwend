@@ -113,7 +113,7 @@ func TestCheckGasInFeeToken(t *testing.T) {
 
 	for _, c := range []struct {
 		name   string
-		chosen common.Address // what the fee manager answers; zero: no choice
+		chosen common.Address
 		pays   common.Address
 	}{
 		{"chosen token", mock, mock},
@@ -122,7 +122,6 @@ func TestCheckGasInFeeToken(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// PUSH20 chosen, PUSH1 0, MSTORE, PUSH1 32, PUSH1 0, RETURN: every call answers the chosen token.
 			setCode(chain.TempoFeeManager, append(append([]byte{0x73}, c.chosen.Bytes()...), 0x60, 0, 0x52, 0x60, 32, 0x60, 0, 0xf3))
-			// Set in storage: a mint would mine a block and move the base fee.
 			hold := func(units *big.Int) {
 				t.Helper()
 				slot := crypto.Keccak256Hash(common.LeftPadBytes(executor.Bytes(), 32), make([]byte, 32)) // _balances, slot 0
@@ -290,7 +289,6 @@ func TestSignerSwapsNoDust(t *testing.T) {
 	}
 	route := swapRoutes[8453]
 	setCode(chain.EthUSD[8453].Address, a.PriceFeed(big.NewInt(2000e8)))
-	// The sequencer has been up for a day.
 	a.Feed(chain.SequencerUptime[8453], new(big.Int), time.Now().Add(-24*time.Hour).Unix(), 0)
 	setCode(route.usdc, common.HexToAddress(a.DeployToken()))
 	slot := crypto.Keccak256Hash(common.LeftPadBytes(s.sender.Bytes(), 32), make([]byte, 32)) // _balances, slot 0
