@@ -327,7 +327,7 @@
         "The balance report reads Still checking while a network's scan lags, and the send summary shows To shortened as From does."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check",
@@ -418,11 +418,18 @@
           "summary": "Read-only review of origin/main..HEAD, 1223 files, by area. No confirmed behavior regression in production code. Backend: route table identical (120 routes), no migration changed, JSON tags unchanged, moved or split functions compared by AST and body. Contracts: Solidity code lines identical, deploy records untouched. Found and fixed: settle read waits and amounts in two reads, now waits first (4a1219b8). Restored: concurrent option-choice test, node no-runtime-dependencies test. Known and left for the owner: cut tests for ErrFeeQuote, receiveAddress refusals, some PDF and receipt assertions, webhook redirect, Open error wrapping, onboarding repeats, js/react iframe and PayButton assertions; PLAN.md sections 11.x that PROJECT.md, openapi.yaml and pay.spec.ts still cite; Shift+PageDown in the range calendar now jumps 12 months; the held-on-other-option note skips tokens missing from PAY_TOKENS. Not covered: reviewers ran no tests; web invoice-detail, new-invoice-form and landing/kit screens were skimmed, not read line by line.",
           "at": "2026-11-20T16:00:42Z",
           "filesHash": "cddd12f68d797efb"
-        }
+        },
+        "commit": "b9e3ed18",
+        "doneAt": "2026-11-20T16:00:48Z"
       },
       "branch": "refactor/f498-the-codebase-is-untangled-comments-and-t",
       "baseCommit": "ca13cffb0b277c388443f1780521485122549fa6",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "refactor/f498-the-codebase-is-untangled-comments-and-t",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
