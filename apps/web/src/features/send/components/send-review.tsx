@@ -3,7 +3,6 @@
 import {
   Button,
   Checkbox,
-  FullAddress,
   HoldButton,
   NOTICE_TONES,
   Notice,
@@ -72,18 +71,10 @@ export function SendReview({
           <TruncatedAddress address={send.from} mono={false} className="text-xs text-muted" />
         </Row>
         <Row term={SEND_COPY.to}>
-          {/* A pasted address shows whole: a look-alike copies only its start and end. */}
-          {"profile" in recipient ? (
-            <>
-              <span className="block text-ink">{profileLabel(recipient.profile)}</span>
-              <TruncatedAddress address={send.to} mono={false} className="text-xs text-muted" />
-            </>
-          ) : (
-            <>
-              <span className="block text-ink">{SEND_COPY.anotherWallet}</span>
-              <FullAddress address={send.to} className="block text-xs" />
-            </>
-          )}
+          <span className="block text-ink">
+            {"profile" in recipient ? profileLabel(recipient.profile) : SEND_COPY.anotherWallet}
+          </span>
+          <TruncatedAddress address={send.to} mono={false} className="text-xs text-muted" />
         </Row>
         <Row term={SEND_COPY.network}>{chainName(send.chainId)}</Row>
         <Row term={SEND_COPY.networkFee}>
