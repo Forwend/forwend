@@ -37,10 +37,8 @@ func idOf(payToken string) (string, bool) {
 
 var payTokenShape = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// PayURL is the payer's page in the web app at webURL.
 func PayURL(webURL, payToken string) string { return webURL + "/pay/" + payToken }
 
-// GetOfProfile is Get for the profile's owner: another profile's invoice is ErrNotFound.
 func (s *Service) GetOfProfile(ctx context.Context, profileID, id string) (Invoice, error) {
 	return s.get(ctx, profileID, id, false)
 }
@@ -49,7 +47,6 @@ func (s *Service) GetProfileSummary(ctx context.Context, profileID, id string) (
 	return s.get(ctx, profileID, id, true)
 }
 
-// Unnumbered is true for a link invoice before its first deposit, which only its payer sees.
 func (s *Service) Unnumbered(ctx context.Context, id string) (bool, error) {
 	var unnumbered bool
 	if err := s.pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM invoices WHERE id = lower($1) AND number IS NULL)",
@@ -218,7 +215,7 @@ func (s *Service) get(ctx context.Context, profileID, id string, summary bool) (
 	return inv, err
 }
 
-// PaidAtSQL is the unix block time of the last deposit booked to the owner on SQL option; read it once paid.
+// PaidAtSQL is the unix block time of the last deposit booked to the owner on option; read it once paid.
 func PaidAtSQL(option string) string {
 	return `(SELECT max(ct.block_time) FROM chain_transfers ct
 		JOIN ledger_transactions l ON l.chain_transfer_id = ct.id
@@ -321,7 +318,6 @@ func readLines(ctx context.Context, q paymentReader, id string) ([]Line, error) 
 	})
 }
 
-// revision reads the other invoice of a Revise with query, nil when there is none.
 func (s *Service) revision(ctx context.Context, query, id string) (*Revision, error) {
 	var r Revision
 	err := s.pool.QueryRow(ctx, query, id).Scan(&r.ID, &r.Number, &r.PayToken)

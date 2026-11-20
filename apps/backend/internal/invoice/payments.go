@@ -61,7 +61,6 @@ var PaymentStateSQL = `CASE WHEN invoices.payment_status = 'canceled' AND invoic
  WHEN invoices.payment_status = 'partially_paid' THEN 'partially_paid'
  ELSE 'waiting' END`
 
-// PaymentStateColumnsSQL is what each state needs of the raw status columns, as StatusColumnsSQL.
 var PaymentStateColumnsSQL = map[string]string{
 	"waiting":        "invoices.payment_status = 'open'",
 	"confirming":     "invoices.payment_status IN ('open', 'detected', 'partially_paid')",
@@ -77,7 +76,6 @@ const WalletSQL = `CASE WHEN invoices.settlement_status = 'settled' THEN 'in_wal
  ELSE coalesce((SELECT CASE WHEN wallet.status = 'refused' THEN 'refused' WHEN wallet.wait IS NOT NULL THEN 'delayed' END
    FROM settlement_intents wallet WHERE wallet.invoice_id = invoices.option_id), 'pending') END`
 
-// walletColumnsSQL is what each wallet state needs of the raw status columns, as StatusColumnsSQL.
 var walletColumnsSQL = map[string]string{
 	"none":      "invoices.settlement_status <> 'settled' AND invoices.payment_status <> 'paid'",
 	"pending":   "invoices.settlement_status <> 'settled' AND invoices.payment_status = 'paid'",
@@ -165,7 +163,6 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	for i := range page.Items {
 		page.Items[i].Receipts = receipts[page.Items[i].ID]
 	}
-	// The list tags a payment that a deposit through 1Click pays.
 	crossChain, err := readCrossChainFor(ctx, db, mains, true)
 	if err != nil {
 		return Page{}, err
@@ -177,7 +174,7 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	return page, nil
 }
 
-// Must stay the expression of the invoices_payment_search trigram index (migration 00088) on the main row's columns.
+// Must stay the expression of the invoices_payment_search trigram index.
 const paymentSearchText = `(coalesce(reference,'') || ' ' || coalesce(title,'') || ' ' || coalesce(client_name,'') || ' ' || coalesce(client_email,'') || ' ' || id
 	|| ' ' || coalesce('INV-' || lpad(number::text, greatest(length(number::text), 4), '0'), '') || ' ' || main_receive_address)`
 

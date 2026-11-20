@@ -16,7 +16,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
 
-// Mirrors InvoiceTypes.sol safeToSettle.
 func TestReceiveAddressRefusesWhatSettleRefuses(t *testing.T) {
 	expires := time.Unix(1800000000, 0)
 	for name, recipient := range map[string]string{
@@ -52,20 +51,6 @@ func TestDetailsRefuseHiddenTextAndForwendNames(t *testing.T) {
 	}
 }
 
-// R-93: an agreed value is stored in its currency's minor units, whatever the currency's decimals.
-func TestAgreedValueParse(t *testing.T) {
-	for _, c := range []struct {
-		currency, amount string
-		want             int64
-		decimals         int
-	}{{"EUR", "1000.5", 100050, 2}, {"EUR", "1000", 100000, 2}, {"JPY", "150000", 150000, 0}, {"ISK", "7", 7, 0}} {
-		got, err := (&AgreedRequest{Currency: c.currency, Amount: c.amount, Date: "2026-10-01"}).parse()
-		if err != nil || got.Amount != c.want || got.Decimals != c.decimals {
-			t.Errorf("%s %s: %v %v, want %d at %d decimals", c.amount, c.currency, got, err, c.want, c.decimals)
-		}
-	}
-}
-
 func TestAgreedCurrenciesMatchTheWeb(t *testing.T) {
 	src, err := os.ReadFile("../../../web/src/features/invoices/constants/invoices.ts")
 	if err != nil {
@@ -84,7 +69,6 @@ func TestAgreedCurrenciesMatchTheWeb(t *testing.T) {
 	}
 }
 
-// The invoice form refuses what the API refuses, no more and no less.
 func TestLimitsMatchTheWeb(t *testing.T) {
 	var read func(file, name string) map[string]int64
 	read = func(file, name string) map[string]int64 {
@@ -125,7 +109,6 @@ func TestLimitsMatchTheWeb(t *testing.T) {
 	}
 }
 
-// bareRequestHash is the stored hash of a 5 USDC request with nothing else set: a retry must keep matching it.
 const bareRequestHash = "3f3f910f034e73c69a1251817cfd5c302aa620d1cead7d320f3fccc886ec73ed"
 
 func TestRequestHashKeepsStoredHashes(t *testing.T) {

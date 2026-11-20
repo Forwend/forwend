@@ -10,19 +10,17 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// Tabs poll about six routes every 15 s and a page load sends about ten, well under this; a looping script is not.
-// Public routes are limited per IP at the edge (docs/backend/api.md#rate-limits): the api can't trust a payer's IP.
+// Well above what open tabs send. The edge limits public routes per IP: the api can't trust a payer's IP.
 const UserRate, UserBurst = 2, 60
 
 func Everyone(*http.Request) string { return "all" }
 
-// MaxKeys and MaxKeyLen bound one set of buckets: a public route's key comes from its path, which anyone can make up.
-// A longer key, or a new one once MaxKeys are held, shares the overflow bucket. Real keys are far shorter.
+// Anyone can make up a public route's key: a longer key, or a new one past MaxKeys, shares the overflow bucket.
 const MaxKeys, MaxKeyLen = 100_000, 128
 
 const overflow = "\x00overflow"
 
-// Buckets live in each api process, so each replica counts on its own (docs/backend/architecture.md#scaling).
+// Buckets live in each api process, so each replica counts on its own.
 type Buckets struct {
 	rate, burst float64
 
@@ -61,8 +59,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 		k.tokens--
 		return 0
 	}
-	// A bucket that never refills, or refills too slowly to count in nanoseconds, waits the longest: converting +Inf or
-	// an overflow to a duration gives the most negative value on amd64, which would let every request through.
+	// On amd64, converting +Inf or an overflow to a Duration gives the most negative value: wait the longest instead.
 	wait := (1 - k.tokens) / b.rate * float64(time.Second)
 	if b.rate <= 0 || wait >= math.MaxInt64 {
 		return time.Duration(math.MaxInt64)
@@ -70,7 +67,7 @@ func (b *Buckets) Wait(key string) time.Duration {
 	return time.Duration(wait)
 }
 
-// Dropping a full bucket loses nothing: a key that comes back starts full. Call it with mu held.
+// Dropping a full bucket loses nothing: a returning key starts full. Call it with mu held.
 func (b *Buckets) sweep(now time.Time) {
 	if now.Sub(b.swept) < time.Minute {
 		return

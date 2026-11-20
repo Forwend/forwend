@@ -13,8 +13,7 @@ import (
 
 const ProfileConcurrency = 2
 
-// endpointDue is each enabled endpoint e with no request in flight, joined to its first due delivery d. Each endpoint
-// reads its own pending index, so a claim costs the profile's endpoints, not the whole backlog.
+// endpointDue joins each idle enabled endpoint e to its first due delivery d, through its own pending index.
 const endpointDue = `webhook_endpoints e CROSS JOIN LATERAL (SELECT * FROM webhook_deliveries d
    WHERE d.endpoint_id=e.id AND d.status='pending' AND d.next_attempt_at<=now()
      AND (d.leased_until IS NULL OR d.leased_until<=now())
@@ -73,8 +72,7 @@ func (s *Service) claim(ctx context.Context) (*delivery, error) {
 	return d, nil
 }
 
-// Run keeps free sender slots available while another profile's endpoint waits. A sender that finds nothing waits
-// until the one shared poll sees a due delivery, so an empty queue costs one query a second, not one per sender.
+// Run's idle senders wait on one shared poll, so an empty queue costs one query a second.
 func (s *Service) Run(ctx context.Context, client *http.Client, body Body) {
 	if s.key == nil {
 		<-ctx.Done()

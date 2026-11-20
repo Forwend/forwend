@@ -27,7 +27,7 @@ func listEndpoints(webhooks *webhook.Service) http.HandlerFunc {
 	}
 }
 
-// PUT to an id the caller picks, so a retried save makes one endpoint (as a link).
+// PUT to an id the caller picks, so a retried save makes one endpoint.
 func putEndpoint(webhooks *webhook.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body endpointBody

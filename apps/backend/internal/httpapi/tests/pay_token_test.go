@@ -42,7 +42,6 @@ func TestPublicRoutesTakeOnlyThePayToken(t *testing.T) {
 		t.Fatalf("payer email by the token: %d", got)
 	}
 
-	// An invoice made before D-86 has no token.
 	old := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
 	e.exec(t, "UPDATE invoices SET pay_token = NULL WHERE id = $1", old)
 	if got := public("GET", old, ""); got != http.StatusNotFound {

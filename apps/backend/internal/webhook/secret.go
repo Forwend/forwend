@@ -9,15 +9,13 @@ import (
 	"fmt"
 )
 
-// newSecret is a Standard Webhooks secret: whsec_ and the base64 of the 32 bytes the HMAC uses.
 func newSecret() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	return "whsec_" + base64.StdEncoding.EncodeToString(b)
 }
 
-// seal encrypts a secret with WEBHOOK_SECRET_KEY, bound to its endpoint: a sealed secret moved to another endpoint's
-// row doesn't open.
+// seal binds the secret to its endpoint, so a sealed secret copied to another endpoint's row doesn't open.
 func (s *Service) seal(endpointID, text string) ([]byte, error) {
 	gcm, err := s.aead()
 	if err != nil {

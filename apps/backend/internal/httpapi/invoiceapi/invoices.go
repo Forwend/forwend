@@ -109,7 +109,7 @@ func listInvoices(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// Public: the pay link is the only key, so it leaves out the client's contact details but keeps the issuer.
+// Public: the pay link is the only key, so it leaves out the client's contact details.
 func getInvoice(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		inv, err := invoices.Get(r.Context(), r.PathValue("payToken"))
@@ -405,7 +405,7 @@ func listWebhookEvents(invoices *invoice.Service, hooks *webhook.Service) http.H
 			Items      []json.RawMessage `json:"items"`
 			NextCursor *string           `json:"nextCursor"`
 		}{Items: []json.RawMessage{}, NextCursor: httpio.OrNull(page.NextCursor)}
-		read := map[string]invoice.Invoice{} // one read per invoice a page names
+		read := map[string]invoice.Invoice{}
 		for _, e := range page.Events {
 			inv, ok := read[e.InvoiceID]
 			if !ok {

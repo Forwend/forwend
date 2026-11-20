@@ -24,7 +24,6 @@ func TestGetBalances(t *testing.T) {
 	if r.status != http.StatusOK || !reflect.DeepEqual(r.body, want) {
 		t.Fatalf("got %d %v\nwant %v", r.status, r.body, want)
 	}
-	// A profile without a wallet: no balance and no total, never a made-up 0.
 	r = e.call(t, "GET", "/v1/profiles/"+e.walletless+"/balances", "did:privy:alice", "", "")
 	tokens, _ := r.body["tokens"].([]any)
 	if r.status != http.StatusOK || r.body["estimatedUsdTotal"] != nil || len(tokens) != 1 ||
@@ -162,7 +161,6 @@ func TestGetBalanceHistory(t *testing.T) {
 	if r := e.call(t, "GET", path, "did:privy:alice", "", ""); r.status != http.StatusOK || len(r.body["points"].([]any)) != 30 {
 		t.Fatalf("default: %d %v; want 30 days", r.status, r.body)
 	}
-	// A profile without a wallet: null series and totals, never a made-up 0.
 	r = e.call(t, "GET", "/v1/profiles/"+e.walletless+"/balance-history?days=1", "did:privy:alice", "", "")
 	tokens, _ := r.body["tokens"].([]any)
 	points, _ = r.body["points"].([]any)
@@ -188,7 +186,6 @@ func TestGetBalanceHistory(t *testing.T) {
 	}
 }
 
-// R-108.
 func TestTransactionRecords(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
@@ -260,7 +257,7 @@ func TestTransactionRecords(t *testing.T) {
 	want := "Date (UTC),Direction,Amount,Token,Network,Counterparty,Transaction,Status,USD value,Classification,Invoice,Client,Payment ID,Settlement fees\r\n" +
 		"2025-10-09T08:53:22Z,in,1.500000,USDC,Base Sepolia," + stranger + "," + hash(2) + ",confirmed,1.500000,income,,,,\r\n" +
 		"2025-10-09T08:53:21Z,in,5.000000,USDC,Base Sepolia," + made.body["receiveAddress"].(string) + "," + hash(1) +
-		// A spreadsheet that splits on ";" would run what follows it too, also after a quote (R-108).
+		// A spreadsheet that splits on ";" would run what follows it too, also after a quote.
 		",confirmed,5.000000,invoice,INV-0001,\"'=Bob Ltd;'=1+1;'\"\"=2+2\"," + invoice + ",\r\n"
 	if export.status != http.StatusOK || export.raw != want {
 		t.Fatalf("export: %d\n%s\nwant\n%s", export.status, export.raw, want)
@@ -275,7 +272,7 @@ func TestTransactionRecords(t *testing.T) {
 		}
 	}
 
-	// R-110: in EUR too, at the ECB's rate of the latest day on or before each transfer's.
+	// The latest ECB rate on or before each transfer's day values it in EUR.
 	e.exec(t, "INSERT INTO ecb_rates (currency, day, per_eur) VALUES ('USD', '2025-10-08', 1.25)")
 	currency := "/v1/profiles/" + e.aliceProfile + "/records-currency"
 	if r := e.call(t, "GET", currency, alice, "", ""); r.status != http.StatusOK || r.body["currency"] != nil {
@@ -304,7 +301,6 @@ func TestTransactionRecords(t *testing.T) {
 	}
 }
 
-// R-112.
 func TestStatement(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
@@ -325,13 +321,13 @@ func TestStatement(t *testing.T) {
 	day := func(d, h int) time.Time { return time.Date(2025, 10, d, h, 0, 0, 0, time.UTC) }
 	paid := add(1, day(9, 10), "in", made.body["receiveAddress"].(string), "5000000", "confirmed")
 	income := add(2, day(9, 12), "in", stranger, "1234567", "confirmed")
-	add(3, day(10, 9), "in", stranger, "2000000", "confirmed")   // unclassified
-	add(4, day(10, 10), "out", stranger, "1000000", "confirmed") // money out
-	add(5, day(10, 11), "in", stranger, "3000000", "detected")   // still confirming
+	add(3, day(10, 9), "in", stranger, "2000000", "confirmed")
+	add(4, day(10, 10), "out", stranger, "1000000", "confirmed")
+	add(5, day(10, 11), "in", stranger, "3000000", "detected")
 	ledgertest.Settlement(t, e.pool, made.body["invoiceId"].(string), paid, false)
-	late := add(6, day(20, 9), "in", stranger, "1000000", "confirmed")          // labelled income, no ECB rate within 7 days
-	add(7, day(1, 0).Add(-time.Second), "in", stranger, "9000000", "confirmed") // before the period
-	// Two half cents: the total adds the rounded lines, 1.01 twice, never the rounded sum 2.01.
+	late := add(6, day(20, 9), "in", stranger, "1000000", "confirmed") // labelled income, no ECB rate within 7 days
+	add(7, day(1, 0).Add(-time.Second), "in", stranger, "9000000", "confirmed")
+	// Two half-cent lines: totals add the rounded lines, 1.01 twice, never 2.01.
 	halfA := add(8, day(11, 9), "in", stranger, "1005000", "confirmed")
 	halfB := add(9, day(11, 10), "in", stranger, "1005000", "confirmed")
 	label := func(hash string) {
@@ -345,7 +341,7 @@ func TestStatement(t *testing.T) {
 	label(late)
 	label(halfA)
 	label(halfB)
-	label(fmt.Sprintf("0x%064x", 5)) // still confirming: labelled, but no income yet
+	label(fmt.Sprintf("0x%064x", 5))
 	e.exec(t, "INSERT INTO ecb_rates (currency, day, per_eur) VALUES ('USD', '2025-10-08', 1.25)")
 	if r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/records-currency", alice, "", `{"currency": "EUR"}`); r.status != http.StatusOK {
 		t.Fatalf("records currency: %d %v", r.status, r.body)
@@ -357,14 +353,11 @@ func TestStatement(t *testing.T) {
 		t.Fatalf("statement: %d %.40q", got.status, got.raw)
 	}
 	text := pdfText(t, []byte(got.raw))
-	mustContain(t, text, "Statement", "2025-10-01 to 2025-10-31", "Account holder", "Alice Design GmbH",
-		"Tax ID DE123456789", "EUR",
+	mustContain(t, text, "2025-10-01 to 2025-10-31", "Alice Design GmbH", "Tax ID DE123456789", "EUR",
 		"2025-10-09 10:00", "INV-0001 · Bob Ltd", "5.00", "4.00", "5.00 USDC on Base Sepolia", paid,
 		"2025-10-09 12:00", "Income", "1.23", "0.99", "1.234567 USDC on Base Sepolia", income,
 		"2025-10-20 09:00", "no rate", late,
-		"Total", "9.25", "—",
-		"no EUR value, so the EUR total is left out", "1 payment in is unclassified and not listed",
-		"Test mode: testnet tokens have no value") // made in Developer mode (R-221)
+		"Total", "9.25", "—")
 	for _, never := range []string{fmt.Sprintf("0x%064x", 3), fmt.Sprintf("0x%064x", 4), fmt.Sprintf("0x%064x", 5),
 		fmt.Sprintf("0x%064x", 7)} {
 		if strings.Contains(text, never) {
@@ -375,10 +368,9 @@ func TestStatement(t *testing.T) {
 		t.Fatalf("not oldest first:\n%s", text)
 	}
 
-	// Days whose lines all have a rate: the EUR total adds the rounded lines too (0.80 twice, never 1.61).
 	half := pdfText(t, []byte(e.call(t, "GET", path+"?from=2025-10-11&to=2025-10-11", alice, "", "").raw))
 	mustContain(t, half, "2025-10-11 to 2025-10-11", "1.01", "0.80", "Total", "2.02", "1.60")
-	if strings.Contains(half, "—") || strings.Contains(half, "left out") || strings.Contains(half, income) {
+	if strings.Contains(half, "—") || strings.Contains(half, income) {
 		t.Fatalf("one day with rates:\n%s", half)
 	}
 

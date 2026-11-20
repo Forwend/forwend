@@ -30,9 +30,7 @@ func scanEndpoint(row pgx.CollectableRow) (Endpoint, error) {
 
 const MaxEndpoints = 16
 
-// Save creates the endpoint with the id the caller picks, with its first secret, or replaces every field of the
-// profile's endpoint with that id. created is true for a new one. The caller has checked the user's access to the
-// profile and the fresh sign-in (D-63); Save checks the access again as it writes.
+// Save creates the endpoint with its first secret, or replaces all its fields; it rechecks access as it writes.
 func (s *Service) Save(ctx context.Context, profileID, user, id string, d Details) (e Endpoint, created bool,
 	err error) {
 	if s.key == nil {
@@ -56,7 +54,6 @@ func (s *Service) Save(ctx context.Context, profileID, user, id string, d Detail
 	if invalid {
 		return Endpoint{}, false, fmt.Errorf("%w: events must be one or more of %v", ErrInvalid, history.WebhookEvents)
 	}
-	// Each once, in the list's order.
 	d.Events = slices.DeleteFunc(slices.Clone(history.WebhookEvents), func(t string) bool {
 		return !slices.Contains(d.Events, t)
 	})
@@ -87,7 +84,7 @@ func (s *Service) Save(ctx context.Context, profileID, user, id string, d Detail
 		case kind != profile.Merchant && d.StoreID != "":
 			return fmt.Errorf("%w: storeId: only a merchant profile has stores", ErrInvalid)
 		}
-		// A new endpoint takes the profile's mode (D-120); one of the other mode is not found, as in the list.
+		// A new endpoint takes the profile's mode; an id of the other mode is not found.
 		rows, err := tx.Query(ctx, `INSERT INTO webhook_endpoints (id, profile_id, store_id, url, description, events,
 			    enabled, livemode)
 			VALUES ($1, $2, NULLIF($3, '')::uuid, $4, $5, $6, $7, (SELECT livemode FROM profiles WHERE id = $2))
@@ -134,11 +131,9 @@ func (s *Service) addSecret(ctx context.Context, tx pgx.Tx, endpointID string) e
 	return nil
 }
 
-// ofProfileMode keeps an endpoint, by id with its profile as $2, to the profile's mode: the dashboard reaches one mode
-// at a time (R-221), and only signed-in owners and Admins manage endpoints.
+// ofProfileMode limits an endpoint to its profile's current mode; the profile id is $2.
 const ofProfileMode = "livemode = (SELECT livemode FROM profiles WHERE id = $2)"
 
-// List is the profile's endpoints of its mode (R-221), newest first.
 func (s *Service) List(ctx context.Context, profileID string) ([]Endpoint, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+endpointColumns+` FROM webhook_endpoints WHERE profile_id = $1
 		AND livemode = (SELECT livemode FROM profiles WHERE id = $1) ORDER BY created_at DESC, id`, profileID)
@@ -152,7 +147,6 @@ func (s *Service) List(ctx context.Context, profileID string) ([]Endpoint, error
 	return endpoints, nil
 }
 
-// Delete removes the profile's endpoint and its secrets.
 func (s *Service) Delete(ctx context.Context, profileID, id string) error {
 	if !lowercaseUUID.MatchString(id) {
 		return ErrNotFound
@@ -168,13 +162,12 @@ func (s *Service) Delete(ctx context.Context, profileID, id string) error {
 	return nil
 }
 
-// Secrets are the endpoint's working secrets, newest first: during a rotation's overlap, the old one too.
-// The caller has checked the fresh sign-in (D-63).
+// Secrets are the endpoint's working secrets, newest first; the caller has checked the fresh sign-in.
 func (s *Service) Secrets(ctx context.Context, profileID, id string) ([]Secret, error) {
 	if s.key == nil {
 		return nil, ErrNotConfigured
 	}
-	// The dashboard reaches the profile's mode only (R-221); deliveries read every endpoint's secrets.
+	// Only the profile's current mode here; deliveries read every endpoint's secrets.
 	if err := s.owned(ctx, profileID, id); err != nil {
 		return nil, err
 	}
@@ -214,9 +207,7 @@ func (s *Service) secrets(ctx context.Context, q queryer, profileID, id string) 
 	return out, nil
 }
 
-// Rotate gives the endpoint a new secret; the one it replaces keeps signing for Overlap, so a receiver can switch
-// without missing an event. The answer is read in the same transaction: a key that can't open the secrets rotates
-// nothing. The caller has checked the fresh sign-in (D-63); Rotate checks the access again as it writes.
+// Rotate adds a secret and the old one signs for Overlap more; a key that can't open them rotates nothing.
 func (s *Service) Rotate(ctx context.Context, profileID, user, id string) ([]Secret, error) {
 	if s.key == nil {
 		return nil, ErrNotConfigured

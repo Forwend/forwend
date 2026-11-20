@@ -9,8 +9,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// PlainText refuses control, invisible format and separator characters and blank fillers: they can hide or reorder
-// what a payer reads. Zero-width joiners stay: Persian names and emoji need them. lines allows \n.
+// PlainText refuses characters that can hide or reorder what a payer reads; ZWJ stays for Persian and emoji.
 func PlainText(s string, lines bool) bool {
 	for _, r := range s {
 		switch {
@@ -22,21 +21,19 @@ func PlainText(s string, lines bool) bool {
 	return true
 }
 
-// ValidText reports whether s is valid UTF-8, at most max characters, and PlainText. Postgres text holds neither
-// invalid UTF-8 nor a NUL byte, which PlainText refuses.
+// ValidText: valid UTF-8, at most max characters, and PlainText.
 func ValidText(s string, max int, lines bool) bool {
 	return utf8.ValidString(s) && utf8.RuneCountInString(s) <= max && PlainText(s, lines)
 }
 
 var fillers = map[rune]bool{'\u115f': true, '\u1160': true, '\u2800': true, '\u3164': true, '\uffa0': true}
 
-// Impersonates reports a name that reads as Forwend, also with accents, spaces or look-alike letters. Split across
-// words it counts only when it ends a word ("For wend", not "Gifts for Wendy"); a letter-like symbol counts both ways.
+// Impersonates reports a name that reads as Forwend, also with accents, spaces or look-alike letters.
 func Impersonates(name string) bool {
 	return readsAsForwend(name, true) || readsAsForwend(name, false)
 }
 
-// symbols says whether a symbol that looks like a letter counts as that letter or as a gap.
+// symbols: a letter-like symbol counts as that letter, else as a gap.
 func readsAsForwend(name string, symbols bool) bool {
 	var b strings.Builder
 	gap := false
@@ -78,7 +75,6 @@ func latin(r rune) rune {
 	return unicode.ToLower(r)
 }
 
-// moreLookalikes read as a Latin letter in a name, though Unicode's confusables (lookalikes.go) don't list them:
-// lower-case Greek and Cyrillic letters and small capitals.
+// Letters Unicode's confusables don't list: lower-case Greek and Cyrillic, and small capitals.
 var moreLookalikes = map[rune]byte{'п': 'n', 'ω': 'w', 'ε': 'e', 'η': 'n', 'ɾ': 'r', 'ꜰ': 'f', 'ʀ': 'r', 'ᴇ': 'e', 'ɴ': 'n',
 	'ᴅ': 'd'}

@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// R-151, D-101: the creator's metadata, kept at create and returned only by the owner's reads.
 func TestInvoiceMetadata(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -29,17 +28,14 @@ func TestInvoiceMetadata(t *testing.T) {
 	if len(items) != 1 || !reflect.DeepEqual(items[0].(map[string]any)["metadata"], want) {
 		t.Errorf("the owner's list: %v", items)
 	}
-	// The pay page's answer and the PDFs show none of it.
 	if r := e.get(t, id); r.status != http.StatusOK || r.body["metadata"] != nil {
 		t.Errorf("the public read: %d, metadata %v", r.status, r.body["metadata"])
 	}
-	// The receipt is drawn from the same invoice once paid; neither takes the metadata.
 	if pdf := e.pdf(t, id, "invoice.pdf", ""); pdf.status != http.StatusOK ||
 		strings.Contains(pdfText(t, pdf.body), "A-1001") || strings.Contains(pdfText(t, pdf.body), "order_id") {
 		t.Errorf("invoice.pdf: %d, shows the metadata", pdf.status)
 	}
 
-	// The same key and metadata, in another order, is the same invoice; other metadata is another request.
 	if r := e.post(t, alice, e.aliceProfile, "key-1", withMetadata(`{"customer": "Zoë Ilić", "order_id": "A-1001"}`)); r.status !=
 		http.StatusOK || r.body["invoiceId"] != id {
 		t.Errorf("the same request again: %d %v", r.status, r.body["invoiceId"])

@@ -2,9 +2,7 @@ package outbound
 
 import "net/netip"
 
-// Not public beyond netip's own checks: CGNAT, "this network", IETF protocol assignments, benchmarking and the reserved
-// block; and IPv6 that carries or reaches an IPv4 address (IPv4-compatible, NAT64, 6to4) and the old site-local block.
-// Cloud metadata (169.254.169.254, fd00:ec2::254) is link-local or private.
+// notPublic: special-use ranges netip doesn't flag, and IPv6 forms that reach IPv4 (NAT64, 6to4, compatible).
 var notPublic = []netip.Prefix{
 	netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("0.0.0.0/8"),
@@ -22,7 +20,7 @@ var notPublic = []netip.Prefix{
 	netip.MustParsePrefix("fec0::/10"),
 }
 
-// PublicAddr reports whether a backend request may reach addr: never this machine, a private network or a cloud's metadata.
+// PublicAddr is false for this machine, private networks and cloud metadata.
 func PublicAddr(addr netip.Addr) bool {
 	addr = addr.Unmap()
 	if !addr.IsValid() || addr.IsLoopback() || addr.IsPrivate() || addr.IsLinkLocalUnicast() || addr.IsMulticast() ||

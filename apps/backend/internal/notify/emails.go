@@ -12,7 +12,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/webhook"
 )
 
-// compose is the owner's email about their invoice's money: paid, settled, or held for the payer.
 func compose(kind, number, amount, network, link, settings string) view {
 	v := view{Amount: amount, Tone: "success", Button: button{"View invoice", link},
 		Details: []row{{Label: "Network", Value: network}},
@@ -38,7 +37,6 @@ func compose(kind, number, amount, network, link, settings string) view {
 	return v
 }
 
-// welcome is a new account's one welcome email (R-84).
 func welcome(app string) view {
 	return view{Subject: "Welcome to Forwend", Preheader: "Your account is ready.", Title: "Welcome to Forwend",
 		Lead: []string{"Create an invoice or a payment request, share its pay link, and get paid in stablecoins " +
@@ -47,7 +45,7 @@ func welcome(app string) view {
 		Button: button{"Open Forwend", app}, Reason: "Sent once, because you created a Forwend account."}
 }
 
-// CodeMessage is the email with a Confirm it's you code (R-137); the api sends it at once, outside the outbox.
+// CodeMessage is the Confirm it's you email; the api sends it at once, outside the outbox.
 func CodeMessage(site Site, code string, ttl time.Duration) (email.Message, error) {
 	return message(site, confirm(site.WebURL+"/app", code, ttl))
 }
@@ -62,11 +60,10 @@ func confirm(app, code string, ttl time.Duration) view {
 		Reason: "Sent because someone asked to confirm it’s you in Forwend."}
 }
 
-// unchecked goes with a name the invoice's creator typed. An email comes from Forwend, so it says so here; the PDF is
-// the sender's own document and shows the name alone.
+// unchecked follows a typed name in emails only: the PDF is the sender's own document.
 const unchecked = "This name is what the invoice’s creator gave. Forwend doesn’t check it."
 
-// receipt is the payer's one email (R-82): nothing else is ever sent to this address.
+// receipt is the payer's one email: nothing else is ever sent to this address.
 func receipt(number, amount, network, issuer, sender, tx, pdf string) view {
 	v := view{Subject: "Your receipt for " + number, Preheader: amount + " paid on " + network + ".", Tone: "success",
 		Title: "Receipt for " + number, Amount: amount,
@@ -88,7 +85,6 @@ func receipt(number, amount, network, issuer, sender, tx, pdf string) view {
 	return v
 }
 
-// marked says an email is about a test-mode invoice (R-143), so testnet tokens never pass for real money.
 func marked(v view, live bool) view {
 	if !live {
 		v.TestMode = document.TestMode + "."
@@ -96,10 +92,9 @@ func marked(v view, live bool) view {
 	return v
 }
 
-// payHow is the client's one line on paying: a payer needs no Forwend account (R-94, R-96).
 const payHow = "from a crypto wallet or an exchange. You don’t need a Forwend account."
 
-// sent is the invoice email to the client (R-94); network is empty when the client chooses.
+// sent's network is empty when the client chooses.
 func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string) view {
 	v := view{Subject: "Invoice " + number, Preheader: amount + " to pay online.", Amount: amount,
 		Lead: []string{"Pay it online " + payHow}, Button: button{"View and pay", pay},
@@ -128,8 +123,7 @@ func sent(number, amount, network, issuer, sender, due, replyTo, pay, pdf string
 	return v
 }
 
-// outflow tells the owner money left their wallet with no send they approved in Forwend (D-49): a stolen session can
-// sign through Privy without Forwend's screens.
+// outflow exists because a stolen session can sign through Privy without Forwend's screens.
 func outflow(amount, to, network, tx, link string) view {
 	v := view{Subject: "Money left your wallet: " + amount,
 		Preheader: "Sent on " + network + ", not through Forwend. Was it you?", Tone: "warning",
@@ -144,7 +138,6 @@ func outflow(amount, to, network, tx, link string) view {
 	return v
 }
 
-// waiting tells the owner their paid invoices wait on the day's sponsored settlements (SEC-03).
 func waiting(link string) view {
 	return view{Subject: "Some payments are waiting to settle", Preheader: "The money is safe and settles as the daily " +
 		"limit frees up.", Tone: "warning", Title: "Some payments are waiting to settle",
@@ -155,8 +148,6 @@ func waiting(link string) view {
 		Reason: "Sent because payments to your profiles are waiting to settle."}
 }
 
-// retainerFailed tells the owner a retainer's month failed RetainerFailuresTold times in a row, so its client got no
-// invoice yet (R-98).
 func retainerFailed(number, client, due, link string) view {
 	return view{Subject: "Repeating invoice not made: " + number, Preheader: "The invoice for " + client + " due " + due +
 		" isn’t made yet.", Tone: "warning", Title: "A repeating invoice wasn’t made", Button: button{"View invoice", link},
@@ -181,7 +172,6 @@ func disabled(host, reason, link string) view {
 
 var roleNames = map[auth.Role]string{auth.Admin: "Admin", auth.Developer: "Developer", auth.Finance: "Finance"}
 
-// invitation is a team invite's email to the address invited (R-139).
 func invitation(team, role, replyTo, link string) view {
 	return view{Subject: "Join " + team + " on Forwend", Preheader: "Invited as " + role + ".",
 		Title: "Join " + team + " on Forwend", Button: button{"Accept the invite", link}, ReplyTo: replyTo,
@@ -191,7 +181,6 @@ func invitation(team, role, replyTo, link string) view {
 			"happens until you accept."}
 }
 
-// change is a scope change's email to the client (R-107).
 func change(issuer, job, title, amount string, days int, replyTo, link string) view {
 	due := fmt.Sprintf("due %d days after", days)
 	switch days {
@@ -209,7 +198,7 @@ func change(issuer, job, title, amount string, days int, replyTo, link string) v
 			"to reach them."}
 }
 
-// reminder is a payment reminder (R-96); network is empty when the client chooses.
+// reminder's network is empty when the client chooses.
 func reminder(step, number, left, network, issuer, sender, due, replyTo, pay, pdf string) view {
 	v := view{Amount: left, Button: button{"View and pay", pay},
 		Link: button{"Download the invoice (PDF)", pdf}, ReplyTo: replyTo}

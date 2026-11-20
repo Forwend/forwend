@@ -22,7 +22,6 @@ var ErrLinkAtCapacity = errors.New("payment link has no slot available for this 
 const linkCapacitySQL = `SELECT l.max_payments IS NULL OR u.paid + u.reserved < l.max_payments
 	FROM payment_links l JOIN payment_link_usage u ON u.link_id = l.id WHERE l.id = $1`
 
-// Reopen opens an expired, partly paid invoice's checkout again until reopenClose.
 func (s *Service) Reopen(ctx context.Context, profileID, id string) (Invoice, error) {
 	id = strings.ToLower(id)
 	err := pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
@@ -45,7 +44,6 @@ func (s *Service) Reopen(ctx context.Context, profileID, id string) (Invoice, er
 		var deadline int64
 		var deployedAt *int64
 		var linkID *string
-		// The option the invoice shows: the chosen one, else the main row.
 		if err := tx.QueryRow(ctx, `SELECT o.id, o.payment_status, o.refund_status, o.reopened_until IS NOT NULL,
 			    o.settle_deadline, o.receiver_deployed_at, m.link_id::text
 			FROM invoices m JOIN invoices o ON o.id = coalesce(m.chosen_id, m.id) WHERE m.id = $1`,

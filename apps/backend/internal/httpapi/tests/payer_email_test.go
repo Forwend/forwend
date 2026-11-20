@@ -71,7 +71,6 @@ func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
 	}
 }
 
-// A receipt the worker gave up on starts again for the new address.
 func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -99,7 +98,6 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 	}
 }
 
-// R-117: only a receipt that goes out spends the shared budget.
 func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	e := invoiceAPI(t)
 	var links []string
@@ -119,7 +117,6 @@ func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 	}
 }
 
-// Never "on its way" to an address the email did not go to.
 func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -141,10 +138,19 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	go func() {
 		answer <- e.call(t, "PUT", "/v1/invoices/"+e.link(t, id)+"/payer-email", "", "", `{"email": "b@example.com"}`)
 	}()
-	select {
-	case r := <-answer:
-		t.Fatalf("the change did not wait for the send: %d %v", r.status, r.body)
-	case <-time.After(300 * time.Millisecond):
+	for waiting, start := false, time.Now(); !waiting; {
+		select {
+		case r := <-answer:
+			t.Fatalf("the change did not wait for the send: %d %v", r.status, r.body)
+		default:
+		}
+		if time.Since(start) > 10*time.Second {
+			t.Fatal("the change never waited for the receipt row")
+		}
+		if err := e.pool.QueryRow(t.Context(), `SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock')`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if _, err := tx.Exec(t.Context(), `UPDATE outbox_events SET published_at = now(), attempts = 1
 		WHERE invoice_id = $1 AND kind = 'invoice.receipt'`, id); err != nil {
@@ -158,7 +164,6 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 	}
 }
 
-// R-82: plain text and exactly one address, like a client email.
 func TestPayerEmailIsOneAddress(t *testing.T) {
 	e := invoiceAPI(t)
 	n := 0

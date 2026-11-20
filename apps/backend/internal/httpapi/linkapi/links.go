@@ -48,7 +48,7 @@ func getLink(links *link.Service) http.HandlerFunc {
 	}
 }
 
-// PUT to an id the browser picks, so a retried save makes one link (as a store).
+// PUT to an id the browser picks, so a retried save makes one link.
 func putLink(links *link.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body linkBody
@@ -95,7 +95,6 @@ func putLink(links *link.Service) http.HandlerFunc {
 	}
 }
 
-// No sign-in: anyone with the link may pay.
 func getPublicLink(links *link.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, err := links.Public(r.Context(), r.PathValue("slug"))
@@ -117,7 +116,7 @@ func countVisit(links *link.Service) http.HandlerFunc {
 	}
 }
 
-// payLink answers with the new invoice's pay token; the same Idempotency-Key again answers 200 with the same one.
+// The same Idempotency-Key again answers 200 with the same pay token.
 func payLink(links *link.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key, err := httpio.IdempotencyKey(r)

@@ -45,10 +45,9 @@ type PaymentMovement struct {
 	From, To, Status                                                   string
 	Verified                                                           bool
 	PolicyException, ReconciliationError                               string
-	PaidWith                                                           *MovementPaidWith // nil except for a cross-chain Base transfer
+	PaidWith                                                           *MovementPaidWith // nil unless a cross-chain Base transfer
 }
 
-// MovementPaidWith is the payer's side of a cross-chain payment: Amount of Symbol on Blockchain, in TxHash.
 type MovementPaidWith struct {
 	Symbol, Blockchain, TxHash string
 	Amount                     *big.Int

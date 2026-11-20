@@ -34,8 +34,7 @@ var (
 	uint256Max = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(1))
 )
 
-// Request is what a new invoice says: fixed (ChainID, Token, Amount) or payer-chooses (AmountUSD).
-// Retainers store it as JSON by these field names: renaming a field needs a migration of retainers.request.
+// Request is fixed (Amount) or payer-chooses (AmountUSD); retainers store it as JSON, so a rename needs a migration.
 type Request struct {
 	ChainID          uint64
 	Token            string
@@ -45,7 +44,7 @@ type Request struct {
 	Details
 	Lines      []LineRequest // add up to the amount, in its unit
 	Agreed     *AgreedRequest
-	Reminders  bool // with Repeat, needs a due date and a client email
+	Reminders  bool
 	Repeat     *Repeat
 	Replaces   string // canceled in the same transaction
 	FeesPaidBy string // "" takes the profile's
@@ -54,15 +53,15 @@ type Request struct {
 	cycle      *cycle
 }
 
-// Caller is who asks for an invoice and the rules of their workflow. A retainer never stores it.
+// Caller is who asks for an invoice and their workflow's rules; a retainer never stores it.
 type Caller struct {
 	Purpose  Purpose // checkout only; "" goes by the profile's kind
 	LinkID   string
-	By       history.Actor                                                // "" is the owner
-	Livemode *bool                                                        // the mode of the key, link or job
+	By       history.Actor // "" is the owner
+	Livemode *bool
 	Stores   []string                                                     // nil: every store
 	Before   func(ctx context.Context, tx pgx.Tx) error                   // under the profile lock, before Allow
-	Allow    func() time.Duration                                         // just before the insert, so a refusal costs none
+	Allow    func() time.Duration                                         // just before the insert
 	After    func(ctx context.Context, tx pgx.Tx, invoiceID string) error // in the insert's transaction; not on a replay
 }
 
@@ -72,7 +71,7 @@ type AgreedRequest struct {
 	Date     string // YYYY-MM-DD
 }
 
-// AgreedCurrencies are EUR and the ECB's daily rate currencies, with ISO 4217 decimals; the web's copy is tested.
+// AgreedCurrencies: EUR and the ECB's daily rate currencies, ISO 4217 decimals; the web's copy is tested.
 var AgreedCurrencies = map[string]int{
 	"EUR": 2, "USD": 2, "GBP": 2, "AUD": 2, "BRL": 2, "CAD": 2, "CHF": 2, "CNY": 2, "CZK": 2, "DKK": 2, "HKD": 2,
 	"HUF": 2, "IDR": 2, "ILS": 2, "INR": 2, "ISK": 0, "JPY": 0, "KRW": 0, "MXN": 2, "MYR": 2, "NOK": 2, "NZD": 2,
@@ -118,7 +117,6 @@ const MinUSDCents = 100
 
 var minUSD = big.NewRat(MinUSDCents, 100)
 
-// USD writes cents as an AmountUSD, like "12.50".
 func USD(cents int64) string {
 	return fmt.Sprintf("%d.%02d", cents/100, cents%100)
 }
@@ -265,7 +263,7 @@ func (d Details) check() error {
 	if profile.Impersonates(d.SenderName) {
 		return fmt.Errorf("%w: senderName can't name Forwend", ErrInvalid)
 	}
-	// A saved client's rules, so a client copied from the list always fits.
+	// A saved client's rules, so a client copied from the list fits.
 	client := profile.ClientDetails{Name: d.ClientName, Email: d.ClientEmail, Address: d.ClientAddress,
 		Country: d.ClientCountry, TaxID: d.ClientTaxID}
 	if p := client.Problem("client."); p != "" {
@@ -295,8 +293,7 @@ func (d Details) check() error {
 	return nil
 }
 
-// requestHash fingerprints the checked request, so a retry matches and the body is never stored.
-// A stored hash must keep matching its retries, so a part added later joins only when set.
+// requestHash fingerprints the request for retries; a part added later joins only when set, so stored hashes match.
 func requestHash(r Request, chainID uint64, token string, amount fmt.Stringer, expiresIn time.Duration,
 	lines []line) []byte {
 	d := r.Details

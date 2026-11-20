@@ -1,4 +1,4 @@
-// Package email sends transactional email through Resend (D-65). Nothing here logs an address, a subject or a body.
+// Package email sends email through Resend; it never logs an address, a subject or a body.
 package email
 
 import (
@@ -12,25 +12,20 @@ import (
 	"time"
 )
 
-// Key is the Idempotency-Key: Resend sends one email per key for 24 hours, so a retry never sends twice.
-// Unsubscribe is a one-click unsubscribe URL (RFC 8058) the mail provider may POST to.
+// Key is Resend's Idempotency-Key (one email per key for 24 hours); Unsubscribe is an RFC 8058 one-click URL.
 type Message struct {
 	To, Subject, Text, HTML, Key, ReplyTo, Unsubscribe string
 }
 
-// Sender sends one message; the worker's tests replace it.
 type Sender interface {
 	Send(ctx context.Context, m Message) error
 }
 
-// ErrRefused: Resend refused the request as sent (400 or 422), such as a bad address; the next message may still go.
-// Other errors are about the key, the account, the quota or Resend (resend.com/docs/api-reference/errors).
+// ErrRefused is a 400 or 422: this message is bad, but the next one may still go.
 var ErrRefused = errors.New("Resend refused the message")
 
-// ResendURL is Resend's send endpoint (resend.com/docs/api-reference/emails/send-email).
 const ResendURL = "https://api.resend.com/emails"
 
-// Resend sends from From with an API key that may only send.
 type Resend struct {
 	Key, From, URL string
 	Client         *http.Client

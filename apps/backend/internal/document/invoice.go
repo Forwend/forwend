@@ -15,19 +15,18 @@ import (
 
 var ErrNotPaid = errors.New("invoice not paid")
 
-// anyOption: the invoice accepts several tokens and networks, so it is priced in USD (R-56, R-70).
+// anyOption: several tokens and networks, so the invoice is priced in USD.
 func anyOption(inv invoice.Invoice) bool {
 	return len(inv.Options) > 1
 }
 
-// standing is the invoice's status in the app's words (D-114) with the one amount that goes with it. payable is true
-// only while the pay page would still show the address, so a PDF never asks for money that can't be paid.
+// standing is the invoice's status in the app's words with the one amount that goes with it.
 type standing struct {
 	label, detail  string
 	figure, amount string
-	totals         [][2]string // under the line table
-	payable        bool
-	closed         bool     // canceled or expired: the status mark is grey
+	totals         [][2]string
+	payable        bool     // only while the pay page shows the address
+	closed         bool     // canceled or expired
 	left           *big.Int // in the current option's token
 }
 
@@ -35,7 +34,7 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 	total := Amount(inv.Amount, inv.Decimals, priced(inv))
 	token := func(n *big.Int) string { return Amount(n, inv.Decimals, inv.Symbol) }
 	closed := inv.Closed || inv.PaymentStatus == ledger.Expired || inv.PaymentStatus == ledger.ExpiredPartiallyPaid
-	// As the pay page counts it: booked to the creator, plus money still confirming, or held once the checkout closed.
+	// As the pay page counts it: booked, plus confirming, or plus held once closed.
 	received := new(big.Int)
 	if a := inv.Amounts; a != nil {
 		received.Set(a.Payable)
@@ -49,9 +48,7 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 	if left.Sign() < 0 {
 		left.SetInt64(0)
 	}
-	// Each fact once: the dates row has the dates, so the box never repeats them; the totals grow only once money arrived.
 	s := standing{figure: "Amount due", amount: total, totals: [][2]string{{"Total", total}}, left: left}
-	// When the client pays the fees, the price and each fee come before the total they make (R-228).
 	if f := inv.Fees; f.PaidBy == invoice.FeesPaidByClient && f.Net(inv.Amount).Cmp(inv.Amount) < 0 {
 		unit := func(n *big.Int) string { return Amount(n, inv.Decimals, priced(inv)) }
 		s.totals = [][2]string{{"Subtotal", unit(f.Net(inv.Amount))}}
@@ -67,7 +64,6 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 	case inv.PaymentStatus == ledger.Paid:
 		s.label, s.figure, s.amount = "Paid", "Amount paid", token(inv.Amount)
 	case inv.PaymentStatus == ledger.Canceled:
-		// A canceled invoice keeps its number and PDF as a record (D-79), and never asks for money again.
 		s.label, s.figure, s.closed = "Canceled", "Total", true
 		s.detail = payee(inv) + " canceled this invoice. Do not send money."
 	case closed && received.Sign() > 0:
@@ -99,7 +95,7 @@ func statusOf(inv invoice.Invoice, now time.Time) standing {
 	return s
 }
 
-// priced is the unit of the invoice's total: USD when the client chooses the token (D-75).
+// priced is the unit of the invoice's total: USD when the client chooses the token.
 func priced(inv invoice.Invoice) string {
 	if anyOption(inv) {
 		return "USD"
@@ -107,7 +103,6 @@ func priced(inv invoice.Invoice) string {
 	return inv.Symbol
 }
 
-// payee is who asked for the money, as the pay page names them.
 func payee(inv invoice.Invoice) string {
 	switch {
 	case inv.Issuer != nil:
@@ -118,8 +113,7 @@ func payee(inv invoice.Invoice) string {
 	return "the recipient"
 }
 
-// records is "" unless the payment records need checking, as the pay page decides it: an invoice is pending until
-// its first scan, which matters only once money arrived.
+// records mirrors the pay page: pending records matter only once money arrived.
 func records(inv invoice.Invoice) string {
 	switch a := inv.Amounts; {
 	case a == nil:
@@ -132,7 +126,7 @@ func records(inv invoice.Invoice) string {
 	return ""
 }
 
-// logo is the invoice's store logo, a PNG the API encoded (R-135); nil shows Forwend's. now decides Overdue.
+// Invoice renders inv's PDF; logo is a PNG, nil for Forwend's mark; now decides Overdue.
 func Invoice(inv invoice.Invoice, payLink string, logo []byte, now time.Time) ([]byte, error) {
 	if inv.DocumentKind == invoice.DocumentNone {
 		return nil, invoice.ErrNotFound // a document-free checkout has no invoice
@@ -181,7 +175,6 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	if inv.PaymentStatus != ledger.Paid {
 		return nil, ErrNotPaid
 	}
-	// The payer's proof of payment: when and how they paid. Settling is the creator's business (R-61).
 	s := statusOf(inv, inv.PaidAt)
 	d := start(inv, "Receipt", logo, s)
 	d.facts([2]string{"Issued", day(inv.CreatedAt)}, [2]string{"Supply date", DateText(inv.SupplyDate)},
@@ -193,7 +186,7 @@ func Receipt(inv invoice.Invoice, payLink string, logo []byte) ([]byte, error) {
 	return d.output()
 }
 
-// paidWith is "" when 1Click didn't deliver the payment, or the money was booked on another option first (R-239).
+// paidWith is "" when 1Click didn't deliver, or the money was booked on another option first.
 func paidWith(inv invoice.Invoice) string {
 	c := inv.CrossChain
 	if c == nil || c.Status != intents.Success || c.OptionID != inv.OptionID {
@@ -206,8 +199,7 @@ func paidWith(inv invoice.Invoice) string {
 	return PaidWith(sent, c.Decimals, c.Symbol, c.Blockchain)
 }
 
-// payments lists every transfer on any option of the invoice, with the part the ledger applied to it (R-121); the
-// rest is held for the payer or returned to them (D-26).
+// payments lists every transfer on any option with the part the ledger applied; the rest is held or returned.
 func (d doc) payments(inv invoice.Invoice) {
 	type transfer struct {
 		invoice.Deposit
@@ -229,13 +221,11 @@ func (d doc) payments(inv invoice.Invoice) {
 	}
 	slices.SortStableFunc(transfers, func(a, b transfer) int { return a.BlockTime.Compare(b.BlockTime) })
 
-	// A transfer's Applied column only says something when it differs from what the transfer brought.
 	split := false
 	for _, tr := range transfers {
 		split = split || tr.Paid == nil || tr.Paid.Cmp(tr.Amount) != 0
 	}
-	// What the ledger did with the money, per token and network: applied, held or returned add up to received.
-	// Transfers applied whole need none of it: their rows say it all.
+	// Per token and network: applied + held + returned = received.
 	var totals [][2]string
 	var returns []invoice.Option
 	for _, o := range received {
@@ -279,7 +269,6 @@ func (d doc) payments(inv invoice.Invoice) {
 		}
 		return append(row, d.fit(applied, t.w(3), 12))
 	}
-	// The totals and returns stay with the last transfer, like a line table's totals.
 	end := 2 + d.totalsHeight(totals) + float64(len(returns))*(2*rowLine+2)
 	first := end
 	if len(transfers) > 0 {
@@ -333,8 +322,7 @@ func (d doc) payments(inv invoice.Invoice) {
 	d.note(records(inv))
 }
 
-// booked is every transfer the ledger booked to the option, wherever the money went since: still owed, held,
-// settled, paid as fees or returned. Payments counts received money the same way.
+// booked is all money booked to the option, wherever it went since: owed, held, settled, fees or returned.
 func booked(a *ledger.Amounts) *big.Int {
 	n := new(big.Int)
 	if a != nil {
@@ -356,7 +344,7 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 		date = inv.PaidAt
 	}
 	d := open(kind, InvoiceNumber(inv), author, date, logo, !inv.Livemode, inv.ID)
-	// The client's accounts team matches the invoice by it (R-90). Never cut: each line holds at least one byte.
+	// Never cut: the client's accounts team matches the invoice by it.
 	d.SetFont(font, "", 9)
 	d.text(muted)
 	if text := "Reference " + inv.Reference; inv.Reference != "" {
@@ -380,7 +368,6 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 	}
 	d.summary(s)
 
-	// Side by side. Each block is cut to fit, so neither reaches the end of the page.
 	top, bottom, x := d.GetY(), d.GetY(), margin
 	if i := inv.Issuer; i != nil {
 		tax := ""
@@ -393,8 +380,8 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 		bottom = max(bottom, d.party(x, top, "From", inv.SenderName))
 		x += width / 2
 	}
-	// Never the client's email: the PDF is public to anyone with the invoice id. A business client's tax ID belongs
-	// on its invoice (VAT Directive art. 226).
+	// Never the client's email: the PDF is public to anyone with the invoice id.
+	// A business client's tax ID belongs on its invoice (VAT Directive art. 226).
 	if inv.ClientName != "" || inv.ClientAddress != "" || inv.ClientCountry != "" || inv.ClientTaxID != "" {
 		tax := ""
 		if inv.ClientTaxID != "" {
@@ -409,14 +396,13 @@ func start(inv invoice.Invoice, kind string, logo []byte, s standing) doc {
 	return d
 }
 
-// summary is the status panel under the header: the invoice's state and the amount that matters now.
 func (d doc) summary(s standing) {
 	const pad, mark, textW = 5.0, 2.4, 92.0
 	textX := margin + pad + mark + 2.6
 	amountW := margin + width - pad - (textX + textW + 6)
 	d.SetFont(font, "", 9.5)
 	detail := d.fit(s.detail, textW, 6)
-	// A huge amount gets a smaller size, then wraps; it is never cut.
+	// A huge amount shrinks, then wraps; it is never cut.
 	size := 17.0
 	d.SetFont(font, "B", size)
 	for size > 10 && d.GetStringWidth(s.amount) > amountW {
@@ -465,10 +451,8 @@ func (d doc) summary(s standing) {
 	d.SetXY(margin, y+h+6)
 }
 
-// items is the line table (R-88), or one row without lines, then its totals; the last row moves to the totals' page,
-// so they never start a page alone.
+// items is the line table, or one row without lines, then its totals; totals never start a page alone.
 func (d doc) items(inv invoice.Invoice, totals [][2]string, agreedNote string) {
-	// With items the title no longer names the one line, so it heads the table.
 	var heading []string
 	if len(inv.Lines) > 0 && inv.Title != "" {
 		d.SetFont(font, "B", 11)
@@ -499,7 +483,6 @@ func (d doc) items(inv invoice.Invoice, totals [][2]string, agreedNote string) {
 	if inv.Agreed != nil {
 		end += 3 + 2*4.2
 	}
-	// The title and header start a page only with the first row, and with the totals when that row is the last.
 	first := height(rows[0])
 	if len(rows) == 1 {
 		first += end
@@ -530,7 +513,6 @@ func (d doc) items(inv invoice.Invoice, totals [][2]string, agreedNote string) {
 	d.hairline(line)
 	d.Ln(1)
 	d.totals(totals, 84, true)
-	// The price agreed with the client in fiat (R-93), quietly under the total the invoice asks for.
 	if a := inv.Agreed; a != nil {
 		d.Ln(2)
 		d.text(muted)
@@ -544,8 +526,7 @@ func (d doc) items(inv invoice.Invoice, totals [][2]string, agreedNote string) {
 	d.Ln(6)
 }
 
-// lineUnit is what an invoice's lines (R-88) are in: the main option's base units, which can differ from the paid
-// one's, named USD when the client chooses (D-75), on the receipt too.
+// lineUnit: lines are in the main option's base units, which can differ from the paid option's.
 func lineUnit(inv invoice.Invoice) (int, string) {
 	for _, o := range inv.Options {
 		if o.ID == inv.ID && anyOption(inv) {

@@ -15,8 +15,7 @@ func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool}
 }
 
-// CheckSession refuses a token issued before the user signed out everywhere (R-137). A user not signed up yet has
-// no cutoff.
+// CheckSession refuses a token issued before the user signed out everywhere.
 func (s *Service) CheckSession(ctx context.Context, t Token) error {
 	var revoked bool
 	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE privy_user_id = $1

@@ -13,7 +13,7 @@ func TestListEvents(t *testing.T) {
 		('invoice.paid', $1, jsonb_build_object('option', $1::text)),
 		('invoice.held', $1, jsonb_build_object('option', $1::text, 'amount', '700000')),
 		('invoice.settled', $1, jsonb_build_object('option', $1::text))`, id)
-	// Another profile's event: moved there under a lifted guard, as in the cancel tests.
+	// Another profile's event, moved there under a lifted guard.
 	e.exec(t, `INSERT INTO outbox_events (kind, invoice_id, payload) VALUES ('invoice.paid', $1, jsonb_build_object('option', $1::text))`, other)
 	e.exec(t, `ALTER TABLE invoices DISABLE TRIGGER invoices_guard`)
 	e.exec(t, `UPDATE invoices SET profile_id = $2 WHERE id = $1`, other, e.walletless)

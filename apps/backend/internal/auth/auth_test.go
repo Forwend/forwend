@@ -181,7 +181,7 @@ func TestFailedRefreshDoesNotExtendKeyAge(t *testing.T) {
 	v.now = func() time.Time { return now }
 	token := authtest.Sign(t, p.Key("key-2"), "key-2", claims())
 
-	now = start.Add(MaxKeyAge + time.Second) // the list is old and Privy is down: keep the last list for KeyGrace
+	now = start.Add(MaxKeyAge + time.Second)
 	down = true
 	if _, err := v.Verify(ctx, token); err != nil {
 		t.Fatalf("Privy down: %v", err)

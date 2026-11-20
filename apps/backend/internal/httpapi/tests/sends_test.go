@@ -13,8 +13,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/reauth"
 )
 
-// sendsAPI: Alice's freelancer wallet holds 10 tokens of an Anvil chain where Privy's paymaster takes the fee in the
-// token, and Bob is an Admin of her merchant profile.
+// sendsAPI: Alice holds 10 tokens on Anvil, whose paymaster takes fees in them; Bob admins her merchant.
 func sendsAPI(t *testing.T) (invoiceEnv, string) {
 	t.Helper()
 	anvil := chaintest.Start(t)
@@ -36,7 +35,6 @@ func sendsAPI(t *testing.T) (invoiceEnv, string) {
 	return e, token
 }
 
-// R-211, D-61: only the owner, freshly signed in, prepares a send; a team member, even an Admin, never moves money.
 func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 	e, token := sendsAPI(t)
 	body := `{"chainId": 31337, "token": "` + token + `", "to": "0x00000000000000000000000000000000000000cc",
@@ -65,8 +63,6 @@ func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 		errorCode(r) != "invalid_value" {
 		t.Errorf("the zero address: %d %v", r.status, r.body)
 	}
-	// D-49: the review is only a check, so a refreshed token prepares; approving the send for signing needs a fresh
-	// sign-in, and answers with the send approved.
 	refreshed := e.signedAt(t, "POST", path, "did:privy:alice", signedInAt.Add(2*time.Second), body)
 	if refreshed.status != http.StatusCreated {
 		t.Fatalf("a refreshed token prepares: %d %v", refreshed.status, refreshed.body)
@@ -80,7 +76,6 @@ func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 		r.body["status"] != "approved" || r.body["sendId"] != refreshed.body["sendId"] {
 		t.Errorf("a fresh sign-in approves: %d %v", r.status, r.body)
 	}
-	// Once: a second approve may follow a signature whose answer was lost, so it never lets the browser sign again.
 	if r := e.call(t, "POST", approve, "did:privy:alice", "", ""); r.status != http.StatusConflict ||
 		errorCode(r) != "send_approved" {
 		t.Errorf("a second approve: %d %v", r.status, r.body)
@@ -95,7 +90,6 @@ func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 	if r := e.call(t, "POST", path, "did:privy:bob", "", body); r.status != http.StatusForbidden {
 		t.Errorf("another user: %d %v", r.status, r.body)
 	}
-	// A key never moves money: no scope has money.move, and a key can't give a fresh sign-in.
 	made := e.call(t, "POST", "/v1/profiles/"+e.aliceProfile+"/keys", "did:privy:alice", "",
 		`{"name": "Server", "scopes": ["invoices.read"]}`)
 	secret, _ := made.body["secret"].(string)
@@ -110,15 +104,12 @@ func TestOnlyTheOwnerPreparesAndOnlyAFreshSignInApprovesASend(t *testing.T) {
 		`{"name": "Mover", "scopes": ["money.move"]}`); r.status != http.StatusUnprocessableEntity {
 		t.Errorf("a key with money.move: %d %v", r.status, r.body)
 	}
-	// The approved send holds the wallet: its signature may have gone out though the browser lost the answer.
 	if r := e.call(t, "POST", path, "did:privy:alice", "", body); r.status != http.StatusConflict ||
 		errorCode(r) != "send_in_progress" {
 		t.Errorf("a new send while an approved one may be on its way: %d %v", r.status, r.body)
 	}
 }
 
-// R-219, D-49: the two-step methods Forwend recorded behind a fresh sign-in stand in for the emailed code on a send. A
-// stolen session can set one up at Privy, but can't record it, so that one changes nothing.
 func TestRecordedTwoStepStandsInForTheEmailedCodeOnASend(t *testing.T) {
 	e, token := sendsAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/sends"
@@ -153,8 +144,7 @@ func TestRecordedTwoStepStandsInForTheEmailedCodeOnASend(t *testing.T) {
 	if r := e.signedAt(t, "PUT", "/v1/me/two-step", "did:privy:alice", stale, both); r.status != http.StatusUnauthorized {
 		t.Errorf("a stale session records its methods: %d %v", r.status, r.body)
 	}
-	// Right after the setup, Privy can answer for a moment without the method added last: the record reads again
-	// until it lists every method the user set up.
+	// Privy can briefly answer without the newest method: the record reads again until it shows.
 	atPrivy(map[string]int64{"passkey": 90})
 	reauth.TwoStepWait = 50 * time.Millisecond
 	go func() {
@@ -180,8 +170,6 @@ func TestRecordedTwoStepStandsInForTheEmailedCodeOnASend(t *testing.T) {
 	}
 }
 
-// R-212, R-225: only the owner reads and moves the send on. A paymaster send's approve gives the Privy request the
-// user's key signs, and submit sends it with that signature; it takes no hash from the browser.
 func TestTheOwnerSignsAndReadsASend(t *testing.T) {
 	e, token := sendsAPI(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/sends"
@@ -212,7 +200,7 @@ func TestTheOwnerSignsAndReadsASend(t *testing.T) {
 		http.StatusUnprocessableEntity {
 		t.Errorf("both a hash and a signature: %d %v", r.status, r.body)
 	}
-	// Privy has the hash at once here; the api waits for it before answering.
+	// Privy has the hash at once here.
 	privyHash := "0x" + strings.Repeat("cd", 32)
 	e.wallets.Lock()
 	e.wallets.Hashes["tx-"+r.body["sendId"].(string)] = privyHash

@@ -24,8 +24,7 @@ func OrNullTime(t time.Time) *string {
 	return OrNull(t.Format(time.RFC3339))
 }
 
-// Forwend makes invoices under keys with these prefixes in the profile's own key space: a job's payments, a payment
-// link's checkouts and a retainer's months. A caller who took such a key first would block that invoice for good.
+// Forwend's own invoices use these key prefixes; a caller taking such a key first would block that invoice for good.
 var reservedKeyPrefixes = []string{"job:", "link:", "retainer:"}
 
 func IdempotencyKey(r *http.Request) (string, error) {

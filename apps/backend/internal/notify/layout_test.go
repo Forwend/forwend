@@ -2,7 +2,6 @@ package notify
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -92,7 +91,6 @@ func TestEmailEscapesTypedNames(t *testing.T) {
 	}
 }
 
-// The header's logo is a file the web app serves, so moving it would break every email's header.
 func TestTheLogoIsInTheWebApp(t *testing.T) {
 	if _, err := os.Stat(webPublic + logo); err != nil {
 		t.Fatal(err)
@@ -100,30 +98,3 @@ func TestTheLogoIsInTheWebApp(t *testing.T) {
 }
 
 const webPublic = "../../../web/public"
-
-// With EMAIL_SAMPLES_DIR set, writes each email's HTML there for screenshots (docs/runs); otherwise skipped. The
-// logo is copied beside them, so a preview shows it without the hosted site.
-func TestWriteEmailSamples(t *testing.T) {
-	dir := os.Getenv("EMAIL_SAMPLES_DIR")
-	if dir == "" {
-		t.Skip("EMAIL_SAMPLES_DIR not set")
-	}
-	png, err := os.ReadFile(webPublic + logo)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, filepath.Base(logo)), png, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for name, v := range samples() {
-		m, err := message(Site{WebURL: "https://forwend.com", PostalAddress: os.Getenv("EMAIL_POSTAL_ADDRESS"),
-			Support: os.Getenv("SUPPORT_EMAIL")}, v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		html := strings.Replace(m.HTML, "https://forwend.com"+logo, filepath.Base(logo), 1)
-		if err := os.WriteFile(filepath.Join(dir, name+".html"), []byte(html), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-}

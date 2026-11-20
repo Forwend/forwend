@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// ErrNotPublic is a connection Dialer refused: the address is not public.
 var ErrNotPublic = errors.New("address not public")
 
 // Client checks each resolved address immediately before connecting, including after DNS changes.
@@ -20,7 +19,6 @@ func Client(allowLoopback bool) *http.Client {
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
-// Dialer refuses, at connection time, every address that is not public (loopback only when allowed).
 func Dialer(allowLoopback bool) *net.Dialer {
 	return &net.Dialer{Timeout: 5 * time.Second, Control: func(_, address string, _ syscall.RawConn) error {
 		host, _, err := net.SplitHostPort(address)

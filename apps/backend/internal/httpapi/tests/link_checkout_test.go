@@ -13,13 +13,12 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
-// R-142, D-54: a payer pays through a payment link. Each link takes at most 5 Pay calls here, its rate limit's burst.
 func TestLinkCheckout(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	const eurc = "0x3333333333333333333333333333333333333333"
 	shop := e.merchant(t)
-	// The links are the second store's, so nothing falls back to the profile's first store.
+	// The second store, so nothing falls back to the profile's first store.
 	const store = storeB
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		VALUES (84532, 'evm', $1, 'EURC', 2, true)`, eurc)
@@ -53,7 +52,6 @@ func TestLinkCheckout(t *testing.T) {
 		return e.call(t, "POST", "/v1/links/"+slug+"/pay", "", key, body)
 	}
 
-	// The page reads the link and counts a visit; it makes nothing (D-54).
 	r := e.call(t, "GET", "/v1/links/"+fixed, "", "", "")
 	brand, _ := r.body["brand"].(map[string]any)
 	if r.status != http.StatusOK || len(r.body) != 10 || r.body["livemode"] != false ||
@@ -81,7 +79,6 @@ func TestLinkCheckout(t *testing.T) {
 		t.Fatalf("after two visits: %v, %d invoices", r.body["visits"], invoices())
 	}
 
-	// Pay makes a payer-chooses invoice with the link's title and store, its tokens and its default close.
 	made := pay(fixed, "k-1", `{}`)
 	token, _ := made.body["payToken"].(string)
 	if made.status != http.StatusCreated || len(token) != 64 {
@@ -108,7 +105,6 @@ func TestLinkCheckout(t *testing.T) {
 		t.Errorf("an amount on a fixed link: %d %v", r.status, r.body)
 	}
 
-	// An open link takes the payer's amount within its limits.
 	for _, amount := range []string{"", "0.5", "501", "abc"} {
 		if r := pay(open, "o-"+amount, `{"amountUsd": "`+amount+`"}`); errorCode(r) != "invalid_value" {
 			t.Errorf("amountUsd %q: %d %v", amount, r.status, r.body)
@@ -119,7 +115,6 @@ func TestLinkCheckout(t *testing.T) {
 		t.Fatalf("Pay 25 USD: %d %v", r.status, r.body)
 	}
 
-	// A payer's Idempotency-Key never replays the owner's invoice with the same key.
 	owners := e.post(t, alice, shop, "shared-key", `{"chainId": 84532, "token": "`+usdc+`", "amount": "1000000"}`)
 	donations := save("dddddddd-0000-4000-8000-000000000003", `{"title": "Donations", "storeId": "`+store+`"}`)
 	if r := pay(donations, "shared-key", `{"amountUsd": "3"}`); r.status != http.StatusCreated ||
@@ -127,7 +122,6 @@ func TestLinkCheckout(t *testing.T) {
 		t.Fatalf("Pay with the owner's key: %d %v, owner's %v", r.status, r.body, owners.body["payToken"])
 	}
 
-	// An ended, full or off link says why and makes nothing.
 	yesterday := time.Now().UTC().AddDate(0, 0, -1).Format(time.DateOnly) + "T23:59:59Z"
 	save("dddddddd-0000-4000-8000-000000000003", `{"title": "Donations", "storeId": "`+store+`", "endsAt": "`+yesterday+`"}`)
 	oneOff := save("dddddddd-0000-4000-8000-000000000004", `{"title": "One-off", "amountUsd": "2", "storeId": "`+store+`",
@@ -155,7 +149,6 @@ func TestLinkCheckout(t *testing.T) {
 	}
 }
 
-// R-142: Pay is limited per link and for all links together.
 func TestLinkPayIsRateLimited(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
@@ -169,7 +162,6 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 	if r := e.call(t, "POST", "/v1/links/"+slug+"/pay", "", "k-5", `{}`); errorCode(r) != "rate_limited" {
 		t.Fatalf("a sixth Pay on one link: %d %v", r.status, r.body)
 	}
-	// The budget for everyone is asked only by a Pay that would make an invoice (R-117), and a refusal makes none.
 	links := link.NewService(e.pool, invoice.NewService(e.pool))
 	asked := 0
 	refuse := func() time.Duration { asked++; return time.Second }
@@ -184,7 +176,6 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 		link.ErrInvalid) {
 		t.Errorf("a key over %d bytes: %v", link.MaxPayKey, err)
 	}
-	// A repeated key gets its invoice back from create's replay, before the budget is asked.
 	if _, created, err := links.Pay(t.Context(), slug, "k-0", link.PayRequest{Allow: refuse}); err != nil || created {
 		t.Errorf("Pay with a used key: created %v, %v", created, err)
 	}
@@ -205,10 +196,9 @@ func TestLinkPayIsRateLimited(t *testing.T) {
 	}
 }
 
-// R-117: a Pay that makes no invoice, refused by invoice create itself, spends none of the budget for everyone.
 func TestLinkPayRefusedByCreateSpendsNoSharedBudget(t *testing.T) {
 	e := invoiceAPI(t)
-	// An active legacy link can still have incomplete setup. It must not spend the shared creation budget.
+	// Links forced active on a profile that can't invoice: create refuses each Pay.
 	for i := range 5 {
 		r := e.call(t, "PUT", "/v1/profiles/"+e.walletless+"/links/ffffffff-0000-4000-8000-00000000000"+strconv.Itoa(i),
 			"did:privy:alice", "", `{"title": "Junk", "amountUsd": "1", "active": false}`)
@@ -232,8 +222,6 @@ func TestLinkPayRefusedByCreateSpendsNoSharedBudget(t *testing.T) {
 	}
 }
 
-// R-142: behind a trusted proxy Pay is limited per payer, so one stranger's requests can't stop a busy link for
-// everyone. The address is the proxy's, the last in X-Forwarded-For: earlier ones are whatever the client sent.
 func TestOneStrangerCantStopABusyLink(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",
@@ -260,7 +248,6 @@ func TestOneStrangerCantStopABusyLink(t *testing.T) {
 	if r := pay("198.51.100.7", "p-0"); r.status != http.StatusCreated {
 		t.Errorf("another payer on the same link: %d %v", r.status, r.body)
 	}
-	// An IPv6 network is one payer: its /64 gives it more addresses than any limit.
 	for i := range 5 {
 		if r := pay("2001:db8::"+strconv.Itoa(i+1), "v6-"+strconv.Itoa(i)); r.status != http.StatusCreated {
 			t.Fatalf("Pay %d from one IPv6 network: %d %v", i, r.status, r.body)
@@ -271,8 +258,6 @@ func TestOneStrangerCantStopABusyLink(t *testing.T) {
 	}
 }
 
-// R-188: a link checkout that closed unpaid no longer counts toward the day's link quota, so strangers who open
-// checkouts and never pay can't turn off a profile's links for the rest of the day.
 func TestUnpaidClosedLinkCheckoutsDontUseUpTheDaysQuota(t *testing.T) {
 	e := invoiceAPI(t)
 	r := e.call(t, "PUT", "/v1/profiles/"+e.aliceProfile+"/links/eeeeeeee-0000-4000-8000-000000000001",

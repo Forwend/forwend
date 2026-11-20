@@ -8,13 +8,12 @@ import (
 )
 
 type createBody struct {
-	StoreID   string `json:"storeId"`
-	AmountUSD string `json:"amountUsd"`
-	Reference string `json:"reference"`
-	Title     string `json:"title"`
-	ExpiresIn *int64 `json:"expiresIn"`
-	// owner or client (D-122); left out: the profile's choice.
-	FeesPaidBy string          `json:"feesPaidBy"`
+	StoreID    string          `json:"storeId"`
+	AmountUSD  string          `json:"amountUsd"`
+	Reference  string          `json:"reference"`
+	Title      string          `json:"title"`
+	ExpiresIn  *int64          `json:"expiresIn"`
+	FeesPaidBy string          `json:"feesPaidBy"` // "": the profile's choice
 	ReturnURL  string          `json:"returnUrl"`
 	Metadata   json.RawMessage `json:"metadata"`
 	Customer   struct {

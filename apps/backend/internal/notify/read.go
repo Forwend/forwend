@@ -108,11 +108,11 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 		symbol, amount, hash string
 		issuer, typed        string
 		client, replyTo, due string
-		pay                  string // the pay link's token
+		pay                  string
 		decimals, options    int
 		chainID              uint64
 		live                 bool
-		paidWith             []string // a payment through NEAR Intents: symbol, chain, amount sent, decimals
+		paidWith             []string // symbol, chain, amount sent, decimals
 	)
 	if err := tx.QueryRow(ctx, `SELECT p.email_notifications, u.login_email, m.payer_email, m.number,
 		    coalesce(m.issuer_name, ''), coalesce(m.sender_name, ''), t.symbol, t.decimals, o.chain_id, o.amount::text,
@@ -136,7 +136,6 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 	if pay == "" && (e.kind == outbox.Sent || e.kind == outbox.Receipt) {
 		return view{}, nil, false, nil
 	}
-	// The payer's receipt goes to the address they gave, whatever the owner's setting.
 	if e.kind == outbox.Receipt {
 		on, to = true, payer
 	}
@@ -177,7 +176,7 @@ func invoiceEmail(ctx context.Context, tx pgx.Tx, e event, webURL string) (view,
 		v.Details = append(v.Details, row{Label: "Paid with",
 			Value: document.PaidWith(sent, places, paidWith[0], paidWith[1])})
 	}
-	// The payer's receipt and the owner's own emails say test mode too: testnet tokens never read as real money.
+	// Every email marks test mode, so testnet tokens never read as real money.
 	return marked(v, live), to, on, nil
 }
 

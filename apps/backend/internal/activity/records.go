@@ -13,8 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// What a wallet transfer was (R-108). Money in with no invoice and from none of the user's profiles is unclassified
-// until the user gives it one of Labels.
+// Transfer classes; unclassified money in can take one of Labels from the user.
 const (
 	ClassInvoice          = "invoice"
 	ClassPayment          = "payment"
@@ -34,7 +33,6 @@ var (
 	ErrNotLabelable = errors.New("only money in that Forwend can't classify takes a label")
 )
 
-// TransferInvoice is the main invoice row; ClientName is "" when it has none.
 type TransferInvoice struct {
 	ID         string
 	Number     int64
@@ -47,25 +45,21 @@ type TransferPayment struct {
 	DocumentKind    invoice.DocumentKind
 	PolicyException string
 	Unreconciled    bool
-	// Fees are what the settlement behind the transfer paid out of the payment before the rest reached the wallet
-	// (R-228); nil when it paid none.
-	Fees *big.Int
+	Fees            *big.Int // paid out before settling; nil if none
 }
 
-// Labelable: money in that Forwend can't classify, or a payment with a policy exception or not reconciled, takes the
-// user's label (R-108).
+// Labelable: unclassifiable money in, or a payment with a policy exception or not reconciled.
 func (t Transfer) Labelable() bool {
 	return t.Direction == "in" && !t.own && (t.Payment == nil && t.Invoice == nil ||
 		t.Payment != nil && (t.Payment.PolicyException != "" || t.Payment.Unreconciled))
 }
 
-// USDValue is the amount at receipt in USD: 1 USD per USD stablecoin (D-75, D-82).
+// USDValue counts 1 USD per USD stablecoin.
 func (t Transfer) USDValue() *big.Rat {
 	return new(big.Rat).SetFrac(t.Amount, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(t.Decimals)), nil))
 }
 
-// RecordsValue is the USD value in the records currency (R-110) at the ECB rates of the latest day on or before
-// the transfer's UTC day, within 7 days, rounded half up. ok is false without a records currency or such a rate.
+// RecordsValue uses the latest ECB rate within 7 days up to the transfer's UTC day, rounded half up.
 func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
 	if t.RecordsCurrency == "" || t.fx == nil {
 		return "", time.Time{}, false
@@ -75,7 +69,7 @@ func (t Transfer) RecordsValue() (amount string, day time.Time, ok bool) {
 	return v.Mul(v, t.fx.cur).FloatString(invoice.AgreedCurrencies[t.RecordsCurrency]), t.fx.day, true
 }
 
-// Classification is one of the Class constants, or the user's label (R-108).
+// Classification is one of the Class constants, or the user's label.
 func (t Transfer) Classification() string {
 	switch {
 	case t.Payment != nil && (t.Payment.PolicyException != "" || t.Payment.Unreconciled):
@@ -98,15 +92,12 @@ func (t Transfer) Classification() string {
 	}
 }
 
-// MaxExportRows bounds one export or statement (R-118): anyone can send dust to a wallet and the watcher records each
-// transfer, so the work of one request must not grow with it.
+// MaxExportRows bounds one export: anyone can send dust to a wallet, and each transfer is recorded.
 const MaxExportRows = 10000
 
 var ErrTooMany = errors.New("too many transactions in the period")
 
-// ExportTransfers calls header with the records currency, then fn with each transfer in [from, to), newest first,
-// all from one snapshot, for the export and statement (R-108, R-112); past MaxExportRows it returns ErrTooMany. The
-// caller has checked the user's access to the profile.
+// ExportTransfers reads [from, to) from one snapshot, newest first; the caller has checked access.
 func (s *Service) ExportTransfers(ctx context.Context, profileID string, from, to time.Time, header func(string) error, fn func(Transfer) error) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
@@ -155,7 +146,7 @@ func (s *Service) ExportTransfers(ctx context.Context, profileID string, from, t
 	return tx.Commit(ctx)
 }
 
-// SetLabel clears the label with "" (R-108).
+// SetLabel clears the label with "".
 func (s *Service) SetLabel(ctx context.Context, profileID string, chainID uint64, txHash string, logIndex uint64,
 	label string) error {
 	if label != "" && !slices.Contains(Labels, label) {
@@ -191,7 +182,6 @@ func (s *Service) SetLabel(ctx context.Context, profileID string, chainID uint64
 	return nil
 }
 
-// RecordsCurrency is the profile's other records currency (R-110), "" for none.
 func (s *Service) RecordsCurrency(ctx context.Context, profileID string) (string, error) {
 	var currency string
 	if err := s.pool.QueryRow(ctx, "SELECT coalesce(records_currency, '') FROM profiles WHERE id = $1", profileID).
@@ -201,7 +191,7 @@ func (s *Service) RecordsCurrency(ctx context.Context, profileID string) (string
 	return currency, nil
 }
 
-// USD is refused: every record has it already. "" clears the currency.
+// SetRecordsCurrency refuses USD, which every record has already; "" clears it.
 func (s *Service) SetRecordsCurrency(ctx context.Context, profileID, currency string) error {
 	if _, ok := invoice.AgreedCurrencies[currency]; currency != "" && (!ok || currency == "USD") {
 		return fmt.Errorf("%w: currency must be EUR or a currency the ECB publishes a rate for, other than USD", ErrInvalid)

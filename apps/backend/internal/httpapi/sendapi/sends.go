@@ -100,7 +100,6 @@ func approveSend(sends *send.Service) http.HandlerFunc {
 
 func submitSend(sends *send.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// txHash for a send the browser signed; signature, over the approve's privyRequest, for a paymaster send.
 		var body struct {
 			TxHash    string `json:"txHash"`
 			Signature string `json:"signature"`

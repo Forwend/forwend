@@ -78,7 +78,6 @@ func toCrossQuote(q invoice.CrossQuote) crossQuoteJSON {
 		Deadline: httpio.OrNullTime(q.Deadline), CreatedAt: httpio.OrNullTime(q.CreatedAt), Signed: signed}
 }
 
-// What the payer can pay with from another chain, and about how much of each.
 func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		due, decimals, tokens, err := invoices.CrossChainTokens(r.Context(), r.PathValue("payToken"))
@@ -99,7 +98,6 @@ func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// A dry quote prices a pick, without an address.
 func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
@@ -109,7 +107,6 @@ func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc
 	}
 }
 
-// The deposit address for the payer's token and refund address, signed by 1Click.
 func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {

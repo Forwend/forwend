@@ -18,26 +18,25 @@ import (
 type Owed struct {
 	Kind         string // overdue or partlyPaid
 	InvoiceID    string
-	Number       *int64 // nil for a checkout session
+	Number       *int64
 	Purpose      Purpose
 	DocumentKind DocumentKind
 	Reference    string
 	Title        string
 	ClientName   string
-	DueDate      string // YYYY-MM-DD; "" without one
-	DaysLate     int    // overdue only
-	OptionCount  int    // above 1 the client chooses: an unpaid row reads in USD
+	DueDate      string // YYYY-MM-DD
+	DaysLate     int
+	OptionCount  int // above 1 the client chooses: an unpaid row reads in USD
 	chain.Asset
 	Amount *big.Int
 }
 
-// OwedTotal is what is left to pay in one token, over every row and not only the page's.
+// OwedTotal covers every row, not only the page's.
 type OwedTotal struct {
 	chain.Asset
 	Amount *big.Int
 }
 
-// OwedPage holds the first rows; Count and Totals cover them all.
 type OwedPage struct {
 	Items  []Owed
 	Count  int
@@ -51,7 +50,6 @@ func (s *Service) Owed(ctx context.Context, profileID string, stores []string, l
 	if limit < 1 || limit > MaxLimit {
 		return OwedPage{}, fmt.Errorf("%w: limit must be 1 to %d", ErrInvalid, MaxLimit)
 	}
-	// A checkout session has no number; a link invoice without one yet is its payer's alone.
 	args := []any{profileID}
 	where := `invoices.profile_id = $1 AND (invoices.number IS NOT NULL OR invoices.document_kind = 'none')
 		AND (invoices.due_date < (now() AT TIME ZONE 'UTC')::date OR invoices.payment_status = 'partially_paid')

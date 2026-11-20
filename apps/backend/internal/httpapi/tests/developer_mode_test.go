@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-// R-221, D-120: Developer mode is the profile's; what the dashboard makes takes it, and each mode lists only its own.
 func TestDeveloperModeIsTheProfilesMode(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -85,7 +84,6 @@ func TestDeveloperModeIsTheProfilesMode(t *testing.T) {
 	if r := e.call(t, "PUT", base+"/webhooks/"+hook, alice, "", hookBody); r.status != http.StatusNotFound {
 		t.Errorf("changing the live endpoint in Developer mode: %d %v", r.status, r.body)
 	}
-	// The live endpoint and key are out of reach by id too, until the mode is switched back.
 	for _, c := range []struct{ method, path, body string }{
 		{"GET", "/webhooks/" + hook + "/secret", ""},
 		{"POST", "/webhooks/" + hook + "/secret/rotate", "{}"},
@@ -110,7 +108,6 @@ func TestDeveloperModeIsTheProfilesMode(t *testing.T) {
 	}
 }
 
-// D-120: a new profile starts in live mode once a mainnet is on.
 func TestNewProfilesStartLiveOnceAMainnetIsOn(t *testing.T) {
 	e := invoiceAPI(t)
 	e.exec(t, "UPDATE chains SET enabled = true WHERE chain_id = 8453")

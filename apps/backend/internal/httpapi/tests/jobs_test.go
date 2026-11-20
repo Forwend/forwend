@@ -13,8 +13,6 @@ const jobBody = `{"title": "Logo design", "scope": "Three logo ideas, two rounds
 	"payments": [{"title": "Deposit", "amountUsd": "300", "dueDays": 7, "onAccept": true},
 	             {"title": "Final delivery", "amountUsd": "700.50", "dueDays": 14}]}`
 
-// R-177: the jobs list pages by its newest-first order and searches the title and client name; each item still sums all
-// its own payments.
 func TestJobPages(t *testing.T) {
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
@@ -105,7 +103,6 @@ func TestJobs(t *testing.T) {
 	if !reflect.DeepEqual(r.body["payments"], payments) {
 		t.Fatalf("payments %v", r.body["payments"])
 	}
-	// "300.00" for "300" is the same request.
 	if again := e.call(t, "POST", jobs, alice, "job-1", strings.Replace(jobBody, `"300"`, `"300.00"`, 1)); again.status != http.StatusOK ||
 		again.body["jobId"] != id {
 		t.Fatalf("same request: %d %v", again.status, again.body)
@@ -289,7 +286,6 @@ func TestJobs(t *testing.T) {
 	if list.status != http.StatusOK || len(items) != 1 {
 		t.Fatalf("list: %d %v", list.status, list.body)
 	}
-	// The accepted change counts in the total; the withdrawn one is gone.
 	want := map[string]any{"jobId": id, "title": "Logo design", "clientName": "Bob Ltd", "totalUsd": "1150.50",
 		"payments": float64(3), "paid": float64(0), "acceptedAt": owned.body["acceptedAt"], "createdAt": owned.body["createdAt"]}
 	if !reflect.DeepEqual(items[0], want) {

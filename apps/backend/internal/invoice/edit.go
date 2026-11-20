@@ -12,24 +12,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxMemo bounds the memo, the owner's own note on an invoice.
 const MaxMemo = 2000
 
 var ErrNotEditable = errors.New("invoice details can't change after money was seen or the checkout closed")
 
-// Editable is what the owner may change: the first three any time, the rest before money while open.
+// Editable: the first line any time; the second only before money is seen while open.
 type Editable struct {
 	Memo, ClientEmail, ReturnURL string
 	Reference, Note, DueDate     string
 }
 
-// Update is an edit the payer sees: a due date's has its old and new date.
 type Update struct {
 	At              time.Time
 	Field, From, To string
 }
 
-// Edit saves e and writes one history row for each field that changed.
 func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (Invoice, error) {
 	e = Editable{strings.TrimSpace(e.Memo), strings.TrimSpace(e.ClientEmail), strings.TrimSpace(e.ReturnURL),
 		strings.TrimSpace(e.Reference), strings.TrimSpace(e.Note), strings.TrimSpace(e.DueDate)}
@@ -74,7 +71,6 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 		if was == e {
 			return nil
 		}
-		// A link set before its store's origins changed stays until the owner changes it.
 		if e.ReturnURL != was.ReturnURL && e.ReturnURL != "" && main.Store != "" {
 			store, err := profile.InvoiceStore(ctx, tx, profileID, main.Store)
 			if err != nil {
@@ -142,7 +138,6 @@ func (s *Service) memo(ctx context.Context, id string) (string, error) {
 	return memo, nil
 }
 
-// updates are the invoice's edits the payer sees, newest first.
 func (s *Service) updates(ctx context.Context, id string) ([]Update, error) {
 	rows, err := s.pool.Query(ctx, `SELECT at, data->>'field', coalesce(data->>'from', ''), coalesce(data->>'to', '')
 		FROM history_events WHERE invoice_id = $1 AND kind = $2 AND data->>'field' IN ('reference', 'note', 'dueDate')

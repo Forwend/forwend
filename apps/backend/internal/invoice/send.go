@@ -12,23 +12,20 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Send to client limit per invoice (R-94); outbox.MaxClientEmails caps all the user's client emails (R-116).
+// Send to client limit per invoice; outbox.MaxClientEmails caps all the user's client emails.
 const SendEvery = 24 * time.Hour
 
 var (
 	ErrNoClientEmail = errors.New("invoice has no client email")
-	// ErrClosed: the payer can no longer pay the invoice: paid, settled, expired, its checkout closed, or canceled.
-	ErrClosed = errors.New("invoice is closed")
+	ErrClosed        = errors.New("invoice is closed")
 )
 
-// Send is one client email, a Send to client or a reminder (with its Step); SentAt and FailedAt start zero.
 type Send struct {
 	Step                          string
 	RequestedAt, SentAt, FailedAt time.Time
 }
 
-// Send (R-94) is idempotent per (profile, key). allow is asked last, so a refused request uses none of it. It locks
-// the profile row, as Create does, then outbox.ClientEmailsLeft locks the user's row: emails count one at a time.
+// Send is idempotent per (profile, key); it locks the profile row (as Create does), then the user's; allow goes last.
 func (s *Service) Send(ctx context.Context, profileID, id, key string, allow func() time.Duration) (inv Invoice,
 	queued bool, err error) {
 	id = strings.ToLower(id)

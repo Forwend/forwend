@@ -17,12 +17,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// open: Base Sepolia USDC and a freelancer profile with a wallet and billing details.
 func open(t *testing.T) (*pgxpool.Pool, string) {
 	t.Helper()
 	ctx := context.Background()
 	url := databasetest.Migrated(t, database.Migrate)
-	// The test holds up to 7 connections at once; the default pool, max(4, CPUs), deadlocks on a 2-CPU runner.
+	// Up to 7 connections at once; the default pool, max(4, CPUs), deadlocks on a 2-CPU runner.
 	pool, err := database.Open(ctx, url+"&pool_max_conns=8")
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +61,6 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Past the shared limit (R-117) nothing is accepted or made yet.
 	var soon *invoice.TooSoonError
 	if _, err := s.Accept(ctx, j.Token, "Jane Doe", "jane@bob.example", func() time.Duration { return time.Second }); !errors.As(err, &soon) {
 		t.Fatalf("accept past the shared limit: %v, want TooSoonError", err)
@@ -102,7 +100,7 @@ func TestAcceptMakesTheDepositOnce(t *testing.T) {
 		t.Fatalf("second accept: %+v %v", again, err)
 	}
 
-	// Holding the profile lock Create takes lets every concurrent accept pass its checks, so they race on one key.
+	// Holding the profile lock lets every concurrent accept pass its checks, so they race on one key.
 	j2, _, err := s.Create(ctx, profileID, "k2", quote(true))
 	if err != nil {
 		t.Fatal(err)
@@ -158,7 +156,6 @@ func TestAcceptWithoutDepositMakesNoInvoice(t *testing.T) {
 	}
 }
 
-// R-100: the later accept reads the job as accepted instead of failing on the key.
 func TestAcceptAcrossMidnight(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -212,7 +209,7 @@ func TestAcceptOfADeletedJobMakesNoInvoice(t *testing.T) {
 	if err := s.Delete(ctx, profileID, j.ID); err != nil {
 		t.Fatal(err)
 	}
-	// j is the read an accept made before the delete.
+	// j is an accept's read from before the delete.
 	accepted, err := s.accept(ctx, j, "Jane Doe", "jane@bob.example")
 	if !errors.Is(err, ErrNotFound) || accepted.ID != "" {
 		t.Fatalf("accept after delete: %+v %v, want ErrNotFound", accepted, err)
@@ -223,7 +220,6 @@ func TestAcceptOfADeletedJobMakesNoInvoice(t *testing.T) {
 	}
 }
 
-// R-100: the later accept finds the job accepted, not gone.
 func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -264,9 +260,6 @@ func TestConcurrentAcceptsWithoutDeposit(t *testing.T) {
 
 func noLimit() time.Duration { return 0 }
 
-// R-221: a job keeps the mode its profile had when it was quoted. Turning Developer mode on or off later never moves
-// its invoices to the other mode, so a live quote is never paid with testnet tokens, and the list shows each mode's
-// jobs only in that mode.
 func TestAJobsInvoicesKeepTheModeItWasQuotedIn(t *testing.T) {
 	ctx := context.Background()
 	pool, profileID := open(t)
@@ -296,7 +289,6 @@ func TestAJobsInvoicesKeepTheModeItWasQuotedIn(t *testing.T) {
 	if !live.Livemode || test.Livemode {
 		t.Fatalf("job modes live %v, test %v", live.Livemode, test.Livemode)
 	}
-	// The owner is in Developer mode when the client accepts the live quote: its deposit is still live.
 	accepted, err := s.Accept(ctx, live.Token, "Jane Doe", "jane@bob.example", noLimit)
 	if err != nil {
 		t.Fatal(err)
@@ -305,7 +297,6 @@ func TestAJobsInvoicesKeepTheModeItWasQuotedIn(t *testing.T) {
 	if err != nil || !inv.Livemode || inv.ChainID != 8453 {
 		t.Fatalf("live job's deposit: livemode %v chain %d, %v; want live on Base", inv.Livemode, inv.ChainID, err)
 	}
-	// And the other way round.
 	mode(true)
 	accepted, err = s.Accept(ctx, test.Token, "Jane Doe", "jane@bob.example", noLimit)
 	if err != nil {

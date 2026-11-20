@@ -31,7 +31,6 @@ type acceptBody struct {
 	Email string `json:"email"`
 }
 
-// The client's link view: no client block and no typed email.
 type publicJobJSON struct {
 	Title        string        `json:"title"`
 	Scope        *string       `json:"scope"`
@@ -47,14 +46,11 @@ type jobJSON struct {
 	JobID string `json:"jobId"`
 	Token string `json:"token"`
 	publicJobJSON
-	// Shadows publicJobJSON's Payments, adding each change's typed email.
-	Payments      []ownerPaymentJSON `json:"payments"`
+	Payments      []ownerPaymentJSON `json:"payments"` // shadows publicJobJSON.Payments
 	Client        clientJSON         `json:"client"`
 	AcceptedEmail *string            `json:"acceptedEmail"`
 }
 
-// paymentJSON is one payment; invoiceId, payToken, number, status and invoicedAt are null until its invoice is made,
-// doneAt and deliveryLink until the owner marks the step done, paidAt until it is paid.
 type paymentJSON struct {
 	Position     int     `json:"position"`
 	Title        string  `json:"title"`
@@ -62,20 +58,18 @@ type paymentJSON struct {
 	DueDays      int     `json:"dueDays"`
 	OnAccept     bool    `json:"onAccept"`
 	InvoiceID    *string `json:"invoiceId"`
-	PayToken     *string `json:"payToken"` // the pay link's (D-86)
+	PayToken     *string `json:"payToken"`
 	Number       *int64  `json:"number"`
 	Status       *string `json:"status"`
 	DoneAt       *string `json:"doneAt"`
 	DeliveryLink *string `json:"deliveryLink"`
 	InvoicedAt   *string `json:"invoicedAt"`
 	PaidAt       *string `json:"paidAt"`
-	// A scope change (R-105): null for the quote's payments, and acceptedName and acceptedAt until the client accepts.
-	ProposedAt   *string `json:"proposedAt"`
+	ProposedAt   *string `json:"proposedAt"` // null for the quote's payments
 	AcceptedName *string `json:"acceptedName"`
 	AcceptedAt   *string `json:"acceptedAt"`
 }
 
-// Owner only (R-107).
 type ownerPaymentJSON struct {
 	paymentJSON
 	AcceptedEmail *string `json:"acceptedEmail"`
@@ -131,7 +125,7 @@ func toPublicJobJSON(j job.Job) publicJobJSON {
 	return out
 }
 
-// proposedAt keeps the microseconds the database stores: the client's accept names the change by it (R-105).
+// proposedAt keeps microseconds: the client's accept names the change by it.
 func proposedAt(t time.Time) *string {
 	if t.IsZero() {
 		return nil

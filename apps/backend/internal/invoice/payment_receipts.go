@@ -7,8 +7,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
-// Received includes observed transfers; Pending has not been booked and is never proof of payment. Held is the booked
-// money still owed to the payer.
+// PaymentReceipt: Pending is unbooked and never proof of payment; Held is booked money owed to the payer.
 type PaymentReceipt struct {
 	OptionID string
 	chain.Asset

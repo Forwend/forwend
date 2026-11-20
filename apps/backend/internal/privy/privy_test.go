@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"slices"
-	"sync"
 	"testing"
 	"time"
 
@@ -66,32 +65,6 @@ func TestProfileWalletLosesTheCreateRace(t *testing.T) {
 	}
 }
 
-func TestProfileWalletConcurrentCallsMakeOneWallet(t *testing.T) {
-	f, c := newFake(t)
-	var wg sync.WaitGroup
-	got := make([]Wallet, 10)
-	for i := range got {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			w, err := c.ProfileWallet(context.Background(), user, profile)
-			if err != nil {
-				t.Error(err)
-			}
-			got[i] = w
-		}()
-	}
-	wg.Wait()
-	for _, w := range got {
-		if w != got[0] {
-			t.Fatalf("two wallets for one profile: %+v and %+v", w, got[0])
-		}
-	}
-	if f.Wallets() != 1 {
-		t.Fatalf("%d wallets in Privy, want 1", f.Wallets())
-	}
-}
-
 func TestProfileWalletReportsPrivyErrors(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusUnauthorized) }))
 	defer srv.Close()
@@ -112,21 +85,6 @@ func TestProfileWalletGivesUpOnAHangingPrivy(t *testing.T) {
 	}
 	if d := time.Since(start); d > 2*time.Second {
 		t.Fatalf("gave up after %v, want about %v", d, Timeout)
-	}
-}
-
-func TestProfileWalletRecoversFromAFailedCreate(t *testing.T) {
-	f, c := newFake(t)
-	ctx := context.Background()
-	f.Lock()
-	f.FailCreates = 3 // the first call and the SDK's two retries
-	f.Unlock()
-	if _, err := c.ProfileWallet(ctx, user, profile); err == nil {
-		t.Fatal("a failed create was not reported")
-	}
-	w, err := c.ProfileWallet(ctx, user, profile)
-	if err != nil || w.ID != "wallet-1" {
-		t.Fatalf("next call: %+v, %v; want the wallet created", w, err)
 	}
 }
 

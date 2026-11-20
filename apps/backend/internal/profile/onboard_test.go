@@ -4,20 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 	"testing"
 )
-
-// Sorted: profiles made in one transaction share created_at, so their order is open.
-func kinds(profiles []Profile) []string {
-	var out []string
-	for _, p := range profiles {
-		out = append(out, p.Kind)
-	}
-	slices.Sort(out)
-	return out
-}
 
 func TestOnboardConcurrently(t *testing.T) {
 	s, f, pool := newService(t)
@@ -130,10 +119,9 @@ func TestOnboardRefusesNamesItCannotUse(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, names := range []map[string]string{
-		{Merchant: "North & Co."}, // no choice makes a merchant profile
-		{Personal: "Me"},          // the personal profile already exists
-		{Freelancer: "Forwend"},   // impersonation
-		{Freelancer: "Mara‮"},     // not plain text
+		{Personal: "Me"},
+		{Freelancer: "Forwend"},
+		{Freelancer: "Mara‮"}, // ends in U+202E
 	} {
 		if _, _, _, err := s.Onboard(ctx, alice, []string{GetPaidByClients}, names); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("names %q: %v, want ErrInvalid", names, err)

@@ -17,7 +17,6 @@ func NewService(pool *pgxpool.Pool, wallets *privy.Client) *Service {
 	return &Service{pool: pool, wallets: wallets}
 }
 
-// rowQuerier is a pool or a transaction.
 type rowQuerier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }

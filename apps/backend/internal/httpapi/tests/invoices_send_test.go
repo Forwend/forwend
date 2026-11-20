@@ -117,7 +117,6 @@ func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
 	if got := send(e.walletless, second.body["invoiceId"].(string), "send-1"); got != http.StatusCreated {
 		t.Fatalf("the user's 20th client email: %d, want 201", got)
 	}
-	// A first send of an invoice: only the user's cap can refuse it.
 	if got := send(e.aliceProfile, first, "send-2"); got != http.StatusTooManyRequests {
 		t.Fatalf("the 21st, from the other profile: %d, want 429", got)
 	}

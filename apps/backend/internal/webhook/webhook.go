@@ -1,4 +1,4 @@
-// Package webhook keeps a profile's webhook endpoints and the secrets that sign their events (R-146, D-42).
+// Package webhook keeps a profile's webhook endpoints, the secrets that sign their events, and deliveries.
 package webhook
 
 import (
@@ -10,26 +10,21 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// InvoicePaid is one of history.WebhookEvents, the events an endpoint can take.
 const InvoicePaid = "invoice.paid"
 
 // Overlap is how long a rotated secret keeps signing beside its new one.
 const Overlap = 24 * time.Hour
 
 var (
-	// ErrInvalid wraps a request value that breaks a rule; the message names it.
-	ErrInvalid  = errors.New("invalid webhook request")
-	ErrNotFound = errors.New("webhook endpoint not found")
-	// ErrPersonal: a personal profile has no API, so no webhooks.
-	ErrPersonal = errors.New("a personal profile has no webhooks")
-	// ErrNotConfigured: without WEBHOOK_SECRET_KEY no secret can be kept, so webhooks are off.
-	ErrNotConfigured = errors.New("webhooks are not configured")
+	ErrInvalid       = errors.New("invalid webhook request")
+	ErrNotFound      = errors.New("webhook endpoint not found")
+	ErrPersonal      = errors.New("a personal profile has no webhooks")
+	ErrNotConfigured = errors.New("webhooks are not configured") // no WEBHOOK_SECRET_KEY
 )
 
-// Endpoint is where a profile's events go. StoreID is "" for all of a merchant's stores, and for a freelancer.
 type Endpoint struct {
 	ID          string
-	StoreID     string
+	StoreID     string // "" = all stores, or a freelancer
 	URL         string
 	Description string
 	Events      []string
@@ -39,7 +34,6 @@ type Endpoint struct {
 	UpdatedAt   time.Time
 }
 
-// Details are what the owner sets.
 type Details struct {
 	URL         string
 	Description string
@@ -48,14 +42,12 @@ type Details struct {
 	Enabled     bool
 }
 
-// Secret is a signing secret's text; ExpiresAt is set once rotated: it signs until then.
 type Secret struct {
 	Text      string
 	CreatedAt time.Time
-	ExpiresAt *time.Time
+	ExpiresAt *time.Time // set once rotated; signs until then
 }
 
-// queryer is a pool or a transaction.
 type queryer interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }

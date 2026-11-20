@@ -25,8 +25,7 @@ func NewService(pool *pgxpool.Pool, users *privy.Client) *Service {
 
 var lowercaseUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// lockMerchant locks the profile row, so team changes count one after another, and refuses a profile that isn't a
-// merchant's.
+// lockMerchant serializes team changes and refuses a profile that isn't a merchant's.
 func lockMerchant(ctx context.Context, tx pgx.Tx, profileID string) error {
 	var kind string
 	if err := tx.QueryRow(ctx, "SELECT kind FROM profiles WHERE id = $1 FOR UPDATE", profileID).Scan(&kind); err != nil {
@@ -38,7 +37,7 @@ func lockMerchant(ctx context.Context, tx pgx.Tx, profileID string) error {
 	return nil
 }
 
-// check normalizes g: an Admin reaches every store, a Developer or Finance member one or more of the profile's.
+// check normalizes g: an Admin reaches every store, a Developer or Finance member one or more.
 func (g *Grant) check(ctx context.Context, tx pgx.Tx, profileID string) error {
 	switch auth.Role(g.Role) {
 	case auth.Admin:
@@ -76,8 +75,7 @@ func (g *Grant) check(ctx context.Context, tx pgx.Tx, profileID string) error {
 	return nil
 }
 
-// revokeInvitesBy closes the open invites userID sent: a member who loses the team permission can't return through
-// one (R-139).
+// revokeInvitesBy: a member who loses the team permission can't come back through an invite they sent.
 func revokeInvitesBy(ctx context.Context, tx pgx.Tx, profileID, userID string) error {
 	if _, err := tx.Exec(ctx, `UPDATE profile_invites SET revoked_at = now()
 		WHERE profile_id = $1 AND invited_by = $2 AND `+OpenInviteSQL, profileID, userID); err != nil {
@@ -86,7 +84,7 @@ func revokeInvitesBy(ctx context.Context, tx pgx.Tx, profileID, userID string) e
 	return nil
 }
 
-// isOwner reports whether userID is the profile's owner, whom no team change reaches (D-93).
+// No team change reaches the owner.
 func isOwner(ctx context.Context, tx pgx.Tx, profileID, userID string) (bool, error) {
 	var owner bool
 	if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM profiles WHERE id = $1 AND user_id = $2)", profileID,

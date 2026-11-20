@@ -28,7 +28,6 @@ func TestInvoiceLines(t *testing.T) {
 	if got := e.get(t, made.body["invoiceId"].(string)); !reflect.DeepEqual(got.body["lines"], want) {
 		t.Fatalf("public GET lines %v", got.body["lines"])
 	}
-	// "7.50" is the same quantity as "7.5"; another description is another request.
 	if again := e.post(t, alice, e.aliceProfile, "key-1", fixed(strings.Replace(two, `"7.5"`, `"7.50"`, 1))); again.status != http.StatusOK ||
 		again.body["invoiceId"] != made.body["invoiceId"] {
 		t.Fatalf("same lines again: %d %v", again.status, again.body)
@@ -41,7 +40,6 @@ func TestInvoiceLines(t *testing.T) {
 		t.Fatalf("an invoice without lines: %d %v", plain.status, plain.body["lines"])
 	}
 
-	// Payer chooses: unit prices are USD and come back in the token's base units.
 	usd := e.post(t, alice, e.aliceProfile, "key-3", `{"amountUsd": "12.5", "lines": [
 		{"description": "Logo", "quantity": "2", "unitPrice": "6.25"}]}`)
 	if usd.status != http.StatusCreated || !reflect.DeepEqual(usd.body["lines"], []any{map[string]any{
@@ -50,7 +48,6 @@ func TestInvoiceLines(t *testing.T) {
 	}
 
 	many := strings.Repeat(`{"description": "x", "quantity": "1", "unitPrice": "0"},`, invoice.MaxLines)
-	// The most lines an invoice takes: the last one carries the amount.
 	most := e.post(t, alice, e.aliceProfile, "most-lines", fixed(strings.Repeat(`{"description": "x", "quantity": "1", "unitPrice": "0"},`, invoice.MaxLines-1)+
 		`{"description": "Design", "quantity": "1", "unitPrice": "5000000"}`))
 	if lines, _ := most.body["lines"].([]any); most.status != http.StatusCreated || len(lines) != invoice.MaxLines {

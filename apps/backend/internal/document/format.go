@@ -11,7 +11,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// network is a chain's name and explorer as apps/web/src/shared/constants/chains.ts has them; a test checks.
+// network mirrors apps/web/src/shared/constants/chains.ts; a test keeps them equal.
 type network struct{ name, explorer, url string }
 
 var networks = map[uint64]network{
@@ -25,7 +25,7 @@ var networks = map[uint64]network{
 	42431:   {"Tempo Moderato", "Tempo Explorer", "https://explore.testnet.tempo.xyz"},
 }
 
-// TxURL is the transaction's page on the network's explorer, or "" for a network without one.
+// TxURL is "" for a network without an explorer.
 func TxURL(chainID uint64, txHash string) string {
 	if n, ok := networks[chainID]; ok && n.url != "" {
 		return n.url + "/tx/" + txHash
@@ -33,7 +33,7 @@ func TxURL(chainID uint64, txHash string) string {
 	return ""
 }
 
-// NetworkName is the chain's name as the app shows it, "Chain <id>" for one the app doesn't name either.
+// NetworkName is "Chain <id>" for a chain the app doesn't name.
 func NetworkName(chainID uint64) string {
 	if n, ok := networks[chainID]; ok {
 		return n.name
@@ -41,7 +41,6 @@ func NetworkName(chainID uint64) string {
 	return "Chain " + strconv.FormatUint(chainID, 10)
 }
 
-// TestMode marks a test-mode invoice's PDFs.
 const TestMode = "Test mode: testnet tokens have no value"
 
 func Number(n int64) string {
@@ -81,7 +80,7 @@ func Amount(n *big.Int, decimals int, symbol string) string {
 	return whole + " " + symbol
 }
 
-// Day before month name, so no reader confuses 03/04 for March or April.
+// Day before month name, so 03/04 can't be read as March or April.
 func stamp(t time.Time) string {
 	return t.UTC().Format("2 Jan 2006, 15:04 UTC")
 }
@@ -90,7 +89,7 @@ func day(t time.Time) string {
 	return t.UTC().Format("2 Jan 2006")
 }
 
-// DateText writes a stored YYYY-MM-DD as day() does; "" stays "" so its fact is left out.
+// DateText writes a stored YYYY-MM-DD like day(); "" stays "".
 func DateText(s string) string {
 	t, err := time.Parse(time.DateOnly, s)
 	if err != nil {

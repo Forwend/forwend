@@ -17,7 +17,7 @@ type keyJSON struct {
 	Scopes     []auth.Permission `json:"scopes"`
 	CreatedAt  string            `json:"createdAt"`
 	LastUsedAt *string           `json:"lastUsedAt"`
-	ExpiresAt  *string           `json:"expiresAt"` // set once rolled: the key works until then
+	ExpiresAt  *string           `json:"expiresAt"` // set once rolled: works until then
 }
 
 // createdJSON is the one answer that has the key's text.

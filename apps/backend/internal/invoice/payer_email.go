@@ -18,10 +18,7 @@ import (
 
 var ErrReceiptSent = errors.New("receipt already sent")
 
-// SetPayerEmail locks the main row as the ledger does, so the two never decide at once (R-82, D-68). NO KEY: the
-// worker holds the receipt row this then waits for, and its history row's foreign key on the invoice must not wait
-// for this lock. allow runs only when the receipt goes out now, so an unknown link or a bad address spends none of
-// the shared limit (R-117).
+// SetPayerEmail locks NO KEY so history inserts never wait; allow runs only when a receipt goes out now.
 func (s *Service) SetPayerEmail(ctx context.Context, payToken, email string, allow func() time.Duration) (string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	// As a client email is checked: plain text, and exactly one address with nothing around it.

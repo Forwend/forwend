@@ -10,16 +10,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Test is the event an owner sends to check an endpoint (R-149): it names no invoice, and its data is empty.
 const Test = "webhook.test"
 
-// MaxDeliveries is how many of an endpoint's deliveries the list shows, newest first.
 const MaxDeliveries = 50
 
 var ErrNoDelivery = errors.New("webhook delivery not found")
 
-// A resend or a test joins a profile's queue only while it has fewer than ManualPendingLimit pending deliveries;
-// invoice events always join.
+// ManualPendingLimit caps a profile's pending deliveries for resends and tests; invoice events always join.
 const ManualPendingLimit = 32
 
 var ErrQueueFull = errors.New("webhook pending queue is full")
@@ -41,27 +38,24 @@ func manualQueueRoom(ctx context.Context, tx pgx.Tx, profileID string) (int, err
 
 var eventID = regexp.MustCompile(`^evt_[0-9a-f]{32}$`)
 
-// Delivery is one event sent to one endpoint, with its attempts, oldest first.
 type Delivery struct {
 	EventID       string
 	Type          string
 	InvoiceID     string // "" for a test event
-	Number        *int64 // the invoice's; nil for a link invoice before its first deposit, and for a test event
+	Number        *int64 // nil for a test, or a link invoice before a deposit
 	Status        string
 	NextAttemptAt time.Time // while pending
 	CreatedAt     time.Time
 	Attempts      []Attempt
 }
 
-// Attempt is one try: StatusCode is 0 when no answer came, and Error never holds the URL.
 type Attempt struct {
 	At         time.Time
-	StatusCode int
-	Error      string
+	StatusCode int    // 0 when no answer came
+	Error      string // never holds the URL
 	Duration   time.Duration
 }
 
-// Deliveries are the endpoint's MaxDeliveries newest deliveries.
 func (s *Service) Deliveries(ctx context.Context, profileID, endpointID string) ([]Delivery, error) {
 	if err := s.owned(ctx, profileID, endpointID); err != nil {
 		return nil, err
@@ -105,7 +99,7 @@ func (s *Service) Deliveries(ctx context.Context, profileID, endpointID string) 
 	return list, rows.Err()
 }
 
-// Resend sends a delivery again from a first attempt, with the body it first sent. It waits while the endpoint is off.
+// Resend restarts a delivery's attempts with its first body; it waits while the endpoint is off.
 func (s *Service) Resend(ctx context.Context, profileID, endpointID, event string) error {
 	if s.key == nil {
 		return ErrNotConfigured
@@ -137,7 +131,6 @@ func (s *Service) Resend(ctx context.Context, profileID, endpointID, event strin
 	})
 }
 
-// ResendFailed sends again every delivery to the endpoint that failed since that time, and says how many.
 func (s *Service) ResendFailed(ctx context.Context, profileID, endpointID string, since time.Time) (int64, error) {
 	if s.key == nil {
 		return 0, ErrNotConfigured
@@ -166,7 +159,6 @@ func (s *Service) ResendFailed(ctx context.Context, profileID, endpointID string
 	return queued, err
 }
 
-// SendTest queues a test event for the endpoint alone, of its mode, and returns its id.
 func (s *Service) SendTest(ctx context.Context, profileID, endpointID string) (string, error) {
 	if s.key == nil {
 		return "", ErrNotConfigured

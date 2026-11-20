@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Views counts the pay page's loads (R-125); nothing says who loaded it.
+// Views counts the pay page's loads; nothing says who loaded it.
 type Views struct {
 	Count           int64
 	FirstAt, LastAt time.Time // zero before the first load

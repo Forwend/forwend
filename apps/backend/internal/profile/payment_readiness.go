@@ -13,7 +13,6 @@ func (r PaymentReadiness) Ready() bool {
 	return r.BillingDetails && r.Wallet && r.AcceptedToken
 }
 
-// ReadPaymentReadiness uses the same union of profile/store token exclusions as TokensOff.
 func ReadPaymentReadiness(ctx context.Context, db rowQuerier, profileID, storeID string, live bool) (PaymentReadiness, error) {
 	var r PaymentReadiness
 	err := db.QueryRow(ctx, `SELECT

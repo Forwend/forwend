@@ -15,10 +15,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// A link's state for its payer: only a link that is on makes invoices.
 const (
 	On       = "on"
-	Off      = "off"   // the owner turned it off
+	Off      = "off"
 	Ended    = "ended" // past its last day
 	Full     = "full"  // paid as many times as its cap
 	NotReady = "not_ready"
@@ -31,7 +30,6 @@ var (
 	ErrChanged = errors.New("payment link changed before checkout was created")
 )
 
-// refusals are the states a payer can't pay in.
 var refusals = map[string]error{Off: ErrOff, Ended: ErrEnded, Full: ErrFull, NotReady: ErrNotReady}
 
 var slugPattern = regexp.MustCompile(`^[a-z0-9]{12}$`)
@@ -40,21 +38,20 @@ var offerVersion = regexp.MustCompile(`^[1-9][0-9]{0,18}$`)
 // MaxPayKey leaves room in the invoice's 255-byte key for the link's prefix.
 const MaxPayKey = 200
 
-// payKey is the invoice idempotency key of a payer's key: a payer's key must never replay the owner's invoices.
+// payKey namespaces a payer's key so it can never replay the owner's invoices.
 func payKey(linkID, key string) string { return "link:" + linkID + ":" + key }
 
-// Public is a link as its payer sees it at /l/<slug>. Payee is the billing name, "" before the owner saves billing
-// details; a merchant store's link also has its branding.
+// Public is a link as its payer sees it at /l/<slug>.
 type Public struct {
 	Link
 	ProfileID  string
-	Payee      string
+	Payee      string // "" before billing details are saved
 	BrandColor string
 	LogoAt     *time.Time
 	State      string
 }
 
-// state is On, Off, Ended or Full; payment readiness is read apart.
+// state leaves out payment readiness, which is read apart.
 func (l Link) state() string {
 	switch {
 	case !l.Active:
@@ -97,7 +94,7 @@ func (s *Service) Public(ctx context.Context, slug string) (Public, error) {
 	return p, nil
 }
 
-// Visit counts one opening of the link's page; the page makes nothing (D-54).
+// Visit counts one opening of the link's page; opening it makes no invoice.
 func (s *Service) Visit(ctx context.Context, slug string) error {
 	if !slugPattern.MatchString(slug) {
 		return ErrNotFound
@@ -117,7 +114,7 @@ type PayRequest struct {
 	Allow                                         func() time.Duration
 }
 
-// Pay creates one document-free purchase. Public input is replayed before mutable template checks.
+// Pay creates one purchase; a replayed key is answered before the link's current terms are checked.
 func (s *Service) Pay(ctx context.Context, slug, key string, request PayRequest) (invoice.Invoice,
 	bool, error) {
 	p, err := s.Public(ctx, slug)
@@ -226,8 +223,7 @@ func (s *Service) replay(ctx context.Context, p Public, input, expected int64, v
 	if err != nil {
 		return invoice.Invoice{}, true, err
 	}
-	// An invoice made before link_checkout_requests has no recorded request: a supplied amount must still match its
-	// terms.
+	// Without a recorded request, a supplied amount must still match the invoice's terms.
 	if !recorded && (input != 0 || expected != 0) {
 		main := inv.Options[0]
 		for _, option := range inv.Options {

@@ -298,7 +298,6 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 	}
 	files = append(files, "../router.go")
 	registered := regexp.MustCompile(`mux\.Handle(?:Func)?\("(\w+) (/v1/profiles/\{profileId\}[^"]*)",\s*([^\n]*)`)
-	// R-138: every profile route asks for a permission from the one map.
 	guarded := regexp.MustCompile(`^g\.(Can|FreshSignIn|SigningCheck)\(auth\.\w+\)`)
 	for _, file := range files {
 		src, err := os.ReadFile(file)
@@ -321,7 +320,7 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 }
 
 func TestProfilesBelongToTheirUser(t *testing.T) {
-	// Each user calls every profile route here; the limit per user has its own test (TestUserRateLimit).
+	// A high limit: each user calls every profile route.
 	e := invoiceAPIWith(t, 1000, webhookKey)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	e.call(t, "POST", "/v1/me", alice, "", "")
@@ -346,7 +345,6 @@ func TestProfilesBelongToTheirUser(t *testing.T) {
 		t.Fatalf("Bob with Alice's key: %d %v", r.status, r.body)
 	}
 
-	// One of Alice's profiles per route in turn.
 	for i, route := range profileRoutes {
 		id := alices[i%len(alices)]
 		path := fmt.Sprintf(route.path, id)
@@ -390,7 +388,6 @@ func TestBillingDetails(t *testing.T) {
 		t.Fatalf("GET: %d %v, want %v", got.status, got.body, want)
 	}
 
-	// A PUT replaces every field: a tax ID left out means none.
 	const short = `{"name": "Alice", "address": "Rue 2, Paris", "country": "FR", "email": "a@example.com"}`
 	e.call(t, "PUT", path, alice, "", short)
 	got = e.call(t, "GET", path, alice, "", "")
