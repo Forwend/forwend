@@ -96,12 +96,13 @@ func (s *Signer) settle(ctx context.Context, id int64, release func()) error {
 	case !st.Settleable:
 		return s.retry(ctx, in, "factory.status says not settleable (paused?)")
 	}
-	amounts, err := ledger.ReadAmounts(ctx, s.pool, in.invoiceID)
-	if err != nil {
-		return err
-	}
+	// Waits first: a refund booked between the two reads then shows in the amounts, never the other way round.
 	var waits bool
 	if err := s.pool.QueryRow(ctx, `SELECT `+ledger.SettleWaitsSQL("$1"), in.invoiceID).Scan(&waits); err != nil {
+		return err
+	}
+	amounts, err := ledger.ReadAmounts(ctx, s.pool, in.invoiceID)
+	if err != nil {
 		return err
 	}
 	if waits || amounts.Payable.Cmp(in.amount) < 0 {
