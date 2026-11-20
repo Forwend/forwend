@@ -139,6 +139,7 @@ test("the owner lists payment links with their activity, makes an open one and t
     endsAt: null,
     maxPayments: null,
     active: true,
+    feesPaidBy: "owner",
   });
   await expect(main.getByText(/\/l\/n4m7v2c9x3qa$/)).toBeVisible();
   await expect(main.getByRole("button", { name: "Copy the link's address" })).toBeVisible();

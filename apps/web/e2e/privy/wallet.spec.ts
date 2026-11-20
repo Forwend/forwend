@@ -50,7 +50,10 @@ test("the owner opens Privy's export page for the profile wallet after the warni
         .first()
         .textContent()
     )?.toLowerCase() ?? "";
-  await expect(window).toContainText(`${address.slice(0, 5)}...${address.slice(-4)}`);
+  // Privy writes the address in checksum case.
+  await expect(window).toContainText(
+    new RegExp(`${address.slice(0, 5)}\\.\\.\\.${address.slice(-4)}`, "i"),
+  );
   // The copy buttons are Privy's own, in its frame over our page's placeholders.
   const frame = page.frameLocator("iframe[src*='embedded-wallets/export']");
   await expect(frame.getByRole("button", { name: /copy key/i })).toBeVisible({ timeout: 45_000 });

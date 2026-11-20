@@ -1130,8 +1130,10 @@ test("empty and filtered-out lists say so in one centered block with an icon", a
       const middle =
         (Math.min(...boxes.map((b) => b.top)) + Math.max(...boxes.map((b) => b.bottom))) / 2;
       const start = el.getBoundingClientRect().top;
+      // main starts below the header and the Developer mode strip, which sits between them.
       const top = Math.max(
         document.querySelector("header")?.getBoundingClientRect().bottom ?? 0,
+        document.querySelector("main")?.getBoundingClientRect().top ?? 0,
         ...[...document.querySelectorAll("main *")]
           .filter((other) => !other.contains(el))
           .map((other) => other.getBoundingClientRect())
@@ -1245,8 +1247,11 @@ test("on a phone every panel is a card inside the page's margin, and no page scr
     "/app/developer-mode",
   ]) {
     await page.goto(path);
-    // Each of these pages has a panel: without one the check below would pass on nothing.
-    await expect(page.locator("main .fw-panel").first(), path).toBeVisible();
+    // Each page but Checkout has a panel: without one the margin check below would pass on nothing. Checkout's sale
+    // is a card layout, so it gets only the sideways scroll check.
+    if (path === "/app/checkout")
+      await expect(page.getByRole("heading", { level: 1, name: "Checkout" })).toBeVisible();
+    else await expect(page.locator("main .fw-panel").first(), path).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(await panelsOffMargin(page), path).toBe(0);
     expect(await sidewaysScroll(page), path).toBeLessThanOrEqual(0);

@@ -830,8 +830,8 @@ for (const width of [1440, 390]) {
         await expect(
           page
             .getByRole("main")
-            .getByText(/Returned/)
-            .first(),
+            .getByRole("term")
+            .filter({ hasText: /^Refunded$/ }),
         ).toBeVisible();
       await expect(page.getByRole("link", { name: "INV-0002", exact: true })).toHaveAttribute(
         "href",

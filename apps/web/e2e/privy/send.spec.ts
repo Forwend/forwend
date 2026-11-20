@@ -47,10 +47,22 @@ async function shot(page: Page, path: string, fullPage = false) {
   await page.screenshot({ path, fullPage });
 }
 
+/** Stops at once when the wallet holds nothing: these tests move real testnet tokens. */
+async function requireFunds(page: Page) {
+  const empty = sheet(page).getByText("This wallet holds nothing to send yet.");
+  const choices = sheet(page).getByRole("region", { name: "What to send" }).getByRole("button");
+  await expect(choices.first().or(empty)).toBeVisible();
+  if (await empty.isVisible())
+    throw new Error(
+      "The test account's wallet holds no testnet tokens: send it Base Sepolia and Arc testnet USDC.",
+    );
+}
+
 /** The first network and token the wallet can send; with only one, the sheet skips the choice. */
 async function pickMoney(page: Page, screenshot?: string) {
   await expect(sheet(page)).toHaveAccessibleName(/^(What to send|Amount)$/);
   if ((await sheet(page).getAttribute("aria-label")) === "What to send") {
+    await requireFunds(page);
     if (screenshot) await shot(page, screenshot);
     await sheet(page)
       .getByRole("region", { name: "What to send" })
@@ -231,8 +243,8 @@ test("Transfer opens from the command menu, and with reduced motion each step sh
   await context.close();
 });
 
-// R-216: on Arc the wallet pays its gas in the USDC it sends. The test account's business
-// profile holds Arc testnet USDC.
+// R-216: on Arc the wallet pays its gas in the USDC it sends. The test account's merchant
+// profile, E2E shop, holds Arc testnet USDC.
 test("On Arc the wallet pays its own fee in USDC, shown before the send, and the send reaches Sent", async ({
   browser,
 }) => {
@@ -243,7 +255,7 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
   await expect(page.getByRole("region", { name: "Total balance" })).toBeVisible();
   await page.keyboard.press("ControlOrMeta+k");
   const search = page.getByRole("dialog", { name: "Search" });
-  await search.getByRole("combobox").fill("Nmae");
+  await search.getByRole("combobox").fill("E2E shop");
   await search.getByRole("option", { name: /^Switch to Merchant/ }).click();
   await expect(
     page.getByRole("banner").getByRole("button", { name: "Send", exact: true }),
@@ -254,6 +266,7 @@ test("On Arc the wallet pays its own fee in USDC, shown before the send, and the
     .getByRole("button", { name: /^Personal/ })
     .click();
   await expect(sheet(page)).toHaveAccessibleName("What to send");
+  await requireFunds(page);
   await sheet(page)
     .getByRole("button", { name: /Arc Testnet/ })
     .click();
