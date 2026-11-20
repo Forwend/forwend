@@ -59,7 +59,7 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 ## Development mainnet deploys
 
 - The factory on Base, Arbitrum, Arc and Tempo mainnets uses the testnet arguments: the test EOA is its refund authority.
-  - v1.1 came in F437, v2 with the fees in F442; v1.1 stays for the invoices made before.
+  - It runs v2, whose terms carry the fees. The v1.1 factory stays for the invoices made with it.
 - So it sits at the testnet factory's address; `deployments.json` lists it under `mainnets`.
 - Mainnet runs deploy the factory and probe only, never the flow: its money would go to the keyless test recipient.
 - This is the owner's choice for development. Production gets new contracts with the Safe above.

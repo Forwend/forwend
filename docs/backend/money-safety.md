@@ -55,8 +55,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 - The signer records its own settle from its finalized receipt, so `settled` never waits for the scan.
 - Recovery sweeps read every block again later, so a log one RPC answer missed is still found.
   - Some finalized blocks may be kept by no RPC any more (R-191).
-    - Arc's PublicNode and Blockdaemon nodes served logs 13 hours old but not 47 hours old (measured 2026-10-30).
-    - thirdweb on Arc (migration 94) served logs 170 hours old. Ranges skipped earlier can now be read again.
+    - Arc's PublicNode and Blockdaemon nodes served logs 13 hours old but not 47 hours old.
+    - thirdweb on Arc (migration 94) served logs 170 hours old.
   - Only when every endpoint serving the chain answers that it lacks them does the sweep move on, to the oldest kept block.
     - It logs an `ALERT` with the skipped range. An endpoint that failed or rests may hold them, so the sweep waits then.
   - The fast scan read those blocks once. To read them again, add an endpoint with full history.
@@ -86,7 +86,8 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
 
 ## Returns through support
 
-Held money goes back by hand for now (PLAN 11.10.3, D-118). `cmd/ops` holds no key and sends nothing.
+Support returns held money by hand with `cmd/ops` (D-118). It holds no key and sends nothing.
+Self-serve returns are [deferred](../../PLAN.md#deferred-beyond-mvp).
 
 - Each run first writes the OS user and its arguments to `ops_runs`, a failing run too.
   - It names a person only when each operator logs in to the server as themselves.

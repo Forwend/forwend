@@ -1,6 +1,6 @@
 # Staging CI
 
-- `main` is the development branch. Task branches still merge through PRs and must pass local `verify` and any
+- `main` is the development branch. Task branches merge through PRs and must pass local `verify` and any
   required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
 - `staging` is the batch-validation branch. Its push event runs all required and CI-only checks fresh (`harness.py check --ci`).
   There is no additional PR-triggered run. CI deploys nothing; the Dokploy environment below is configured separately.
@@ -29,7 +29,6 @@
 - This applies to fresh and existing databases. Each API restart enables those four pairs again, without duplicating rows.
 - Other token pairs keep their existing settings.
 - Tempo appears in Networks with its profile switch off by default; the owner can turn it on.
-- Existing profiles get that default when upgrading from globally disabled Tempo. Existing choices on already enabled Tempo stay unchanged.
 - Restarting services preserves each profile’s switch choices.
 - Set `ENABLE_TESTNET_USDC=0` to keep the database's current network settings unchanged at startup.
 - PostgreSQL keeps its data in the `postgres-data` named volume. Keep the Dokploy service and Compose project name stable.

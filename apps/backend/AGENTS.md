@@ -1,15 +1,16 @@
 # Backend
 
-Go API, worker and signer. Requirements: the task's rows in `docs/PROJECT.md`.
+Go API, worker, signer and webhooks sender, plus the canary and support's `ops` tool. Requirements: the task's rows in
+`docs/PROJECT.md`.
 
 ## Commands
 
 - First time: `cp .env.example .env`, then `pnpm --filter @forwend/backend postgres:up` (Docker).
 - `pnpm --filter @forwend/backend test` (gofmt, vet, `go test -race` on real Postgres).
-- Root `pnpm dev` runs Postgres, the api, the worker and the signer beside the web app. It refuses to start without
+- Root `pnpm dev` runs Postgres, the api, the worker, the signer and the webhooks sender beside the web app. It refuses to start without
   `EXECUTOR_PRIVATE_KEY` in `.env`, waits until each process reports ready, and exits 1 when one stops or is not ready
   in time ([startup](../../docs/backend/architecture.md#startup)). Alone: `pnpm --filter @forwend/backend api`
-  (or `worker`, `signer`).
+  (or `worker`, `signer`, `webhooks`).
 - `sh scripts/with-env.sh go test -tags privylive ./internal/privy/`: opt-in test against the Privy test app
   (creates a throwaway user and wallet, then removes them).
 - `pnpm --filter @forwend/backend e2e`: the money-loop gate with the real binaries on Postgres and Anvil (also in
