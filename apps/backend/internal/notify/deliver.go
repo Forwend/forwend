@@ -84,8 +84,13 @@ func deliverOne(ctx context.Context, pool *pgxpool.Pool, sender email.Sender, si
 	} else if err != nil {
 		return false, fmt.Errorf("claim email event: %w", err)
 	}
-	if err := json.Unmarshal(payload, &e.payload); err != nil {
-		return failed(ctx, tx, e, fmt.Errorf("read email event %d: %w", e.id, err), true)
+	switch e.kind {
+	case outbox.Welcome, outbox.WalletOutflow, outbox.SettleWaiting:
+		// These read no payload, so a bad one must not stop their email.
+	default:
+		if err := json.Unmarshal(payload, &e.payload); err != nil {
+			return failed(ctx, tx, e, fmt.Errorf("read email event %d: %w", e.id, err), true)
+		}
 	}
 	// A read that fails rolls back to here, so the claim's transaction can still record the failed try.
 	sp, err := tx.Begin(ctx)

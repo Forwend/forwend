@@ -195,7 +195,10 @@ export interface Payment extends OptionFees {
   hostedUrl: string | null;
   /** The hosted page's token: what @forwend/js and @forwend/react take. */
   payToken: string | null;
-  /** A NEAR Intents payment; a list fills it only while that deposit pays this payment. */
+  /**
+   * A NEAR Intents payment; a list fills it only while that deposit pays this payment.
+   * With status SUCCESS it paid if optionLocked is false or optionId is the Base USDC option; else the USDC is held.
+   */
   crossChain: CrossChain | null;
 }
 
@@ -383,7 +386,7 @@ export interface CreateCheckoutSession {
   reference?: string;
   title?: string;
   expiresIn?: number;
-  /** Who pays the fees; omitted, the profile's choice applies. */
+  /** Who pays the fees; omitted, the profile's choice applies. client adds them to the price. */
   feesPaidBy?: FeesPaidBy;
   returnUrl?: string;
   metadata?: CreateInvoice["metadata"];
@@ -605,7 +608,7 @@ export interface CreateInvoice {
   /** Or a USD amount the payer pays in any accepted stablecoin. */
   amountUsd?: string;
   expiresIn?: number;
-  /** Who pays the fees; omitted, the profile's choice applies. */
+  /** Who pays the fees; omitted, the profile's choice applies. client adds them to the price. */
   feesPaidBy?: FeesPaidBy;
   title?: string;
   note?: string;
@@ -635,6 +638,7 @@ export interface ListInvoices {
   state?: PaymentState;
   /** Search text, as the owner's invoice list takes it. */
   q?: string;
+  /** Start after this cursor instead of the first page. */
   cursor?: string;
 }
 

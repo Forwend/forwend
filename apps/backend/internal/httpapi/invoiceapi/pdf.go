@@ -32,6 +32,10 @@ func servePDF(invoices *invoice.Service, profiles *profile.Service, webURL, kind
 			httpio.WriteError(w, r, err)
 			return
 		}
+		if kind == "invoice" && inv.DocumentKind == invoice.DocumentNone {
+			httpio.WriteError(w, r, invoice.ErrNotFound)
+			return
+		}
 		var logo []byte
 		if inv.LogoAt != nil {
 			if logo, _, err = profiles.StoreLogo(r.Context(), inv.StoreID); err != nil && !errors.Is(err, profile.ErrNoLogo) {

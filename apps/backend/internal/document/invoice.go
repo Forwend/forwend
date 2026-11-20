@@ -128,9 +128,6 @@ func records(inv invoice.Invoice) string {
 
 // Invoice renders inv's PDF; logo is a PNG, nil for Forwend's mark; now decides Overdue.
 func Invoice(inv invoice.Invoice, payLink string, logo []byte, now time.Time) ([]byte, error) {
-	if inv.DocumentKind == invoice.DocumentNone {
-		return nil, invoice.ErrNotFound // a document-free checkout has no invoice
-	}
 	s := statusOf(inv, now)
 	d := start(inv, "Invoice", logo, s)
 	due, last := [2]string{"Due date", DateText(inv.DueDate)}, [2]string{"Payment window closes", stamp(inv.ClosesAt)}

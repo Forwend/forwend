@@ -24,7 +24,10 @@ const header = (headers: VerifyWebhookOptions["headers"], name: string): string 
   return Array.isArray(value) ? value[0] : value;
 };
 
-/** Checks a webhook's Standard Webhooks signature and timestamp, and returns its event. */
+/**
+ * Checks a webhook's Standard Webhooks signature and timestamp, and returns its event.
+ * The timestamp must be within the tolerance, so an old request can't be sent again.
+ */
 export function verifyWebhook(options: VerifyWebhookOptions): WebhookEvent | TestWebhookEvent {
   const secrets = typeof options.secrets === "string" ? [options.secrets] : options.secrets;
   const keys = secrets.map((secret) => Buffer.from(secret.replace(/^whsec_/, ""), "base64"));

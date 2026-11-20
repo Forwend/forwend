@@ -408,8 +408,9 @@ func TestDeliverSendsTheWelcome(t *testing.T) {
 	pool, _ := setup(t, "owner@example.com")
 	exec(t, pool, "UPDATE profiles SET email_notifications = false")
 	var user string
+	// The welcome reads no payload, so one that doesn't decode must not stop it.
 	if err := pool.QueryRow(context.Background(), `INSERT INTO outbox_events (kind, user_id, payload)
-		SELECT 'account.welcome', id, '{}' FROM users RETURNING user_id::text`).Scan(&user); err != nil {
+		SELECT 'account.welcome', id, '[]' FROM users RETURNING user_id::text`).Scan(&user); err != nil {
 		t.Fatal(err)
 	}
 	f := &fake{}

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ACTIVITY_DIRECTIONS, ActivityRow } from "../activity-row";
 import { FullAddress } from "../address/full-address";
+import { NetworkWarning } from "../network-warning";
 import { ReceiveAddress } from "../receive-address";
 
 describe("ActivityRow", () => {
@@ -35,6 +36,28 @@ describe("ReceiveAddress", () => {
     expect(container.querySelector("[data-address]")?.textContent).toBe(address);
     await user.click(screen.getByRole("button", { name: "Copy address" }));
     expect(writeText).toHaveBeenCalledWith(address);
+  });
+
+  // Look-alike addresses copy the ends, so the start and end groups stand apart from the middle.
+  it("marks the start and end groups of the whole address", () => {
+    const { container } = render(<ReceiveAddress address={address} />);
+    const shown = container.querySelector("[data-address]") as HTMLElement;
+    const parts = Array.from(shown.children, (part) => part.textContent);
+    expect(parts[0]).toBe("0x5861");
+    expect(parts.at(-1)).toBe("0078");
+  });
+});
+
+describe("NetworkWarning", () => {
+  it("names a bridged look-alike only when the network has one", () => {
+    const { container, rerender } = render(
+      <NetworkWarning token="USDC" network="Arbitrum Sepolia" lookalike="USDC.e" />,
+    );
+    expect(container.textContent).toContain(
+      "Send only USDC on Arbitrum Sepolia. Native USDC, not USDC.e.",
+    );
+    rerender(<NetworkWarning token="USDC" network="Base Sepolia" />);
+    expect(container.textContent).not.toContain("Native");
   });
 });
 

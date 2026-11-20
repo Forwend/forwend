@@ -56,6 +56,21 @@ func TestCheckoutPaymentsNeverIssueInvoiceDocuments(t *testing.T) {
 	}
 }
 
+func TestCheckoutInvoicePDFIsNotFoundEvenWhenTheLogoCantBeRead(t *testing.T) {
+	e := invoiceAPI(t)
+	shop := e.merchant(t)
+	inv, _, err := invoice.NewService(e.pool).Create(t.Context(), shop, "checkout", invoice.Request{
+		Caller: invoice.Caller{Purpose: invoice.PurposeCheckout}, ChainID: 84532, Token: usdc, Amount: "2000000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.exec(t, "UPDATE stores SET logo = '\\x01', logo_at = now()")
+	e.exec(t, "ALTER TABLE stores RENAME COLUMN logo TO logo_gone") // every logo read now fails
+	if pdf := e.pdf(t, inv.ID, "invoice.pdf", ""); pdf.status != http.StatusNotFound {
+		t.Fatalf("checkout invoice PDF with an unreadable logo: %d %s", pdf.status, pdf.body)
+	}
+}
+
 func TestHeldCheckoutDoesNotBreakBillingOwedList(t *testing.T) {
 	e := invoiceAPI(t)
 	shop := e.merchant(t)

@@ -9,6 +9,7 @@ import type { Send } from "@/features/send/types/send";
 import { makeStore } from "@/store/store";
 
 const privy = vi.hoisted(() => ({
+  emailedCode: false,
   sign: vi.fn(async () => ({ txHash: "0xhash" })),
   mfa: {
     needed: false,
@@ -22,6 +23,7 @@ vi.mock("@/features/auth/hooks/use-fresh-sign-in", () => ({
   useFreshSignIn: () => ({
     run: (request: () => unknown) => request(),
     step: null,
+    pending: privy.emailedCode,
     cancelled: () => false,
     cancel: vi.fn(),
   }),
@@ -73,6 +75,7 @@ function server(...approvals: (() => Response | Promise<Response>)[]) {
   return {
     approves: () => requests.filter((r) => r.path === "approve").length,
     submits: () => requests.filter((r) => r.path === "submit").map((r) => JSON.parse(r.body)),
+    records: () => requests.filter((r) => r.path === "two-step").length,
   };
 }
 const status = (value: string) => () => Response.json({ ...send, status: value });
@@ -104,6 +107,7 @@ afterEach(() => {
   vi.clearAllMocks();
   privy.mfa.needed = false;
   privy.mfa.enrolled = false;
+  privy.emailedCode = false;
 });
 
 describe("approving a send", () => {
@@ -160,6 +164,17 @@ describe("approving a send", () => {
     expect(privy.sign).not.toHaveBeenCalled();
     act(() => hook.result.current.cancelConfirm());
     expect(hook.result.current.settingUp).toBe(false);
+  });
+
+  // Only the setup records methods: a send would record one a stolen session set up at Privy.
+  it("records no two-step methods, even after a send confirmed with the emailed code", async () => {
+    privy.mfa.enrolled = true;
+    privy.emailedCode = true;
+    const api = server(status("approved"));
+    const { hook } = approval();
+    await act(() => hook.result.current.start());
+    expect(privy.sign).toHaveBeenCalledOnce();
+    expect(api.records()).toBe(0);
   });
 
   it("approves nothing when the two-step code is closed, and drops the code after a send", async () => {

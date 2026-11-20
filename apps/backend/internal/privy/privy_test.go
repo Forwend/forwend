@@ -88,6 +88,21 @@ func TestProfileWalletGivesUpOnAHangingPrivy(t *testing.T) {
 	}
 }
 
+func TestProfileWalletRecoversFromAFailedCreate(t *testing.T) {
+	f, c := newFake(t)
+	ctx := context.Background()
+	f.Lock()
+	f.FailCreates = 3 // the first call and the SDK's two retries
+	f.Unlock()
+	if _, err := c.ProfileWallet(ctx, user, profile); err == nil {
+		t.Fatal("a failed create was not reported")
+	}
+	w, err := c.ProfileWallet(ctx, user, profile)
+	if err != nil || w.ID != "wallet-1" {
+		t.Fatalf("next call: %+v, %v; want the wallet created", w, err)
+	}
+}
+
 func TestProfileWalletBelongsToItsUser(t *testing.T) {
 	_, c := newFake(t)
 	ctx := context.Background()
