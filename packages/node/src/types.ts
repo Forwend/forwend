@@ -1,6 +1,8 @@
 import type { components, operations } from "./openapi.gen.js";
 
 type Schemas = components["schemas"];
+// An interface keeps the published names open to declaration merging; it cannot extend an indexed type directly.
+type Of<T> = T;
 type Query<Operation extends keyof operations> = NonNullable<
   operations[Operation]["parameters"]["query"]
 >;
@@ -122,50 +124,48 @@ export type HistoryActor = (typeof HISTORY_ACTORS)[number];
 export type UpdateField = (typeof UPDATE_FIELDS)[number];
 export type EditedField = (typeof EDITED_FIELDS)[number];
 
-export type PaymentAmounts = Schemas["PaymentAmounts"];
+export interface PaymentAmounts extends Of<Schemas["PaymentAmounts"]> {}
 /** An option's fees, in its token's base units. */
-export type OptionFees = Pick<
-  Schemas["Payment"],
-  "networkFee" | "platformFee" | "netAmount" | "feesPaidBy"
->;
-export type PaymentReceipt = Schemas["PaymentReceipt"];
-export type CrossChainTx = Schemas["CrossChainTx"];
+export interface OptionFees
+  extends Pick<Schemas["Payment"], "networkFee" | "platformFee" | "netAmount" | "feesPaidBy"> {}
+export interface PaymentReceipt extends Of<Schemas["PaymentReceipt"]> {}
+export interface CrossChainTx extends Of<Schemas["CrossChainTx"]> {}
 /** A NEAR Intents payment; amounts are base units of their token, null until 1Click reports them. */
-export type CrossChain = Schemas["CrossChainPayment"];
-export type Payment = Schemas["Payment"];
+export interface CrossChain extends Of<Schemas["CrossChainPayment"]> {}
+export interface Payment extends Of<Schemas["Payment"]> {}
 /** One payment as payments.get returns it. */
-export type PaymentDetails = Schemas["PaymentDetails"];
+export interface PaymentDetails extends Of<Schemas["PaymentDetails"]> {}
 /** A token and network the payer may pay with. */
-export type PaymentOption = Schemas["PaymentOption"];
-export type PaymentCoverage = Schemas["PaymentCoverage"];
-export type PaymentSettlement = Schemas["PaymentSettlement"];
-export type PaymentReturn = PaymentOption["returns"][number];
-export type Deposit = Schemas["Deposit"];
-export type DepositSummary = Schemas["DepositSummary"];
-export type PaymentDelivery = Schemas["PaymentDelivery"];
+export interface PaymentOption extends Of<Schemas["PaymentOption"]> {}
+export interface PaymentCoverage extends Of<Schemas["PaymentCoverage"]> {}
+export interface PaymentSettlement extends Of<Schemas["PaymentSettlement"]> {}
+export interface PaymentReturn extends Of<PaymentOption["returns"][number]> {}
+export interface Deposit extends Of<Schemas["Deposit"]> {}
+export interface DepositSummary extends Of<Schemas["DepositSummary"]> {}
+export interface PaymentDelivery extends Of<Schemas["PaymentDelivery"]> {}
 /** Something about a payment that needs a look, and what to do. */
-export type PaymentProblem = Schemas["PaymentProblem"];
+export interface PaymentProblem extends Of<Schemas["PaymentProblem"]> {}
 /** A merchant profile's store. storeId is public and grants nothing. */
-export type Store = Schemas["Store"];
-export type CheckoutSession = Schemas["CheckoutSession"];
-export type CreateCheckoutSession = Schemas["CreateCheckoutSession"];
-export type ListPayments = Query<"listPayments">;
-export type ListCheckoutSessions = Query<"listCheckoutSessions">;
+export interface Store extends Of<Schemas["Store"]> {}
+export interface CheckoutSession extends Of<Schemas["CheckoutSession"]> {}
+export interface CreateCheckoutSession extends Of<Schemas["CreateCheckoutSession"]> {}
+export interface ListPayments extends Query<"listPayments"> {}
+export interface ListCheckoutSessions extends Query<"listCheckoutSessions"> {}
 /** An invoice in its owner's list. */
-export type Invoice = Schemas["InvoiceSummary"];
+export interface Invoice extends Of<Schemas["InvoiceSummary"]> {}
 /** A token and network an invoice accepts, with its own id, amount and receive address. */
-export type InvoiceOption = Schemas["InvoiceDetail"]["options"][number];
-export type Revision = Schemas["Revision"];
-export type InvoiceSend = Schemas["Invoice"]["sends"][number];
-export type InvoiceHistory = Schemas["Invoice"]["history"][number];
+export interface InvoiceOption extends Of<Schemas["InvoiceDetail"]["options"][number]> {}
+export interface Revision extends Of<Schemas["Revision"]> {}
+export interface InvoiceSend extends Of<Schemas["Invoice"]["sends"][number]> {}
+export interface InvoiceHistory extends Of<Schemas["Invoice"]["history"][number]> {}
 /** One invoice, as create, get, cancel, reopen, send and webhooks return it. */
-export type InvoiceDetails = Schemas["Invoice"];
-export type CreateInvoice = Schemas["CreateInvoiceRequest"];
-export type ListInvoices = Query<"listInvoices">;
-export type ListWebhookEvents = Query<"listWebhookEvents">;
+export interface InvoiceDetails extends Of<Schemas["Invoice"]> {}
+export interface CreateInvoice extends Of<Schemas["CreateInvoiceRequest"]> {}
+export interface ListInvoices extends Query<"listInvoices"> {}
+export interface ListWebhookEvents extends Query<"listWebhookEvents"> {}
 /** Money held for the payer, on invoice.held. */
-export type Held = NonNullable<Schemas["WebhookEvent"]["data"]["held"]>;
+export interface Held extends NonNullable<Schemas["WebhookEvent"]["data"]["held"]> {}
 /** An invoice change, as a webhook carries it and the events list returns it. */
-export type WebhookEvent = Schemas["WebhookEvent"];
+export interface WebhookEvent extends Of<Schemas["WebhookEvent"]> {}
 /** The owner's check of an endpoint: it names no invoice. */
-export type TestWebhookEvent = Schemas["WebhookTestEvent"];
+export interface TestWebhookEvent extends Of<Schemas["WebhookTestEvent"]> {}

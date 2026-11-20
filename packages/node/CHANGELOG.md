@@ -4,7 +4,7 @@
 
 - The types are generated from the API's OpenAPI spec, under the same names and with the same shapes.
   - Field docs now come from the spec.
-  - They are type aliases now, not interfaces, so a declaration can no longer merge into them.
+  - The object types stay interfaces, so a declaration can still merge into them.
 
 ## 0.2.1 (2026-11-11)
 

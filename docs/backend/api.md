@@ -18,7 +18,7 @@ Routes: `apps/backend/api/openapi.yaml`; each module mounts its own in `internal
   - Generated structs sort fields by name, which would reorder the JSON the API sends.
   - Each module's `TestJSONMatchesTheSpec` compares its structs with the generated ones through `openapi.Diff`.
   - It checks field names and value types; for answers also which fields may be left out or sent as null.
-- The Node package's exported types are aliases of the generated ones ([packages/node](../../packages/node/AGENTS.md)).
+- The Node package's exported types extend the generated ones; object types stay interfaces ([packages/node](../../packages/node/AGENTS.md)).
 - The web app's Zod schemas stay hand-written ([web architecture](../web/architecture.md)); a typecheck compares them.
 
 ## Routes
