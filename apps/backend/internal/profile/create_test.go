@@ -38,11 +38,14 @@ func TestCreateProfile(t *testing.T) {
 func TestCreateProfileErrors(t *testing.T) {
 	s, _, pool := newService(t)
 	ctx := context.Background()
+	if _, _, err := s.Create(ctx, alice, "key-1", Merchant, ""); !errors.Is(err, ErrNotSignedUp) {
+		t.Fatalf("before signup: %v, want ErrNotSignedUp", err)
+	}
 	if _, _, err := s.SignUp(ctx, alice); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range []struct{ kind, name string }{
-		{Merchant, strings.Repeat("é", MaxNameLength+1)}, {Merchant, "\xff"}, {Merchant, "a\x00b"},
+		{Personal, ""}, {"developer", ""}, {Merchant, strings.Repeat("é", MaxNameLength+1)}, {Merchant, "\xff"}, {Merchant, "a\x00b"},
 	} {
 		if _, _, err := s.Create(ctx, alice, "key-1", c.kind, c.name); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("kind %q name %q: %v, want ErrInvalid", c.kind, c.name, err)
