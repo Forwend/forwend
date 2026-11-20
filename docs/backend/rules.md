@@ -13,6 +13,8 @@ apps/backend/
     worker/main.go
     signer/main.go
     webhooks/main.go
+    canary/main.go        the canary, run on its own host
+    ops/                  support's command for held money
   api/openapi.yaml         HTTP request and response contract
   internal/
     config/               environment loading and validation
@@ -21,16 +23,22 @@ apps/backend/
       server.go           Serve: drain and shut down
       mid/                middleware: sign-in, profile access (Guards), rate limits, security headers
       httpio/             JSON in and out, the error shape and its codes, query parsing
+      paymentio/          payment JSON the invoice, checkout and payment modules share; not a module
       invoiceapi/         one package per module: routes.go (its routes), model.go (its JSON), handler files
+      checkoutapi/        checkout sessions
+      paymentapi/         payments, their movements, reconciliation and attention list
       jobapi/
-      profileapi/
-      moneyapi/
-      teamapi/
       linkapi/
+      profileapi/         account and profiles
+      moneyapi/           balances, activity, transactions, records currency, statement
+      sendapi/            sends out of a profile wallet
+      priceapi/           stablecoin display prices
+      reauthapi/          Confirm it's you codes
+      teamapi/
       keyapi/
       webhookapi/
       healthapi/
-      tests/              API tests through the whole router, one file per module
+      tests/              API tests through the whole router, one file per feature
     profile/              profile domain and operations
       profile.go          domain types, constants and rules
       service.go          service dependencies and constructor
@@ -41,7 +49,7 @@ apps/backend/
     team/                 a merchant profile's members and invites; what each role may do is auth's map
     link/                 payment links: templates a payer pays through
     apikey/               secret API keys: their text, scopes and checks
-    webhook/              endpoints, sealed secrets, events, signed delivery and the public-address rule
+    webhook/              endpoints, sealed secrets, events and signed delivery
     balance/
     activity/
     ledger/
@@ -56,15 +64,21 @@ apps/backend/
   e2e/                    flows involving the real binaries
 ```
 
-Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `document`, `canary`, `chaintest`;
-`cmd/canary` is the canary binary and `cmd/ops` support's tool. Keep the current Go backend; do not copy frontend folders or NestJS layers into it.
+Other packages under `internal/` (each package comment says what it owns):
+- Accounts and access: `auth`, `reauth`.
+- Money and chain: `address`, `finality`, `send`, `canary`, `chaintest`.
+- Records and email: `history`, `outbox`, `notify`, `email`, `document`, `search`.
+- Outside services: `intents` (NEAR Intents 1Click), `price` (CoinGecko), `ecb` (euro rates), `outbound` (an HTTP
+  client that connects only to public addresses).
+
+Keep the current Go backend; do not copy frontend folders or NestJS layers into it.
 
 - Production application logic belongs in `internal/`. `cmd/` owns startup, wiring and process lifetime;
   balance reads, RPC selection/retry and other reusable behavior belong in a named internal package.
 - Group by domain (`profile`, `invoice`, `ledger`), not global `services/`, `repositories/`, `models/` or
   `controllers/` packages. A directory is a Go package boundary, not just a visual folder.
 - Start a small feature in one or two files. Split a growing package into files by operation, such as
-  `create.go`, `signup.go`, `reconcile.go` or `expiry.go`, while keeping the same package. Do not move unrelated
+  `create.go`, `signup.go`, `reconcile.go` or `reopen.go`, while keeping the same package. Do not move unrelated
   operations into `service.go` indefinitely, or split files only to meet a line-count limit.
 - Add a subpackage only when it has its own responsibility and a small usable public interface. If two proposed
   packages constantly need each other's private details, keep them together. Shared behavior needs a named owner,
@@ -74,8 +88,9 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
   at the HTTP boundary and domain types with their domain; do not force transport types into services.
 - A new API area is a module: `internal/httpapi/<name>api/` with `routes.go` (`func Routes(mux, guards, deps...)`
   listing its routes and the guard each needs), `model.go` (request and response JSON) and handler files named for
-  what they do; then one line in `router.go`. A module imports `mid`, `httpio` and its domain packages, never another
-  module. Middleware is `func(http.Handler) http.Handler` in `mid`; route-specific limits stay in their module.
+  what they do; then one line in `router.go`.
+  - A module imports `mid`, `httpio`, `paymentio` and its domain packages, never another module.
+  - Middleware is `func(http.Handler) http.Handler` in `mid`; route-specific limits stay in their module.
 - Unit tests stay beside their package: Go tests read the package's unexported names. API tests, which go through
   `httpapi.NewMux` like a client, live in `internal/httpapi/tests/`.
 - Dependencies flow from `cmd` to HTTP/worker orchestration, then domain operations and integrations. Domain
@@ -96,15 +111,17 @@ Other packages under `internal/`: `auth`, `address`, `finality`, `search`, `docu
 - Constructors name their type: `invoice.NewService`, `watcher.NewChain`. Bare `New` only when it returns the type
   named like the package.
 - Test helpers: `<package>test` (`databasetest`).
-- Files: descriptive lowercase names, with underscores for multiple words (`wallet_balance.go`); `_test.go`
+- Files: descriptive lowercase names, with underscores for multiple words (`payment_readiness.go`); `_test.go`
   for tests. Use the operation name within a domain package (`invoice/create.go`), not `invoice_service_impl.go`.
   Keep domain structs, constants and errors with their owner, not central `types.go` or `constants.go` collections
   spanning unrelated domains. Export only what another package needs.
 
 ## Code
 
-- Config: only `internal/config` reads env vars, one loader per set of needs (`LoadAPI`, `LoadWorker`). No defaults:
-  a missing variable stops the binary with an error naming every missing one.
+- Config: only `internal/config` reads env vars, one loader per set of needs (`LoadAPI`, `LoadWorker`).
+  - A missing required variable stops the binary with an error naming every missing one.
+  - Optional variables with a public default set it in `internal/config`: the 1Click, ECB and CoinGecko URLs and
+    the email sender.
 - Dependencies come through constructors. No mutable global dependencies; named errors and embedded migration files are allowed.
   No `init()` side effects except driver registration.
 - `context.Context` is the first parameter of anything doing I/O.

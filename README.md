@@ -247,7 +247,7 @@ cp apps/web/.env.example apps/web/.env
 pnpm dev
 ```
 
-`pnpm dev` starts Postgres in Docker, the API, the worker, the signer and the web app at http://localhost:3000.
+`pnpm dev` starts Postgres in Docker, the API, the worker, the signer, the webhooks sender and the web app at http://localhost:3000.
 Fill in the keys in each `.env` first; the backend needs a funded testnet executor key.
 
 ```sh

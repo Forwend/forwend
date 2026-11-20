@@ -14,10 +14,13 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
 | Worker | Watches chains, keeps the append-only ledger, runs the invoice state machine | No | [backend](backend/architecture.md) |
 | Signer | Turns typed intents ("settle invoice X") into transactions with the executor key | Executor key | [backend](backend/architecture.md) |
 | Webhooks sender | Signs invoice events and posts them to the URLs owners register | Webhook secret key only | [backend](backend/architecture.md) |
+| Canary | Checks open invoices' receive addresses, the API and the pay page apart from the code that makes them | No | [money safety](backend/money-safety.md#canary) |
+| Ops | Support's command for held money: reads a case and prints the Safe calls of a return | No | [money safety](backend/money-safety.md#returns-through-support) |
 | Postgres | Profiles, invoices, chain transfers, ledger, intents | No | [backend](backend/architecture.md) |
 | Invoice receiver contracts | One receiver per invoice at an address known in advance; can only pay the invoice amount to its recipient or return money through the refund authority | No | [contracts](contracts/architecture.md) |
 | Refund-authority Safe | Multisig. Refunds, recoveries and late settles wait 24–48 h; pause and executor change are immediate | Owner hardware keys | [contracts operations](contracts/operations.md) |
 | Privy | Login and one wallet per profile; the profile wallet is the invoice recipient | User wallets (Privy) | PROJECT D-21 |
+| NEAR Intents 1Click | Converts a payer's token on another chain into USDC on Base | No | [money safety](backend/money-safety.md#cross-chain-payments) |
 | RPC providers | Read chains through prioritized private/public endpoints; one working provider supplies finalized evidence and balances | No | PROJECT D-15 |
 
 ## Trust boundaries
@@ -28,10 +31,11 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
   executor key can only settle to the recipient written in the terms. A leaked executor key is replaced by the Safe.
 - The webhooks sender is the one part that calls URLs users choose. It holds no money, Privy, email or RPC key, and
   sends only to public addresses, checked after DNS.
-- Refunds and recoveries never go through the signer: an approved claim becomes a proposed Safe transaction that
-  owners sign, then waits in the delay so an honest owner can cancel it.
-- The receive address is computed locally from the factory address and init-code hash compiled into the backend,
-  never read from the database or an RPC, and recomputed on the checkout page.
+- Refunds and recoveries never go through the signer.
+  - Support checks the case with `ops`, which prints a Safe transaction (D-118).
+  - Owners sign it; it then waits in the delay so an honest owner can cancel it.
+- The receive address is computed locally from the factory and implementation addresses compiled into the backend.
+  - It is never read from the database or an RPC, and the checkout page computes it again.
 - "Paid" comes only from `balanceOf` of the allowlisted token on an address the backend computed itself, confirmed by
   the finalized token balance. Logs from any other contract are ignored.
 
@@ -40,16 +44,19 @@ Diagram: [who can move money](diagrams/security-keys.json).
 ## Money flow
 
 1. A creator makes an invoice. The API writes immutable terms (random 256-bit `invoiceId`, recipient = the profile
-   wallet, token, amount, expiry, settle deadline, chain) and computes the receive address. Nothing is deployed.
+   wallet, token, amount, expiry, settle deadline, chain, network and platform fee) and computes the receive address.
+   Nothing is deployed.
    When the payer chooses, each accepted token and network gets such terms and an address of its own; the first one
    paid becomes the invoice's, and money sent to another is held for the payer.
 2. The payer sends an ordinary token transfer to that address, from a wallet or an exchange.
 3. The worker sees the transfer, waits for the confirm rule, and moves the invoice through detected → partially paid
    or paid. Deposits after the checkout closes are late and held.
-4. For a paid invoice the signer deploys the receiver (if needed) and calls `settle`: exactly the invoice amount goes
-   to the profile wallet. Any excess stays held in the receiver.
-5. Held money (excess, late, expired partial) goes back to the payer through a verified claim and a delayed Safe
-   refund (claims come in PLAN 11.10; until then the Safe returns it by hand). Policy, not a contract rule: before the deadline the executor could still settle it to the recipient.
+4. For a paid invoice the signer deploys the receiver (if needed) and calls `settle`.
+   - The profile wallet gets the invoice amount less its fees (R-226).
+   - The network fee goes to the settler and the platform fee to the refund authority.
+   - Any excess stays held in the receiver.
+5. Held money (excess, late, expired partial) goes back to the payer through support and a delayed Safe refund (D-118).
+   Policy, not a contract rule: before the deadline the executor could still settle it to the recipient.
    The one exception: the owner may reopen a partly paid invoice once, and its held money, up to the amount, becomes
    the creator's (R-130).
 

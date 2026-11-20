@@ -1,6 +1,6 @@
 # Merchant payment model
 
-This document owns the product boundaries for merchant payments. PROJECT owns requirements; PLAN owns execution order.
+This document owns the product boundaries for merchant payments. PROJECT owns requirements; PLAN owns future scope.
 
 ## Responsibilities
 
@@ -14,7 +14,7 @@ This document owns the product boundaries for merchant payments. PROJECT owns re
 | Personal request | A simpler request between people, preserving its existing flow. |
 | Payment | Financial aggregate containing accepted options, deposits, held funds and settlement. |
 | Settlement | Confirmed movement of merchant entitlement from a receiver to the profile wallet. |
-| Refund | Evidence of receiver funds returned by the authority; claim and execution tools belong to PLAN 11.10. |
+| Refund | Evidence of receiver funds returned by the authority; support starts it with `cmd/ops` (D-118). |
 | Webhook event | A business change with an immutable identity and ordering sequence. |
 | Delivery attempt | One HTTP transport attempt; failure does not change payment status. |
 
@@ -45,7 +45,7 @@ flowchart LR
 
 - A reusable link stays available until disabled, ended or its available capacity is exhausted.
 - A checkout is open, complete or expired; its payment can independently be confirming, partial, paid or unpaid.
-- Paid requires existing finalized-chain and independent balance checks.
+- Paid requires finalized transfers and the finalized balance check (D-15).
 - Settlement remains separate: a paid payment can still have settlement pending and excess held for its payer.
 - Due date and checkout close remain different invoice concepts.
 - Browser redirects, parent messages and customer claims never prove payment.
@@ -128,7 +128,7 @@ Payment status and wallet transfer are separate facts (D-114). The API derives b
 - Wallet activity stays profile-wide under D-93; store payment views and exports honor store access.
 - Hosted checkout comes first; embedded checkout is restricted to the store's allowed origins.
 - Browser packages never receive secret API keys or decide financial success.
-- Full refund claim/execution tools remain PLAN 11.10.
+- Self-serve returns of held money are [deferred](../PLAN.md#deferred-beyond-mvp); support returns it (D-118).
 - Each profile has a Developer mode toggle (D-120): off is live mode on mainnets, on is test mode on testnets.
 
 ## Primary evidence
