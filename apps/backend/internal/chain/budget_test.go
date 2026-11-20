@@ -112,11 +112,18 @@ func TestAPIReadsCannotTakeTheMoneyPathsBudget(t *testing.T) {
 	}
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	start := time.Now()
 	if err := money.wait(bounded, "shared-account", []byte(`{"method":"eth_getLogs"}`)); err != nil {
 		t.Fatalf("worker read behind a full api share: %v", err)
 	}
-	if elapsed := time.Since(start); elapsed > 200*time.Millisecond {
-		t.Fatalf("worker read waited %v behind the api", elapsed)
+	// The reservations, not the wall clock: a busy machine slows the database, never the order of the slots.
+	var apiNext, moneyNext time.Time
+	for key, next := range map[string]*time.Time{"api:shared-account": &apiNext, "money:shared-account": &moneyNext} {
+		if err := db.QueryRow(ctx, `SELECT next_at FROM rpc_budgets WHERE bucket = $1`, budgetKey(key)).
+			Scan(next); err != nil {
+			t.Fatalf("%s bucket: %v", key, err)
+		}
+	}
+	if !moneyNext.Before(apiNext) {
+		t.Fatalf("worker read queued behind the api: its slot ends %v, the api's %v", moneyNext, apiNext)
 	}
 }

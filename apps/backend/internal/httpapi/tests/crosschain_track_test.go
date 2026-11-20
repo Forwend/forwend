@@ -69,6 +69,7 @@ func historyKinds(t *testing.T, e invoiceEnv, pay string) map[string]map[string]
 }
 
 func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
 	// Postgres keeps microseconds: an exact next check compares equal only to a time at that precision.
@@ -215,6 +216,7 @@ func TestWorkerFollowsAQuoteFromDepositToConversion(t *testing.T) {
 }
 
 func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
+	t.Parallel()
 	e, _, worker, _, quote := tracked(t)
 	id := quote["quoteId"].(string)
 	shown, _ := time.Parse(time.RFC3339, quote["shownUntil"].(string))
@@ -278,6 +280,7 @@ func TestWorkerStopsAQuoteNobodyPaidAndRecordsAFailure(t *testing.T) {
 }
 
 func TestWorkerFollowsADepositMadeAfterTheDeadline(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
 	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
@@ -315,6 +318,7 @@ func TestWorkerAlertsOnAStatusItDoesNotKnow(t *testing.T) {
 }
 
 func TestAShortDepositHoldsTheInvoice(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	fake.SetStatus(quote["depositAddress"].(string), intents.IncompleteDeposit, map[string]any{"depositedAmount": "99000000",
 		"originChainTxHashes": []any{}, "destinationChainTxHashes": []any{}})
@@ -330,6 +334,7 @@ func TestAShortDepositHoldsTheInvoice(t *testing.T) {
 }
 
 func TestOneRoundReadsDepositsFirstAndManyAtOnce(t *testing.T) {
+	t.Parallel()
 	e, _ := crossChainEnv(t)
 	pay, options := liveInvoice(t, e, "key-1", 86400)
 	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -371,6 +376,7 @@ func TestOneRoundReadsDepositsFirstAndManyAtOnce(t *testing.T) {
 }
 
 func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
 	deadline, _ := time.Parse(time.RFC3339, quote["deadline"].(string))
@@ -396,6 +402,7 @@ func TestWorkerReadsASeenDepositUntilItEnds(t *testing.T) {
 }
 
 func TestADirectPaymentBookedFirstIsNotPaidThroughNEARIntents(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	id, address := quote["quoteId"].(string), quote["depositAddress"].(string)
 	main := e.get(t, pay).body["invoiceId"].(string)
@@ -431,6 +438,7 @@ func TestADirectPaymentBookedFirstIsNotPaidThroughNEARIntents(t *testing.T) {
 }
 
 func TestSeenDepositPicksTheBaseOption(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	var arbitrum, base string
 	for _, o := range e.get(t, pay).body["options"].([]any) {
@@ -460,6 +468,7 @@ func TestSeenDepositPicksTheBaseOption(t *testing.T) {
 }
 
 func TestProfileTurnsCrossChainOff(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	path := "/v1/profiles/" + e.aliceProfile + "/tokens"
 	if r := e.call(t, "GET", path, "did:privy:alice", "", ""); r.status != http.StatusOK || r.body["crossChain"] != true {
@@ -505,6 +514,7 @@ func TestProfileTurnsCrossChainOff(t *testing.T) {
 }
 
 func TestAnAPIWithout1ClickOffersNoCrossChain(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPICrossChain(t, 0, webhookKey, nil, invoice.Pricing{}, nil)
 	e.exec(t, `UPDATE chains SET enabled = true WHERE chain_id IN (8453, 42161)`)
 	e.exec(t, `INSERT INTO chain_cursors (chain_id, last_scanned_block, last_finalized_block) VALUES (8453, 0, 0), (42161, 0, 0)`)
@@ -520,6 +530,7 @@ func TestAnAPIWithout1ClickOffersNoCrossChain(t *testing.T) {
 }
 
 func TestADeposit1ClickNeverFinishesStopsHoldingTheInvoice(t *testing.T) {
+	t.Parallel()
 	e, fake, worker, pay, quote := tracked(t)
 	id := quote["quoteId"].(string)
 	fake.SetStatus(quote["depositAddress"].(string), intents.Processing, map[string]any{"depositedAmount": "101120000",

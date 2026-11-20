@@ -15,6 +15,7 @@ import (
 var linkSlug = regexp.MustCompile(`^[a-z0-9]{12}$`)
 
 func TestPaymentLinks(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	shop := e.merchant(t)
@@ -128,6 +129,7 @@ func TestPaymentLinks(t *testing.T) {
 }
 
 func TestPaymentLinkPages(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -193,6 +195,7 @@ func TestPaymentLinkPages(t *testing.T) {
 }
 
 func TestPaymentLinksOfAMembersStores(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, dev = "did:privy:alice", "did:privy:erin"
 	shop := e.merchant(t)
@@ -230,6 +233,7 @@ func TestPaymentLinksOfAMembersStores(t *testing.T) {
 }
 
 func TestLinkInvoiceNumbers(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	const linkID = "cccccccc-0000-4000-8000-000000000001"

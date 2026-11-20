@@ -19,6 +19,7 @@ import (
 )
 
 func TestLinkPurchaseRetrySurvivesTemplateChangesAndDisable(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -47,6 +48,7 @@ func TestLinkPurchaseRetrySurvivesTemplateChangesAndDisable(t *testing.T) {
 }
 
 func TestLinkQuotesPreventRepricingUncommittedRetries(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -84,6 +86,7 @@ func TestLinkQuotesPreventRepricingUncommittedRetries(t *testing.T) {
 }
 
 func TestScopedLinkEditWithoutStoreKeepsItsOriginalStore(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	shop := e.merchant(t)
@@ -105,6 +108,7 @@ func TestScopedLinkEditWithoutStoreKeepsItsOriginalStore(t *testing.T) {
 }
 
 func TestLinkCreationReadsCapacityAfterAConcurrentReopenCommits(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := t.Context()
 	shop := e.merchant(t)
@@ -174,6 +178,7 @@ func TestLinkCreationReadsCapacityAfterAConcurrentReopenCommits(t *testing.T) {
 }
 
 func TestConcurrentLinkReservationRefusalSpendsNoCreationBudget(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := t.Context()
 	shop := e.merchant(t)
@@ -235,6 +240,7 @@ func TestConcurrentLinkReservationRefusalSpendsNoCreationBudget(t *testing.T) {
 }
 
 func TestLinkRetriesKeepLegacyHashesAndTheExactPublicInput(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := t.Context()
 	const alice = "did:privy:alice"
@@ -280,6 +286,7 @@ func TestLinkRetriesKeepLegacyHashesAndTheExactPublicInput(t *testing.T) {
 }
 
 func TestLimitedLinkReservesTheLastPurchaseSlotOnce(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -318,6 +325,7 @@ func TestLimitedLinkReservesTheLastPurchaseSlotOnce(t *testing.T) {
 }
 
 func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -351,6 +359,7 @@ func TestLimitedLinkHoldsAnUnpaidSlotOnlyUntilADepositIsSeen(t *testing.T) {
 }
 
 func TestLinkStoreCannotMoveAndUnreadyMerchantCannotActivate(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -374,6 +383,7 @@ func TestLinkStoreCannotMoveAndUnreadyMerchantCannotActivate(t *testing.T) {
 }
 
 func TestLinkPurchaseMetadataAndSourceCannotBeRewritten(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	const id = "eeeeeeee-0000-4000-8000-000000000050"

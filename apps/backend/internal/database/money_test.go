@@ -86,6 +86,7 @@ func must(t *testing.T, err error) {
 }
 
 func TestReceiveAddressIsUniquePerChain(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
 	wantCode(t, insertInvoice(conn, profile, 2, hex20(100), "key-2", "5000000"), codeUnique, "same receive address")
@@ -95,6 +96,7 @@ func TestReceiveAddressIsUniquePerChain(t *testing.T) {
 }
 
 func TestIdempotencyKeyIsUniquePerProfile(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
 	wantCode(t, insertInvoice(conn, profile, 2, hex20(101), "key-1", "5000000"), codeUnique, "same profile and key")
@@ -106,6 +108,7 @@ func TestIdempotencyKeyIsUniquePerProfile(t *testing.T) {
 }
 
 func TestAmountFitsUint256(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", uint256Max))
 	over := "115792089237316195423570985008687907853269984665640564039457584007913129639936"
@@ -114,6 +117,7 @@ func TestAmountFitsUint256(t *testing.T) {
 }
 
 func TestInvoiceFeesAreFixedTermsWithinATenth(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -132,6 +136,7 @@ func TestInvoiceFeesAreFixedTermsWithinATenth(t *testing.T) {
 }
 
 func TestTransferIsUniqueUntilReorged(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -150,6 +155,7 @@ func TestTransferIsUniqueUntilReorged(t *testing.T) {
 }
 
 func TestLedgerIsAppendOnly(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -184,6 +190,7 @@ func TestLedgerIsAppendOnly(t *testing.T) {
 }
 
 func TestHistoryIsAppendOnly(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -205,6 +212,7 @@ func TestHistoryIsAppendOnly(t *testing.T) {
 }
 
 func TestWebhookEventsAreAppendOnly(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -226,6 +234,7 @@ func TestWebhookEventsAreAppendOnly(t *testing.T) {
 }
 
 func TestWebhookEventsNameTheirInvoice(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -247,6 +256,7 @@ func TestWebhookEventsNameTheirInvoice(t *testing.T) {
 }
 
 func TestLedgerTransactionsBalance(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -274,6 +284,7 @@ func TestLedgerTransactionsBalance(t *testing.T) {
 }
 
 func TestLedgerTransactionNeedsEntries(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -287,6 +298,7 @@ func TestLedgerTransactionNeedsEntries(t *testing.T) {
 }
 
 func TestBookedTransferCannotChange(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -319,6 +331,7 @@ func TestBookedTransferCannotChange(t *testing.T) {
 }
 
 func TestBookingAndReorgDoNotRace(t *testing.T) {
+	t.Parallel()
 	for _, level := range []pgx.TxIsoLevel{pgx.ReadCommitted, pgx.RepeatableRead} {
 		t.Run(string(level), func(t *testing.T) { bookingRacesReorg(t, level) })
 	}
@@ -371,6 +384,7 @@ func bookingRacesReorg(t *testing.T, level pgx.TxIsoLevel) {
 }
 
 func TestInvoicePaidInSeveralTransfers(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))
@@ -408,6 +422,7 @@ func TestInvoicePaidInSeveralTransfers(t *testing.T) {
 }
 
 func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	set := func(id int, status string) error {
@@ -440,6 +455,7 @@ func TestInvoiceStatusTransitionsAndTerms(t *testing.T) {
 }
 
 func TestInvoiceNumbers(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	var other string
@@ -481,6 +497,7 @@ func TestInvoiceNumbers(t *testing.T) {
 }
 
 func TestInvoiceOptions(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	option := func(id, main int, receive, recipient string, expires int64) error {
@@ -547,6 +564,7 @@ func TestInvoiceOptions(t *testing.T) {
 }
 
 func TestReopenRules(t *testing.T) {
+	t.Parallel()
 	conn, profile := moneyDB(t)
 	ctx := context.Background()
 	must(t, insertInvoice(conn, profile, 1, hex20(100), "key-1", "5000000"))

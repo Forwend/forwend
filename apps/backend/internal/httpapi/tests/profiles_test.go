@@ -41,6 +41,7 @@ func profilesOf(r reply) []map[string]any {
 var walletAddress = regexp.MustCompile(`^0x[0-9a-f]{40}$`)
 
 func TestSignUpAndMe(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const carol = "did:privy:carol"
 	if r := e.call(t, "GET", "/v1/me", carol, "", ""); r.status != http.StatusNotFound || errorCode(r) != "not_signed_up" {
@@ -67,6 +68,7 @@ func TestSignUpAndMe(t *testing.T) {
 }
 
 func TestOnboardingRoute(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const carol, dave = "did:privy:carol", "did:privy:dave"
 	const path = "/v1/me/onboarding"
@@ -150,6 +152,7 @@ func TestOnboardingRoute(t *testing.T) {
 }
 
 func TestCreateProfileRoute(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const carol = "did:privy:carol"
 	body := `{"kind": "merchant", "name": "Carol's shop"}`
@@ -292,6 +295,7 @@ var profileRoutes = []struct{ method, path, body string }{
 const outsideAddress = "0x00000000000000000000000000000000000000cc"
 
 func TestProfileRoutesAreAllListed(t *testing.T) {
+	t.Parallel()
 	files, err := filepath.Glob("../*/routes.go")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("route files %v %v", files, err)
@@ -320,6 +324,7 @@ func TestProfileRoutesAreAllListed(t *testing.T) {
 }
 
 func TestProfilesBelongToTheirUser(t *testing.T) {
+	t.Parallel()
 	// A high limit: each user calls every profile route.
 	e := invoiceAPIWith(t, 1000, webhookKey)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
@@ -361,6 +366,7 @@ const billingBody = `{"name": "Alice Design GmbH", "address": "Hauptstr. 1\n1011
 	"taxId": "DE123456789", "email": "billing@alice.example"}`
 
 func TestBillingDetails(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	// The merchant profile: the freelancer one starts with billing details.

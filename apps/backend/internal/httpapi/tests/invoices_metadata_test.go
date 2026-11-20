@@ -9,6 +9,7 @@ import (
 )
 
 func TestInvoiceMetadata(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	withMetadata := func(metadata string) string {

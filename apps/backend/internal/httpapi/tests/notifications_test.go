@@ -6,6 +6,7 @@ import (
 )
 
 func TestNotificationsUseTheLoginEmail(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const dave = "did:privy:dave"
 	e.wallets.Lock()
@@ -51,6 +52,7 @@ func TestNotificationsUseTheLoginEmail(t *testing.T) {
 }
 
 func TestNotificationsWithoutLoginEmail(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const erin = "did:privy:erin"
 	for range 2 {

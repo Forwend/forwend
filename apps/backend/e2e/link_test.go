@@ -14,6 +14,7 @@ import (
 )
 
 func TestReusableLinkReservationsExpireAndPurchasesSettleIndependently(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	st := newStack(t, false)
 	profile, store, merchantWallet := st.merchant(t)

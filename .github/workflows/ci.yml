@@ -13,8 +13,14 @@ concurrency:
 
 jobs:
   checks:
+    name: checks (${{ matrix.lane }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # One job per lane of the check registry (docs/config.json); tests/test_harness.py keeps this list complete.
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [main, unit]
     services:
       postgres:
         # GitHub-hosted runners are exempt from Docker Hub's public-image pull rate limit.
@@ -30,6 +36,12 @@ jobs:
     env:
       DATABASE_URL: postgres://forwend:forwend@localhost:55432/forwend?sslmode=disable
     steps:
+      # Parallel tests open more than Postgres's default 100 connections; a service container takes no start command.
+      - name: Raise the Postgres connection limit
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U forwend -c "ALTER SYSTEM SET max_connections = 300"
+          docker restart ${{ job.services.postgres.id }}
+          until docker exec ${{ job.services.postgres.id }} pg_isready -U forwend; do sleep 1; done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
@@ -46,14 +58,15 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Both lanes: web e2e in main, and the canary's pay-page check in the Go tests of unit.
       - name: Install Playwright browser
         run: pnpm --filter @forwend/web exec playwright install --with-deps chromium
       - name: Repository checks
-        run: python3 scripts/harness.py check --ci
+        run: python3 scripts/harness.py check --ci --lane ${{ matrix.lane }}
         env:
           BASE_SEPOLIA_RPC: https://sepolia.base.org
       - name: Upload Playwright traces
-        if: failure()
+        if: failure() && matrix.lane == 'main'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-traces
@@ -63,6 +76,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: check-logs
+          name: check-logs-${{ matrix.lane }}
           path: docs/runs/check-*.log
           retention-days: 7

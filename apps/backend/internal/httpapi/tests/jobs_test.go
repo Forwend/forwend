@@ -14,6 +14,7 @@ const jobBody = `{"title": "Logo design", "scope": "Three logo ideas, two rounds
 	             {"title": "Final delivery", "amountUsd": "700.50", "dueDays": 14}]}`
 
 func TestJobPages(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	base := "/v1/profiles/" + e.aliceProfile + "/jobs"
@@ -80,6 +81,7 @@ func TestJobPages(t *testing.T) {
 }
 
 func TestJobs(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	jobs := "/v1/profiles/" + e.aliceProfile + "/jobs"

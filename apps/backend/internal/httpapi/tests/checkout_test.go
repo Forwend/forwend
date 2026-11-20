@@ -11,6 +11,7 @@ import (
 )
 
 func TestCheckoutSessionsReplayExpireAndExposeCanonicalPayments(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -87,6 +88,7 @@ func TestCheckoutSessionsReplayExpireAndExposeCanonicalPayments(t *testing.T) {
 }
 
 func TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	shop := e.merchant(t)
@@ -194,6 +196,7 @@ func TestCheckoutBoundariesIncludeStoreRoleTenantKeyAndMode(t *testing.T) {
 }
 
 func TestCheckoutSessionsCantUseUpTheOwnersInvoiceQuota(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)

@@ -17,6 +17,7 @@ import (
 )
 
 func TestCheckoutPurchaseSettlesWithOneRPCWithoutIssuingAnInvoice(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	st := newStack(t, true)
 	profile, store, merchantWallet := st.merchant(t)

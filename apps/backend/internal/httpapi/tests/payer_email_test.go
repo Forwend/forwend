@@ -7,9 +7,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/httpapi/invoiceapi"
 )
 
 func TestPayerEmail(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	put := func(id, body string) reply {
@@ -54,6 +57,7 @@ func TestPayerEmail(t *testing.T) {
 }
 
 func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	for i := range 3 {
@@ -72,6 +76,7 @@ func TestPayerEmailIsLimitedPerInvoice(t *testing.T) {
 }
 
 func TestPayerEmailQueuesOneReceipt(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
@@ -99,9 +104,13 @@ func TestPayerEmailQueuesOneReceipt(t *testing.T) {
 }
 
 func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
+	// No refill while the test runs, so a slow machine can't earn a token back between calls.
+	rate := invoiceapi.PayerEmailAllRate
+	invoiceapi.PayerEmailAllRate = 0
+	t.Cleanup(func() { invoiceapi.PayerEmailAllRate = rate })
 	e := invoiceAPI(t)
 	var links []string
-	for i := range 25 {
+	for i := range invoiceapi.PayerEmailAllBurst + 5 {
 		id := e.post(t, "did:privy:alice", e.aliceProfile, fmt.Sprint("key-", i), basicBody).body["invoiceId"].(string)
 		e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
 		links = append(links, e.link(t, id))
@@ -113,11 +122,12 @@ func TestPayerEmailIsLimitedForEveryone(t *testing.T) {
 		}
 	}
 	if limited == 0 {
-		t.Fatal("25 receipts at once on 25 paid invoices: none limited")
+		t.Fatalf("%d receipts at once on as many paid invoices: none limited", len(links))
 	}
 }
 
 func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	e.exec(t, `UPDATE invoices SET payment_status = 'paid' WHERE id = $1`, id)
@@ -165,6 +175,7 @@ func TestPayerEmailWaitsForASendInProgress(t *testing.T) {
 }
 
 func TestPayerEmailIsOneAddress(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	n := 0
 	put := func(email string) reply { // each on its own invoice, under its per-link limit

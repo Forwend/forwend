@@ -22,6 +22,7 @@ func (e invoiceEnv) signedAt(t *testing.T, method, path, user string, iat time.T
 }
 
 func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	path := "/v1/profiles/" + e.aliceProfile + "/keys"
@@ -92,6 +93,7 @@ func TestProtectedChangesNeedAFreshSignIn(t *testing.T) {
 }
 
 func TestSignOutEverywhere(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	me := func(user string, iat time.Time) int {

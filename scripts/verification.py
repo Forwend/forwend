@@ -8,6 +8,7 @@ import platform
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 # Git injects commit identity and index location into hooks; staged source is checked separately.
@@ -75,38 +76,75 @@ def fingerprint(root, check, files, paths):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def run(root, checks, names, execute, files, paths=None, fresh=False, snapshot=None):
+def lane(check):
+    return check.get('lane', 'main')
+
+
+def run(root, checks, names, execute, files, paths=None, fresh=False, snapshot=None, stop=None):
+    """Lanes run side by side, each in order; a failure stops only its own lane. stop() ends running checks."""
     cache_path = root / 'docs/runs/check-cache.json'
     try:
         cache = json.loads(cache_path.read_text())
     except (FileNotFoundError, ValueError):
         cache = {}
-    results = []
+    lock, cancelled, done, errors = threading.Lock(), threading.Event(), {}, []
+
+    def run_lane(names):
+        for name in names:
+            if cancelled.is_set():
+                return
+            check = checks[name]
+            key = fingerprint(root, check, files, paths) if check.get('cache') else None
+            saved = cache.get(name, {})
+            if not fresh and key and saved.get('key') == key and time.time() - saved.get('at', 0) < 86400:
+                print(f'  {name}: reused matching successful check', flush=True)
+                done[name] = dict(saved['result'], seconds=0.0, cached=True)
+                continue
+            print(f'  {name}: running', flush=True)
+            command = dict(check)
+            if check.get('changedPaths'):
+                command['argv'] = check['argv'] + (paths or [])
+            result = execute(command)
+            if snapshot and key and fingerprint(root, check, snapshot(), paths) != key:
+                result = dict(result, outcome='inputs-changed', exit=1)
+            done[name] = result
+            print(f'  {name}: {result["outcome"]} ({result["seconds"]}s)', flush=True)
+            with lock:
+                cache.pop(name, None)
+                if key and result['outcome'] == 'passed':
+                    cache[name] = {'key': key, 'at': time.time(), 'result': result}
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(mode='w', dir=cache_path.parent, delete=False) as stream:
+                    json.dump(cache, stream)
+                    temporary = stream.name
+                os.replace(temporary, cache_path)
+            if result['outcome'] != 'passed':
+                return
+
+    def guarded(names):
+        try:
+            run_lane(names)
+        except BaseException as error:
+            errors.append(error)
+            cancelled.set()
+            if stop:
+                stop()
+
+    lanes = {}
     for name in names:
-        check = checks[name]
-        key = fingerprint(root, check, files, paths) if check.get('cache') else None
-        saved = cache.get(name, {})
-        if not fresh and key and saved.get('key') == key and time.time() - saved.get('at', 0) < 86400:
-            print(f'  {name}: reused matching successful check', flush=True)
-            results.append(dict(saved['result'], seconds=0.0, cached=True))
-            continue
-        print(f'  {name}: running', flush=True)
-        command = dict(check)
-        if check.get('changedPaths'):
-            command['argv'] = check['argv'] + (paths or [])
-        result = execute(command)
-        if snapshot and key and fingerprint(root, check, snapshot(), paths) != key:
-            result = dict(result, outcome='inputs-changed', exit=1)
-        results.append(result)
-        print(f'  {name}: {result["outcome"]} ({result["seconds"]}s)', flush=True)
-        cache.pop(name, None)
-        if key and result['outcome'] == 'passed':
-            cache[name] = {'key': key, 'at': time.time(), 'result': result}
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(mode='w', dir=cache_path.parent, delete=False) as stream:
-            json.dump(cache, stream)
-            temporary = stream.name
-        os.replace(temporary, cache_path)
-        if result['outcome'] != 'passed':
-            break
-    return results
+        lanes.setdefault(lane(checks[name]), []).append(name)
+    # Daemon threads: an interrupted harness exits after stop() without waiting for a lane.
+    threads = [threading.Thread(target=guarded, args=(group,), daemon=True) for group in lanes.values()]
+    for thread in threads:
+        thread.start()
+    try:
+        for thread in threads:
+            thread.join()
+    except BaseException:
+        cancelled.set()
+        if stop:
+            stop()
+        raise
+    if errors:
+        raise errors[0]
+    return [done[name] for name in names if name in done]

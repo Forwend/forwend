@@ -11,6 +11,7 @@ import (
 )
 
 func TestExportsStayBoundedWithDust(t *testing.T) {
+	t.Parallel()
 	const alice, stranger = "did:privy:alice", "0x5555555555555555555555555555555555555555"
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO wallet_transfers (chain_id, chain_family, token_contract, wallet_address, direction,
@@ -55,6 +56,7 @@ func TestExportsStayBoundedWithDust(t *testing.T) {
 }
 
 func TestExportCapIsExact(t *testing.T) {
+	t.Parallel()
 	const alice = "did:privy:alice"
 	e := invoiceAPI(t)
 	dust := func(from, to int) {

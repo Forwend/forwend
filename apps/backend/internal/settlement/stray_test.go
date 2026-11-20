@@ -39,6 +39,7 @@ func balanceOf(t *testing.T, c *ethclient.Client, token, holder string) int64 {
 }
 
 func TestSupportRecoversWrongTokenAndWrongChainMoney(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.create(t, 7)

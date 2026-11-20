@@ -41,6 +41,7 @@ func (e env) deployReceiver(t *testing.T, id string) string {
 }
 
 func TestAuthorityRefundReducesHeldFundsWithoutInventingSettlement(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.paidInvoice(t)
 	e.deployReceiver(t, id)
@@ -95,6 +96,7 @@ func (e env) scanAndBook(t *testing.T) {
 }
 
 func TestRefundAfterTheWatchWindowIsBookedWhileHeldMoneyRemains(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.paidInvoice(t)
 	e.deployReceiver(t, id)
@@ -119,6 +121,7 @@ func TestRefundAfterTheWatchWindowIsBookedWhileHeldMoneyRemains(t *testing.T) {
 }
 
 func TestSettleAfterTheWatchWindowIsBookedWhilePaidMoneyRemains(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.create(t, 7)
 	e.anvil.Transfer(e.token, receive, "5000000")
@@ -136,6 +139,7 @@ func TestSettleAfterTheWatchWindowIsBookedWhilePaidMoneyRemains(t *testing.T) {
 }
 
 func TestOfflinePurchaseAndExternalSettlementBookInChainOrder(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.create(t, 41)
 	e.anvil.Transfer(e.token, receive, "6000000")
@@ -170,6 +174,7 @@ func TestOfflinePurchaseAndExternalSettlementBookInChainOrder(t *testing.T) {
 }
 
 func TestReturnedPartialFundingCannotAccumulateIntoPaid(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.createFor(t, 42, 60*24*3600)
 	e.deployReceiver(t, id)
@@ -201,6 +206,7 @@ func TestReturnedPartialFundingCannotAccumulateIntoPaid(t *testing.T) {
 }
 
 func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.paidInvoice(t)
 	e.deployReceiver(t, id)
@@ -277,6 +283,7 @@ func TestRepeatedAuthorityReturnsConsumeHeldThenPayableAndBlockReopen(t *testing
 }
 
 func TestUnloggedFundingReturnStaysObservedWithoutInventedBooking(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.create(t, 44)
 	e.deployReceiver(t, id)
@@ -308,6 +315,7 @@ func TestUnloggedFundingReturnStaysObservedWithoutInventedBooking(t *testing.T) 
 }
 
 func TestAuthoritySettlementOfHeldFundsIsAnExceptionWithoutPaid(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.create(t, 45)
 	e.anvil.Transfer(e.token, receive, "1000000")
@@ -351,6 +359,7 @@ func TestAuthoritySettlementOfHeldFundsIsAnExceptionWithoutPaid(t *testing.T) {
 }
 
 func TestNativeRecoveryDoesNotCreateAcceptedTokenRefund(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.create(t, 46)
 	e.deployReceiver(t, id)
@@ -376,6 +385,7 @@ func TestNativeRecoveryDoesNotCreateAcceptedTokenRefund(t *testing.T) {
 }
 
 func TestOneAuthorityTransactionRefundsTwiceWithDistinctTransferProofs(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.create(t, 47)
 	e.anvil.Transfer(e.token, receive, "7000000")
@@ -453,6 +463,7 @@ func TestOneAuthorityTransactionRefundsTwiceWithDistinctTransferProofs(t *testin
 }
 
 func TestLateReturnedOptionDoesNotChooseOrCloseAnotherOpenOption(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	main, mainReceive := e.createFor(t, 48, 60*86400)
 	id := fmt.Sprintf("0x%064x", 49)
@@ -513,6 +524,7 @@ func TestLateReturnedOptionDoesNotChooseOrCloseAnotherOpenOption(t *testing.T) {
 }
 
 func TestBroadcastSettlementReconcilesAfterAnAuthorityReturn(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, receive := e.paidInvoice(t)
 	signer := e.signer(t)
@@ -544,6 +556,7 @@ func TestBroadcastSettlementReconcilesAfterAnAuthorityReturn(t *testing.T) {
 }
 
 func TestReopenRefusesOnceTheScanRecordsAReturn(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	var profile string
 	if err := e.pool.QueryRow(t.Context(), "SELECT id FROM profiles LIMIT 1").Scan(&profile); err != nil {

@@ -8,6 +8,7 @@ import (
 )
 
 func TestJunkSpendsNoSharedLimit(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	random := func() string {

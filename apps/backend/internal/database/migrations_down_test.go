@@ -12,6 +12,7 @@ import (
 )
 
 func TestMigrationsRollBackAndReapply(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
 	if err != nil {
@@ -38,6 +39,7 @@ func TestMigrationsRollBackAndReapply(t *testing.T) {
 }
 
 func TestMigrationsKeepAReopenedInvoice(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
 	if err != nil {
@@ -101,6 +103,7 @@ func TestMigrationsKeepAReopenedInvoice(t *testing.T) {
 }
 
 func TestMigrationsKeepAnUnnumberedLinkInvoice(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, err := sql.Open("pgx", databasetest.New(t))
 	if err != nil {

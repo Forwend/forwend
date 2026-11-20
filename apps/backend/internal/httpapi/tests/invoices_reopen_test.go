@@ -14,6 +14,7 @@ import (
 )
 
 func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	ctx := context.Background()
@@ -108,6 +109,7 @@ func TestReopenAnInvoiceThatClosedPartlyPaid(t *testing.T) {
 }
 
 func TestReopenThePaidOptionOfAPayerChoosesInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)

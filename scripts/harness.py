@@ -502,6 +502,7 @@ def run_check(root, check, log_path):
         except OSError as error:
             log.write(f'cannot start: {error}\n'.encode())
             return result('missing-command', 127)
+        RUNNING.add(process)
         try:
             code = process.wait(timeout=check.get('timeoutSeconds', 900))
         except subprocess.TimeoutExpired:
@@ -510,11 +511,22 @@ def run_check(root, check, log_path):
         except BaseException:
             stop(process)
             raise
+        finally:
+            RUNNING.discard(process)
     if code == 0:
         # Only a failure's log is ever read; a passed one would only pile up in docs/runs.
         log_path.unlink(missing_ok=True)
         return {**result('passed', 0), 'log': ''}
     return result('failed', code)
+
+
+# Checks running in any lane, so an interrupted harness can stop them all.
+RUNNING = set()
+
+
+def stop_running():
+    for process in list(RUNNING):
+        stop(process)
 
 
 def stop(process):
@@ -1087,7 +1099,8 @@ def cmd_verify(root, args):
     before = state.file_digests()
     results = verification.run(root, checks, order,
         lambda check: run_check(root, check, runs / f'{task["id"]}-{stamp}-{check["id"]}.log'),
-        before, changed_since(root, task.get('baseCommit')), getattr(args, 'fresh', False), state.file_digests)
+        before, changed_since(root, task.get('baseCommit')), getattr(args, 'fresh', False), state.file_digests,
+        stop_running)
     path_rules = [rule for rule in task.get('keep') or [] if is_path_rule(rule)]
     if path_rules:
         touched = changed_since(root, task.get('baseCommit'))
@@ -1455,6 +1468,8 @@ def cmd_check(root, args):
     selected = args.ids or ([check['id'] for check in checks.values() if check.get('required') or check.get('ci')]
                             if args.ci else verification.select(state.config, changed_since(root, 'HEAD')))
     unknown = [name for name in selected if name not in checks]
+    if args.lane and not unknown:
+        selected = [name for name in selected if verification.lane(checks[name]) == args.lane]
     if unknown or not selected:
         raise Refused('unknown or empty check selection: ' + ', '.join(unknown), 2)
     runs = root / RUNS
@@ -1462,7 +1477,8 @@ def cmd_check(root, args):
     stamp = now().replace('-', '').replace(':', '')
     results = verification.run(root, checks, selected,
         lambda check: run_check(root, check, runs / f'check-{stamp}-{check["id"]}.log'),
-        state.file_digests(), changed_since(root, 'HEAD'), args.ci or getattr(args, 'fresh', False), state.file_digests)
+        state.file_digests(), changed_since(root, 'HEAD'), args.ci or getattr(args, 'fresh', False), state.file_digests,
+        stop_running)
     for result in results:
         print(f'{result["id"]}: {result["outcome"]}' + (f' ({result["log"]})' if result['log'] else ''))
         if result['outcome'] != 'passed':
@@ -1588,7 +1604,7 @@ def cmd_hook(root, args):
                 if state.checks()[name].get('precommit')]
     results = verification.run(root, state.checks(), selected,
         lambda check: run_check(root, check, runs / f'precommit-{stamp}-{check["id"]}.log'),
-        state.file_digests(), paths, snapshot=state.file_digests)
+        state.file_digests(), paths, snapshot=state.file_digests, stop=stop_running)
     failed = [result for result in results if result['outcome'] != 'passed']
     for result in failed:
         print(f'pre-commit: {result["id"]} {result["outcome"]} (exit {result["exit"]}), log {result["log"]}\n'
@@ -1657,7 +1673,8 @@ def parser():
     command('plan', cmd_plan, 'show selected checks without executing them',
             (['id'], {'nargs': '?'}), (['--paths'], {'nargs': '+'}))
     command('check', cmd_check, 'run named checks, or the required checks; does not change task state',
-            (['ids'], {'nargs': '*'}), (['--fresh'], {'action': 'store_true'}), (['--ci'], {'action': 'store_true', 'help': 'include CI-only checks'}))
+            (['ids'], {'nargs': '*'}), (['--fresh'], {'action': 'store_true'}), (['--ci'], {'action': 'store_true', 'help': 'include CI-only checks'}),
+            (['--lane'], {'help': 'only the selected checks of this lane (a CI job runs one lane)'}))
     command('hook', cmd_hook, 'git hooks: pre-commit runs the checks marked "precommit", pre-push blocks pushes to the '
             'base branch; `hook install` sets them up (`start` does it too)', (['name'], {'choices': ('install',) + HOOKS}))
     return top

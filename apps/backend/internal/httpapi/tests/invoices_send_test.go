@@ -10,6 +10,7 @@ const clientBody = `{"chainId": 84532, "token": "` + usdc + `", "amount": "50000
 	"client": {"name": "Client Ltd", "email": "ap@client.example"}}`
 
 func TestSendInvoiceToClient(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	send := func(profile, id, key string) reply {
 		return e.call(t, "POST", "/v1/profiles/"+profile+"/invoices/"+id+"/send", "did:privy:alice", key, "")
@@ -95,6 +96,7 @@ func TestSendInvoiceToClient(t *testing.T) {
 }
 
 func TestClientEmailsCapCountsEveryProfileOfTheUser(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO profile_wallets (profile_id, provider, provider_wallet_id, chain_family, address)
 		VALUES ($1, 'privy', 'w2', 'evm', '0x2222222222222222222222222222222222222223')`, e.walletless)

@@ -31,6 +31,7 @@ func (e invoiceEnv) deposit(t *testing.T, id, amount string) {
 }
 
 func TestOwedToYou(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }
 	create := func(key, amount, due string) string {
@@ -107,6 +108,7 @@ func TestOwedToYou(t *testing.T) {
 }
 
 func TestOwedListsOpenPartlyPaidCheckoutSessions(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -143,6 +145,7 @@ func TestOwedListsOpenPartlyPaidCheckoutSessions(t *testing.T) {
 }
 
 func TestUnselectedOptionEarlyCloseKeepsOtherOptionAvailable(t *testing.T) {
+	t.Parallel()
 	for _, shortMain := range []bool{true, false} {
 		t.Run(fmt.Sprint(shortMain), func(t *testing.T) {
 			e := invoiceAPI(t)

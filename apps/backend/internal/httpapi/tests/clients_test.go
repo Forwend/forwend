@@ -17,6 +17,7 @@ const (
 )
 
 func TestClients(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	path := "/v1/profiles/" + e.aliceProfile + "/clients"
@@ -138,6 +139,7 @@ func TestClients(t *testing.T) {
 }
 
 func TestClientReadByID(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	path := "/v1/profiles/" + e.aliceProfile + "/clients/"
@@ -163,6 +165,7 @@ func TestClientReadByID(t *testing.T) {
 }
 
 func TestClientPages(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	path := "/v1/profiles/" + e.aliceProfile + "/clients"

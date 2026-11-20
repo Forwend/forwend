@@ -10,6 +10,7 @@ import (
 )
 
 func TestDepositBacklogCommitsBoundedExactProgress(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	ctx := t.Context()
 	const count = 307
@@ -69,6 +70,7 @@ func TestDepositBacklogCommitsBoundedExactProgress(t *testing.T) {
 }
 
 func TestBatchTheChainNoLongerHoldsIsNotPaid(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	ctx := t.Context()
 	id, receive := e.invoice(t, 1, 100, 1800000000)
@@ -127,6 +129,7 @@ func TestBatchTheChainNoLongerHoldsIsNotPaid(t *testing.T) {
 }
 
 func TestRefundFoundAfterLaterMovementsWaitsForReview(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	ctx := t.Context()
 	id, receive := e.invoice(t, 2, 5, 1800000000)

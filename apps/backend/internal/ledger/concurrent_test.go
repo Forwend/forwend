@@ -12,6 +12,7 @@ import (
 )
 
 func TestConcurrentOptionsChooseAndBookOnlyOnce(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	main, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
 	other, otherReceive := e.option(t, main, 2)

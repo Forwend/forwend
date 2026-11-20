@@ -9,6 +9,7 @@ import (
 )
 
 func TestPayerChoosesInvoice(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO tokens (chain_id, chain_family, contract, symbol,
 		decimals, enabled) VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`); err != nil {
@@ -63,6 +64,7 @@ func TestPayerChoosesInvoice(t *testing.T) {
 }
 
 func TestInvoiceReturnURL(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"amountUsd": "5", "returnUrl": "https://shop.example/thanks?order=7"}`)
 	if made.status != http.StatusCreated {

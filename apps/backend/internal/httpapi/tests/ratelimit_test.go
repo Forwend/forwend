@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"testing"
 	"time"
-
-	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
 )
 
 func (e invoiceEnv) send(t *testing.T, path, user string) (status int, code, retryAfter string) {
@@ -29,9 +27,12 @@ func (e invoiceEnv) send(t *testing.T, path, user string) (status int, code, ret
 }
 
 func TestUserRateLimit(t *testing.T) {
-	e := invoiceAPI(t)
+	t.Parallel()
+	// A small burst: past the default 60 at its 2 per second refill, a slow machine would earn a token back.
+	const burst = 3
+	e := invoiceAPIWith(t, burst, webhookKey)
 	const carol, dave = "did:privy:carol", "did:privy:dave"
-	for i := range mid.UserBurst {
+	for i := range burst {
 		if status, _, _ := e.send(t, "/v1/me", carol); status != http.StatusNotFound { // not signed up yet
 			t.Fatalf("request %d: %d, want 404", i+1, status)
 		}

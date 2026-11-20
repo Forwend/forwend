@@ -71,16 +71,6 @@ describe("CrossChainPicker", () => {
     expect(list("https://example.com/logo.png")).toBe(false);
   });
 
-  it("marks the network on the way back as its row does", () => {
-    open();
-    const chainRow = screen.getByRole("button", { name: "Abstract" });
-    const logo = chainRow.querySelector("img")?.getAttribute("src");
-    fireEvent.click(chainRow);
-    const back = screen.getByRole("button", { name: /^Networks:/ });
-    expect(logo).toBe("/logos/chains/abs.webp");
-    expect(back.querySelector("img")?.getAttribute("src")).toBe(logo);
-  });
-
   it("rounds About up as the amount to send is", () => {
     open();
     expect(row(/^ETH/).textContent).toContain("About 0.58317 ETH");

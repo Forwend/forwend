@@ -12,6 +12,7 @@ import (
 )
 
 func TestOpenNamesAnUnreachableDatabase(t *testing.T) {
+	t.Parallel()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -25,6 +26,7 @@ func TestOpenNamesAnUnreachableDatabase(t *testing.T) {
 }
 
 func TestOpenRetainsCancellationCause(t *testing.T) {
+	t.Parallel()
 	url := databasetest.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -35,6 +37,7 @@ func TestOpenRetainsCancellationCause(t *testing.T) {
 }
 
 func TestPoolSizeFromTheURL(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	url := databasetest.New(t) + "&pool_max_conns=3"
 	if err := database.Migrate(ctx, url); err != nil {

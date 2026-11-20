@@ -94,6 +94,7 @@ func TestCheckGas(t *testing.T) {
 }
 
 func TestCheckGasInFeeToken(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	a := chaintest.Start(t)
 	client := ethclient.NewClient(a.RPC)
@@ -183,6 +184,7 @@ func TestSignerAlertsWhenExecutorGasRunsLow(t *testing.T) {
 }
 
 func TestSwapAmounts(t *testing.T) {
+	t.Parallel()
 	price := big.NewInt(2000e8)
 	for _, c := range []struct {
 		wei, held, in, least string

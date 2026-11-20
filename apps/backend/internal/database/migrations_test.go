@@ -10,6 +10,7 @@ import (
 )
 
 func TestMigrateTwiceOnEmptyDatabase(t *testing.T) {
+	t.Parallel()
 	url := databasetest.New(t)
 	for i := range 2 {
 		if err := database.Migrate(context.Background(), url); err != nil {
@@ -19,6 +20,7 @@ func TestMigrateTwiceOnEmptyDatabase(t *testing.T) {
 }
 
 func TestCheckSchemaRefusesAnOlderSchema(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	url := databasetest.New(t)
 	pool, err := database.Open(ctx, url)

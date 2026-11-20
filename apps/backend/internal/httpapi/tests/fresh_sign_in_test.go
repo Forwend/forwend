@@ -33,6 +33,7 @@ func (e invoiceEnv) inSession(t *testing.T, method, path, user, sid string, iat 
 }
 
 func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -93,6 +94,7 @@ func TestAConfirmedCodeMakesItsSessionFresh(t *testing.T) {
 }
 
 func TestACodeEndsAfterFiveTriesOrTenMinutes(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -133,6 +135,7 @@ func TestACodeEndsAfterFiveTriesOrTenMinutes(t *testing.T) {
 }
 
 func TestCodesAreLimitedPerUser(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -185,6 +188,7 @@ func TestCodesAreLimitedPerUser(t *testing.T) {
 }
 
 func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -203,6 +207,7 @@ func TestConfirmedCodesDontCountTowardTheHoursCap(t *testing.T) {
 }
 
 func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -234,6 +239,7 @@ func TestAnAccountChangeChecksTheSessionIsFresh(t *testing.T) {
 }
 
 func TestACodeWhoseEmailFailedIsNotSent(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -255,6 +261,7 @@ func TestACodeWhoseEmailFailedIsNotSent(t *testing.T) {
 }
 
 func TestCodesNeedASignedInPersonWithAnEmail(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	refreshed := signedInAt.Add(2 * time.Second)
@@ -282,6 +289,7 @@ func TestCodesNeedASignedInPersonWithAnEmail(t *testing.T) {
 }
 
 func TestCodesGoToTheSignUpEmailNotOneLinkedLater(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -298,6 +306,7 @@ func TestCodesGoToTheSignUpEmailNotOneLinkedLater(t *testing.T) {
 }
 
 func TestARecentlyLinkedAccountIsNotAFreshSignIn(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")
@@ -337,6 +346,7 @@ func TestARecentlyLinkedAccountIsNotAFreshSignIn(t *testing.T) {
 }
 
 func TestACodeOnItsWayCantBeGuessedOrTakenBack(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	e.signedUpWith(t, alice, "alice@example.com")

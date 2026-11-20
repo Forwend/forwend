@@ -6,6 +6,7 @@ import (
 )
 
 func TestListEvents(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	other := e.post(t, "did:privy:alice", e.aliceProfile, "key-2", basicBody).body["invoiceId"].(string)
@@ -51,6 +52,7 @@ func TestListEvents(t *testing.T) {
 }
 
 func TestListEventsOfAnOption(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	e.exec(t, `INSERT INTO tokens (chain_id, chain_family, contract, symbol, decimals, enabled)
 		VALUES (84532, 'evm', '0x3333333333333333333333333333333333333333', 'EURC', 2, true)`)

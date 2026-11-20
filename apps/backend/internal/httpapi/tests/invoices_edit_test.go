@@ -12,6 +12,7 @@ import (
 )
 
 func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	id := e.post(t, alice, e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "5000000",
@@ -69,6 +70,7 @@ func TestOwnerEditsMemoClientEmailAndReturnLink(t *testing.T) {
 }
 
 func TestOwnerEditsReferenceNoteAndDueDateBeforePayment(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }

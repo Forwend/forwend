@@ -3,8 +3,10 @@
 - `main` is the development branch. Task branches merge through PRs and must pass local `verify` and any
   required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
 - `staging` is the batch-validation branch. Its push event runs all required and CI-only checks fresh (`harness.py check --ci`).
+  - One job runs each lane of the [check registry](config.json) side by side (`check --ci --lane NAME`).
+  - The harness tests fail when the workflow's lane list misses a lane.
   There is no additional PR-triggered run. CI deploys nothing; the Dokploy environment below is configured separately.
-- The staging job allows 30 minutes for setup, all fresh checks and cleanup. Individual check limits remain in the check registry.
+- Each staging job allows 30 minutes for setup, all fresh checks and cleanup. Individual check limits remain in the check registry.
 - PostgreSQL uses the official `postgres:17` image directly from Docker Hub. GitHub-hosted runners are
   [exempt from its public-image pull rate limit](https://docs.github.com/en/enterprise-cloud%40latest/actions/reference/limits).
   Avoid the AWS public mirror here: its data limit can fail service startup before any repository check runs.
@@ -14,7 +16,7 @@
 - Keep staging free of independent commits. From a clean checkout, fetch origin, switch to staging, fast-forward
   it to `origin/main` with `git merge --ff-only origin/main`, then push staging when a batch is ready. Each push
   consumes one full CI run; promote deliberately, not after every task. Do not squash or delete staging.
-- A failed run keeps each check's full log as the `check-logs` artifact for 7 days; the job log shows only its end.
+- A failed run keeps each check's full log as the `check-logs-<lane>` artifact for 7 days; the job log shows only its end.
 - A staging push happens before CI reports a result. Treat only a passing run for that exact commit as validated;
   do not deploy or release an unverified batch. Fix failures on a task branch, merge into main, then promote again.
 

@@ -50,6 +50,7 @@ func (e env) send(r Return) {
 }
 
 func TestSupportReturnsAnOverpaymentToItsSenderOnce(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.paidInvoice(t)
@@ -103,6 +104,7 @@ func TestSupportReturnsAnOverpaymentToItsSenderOnce(t *testing.T) {
 }
 
 func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.pay(t, 8)
@@ -172,6 +174,7 @@ func TestSupportReturnRefusesWhatTheMoneyCantDo(t *testing.T) {
 }
 
 func TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.createFor(t, 9, 60)
@@ -198,6 +201,7 @@ func TestSupportReturnsAnExpiredPartialPaymentOnlyAfterItsDeadline(t *testing.T)
 }
 
 func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, _ := e.paidInvoice(t)
@@ -222,6 +226,7 @@ func TestSupportWaitsForASentRefundToBeBookedBeforeTheNextReturn(t *testing.T) {
 }
 
 func TestSupportWaitsForEveryPaymentToBeBooked(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.paidInvoice(t)
@@ -245,6 +250,7 @@ func TestSupportWaitsForEveryPaymentToBeBooked(t *testing.T) {
 func ptr[T any](v T) *T { return &v }
 
 func TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, _ := e.paidInvoice(t)
@@ -282,6 +288,7 @@ func TestSupportReturnOfACrossChainPaymentNeedsThePayersAddress(t *testing.T) {
 }
 
 func TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNamesIt(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, _ := e.paidInvoice(t)
@@ -313,6 +320,7 @@ func TestSupportReturnFromNEARIntentsAddressNeedsThePayersAddressBeforeAQuoteNam
 }
 
 func TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, _ := e.paidInvoice(t)
@@ -330,6 +338,7 @@ func TestSupportReturnOfAnOptionWithAnUnnamedDeliveryNeedsThePayersAddress(t *te
 }
 
 func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, _ := e.paidInvoice(t)
@@ -373,6 +382,7 @@ func TestSupportReturnRechecksTheHeldMoneyOnceItLocks(t *testing.T) {
 }
 
 func TestSupportReturnsAPayerAtMostWhatTheyPaid(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	ctx := t.Context()
 	id, receive := e.paidInvoice(t)

@@ -11,6 +11,7 @@ import (
 )
 
 func TestWebhookEventsList(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	const alice, dev = "did:privy:alice", "did:privy:erin"

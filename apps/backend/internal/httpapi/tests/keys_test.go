@@ -24,6 +24,7 @@ func (e invoiceEnv) withKey(t *testing.T, method, path, key, body string) reply 
 }
 
 func TestAPIKeys(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -159,6 +160,7 @@ func TestAPIKeys(t *testing.T) {
 }
 
 func TestAPIKeysNeedTheKeysPermission(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	e.exec(t, `WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:dave'), ('did:privy:erin') RETURNING id,
@@ -175,6 +177,7 @@ func TestAPIKeysNeedTheKeysPermission(t *testing.T) {
 }
 
 func TestRequestsCheckedBeforeARemovalGrantNothing(t *testing.T) {
+	t.Parallel()
 	for name, c := range map[string]struct{ method, path, body string }{
 		"key": {"POST", "/keys", `{"name": "Late", "storeId": "%s", "scopes": ["invoices.read"]}`},
 		"webhook endpoint": {"PUT", "/webhooks/6f9619ff-8b86-4011-b42d-00c04fc964ff",

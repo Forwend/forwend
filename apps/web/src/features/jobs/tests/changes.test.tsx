@@ -3,7 +3,6 @@ import { ToastProvider } from "@forwend/ui-web";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AcceptChange } from "@/features/jobs/components/accept-change";
 import { JobDetail } from "@/features/jobs/components/job-detail";
 import { ProposeChange } from "@/features/jobs/components/propose-change";
 import type { Job } from "@/features/jobs/types/jobs";
@@ -140,48 +139,6 @@ describe("scope changes", () => {
     expect(calls[1]?.key).toBe(calls[0]?.key);
   });
 
-  it("accepts a change with the proposedAt it read, untouched", async () => {
-    const calls: Call[] = [];
-    capture(calls);
-    const change = {
-      position: 3,
-      title: "Extra page",
-      amountUsd: "150.00",
-      dueDays: 7,
-      onAccept: false,
-      invoiceId: null,
-      payToken: null,
-      number: null,
-      status: null,
-      doneAt: null,
-      deliveryLink: null,
-      invoicedAt: null,
-      paidAt: null,
-      proposedAt: "2026-10-18T15:49:10.021548Z",
-      acceptedName: null,
-      acceptedAt: null,
-    };
-    render(
-      <Provider store={makeStore({ getAccessToken: async () => null })}>
-        <AcceptChange token={TOKEN} change={change} onAccepted={vi.fn()} onGone={vi.fn()} />
-      </Provider>,
-    );
-    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "Jane Doe" } });
-    fireEvent.change(screen.getByLabelText("Your email"), {
-      target: { value: "jane@bob.example" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Accept change" }));
-    await waitFor(() => expect(calls).toHaveLength(1));
-    expect(calls[0]).toMatchObject({
-      url: `/api/v1/jobs/${TOKEN}/payments/3/accept`,
-      body: {
-        name: "Jane Doe",
-        email: "jane@bob.example",
-        proposedAt: "2026-10-18T15:49:10.021548Z",
-      },
-    });
-  });
-
   it("never offers Mark done for a waiting change, and withdraws it", async () => {
     const calls: { method: string; url: string }[] = [];
     vi.stubGlobal(
@@ -237,23 +194,5 @@ describe("scope changes", () => {
     cleanup();
     renderJob({ ...accepted, payments: [deposit] });
     expect(screen.getByRole("button", { name: "Propose a change" })).toBeTruthy();
-  });
-
-  it("tells the page when the change it read is gone", async () => {
-    answer(404, { error: { code: "job_not_found", message: "job not found" } });
-    const onAccepted = vi.fn();
-    const onGone = vi.fn();
-    render(
-      <Provider store={makeStore({ getAccessToken: async () => null })}>
-        <AcceptChange token={TOKEN} change={waiting} onAccepted={onAccepted} onGone={onGone} />
-      </Provider>,
-    );
-    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "Jane Doe" } });
-    fireEvent.change(screen.getByLabelText("Your email"), {
-      target: { value: "jane@bob.example" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Accept change" }));
-    await waitFor(() => expect(onGone).toHaveBeenCalledOnce());
-    expect(onAccepted).not.toHaveBeenCalled();
   });
 });

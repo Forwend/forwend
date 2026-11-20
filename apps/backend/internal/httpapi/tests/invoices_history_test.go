@@ -13,6 +13,7 @@ import (
 )
 
 func TestOwnerReadsTheInvoiceHistory(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	hash := "0x" + strings.Repeat("ab", 32)
@@ -50,6 +51,7 @@ func TestOwnerReadsTheInvoiceHistory(t *testing.T) {
 }
 
 func TestSettingChangesAreInTheHistory(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	due := time.Now().UTC().AddDate(0, 2, 0).Format(time.DateOnly)
@@ -87,6 +89,7 @@ func TestSettingChangesAreInTheHistory(t *testing.T) {
 }
 
 func TestFirstReminderChangesAtOnceAreBothInTheHistory(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	due := time.Now().UTC().AddDate(0, 2, 0).Format(time.DateOnly)

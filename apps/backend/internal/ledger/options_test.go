@@ -30,6 +30,7 @@ func (e chainEnv) option(t *testing.T, main string, n int) (id, receive string) 
 }
 
 func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	e := newChainEnv(t)
 	main, mainReceive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
@@ -104,6 +105,7 @@ func TestFirstOptionPaidWinsAndOthersAreHeld(t *testing.T) {
 }
 
 func TestUnpaidOptionsExpireOnce(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	main, _ := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
 	e.option(t, main, 2)
@@ -117,6 +119,7 @@ func TestUnpaidOptionsExpireOnce(t *testing.T) {
 }
 
 func TestOptionPaidFirstOnChainIsChosen(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	e := newChainEnv(t)
 	main, mainReceive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
@@ -196,6 +199,7 @@ func (o optionSim) scanned(chainID, time int64) {
 }
 
 func TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.scanned(1, 4800)
 	o.pay(o.option, 2, o.full, 5000000, 4900)
@@ -215,6 +219,7 @@ func TestOptionPaidJustBeforeTheCloseDoesNotExpireTheMainRow(t *testing.T) {
 }
 
 func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.scanned(2, 4800)
 	o.scanned(1, 5100)
@@ -237,6 +242,7 @@ func TestInvoiceClosesOnlyOnceEveryOptionChainIsReadPastIt(t *testing.T) {
 }
 
 func TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.scanned(1, 1000)
 	o.pay(o.option, 2, o.full, 5000000, 1400)
@@ -269,6 +275,7 @@ func TestPaymentFinalOnItsChainIsNotHeldBackByOtherChains(t *testing.T) {
 }
 
 func TestEarlyOptionClosePreservesOtherCheckoutOptions(t *testing.T) {
+	t.Parallel()
 	for _, shortMain := range []bool{true, false} {
 		t.Run(fmt.Sprint(shortMain), func(t *testing.T) {
 			e := newChainEnv(t)
@@ -303,6 +310,7 @@ func TestEarlyOptionClosePreservesOtherCheckoutOptions(t *testing.T) {
 }
 
 func TestDustNeverChoosesItsOption(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.pay(o.main, 1, o.dust, 10000, 1300)
 	o.scanned(1, 2000)
@@ -331,6 +339,7 @@ func TestDustNeverChoosesItsOption(t *testing.T) {
 }
 
 func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
+	t.Parallel()
 	for _, rounds := range []string{"one round", "rounds apart"} {
 		t.Run(rounds, func(t *testing.T) {
 			o := newOptionSim(t)
@@ -360,6 +369,7 @@ func TestPaymentInSmallPartsChoosesItsOption(t *testing.T) {
 }
 
 func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
+	t.Parallel()
 	o := newOptionSimFor(t, 1000000)
 	o.scanned(1, 2000)
 	o.scanned(2, 2000)
@@ -381,6 +391,7 @@ func TestFirstPartOfASmallInvoiceIsAPartialPayment(t *testing.T) {
 }
 
 func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
+	t.Parallel()
 	o := newOptionSimFor(t, 1000000)
 	ctx := context.Background()
 	o.scanned(1, 2000)
@@ -409,6 +420,7 @@ func TestHeldDepositThatChoosesUnderTheTenthRulePaysTheCreator(t *testing.T) {
 }
 
 func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.scanned(1, 2000)
 	o.scanned(2, 2000)
@@ -438,6 +450,7 @@ func TestReturnedPartNeverTakesLateMoneyForTheCreator(t *testing.T) {
 }
 
 func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.scanned(1, 2000)
 	o.scanned(2, 2000)
@@ -456,6 +469,7 @@ func TestCanceledPayerChoosesInvoiceKeepsEarlierPartsHeld(t *testing.T) {
 }
 
 func TestReopenAfterAChoiceGivesEachPartOnce(t *testing.T) {
+	t.Parallel()
 	o := newOptionSimFor(t, 1000000)
 	ctx := context.Background()
 	o.scanned(1, 2000)
@@ -485,6 +499,7 @@ func TestReopenAfterAChoiceGivesEachPartOnce(t *testing.T) {
 }
 
 func TestDustSeenThenConfirmedKeepsTheInvoiceOpen(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.pay(o.main, 1, o.dust, 10000, 1300)
 	o.exec("UPDATE chain_transfers SET status = 'detected'")
@@ -501,6 +516,7 @@ func TestDustSeenThenConfirmedKeepsTheInvoiceOpen(t *testing.T) {
 }
 
 func TestDustOnlyExpiresAndIsHeld(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.pay(o.main, 1, o.dust, 10000, 1300)
 	o.scanned(1, 5100)
@@ -517,6 +533,7 @@ func TestDustOnlyExpiresAndIsHeld(t *testing.T) {
 }
 
 func TestLateMoneyAfterAnUnchosenExpiryIsAnnounced(t *testing.T) {
+	t.Parallel()
 	o := newOptionSim(t)
 	o.scanned(1, 5100)
 	o.scanned(2, 5100)
@@ -535,6 +552,7 @@ func TestLateMoneyAfterAnUnchosenExpiryIsAnnounced(t *testing.T) {
 }
 
 func TestDustIsHeldSilentlyInEveryTiming(t *testing.T) {
+	t.Parallel()
 	for _, order := range []string{"dust booked first", "choice made first"} {
 		t.Run(order, func(t *testing.T) {
 			o := newOptionSim(t)

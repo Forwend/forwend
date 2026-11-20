@@ -14,6 +14,7 @@ import (
 )
 
 func TestCeilCentsRoundsUpToACent(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct{ in, want string }{
 		{"0", "1/100"}, {"1/1000000", "1/100"}, {"1/100", "1/100"}, {"101/10000", "1/50"}, {"3/2", "3/2"},
 	} {
@@ -126,6 +127,7 @@ func TestAStalePriceKeepsTheLastGoodQuote(t *testing.T) {
 }
 
 func TestKeepReadsAQuoteAtStartForAnRPCThatFailsLater(t *testing.T) {
+	t.Parallel()
 	a := chaintest.Start(t)
 	client := ethclient.NewClient(a.RPC)
 	reachable := true

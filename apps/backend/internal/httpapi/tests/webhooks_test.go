@@ -19,6 +19,7 @@ var webhookKey = bytes.Repeat([]byte{7}, 32)
 var whsec = regexp.MustCompile(`^whsec_[A-Za-z0-9+/]{43}=$`)
 
 func TestWebhookEndpoints(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -142,6 +143,7 @@ func TestWebhookEndpoints(t *testing.T) {
 }
 
 func TestWebhooksWithoutAKey(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPIWith(t, 0, nil)
 	hooks := "/v1/profiles/" + e.aliceProfile + "/webhooks/cccccccc-0000-4000-8000-000000000001"
 	for _, c := range []struct{ method, path, body string }{
@@ -164,6 +166,7 @@ func TestWebhooksWithoutAKey(t *testing.T) {
 }
 
 func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	e.exec(t, `WITH u AS (INSERT INTO users (privy_user_id) VALUES ('did:privy:dave'), ('did:privy:erin') RETURNING id,
@@ -191,6 +194,7 @@ func TestWebhooksNeedTheWebhooksPermission(t *testing.T) {
 }
 
 func TestWebhookEndpointsAreCappedPerProfile(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	put := func(n int) reply {

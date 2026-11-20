@@ -93,6 +93,7 @@ func get(t *testing.T, srv *httptest.Server, profile, token string) int {
 }
 
 func TestOnlyValidPrivyTokensPass(t *testing.T) {
+	t.Parallel()
 	srv, privyKey, profile := authServer(t)
 	otherKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -152,6 +153,7 @@ func TestOnlyValidPrivyTokensPass(t *testing.T) {
 }
 
 func TestOnlyTheOwnerActsForAProfile(t *testing.T) {
+	t.Parallel()
 	srv, privyKey, aliceProfile := authServer(t)
 	alice := signES256(t, privyKey, claims("did:privy:alice"))
 	bob := signES256(t, privyKey, claims("did:privy:bob"))
@@ -177,6 +179,7 @@ func TestOnlyTheOwnerActsForAProfile(t *testing.T) {
 }
 
 func TestAccessCheckNeedsASignedInUser(t *testing.T) {
+	t.Parallel()
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/profiles/x/probe", nil)
 	mid.RequireAccess(nil, auth.InvoicesRead, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {

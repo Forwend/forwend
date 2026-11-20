@@ -9,6 +9,7 @@ import (
 )
 
 func TestCheckoutPaymentsNeverIssueInvoiceDocuments(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := t.Context()
 	shop := e.merchant(t)
@@ -57,6 +58,7 @@ func TestCheckoutPaymentsNeverIssueInvoiceDocuments(t *testing.T) {
 }
 
 func TestCheckoutInvoicePDFIsNotFoundEvenWhenTheLogoCantBeRead(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	inv, _, err := invoice.NewService(e.pool).Create(t.Context(), shop, "checkout", invoice.Request{
@@ -72,6 +74,7 @@ func TestCheckoutInvoicePDFIsNotFoundEvenWhenTheLogoCantBeRead(t *testing.T) {
 }
 
 func TestHeldCheckoutDoesNotBreakBillingOwedList(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	inv, _, err := invoice.NewService(e.pool).Create(t.Context(), shop, "held-checkout", invoice.Request{

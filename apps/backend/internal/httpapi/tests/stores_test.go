@@ -41,6 +41,7 @@ func (e invoiceEnv) merchant(t *testing.T) string {
 }
 
 func TestStores(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	shop := e.merchant(t)
@@ -176,6 +177,7 @@ func manyOrigins(n int) string {
 }
 
 func TestMerchantInvoicesRecordTheirStore(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	shop := e.merchant(t)
@@ -290,6 +292,7 @@ func storeIDs(t *testing.T, e invoiceEnv, profile string) []string {
 }
 
 func TestStoreBranding(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	shop := e.merchant(t)
@@ -447,6 +450,7 @@ func TestStoreBranding(t *testing.T) {
 }
 
 func TestStoreReadByID(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, dev = "did:privy:alice", "did:privy:erin"
 	shop := e.merchant(t)

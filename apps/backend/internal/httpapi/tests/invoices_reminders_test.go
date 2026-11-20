@@ -11,6 +11,7 @@ import (
 )
 
 func TestPaymentReminders(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	day := func(days int) string { return time.Now().UTC().AddDate(0, 0, days).Format(time.DateOnly) }
@@ -140,6 +141,7 @@ func TestPaymentReminders(t *testing.T) {
 }
 
 func TestRemindersFromCreate(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	clients := "/v1/profiles/" + e.aliceProfile + "/clients/"

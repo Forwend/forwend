@@ -118,6 +118,7 @@ func want(t *testing.T, step string, got, want state) {
 }
 
 func TestDepositsMoveThePaymentStatus(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
 
@@ -145,6 +146,7 @@ func TestDepositsMoveThePaymentStatus(t *testing.T) {
 }
 
 func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
 	e.anvil.Transfer(e.token, receive, "5000000")
@@ -164,6 +166,7 @@ func TestPaidNeedsTheSecondRPCToAgree(t *testing.T) {
 }
 
 func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	e.factory = e.anvil.DeployFactory()
 	e.endpoint(t, "all", allEvents, true, false)
@@ -199,6 +202,7 @@ func TestExpiryHoldsPartialAndLatePayments(t *testing.T) {
 }
 
 func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
 	e.anvil.Transfer(e.token, receive, "5000000")
@@ -209,6 +213,7 @@ func TestOnTimeDepositPaysAfterExpiryFinalizes(t *testing.T) {
 }
 
 func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	e.endpoint(t, "all", allEvents, true, false)
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+1000)
@@ -224,6 +229,7 @@ func TestLateFullPaymentIsHeldNotPaid(t *testing.T) {
 }
 
 func TestDepositsBookInChainOrder(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	ctx := context.Background()
 	id, receive := e.invoice(t, 1, 5000000, e.anvil.Now()+3600)
@@ -253,6 +259,7 @@ func TestDepositsBookInChainOrder(t *testing.T) {
 }
 
 func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	read := BalanceFrom(map[uint64]*ethclient.Client{chaintest.ChainID: ethclient.NewClient(e.anvil.RPC)})
 	_, _, err := read(context.Background(), chaintest.ChainID, "0x00000000000000000000000000000000000000c0",
@@ -263,6 +270,7 @@ func TestEmptyBalanceAnswerIsAnError(t *testing.T) {
 }
 
 func TestDeployedFromReadsTheFactory(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	a := chaintest.Start(t)
 	factory := a.DeployFactory()
@@ -301,6 +309,7 @@ func TestDeployedFromReadsTheFactory(t *testing.T) {
 }
 
 func TestRecordedDepositTheChainDoesNotHoldIsNeverPaid(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	id, receive := e.invoice(t, 70, 5000000, e.anvil.Now()+3600)
 	e.anvil.Mine(3)
@@ -326,6 +335,7 @@ func TestRecordedDepositTheChainDoesNotHoldIsNeverPaid(t *testing.T) {
 }
 
 func TestSettlementAndFeesMustMatchTheTerms(t *testing.T) {
+	t.Parallel()
 	e := newChainEnv(t)
 	ctx := context.Background()
 	outflow := func(id, receive, kind, destination string, amount int64, block uint64) {

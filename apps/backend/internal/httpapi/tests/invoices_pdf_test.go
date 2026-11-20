@@ -19,6 +19,7 @@ import (
 )
 
 func TestInvoiceDepositPreviewKeepsExactTotalsAndReceipt(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const owner = "did:privy:alice"
 	made := e.post(t, owner, e.aliceProfile, "deposit-preview", `{"chainId":84532,"token":"`+usdc+`","amount":"105000000"}`)
@@ -177,6 +178,7 @@ func mustContain(t *testing.T, text string, want ...string) {
 }
 
 func TestInvoicePDF(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice = "did:privy:alice"
 	plain := e.post(t, alice, e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
@@ -250,6 +252,7 @@ func TestInvoicePDF(t *testing.T) {
 }
 
 func TestInvoicePDFFitsLongTexts(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	r := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`", "amount": "`+
 		uint256Max+`", "title": "`+strings.Repeat("é", 200)+`", "note": "`+strings.Repeat("n\\n", 1000)+`", "client": {"name": "Bob 🙂`+
@@ -269,6 +272,7 @@ func TestInvoicePDFFitsLongTexts(t *testing.T) {
 }
 
 func TestInvoicePDFNotFound(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	for _, file := range []string{"invoice.pdf", "receipt.pdf"} {
 		for _, id := range []string{"0x" + strings.Repeat("ab", 32), "not-an-id"} {
@@ -280,6 +284,7 @@ func TestInvoicePDFNotFound(t *testing.T) {
 }
 
 func TestReceiptPDF(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1",
@@ -434,6 +439,7 @@ func qrDrawn(t *testing.T, pdf []byte) bool {
 }
 
 func TestInvoicePDFLines(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	made := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", `{"chainId": 84532, "token": "`+usdc+`",
 		"amount": "5000000", "title": "Website", "lines": [
@@ -453,6 +459,7 @@ func TestInvoicePDFLines(t *testing.T) {
 }
 
 func TestInvoiceModeFollowsItsChain(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	id := e.post(t, "did:privy:alice", e.aliceProfile, "key-1", basicBody).body["invoiceId"].(string)
 	owner := "/v1/profiles/" + e.aliceProfile + "/invoices/"

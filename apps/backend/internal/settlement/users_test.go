@@ -12,6 +12,7 @@ import (
 )
 
 func TestConcurrentSignersRespectTheUserCap(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	e.sponsoredHistory(t, SponsoredPerDay-1, "0x0000000000000000000000000000000000000001", 0)
 	e.pay(t, 71)
@@ -65,6 +66,7 @@ func TestConcurrentSignersRespectTheUserCap(t *testing.T) {
 }
 
 func TestSentIntentDoesNotWaitForAnotherChainsUserTurn(t *testing.T) {
+	t.Parallel()
 	e := setup(t)
 	id, _ := e.paidInvoice(t)
 	saving := e.signer(t)

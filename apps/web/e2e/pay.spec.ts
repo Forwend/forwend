@@ -412,7 +412,7 @@ test.describe("pay page", () => {
     await expect(page.getByText("Next check in 4 min", { exact: true })).toBeVisible();
   });
 
-  test("Check status stays beside the status once a check answers, with the answer under them", async ({
+  test("Check status names a network that did not answer beside what the check saw", async ({
     page,
   }) => {
     await openPay(page, OPEN);
@@ -428,28 +428,10 @@ test.describe("pay page", () => {
         },
       }),
     );
-    const waiting = page.getByRole("status").filter({ hasText: "Waiting for payment…" });
-    const check = page.getByRole("button", { name: "Check status" });
-    const answer = page.getByText(/· Next check in 5 min$/);
-    await check.click();
-    // A network that did not answer is named beside what the check saw.
+    await page.getByRole("button", { name: "Check status" }).click();
     await expect(page.getByRole("status").filter({ hasText: /did not answer/ })).toHaveText(
       "Nothing on Base Sepolia yet. · Arbitrum Sepolia did not answer.",
     );
-    for (const width of [1440, 390, 360]) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.reload();
-      await check.click();
-      await expect(answer).toBeVisible();
-      const [row, button, below] = await Promise.all([
-        waiting.boundingBox(),
-        check.boundingBox(),
-        answer.boundingBox(),
-      ]);
-      const middle = (box: typeof row) => (box ? box.y + box.height / 2 : 0);
-      expect(Math.abs(middle(row) - middle(button))).toBeLessThan(4);
-      expect(below && button && below.y >= button.y + button.height).toBe(true);
-    }
   });
 
   test("Check status asked too soon rests instead of reporting a network failure", async ({

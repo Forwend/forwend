@@ -6,6 +6,7 @@ import (
 )
 
 func TestWelcomeEmailOncePerNewAccount(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const dave, erin, olga = "did:privy:dave", "did:privy:erin", "did:privy:olga"
 	e.wallets.Lock()

@@ -33,6 +33,7 @@ func (e invoiceEnv) memberStores(t *testing.T, profile, user string) []string {
 }
 
 func TestTeamInvitesAndRoles(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	ctx := context.Background()
 	const alice, bob, carol = "did:privy:alice", "did:privy:bob", "did:privy:carol"
@@ -219,6 +220,7 @@ func TestTeamInvitesAndRoles(t *testing.T) {
 }
 
 func TestInvitesCountTowardTheClientEmailCap(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	shop := e.merchant(t)
 	for i := range 20 {
@@ -235,6 +237,7 @@ func TestInvitesCountTowardTheClientEmailCap(t *testing.T) {
 }
 
 func TestARemovedOrDemotedAdminLeavesWhatToRoll(t *testing.T) {
+	t.Parallel()
 	e := invoiceAPI(t)
 	const alice, bob = "did:privy:alice", "did:privy:bob"
 	shop := e.merchant(t)
