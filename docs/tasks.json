@@ -440,7 +440,7 @@
         "Every PLAN section cited in code and docs exists, and the held-on-another-option note and the range calendar keys are as the docs say."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "harness",
         "docs-check",
@@ -531,11 +531,18 @@
           "summary": "Read-only review of origin/main..HEAD for F499. No production code changed: only openapi.yaml description text and pay.spec.ts comments outside tests and docs. Every restored test was diffed against the pre-refactor tree and matches it except deliberate renames to current names; none skipped or weakened; the riskiest ones were read and fail when the guarded code is removed. Mutation checks were run by the authors for each restored guard. Docs citations to PLAN sections that shipped were removed or retargeted to D-118 and D-102 and read correctly. Review findings fixed in the last commit: D-97 target, a dead PLAN 12.2a cite in D-120, two cut profile checks, and a component test for the range calendar's Shift keys. Known and left: three cases of the old fee table test (covered at HTTP level by TestEveryOptionCarriesTheHighestNetworkFee and TestAChainThatCantBePricedLeavesThePayerTheOthers); D-79 and D-80 read as history; the PLAN 10.1 comment in migration 00029 is untouched because editing a migration changes its checksum. Not covered: the full test suite and e2e were run by verify, not by the reviewer; docs/tasks.json was not reviewed.",
           "at": "2026-11-20T16:52:07Z",
           "filesHash": "29c125961c84b464"
-        }
+        },
+        "commit": "acac6d52",
+        "doneAt": "2026-11-20T17:01:08Z"
       },
       "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
       "baseCommit": "ee3372cf2e6b11dbf3c9903b93db843aa94bc68a",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
