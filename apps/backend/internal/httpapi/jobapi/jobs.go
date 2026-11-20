@@ -1,16 +1,13 @@
 package jobapi
 
 import (
-	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/job"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 )
@@ -212,12 +209,6 @@ func acceptJob(jobs *job.Service, all *mid.Buckets) http.HandlerFunc {
 }
 
 func writeAccepted(w http.ResponseWriter, r *http.Request, j job.Job, err error) {
-	var soon *invoice.TooSoonError
-	if errors.As(err, &soon) {
-		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-		httpio.WriteError(w, r, httpio.ErrRateLimited)
-		return
-	}
 	if err != nil {
 		httpio.WriteError(w, r, err)
 		return

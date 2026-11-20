@@ -17,53 +17,12 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/chain"
 )
 
-// MinGas covers one receiver deploy (159,990 gas on Anvil) and one settle, each plus a fifth. On Arbitrum it
-// leaves out the L1 data cost: it is a floor, not a budget.
+// MinGas covers one receiver deploy and one settle, each plus a fifth; a floor, without Arbitrum's L1 data cost.
 const MinGas = (160_000 + SettleGasFloor) * 6 / 5
 
-// Tempo's v1 testnet flow (deployments.json, superseded) used 1,305,758 gas to deploy and 572,845 to settle.
+// TempoMinGas: Tempo's testnet flow used 1,305,758 gas to deploy and 572,845 to settle.
 const TempoMinGas = (1_310_000 + 575_000) * 6 / 5
 
-// maxFeePerGas bounds what one unit of gas may cost on each chain, in its fee unit (wei, or attodollars on Tempo), so a
-// wrong or lying fee suggestion from one provider can't drain the executor (R-189). Fees on 2026-10-30 were far below:
-// Base Sepolia 0.005 gwei, Arbitrum Sepolia 0.02, Arc 20 plus a 12.5 tip, Tempo 0.6. Mainnet fees on 2026-11-08 were
-// alike: Base 0.006, Arbitrum 0.02, Arc 25.75, Tempo 0.6. A chain without one is not served.
-var maxFeePerGas = map[uint64]*big.Int{
-	8453:    big.NewInt(1e9),
-	84532:   big.NewInt(1e9),
-	42161:   big.NewInt(1e9),
-	421614:  big.NewInt(1e9),
-	5042:    big.NewInt(1000e9),
-	5042002: big.NewInt(1000e9),
-	4217:    big.NewInt(100e9),
-	42431:   big.NewInt(100e9),
-	31337:   big.NewInt(1000e9), // Anvil, in tests
-	31338:   big.NewInt(1000e9), // a second Anvil, in tests
-}
-
-// Fees are a transaction's tip and fee cap on the chain: twice the base fee plus the tip, never above the chain's
-// ceiling in maxFeePerGas (R-189).
-func Fees(ctx context.Context, client *ethclient.Client, chainID uint64) (tip, feeCap *big.Int, err error) {
-	tip, err = client.SuggestGasTipCap(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read gas tip: %w", err)
-	}
-	head, err := client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read base fee: %w", err)
-	}
-	if head.BaseFee == nil {
-		return nil, nil, fmt.Errorf("chain %d has no base fee (EIP-1559)", chainID)
-	}
-	ceiling, ok := maxFeePerGas[chainID]
-	if !ok {
-		return nil, nil, fmt.Errorf("chain %d has no fee ceiling (settlement.maxFeePerGas)", chainID)
-	}
-	feeCap = minBig(new(big.Int).Add(new(big.Int).Mul(head.BaseFee, big.NewInt(2)), tip), ceiling)
-	return minBig(tip, feeCap), feeCap, nil
-}
-
-// minBig returns a copy, so a ceiling in maxFeePerGas is never handed out to be changed.
 func minBig(a, b *big.Int) *big.Int {
 	if a.Cmp(b) <= 0 {
 		return new(big.Int).Set(a)
@@ -71,22 +30,17 @@ func minBig(a, b *big.Int) *big.Int {
 	return new(big.Int).Set(b)
 }
 
-// GasAlertSettlements: below this many deploys and settles at the current fees, the signer alerts every GasCheckEvery.
+// GasAlertSettlements: below this many deploys and settles at current fees, the signer alerts every GasCheckEvery.
 const (
 	GasAlertSettlements = 20
 	GasCheckEvery       = 5 * time.Minute
 )
 
 // Tempo has no native coin (eth_getBalance is a placeholder): fees are paid in the executor's fee token, else PathUSD.
-var (
-	pathUSD    = common.HexToAddress("0x20c0000000000000000000000000000000000000")
-	userTokens = selector("userTokens(address)")
-)
+var pathUSD = common.HexToAddress("0x20c0000000000000000000000000000000000000")
 
-// CheckGas alerts unless the executor holds MinGas at the chain's current fee cap. A shortfall is not a setup mistake
-// (D-71): the signer starts, so other chains settle and its rounds can buy gas. It fails when no client can read the
-// gas, or the chain has no fee ceiling. A failed read tries the next client; a shortfall stops the check, since the
-// signer sends through the first.
+// CheckGas alerts unless the executor holds MinGas at the current fee cap; a shortfall doesn't stop the signer.
+// A failed read tries the next client; it fails when none can read the gas.
 func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clients ...*ethclient.Client) error {
 	var err error
 	for _, client := range clients {
@@ -103,9 +57,8 @@ func CheckGas(ctx context.Context, chainID uint64, executor common.Address, clie
 
 var errFundIt = errors.New("fund it")
 
-// checkGas fails unless the executor holds the gas of settlements deploys and settles at the current fee cap.
 func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, executor common.Address, settlements int64) error {
-	_, feeCap, err := Fees(ctx, client, chainID)
+	_, feeCap, err := chain.Fees(ctx, client, chainID)
 	if err != nil {
 		return fmt.Errorf("chain %d: %w", chainID, err)
 	}
@@ -134,7 +87,7 @@ func checkGas(ctx context.Context, client *ethclient.Client, chainID uint64, exe
 }
 
 func feeToken(ctx context.Context, client *ethclient.Client, executor common.Address) (common.Address, error) {
-	token, tempo, err := UserFeeToken(ctx, client, executor)
+	token, tempo, err := chain.UserFeeToken(ctx, client, executor)
 	if err != nil || !tempo {
 		return common.Address{}, err
 	}
@@ -142,29 +95,6 @@ func feeToken(ctx context.Context, client *ethclient.Client, executor common.Add
 		return token, nil
 	}
 	return pathUSD, nil
-}
-
-// UserFeeToken is the fee token the account chose in Tempo's fee manager, the zero address for none; tempo is false
-// on a chain without the fee manager.
-func UserFeeToken(ctx context.Context, client *ethclient.Client, account common.Address) (token common.Address,
-	tempo bool, err error) {
-	manager := chain.TempoFeeManager
-	code, err := client.CodeAt(ctx, manager, nil)
-	if err != nil {
-		return common.Address{}, false, fmt.Errorf("read the fee manager's code: %w", err)
-	}
-	if len(code) == 0 {
-		return common.Address{}, false, nil
-	}
-	data := append(append([]byte{}, userTokens...), common.LeftPadBytes(account.Bytes(), 32)...)
-	out, err := client.CallContract(ctx, ethereum.CallMsg{To: &manager, Data: data}, nil)
-	if err != nil {
-		return common.Address{}, true, fmt.Errorf("read the account's fee token: %w", err)
-	}
-	if len(out) != 32 {
-		return common.Address{}, true, fmt.Errorf("read the account's fee token: %d-byte answer", len(out))
-	}
-	return common.BytesToAddress(out), true, nil
 }
 
 func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64, executor, token common.Address,
@@ -186,10 +116,8 @@ func checkFeeToken(ctx context.Context, client *ethclient.Client, chainID uint64
 	return nil
 }
 
-// swapRoutes is where the signer buys ether with the USDC network fees it is paid (R-229): Uniswap v3's SwapRouter02
-// and its WETH, swapping native USDC in the USDC/WETH pool of the fee tier. Checked on 2026-11-09 against Uniswap's
-// deployment docs and each router's factory() and WETH9(). The 0.05% pools then held 1.2M (Base) and 6.8M (Arbitrum)
-// USDC: deep enough for a top-up, at the lowest fee. Arc and Tempo pay gas in the stablecoin itself.
+// swapRoutes: where the signer buys ether with its USDC fees, Uniswap v3 SwapRouter02 and WETH in the 0.05% pool.
+// Arc and Tempo pay gas in the stablecoin itself.
 var swapRoutes = map[uint64]swapRoute{
 	8453: {router: common.HexToAddress("0x2626664c2603336E57B271c5C0b26F421741e481"),
 		weth: common.HexToAddress("0x4200000000000000000000000000000000000006"),
@@ -204,8 +132,7 @@ type swapRoute struct {
 	fee                int64 // the pool's fee tier, in millionths
 }
 
-// A swap buys at least the ether the Chainlink price gives, less swapSlack percent (R-229). It brings the executor to
-// topUpSettlements deploys and settles, so one swap lasts many alert periods.
+// A swap buys at least the Chainlink price's ether less swapSlack percent, up to topUpSettlements deploys and settles.
 const (
 	swapSlack        = 1
 	topUpSettlements = 2 * GasAlertSettlements
@@ -237,10 +164,8 @@ type exactInputSingle struct {
 // The router's Constants.ADDRESS_THIS: the swap leaves the WETH with the router, whose unwrapWETH9 pays the caller.
 var routerItself = common.HexToAddress("0x0000000000000000000000000000000000000002")
 
-// buyGas swaps USDC for the ether that brings the executor to topUpSettlements deploys and settles at the current fee
-// cap, or all its USDC if that buys less, and unwraps it in the same transaction. The router reverts unless the swap
-// pays at least the Chainlink price less swapSlack, so a moved or lying pool takes no more. A swap its gas estimate
-// refuses is never sent, and its approve is spent by the next one instead of sent again.
+// buyGas swaps USDC for ether up to topUpSettlements at the current fee cap; the router reverts below the Chainlink
+// price less swapSlack, and a swap its estimate refuses is never sent.
 func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID uint64, route swapRoute) error {
 	mined, err := client.NonceAt(ctx, s.sender, nil)
 	if err != nil {
@@ -254,7 +179,7 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 		// An approve stacked behind a stuck transaction would hold a nonce and buy nothing.
 		return fmt.Errorf("a transaction at nonce %d is not mined yet: buying next round", mined)
 	}
-	_, feeCap, err := Fees(ctx, client, chainID)
+	_, feeCap, err := chain.Fees(ctx, client, chainID)
 	if err != nil {
 		return err
 	}
@@ -286,8 +211,7 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 	}
 	// Less than one deploy and settle's gas costs more than it buys, and the pool's rounding can refuse it.
 	floor := new(big.Int).Mul(feeCap, big.NewInt(MinGas))
-	// An allowance a refused swap left is swapped before any new approve, when it buys enough on its own; a smaller one
-	// is replaced.
+	// A refused swap's allowance is swapped before any new approve when it buys enough; a smaller one is replaced.
 	in, least := swapAmounts(want, minBig(held, new(big.Int).SetBytes(out)), price)
 	approve := least.Cmp(floor) < 0
 	if approve {
@@ -331,8 +255,8 @@ func (s *Signer) buyGas(ctx context.Context, client *ethclient.Client, chainID u
 	return nil
 }
 
-// swapAmounts: in is the USDC that buys wei of ether at price (USD per ether, chain.EthUSDDecimals decimals), rounded
-// up and at most held, taking USDC at 1 USD; least is the ether in must buy, less swapSlack percent, rounded down.
+// swapAmounts: in is the USDC (1 USD each, at most held) that buys wei at price, rounded up; least is the ether
+// in must buy, less swapSlack percent, rounded down.
 func swapAmounts(wei, held, price *big.Int) (in, least *big.Int) {
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(18+chain.EthUSDDecimals-6), nil)
 	in = new(big.Int).Mul(wei, price)
@@ -345,8 +269,8 @@ func swapAmounts(wei, held, price *big.Int) (in, least *big.Int) {
 	return in, least
 }
 
-// sendAndWait signs at the executor's next nonce, at least after, and waits for the transaction to succeed. One not
-// mined in ReceiptWait stays unsaved: the next deploy replaces it if it holds the nonce (overStuck).
+// sendAndWait signs at the executor's next nonce (at least after) and waits; one not mined in ReceiptWait stays
+// unsaved, and overStuck replaces it if it holds the nonce.
 func (s *Signer) sendAndWait(ctx context.Context, client *ethclient.Client, chainID uint64, to common.Address,
 	data []byte, after uint64) (*types.Transaction, error) {
 	tx, err := s.sign(ctx, client, chainID, to, data, after, 0, nil)

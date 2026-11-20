@@ -2,9 +2,7 @@ package invoiceapi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,7 +35,7 @@ func createInvoice(invoices *invoice.Service) http.HandlerFunc {
 		if body.Repeat != nil {
 			repeat = &invoice.Repeat{EndDate: body.Repeat.EndDate}
 		}
-		// R-138: a Developer or Finance member invoices for their own stores, the first one by default.
+		// A Developer or Finance member invoices for their own stores, the first one by default.
 		if access := mid.ProfileAccess(r); access.Stores != nil {
 			if body.StoreID == "" && len(access.Stores) > 0 {
 				body.StoreID = access.Stores[0]
@@ -143,12 +141,6 @@ func sendInvoice(invoices *invoice.Service, emails *mid.Buckets) http.HandlerFun
 		}
 		allow := func() time.Duration { return emails.Wait(mid.Everyone(r)) }
 		inv, queued, err := invoices.Send(r.Context(), r.PathValue("profileId"), r.PathValue("invoiceId"), key, allow)
-		var soon *invoice.TooSoonError
-		if errors.As(err, &soon) {
-			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-			httpio.WriteError(w, r, httpio.ErrRateLimited)
-			return
-		}
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -206,7 +198,7 @@ func stopReminders(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// numbered keeps a link invoice from its owner's routes until its first deposit gives it a number (R-141).
+// numbered keeps a link invoice from its owner's routes until its first deposit gives it a number.
 func numbered(invoices *invoice.Service, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		unnumbered, err := invoices.Unnumbered(r.Context(), r.PathValue("invoiceId"))
@@ -303,12 +295,6 @@ func putPayerEmail(invoices *invoice.Service, emails *mid.Buckets) http.HandlerF
 		}
 		allow := func() time.Duration { return emails.Wait(mid.Everyone(r)) }
 		kept, err := invoices.SetPayerEmail(r.Context(), r.PathValue("payToken"), body.Email, allow)
-		var soon *invoice.TooSoonError
-		if errors.As(err, &soon) {
-			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-			httpio.WriteError(w, r, httpio.ErrRateLimited)
-			return
-		}
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return
@@ -334,7 +320,7 @@ func putPick(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-168: the web app asks before it lets a page frame /embed.
+// The web app asks before it lets a page frame /embed.
 func embedAllowed(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allowed, err := invoices.EmbedAllowed(r.Context(), r.PathValue("payToken"), r.URL.Query().Get("origin"))
@@ -358,7 +344,7 @@ func countView(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-127, R-128: the whole editable set; a missing, null or blank field clears it.
+// The whole editable set: a missing, null or blank field clears it.
 func putDetails(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {

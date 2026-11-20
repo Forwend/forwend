@@ -16,14 +16,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/forwend/forwend/apps/backend/internal/address"
+	"github.com/forwend/forwend/apps/backend/internal/chain"
 	"github.com/forwend/forwend/apps/backend/internal/watcher"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Money an invoice option doesn't take (D-33, D-118): another token sent to its receive address on its chain, or any
-// token sent to that address on another chain. The ledger never books it. The receiver's recover returns it, but only
-// where the factory, its receiver code and the refund authority there are ours; otherwise support says it can't.
+// Strays are money an invoice option doesn't take: another token, or any token on another chain; never booked.
+// The receiver's recover returns it only where the factory, receiver code and refund authority there are ours.
 
 var (
 	recoverSelector   = selector(recoverSignature)
@@ -67,9 +67,8 @@ type Recovery struct {
 	Warnings  []string
 }
 
-// FindStrays reads the transaction on every chain in clients and keeps its transfers to an invoice option's receive
-// address other than that option's own token on its own chain, which the ledger books as a payment. A chain whose
-// RPC fails stops the search: a missed transfer would read as no case.
+// FindStrays reads the transaction on every chain and keeps its transfers to a receive address that aren't the
+// option's own money; a chain whose RPC fails stops the search, since a missed transfer would read as no case.
 func FindStrays(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethclient.Client, txHash string) ([]Stray, error) {
 	hash := common.HexToHash(txHash)
 	var strays []Stray
@@ -86,7 +85,7 @@ func FindStrays(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethcl
 		}
 		for _, l := range receipt.Logs {
 			// Arc's system log of a movement, or the native send it stands for, isn't a token a contract holds.
-			if len(l.Topics) != 3 || l.Topics[0] != watcher.TransferTopic || len(l.Data) != 32 || l.Address == watcher.ArcEmitter {
+			if len(l.Topics) != 3 || l.Topics[0] != chain.TransferTopic || len(l.Data) != 32 || l.Address == watcher.ArcEmitter {
 				continue
 			}
 			amount := new(big.Int).SetBytes(l.Data)
@@ -115,9 +114,8 @@ func FindStrays(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethcl
 	return strays, nil
 }
 
-// PlanRecovery checks that a stray transfer can come back and gives the refund authority's calls: the receiver's
-// deploy where it isn't deployed yet, then recover to the sender (or to). home is a client of the invoice's chain,
-// there of the chain the money went to. It sends nothing; it locks the transfer, so its recover is printed once.
+// PlanRecovery checks a stray transfer can come back and gives the refund authority's calls; it sends nothing
+// and locks the transfer, so its recover is printed once.
 func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.Client, s Stray, to *common.Address) (Recovery, error) {
 	// Printed before: once sent, the address no longer holds it, which must not read as "can't be returned".
 	var printed bool
@@ -129,7 +127,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	if printed {
 		return Recovery{}, ErrRecoveryQueued
 	}
-	// A reorg could undo the transfer after its recover is printed, which would then pay out other money (D-45).
+	// A reorg could undo the transfer after its recover is printed, which would then pay out other money.
 	head, err := there.HeaderByNumber(ctx, finalized)
 	if err != nil {
 		return Recovery{}, fmt.Errorf("read the finalized block: %w", err)
@@ -137,8 +135,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	if head.Number.Uint64() < s.BlockNumber {
 		return Recovery{}, ErrNotFinal
 	}
-	// And on the chain that finalized it: one RPC in a pool can answer from another fork. The block's own hash field,
-	// not Header.Hash(), which is wrong on Tempo.
+	// And on the chain that finalized it, by the block's own hash field: Header.Hash() is wrong on Tempo.
 	var block struct {
 		Hash common.Hash `json:"hash"`
 	}
@@ -229,7 +226,7 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	r.Calls = append(r.Calls, Call{To: receiver, Data: recoverData, Signature: recoverSignature,
 		Args: []string{strings.ToLower(s.Token.Hex()), strings.ToLower(r.To.Hex()), s.Amount.String()}})
 	// The lock: a second run sees the money of another transfer still there, and would return this one again.
-	// A released transfer is locked again in its own row, which release counts from (00096).
+	// A released transfer is locked again in its own row, which release counts from.
 	tag, err := db.Exec(ctx, `INSERT INTO stray_recoveries (chain_id, tx_hash, log_index, block_number, invoice_id,
 		token_contract, destination, amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (chain_id, tx_hash, log_index) DO UPDATE SET released_at = NULL, destination = EXCLUDED.destination,
@@ -245,13 +242,8 @@ func PlanRecovery(ctx context.Context, db *pgxpool.Pool, home, there *ethclient.
 	return r, nil
 }
 
-// ReleaseRecovery unlocks, one at a time, the recovers printed for a transaction that the refund authority will not
-// send. The ledger books none of this, so the chain is the only proof. Locks of one key (chain, invoice, token,
-// amount) are alike: a lock is released only while the receiver logged fewer recovers of that token and amount, to
-// anyone, since the first transfer of that key ever locked, than the key's locks still held. Released rows stay, so
-// that start never moves. A recover of it to the lock's own destination since its transfer keeps it too: that one
-// was likely sent, and a mistaken release could otherwise pay out a recover still waiting in the Safe. It returns how
-// many it released, and ErrRecoverySent when it kept any.
+// ReleaseRecovery unlocks, one at a time, printed recovers the refund authority won't send. A lock is released
+// only while the receiver logged fewer recovers of its key than locks held, and none to its own destination.
 func ReleaseRecovery(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*ethclient.Client, txHash string) (int64, error) {
 	txHash = strings.ToLower(strings.TrimSpace(txHash))
 	var released int64
@@ -325,8 +317,7 @@ func ReleaseRecovery(ctx context.Context, db *pgxpool.Pool, clients map[uint64]*
 	return released, nil
 }
 
-// recovers counts the receiver's Recovered logs of a token and amount, to one address or (nil) anyone, from a block
-// to the latest.
+// recovers counts the receiver's Recovered logs of a token and amount, to one address or (nil) anyone.
 func recovers(ctx context.Context, client *ethclient.Client, from uint64, receiver common.Address, invoice common.Hash,
 	token common.Address, to *common.Address, amount *big.Int) (int, error) {
 	latest, err := client.BlockNumber(ctx)
@@ -354,8 +345,8 @@ func recovers(ctx context.Context, client *ethclient.Client, from uint64, receiv
 	return n, nil
 }
 
-// reverted tells a call the chain refused from an RPC that failed (rate limited, no state), which must not read as
-// "can't be returned". The RPC pool rewrites every revert to this message (chain.safeMessage); code 3 is the standard.
+// reverted tells a refused call from a failed RPC, which must not read as "can't be returned"; the pool rewrites
+// every revert to this message (chain.safeMessage), and code 3 is the standard.
 func reverted(err error) bool {
 	var e rpc.Error
 	if errors.As(err, &e) && e.ErrorCode() == 3 {
@@ -364,9 +355,8 @@ func reverted(err error) bool {
 	return strings.Contains(err.Error(), "execution reverted")
 }
 
-// ours is nil when the chain the money went to has our factory with our receiver code, and our refund authority:
-// the same key, or a Safe with the same code, singleton, owners, threshold and modules. Anyone can put other code at
-// these addresses.
+// ours is nil when the chain has our factory, receiver code and refund authority (our key, or a Safe like ours):
+// anyone can put other code at these addresses.
 func ours(ctx context.Context, home, there *ethclient.Client, factory [20]byte, authority common.Address) error {
 	// Both chains' answers for one read; a failed read is an error, never "not ours".
 	same := func(read func(*ethclient.Client) ([]byte, error)) (bool, int, error) {

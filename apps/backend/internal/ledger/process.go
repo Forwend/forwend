@@ -11,8 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Invoices with a deposit to book go first, so new money is booked even when the round runs out of time (R-120).
-// One owed in full but not yet paid waits for the finalized balance check, so it is checked every round.
+// Invoices with a deposit to book go first, so new money is booked even when the round runs out of time.
 func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	rows, err := s.pool.Query(ctx, `
   SELECT id FROM (SELECT i.id, i.payment_status, i.closes_at, i.amount, cursor.last_finalized_time,
@@ -28,9 +27,7 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
      UNION SELECT invoice_id FROM receiver_outflows WHERE kind <> 'recovery' AND ledger_transaction_id IS NULL)) i
   WHERE money OR (payment_status IN ('open','detected','partially_paid')
    AND (observed OR payment_status = 'detected' OR closes_at < last_finalized_time
-    OR payment_status = 'partially_paid' AND (SELECT -coalesce(sum(e.amount), 0) FROM ledger_entries e
-     JOIN ledger_transactions t ON t.id = e.transaction_id
-     WHERE t.invoice_id = i.id AND e.account = 'recipient_payable') >= amount) AND NOT EXISTS
+    OR payment_status = 'partially_paid' AND `+OwedSQL("i.id")+` >= amount) AND NOT EXISTS
    (SELECT 1 FROM invoice_balance_alerts a WHERE a.invoice_id = i.id AND a.next_check_at > now()))
   ORDER BY money DESC`, chainID)
 	if err != nil {
@@ -49,7 +46,6 @@ func (s *Service) ProcessChain(ctx context.Context, chainID uint64) error {
 	return errors.Join(errs...)
 }
 
-// Process atomically books one bounded movement prefix; booked movements are never repeated.
 func (s *Service) Process(ctx context.Context, invoiceID string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -119,13 +115,13 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		owed.Add(owed, moved)
 	}
 	depositsBooked := 0
-	// A return support queued (PLAN 11.10.3) holds the money until a refund lands.
+	// A return support queued holds the money until a refund lands.
 	returnQueued, refundedNow := refund == "refund_pending", false
 	eventExpired := false
 	eventClosed := false
 	settledNow := false
 	final := Final(current) || settlementState == "settled"
-	newlyHeld := new(big.Int)        // told to the owner once per run (R-80)
+	newlyHeld := new(big.Int)        // told to the owner once per run
 	heldFor := map[string]*big.Int{} // the same by reason, for the history
 	hold := func(reason string, value *big.Int) {
 		if value.Sign() == 0 {
@@ -137,8 +133,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		heldFor[reason].Add(heldFor[reason], value)
 		newlyHeld.Add(newlyHeld, value)
 	}
-	// Dust is what a stranger can send: on-time money that leaves its option under the least amount is held without a
-	// word to the owner, however the worker's rounds fall. Late money and money after a close or a cancel is told.
+	// Dust a stranger can send (on-time money under the least amount) is held without a word to the owner.
 	least, onTime := new(big.Int), new(big.Int)
 	if options {
 		var leastText, bookedText string
@@ -238,14 +233,14 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		next = Open
 	}
 	if next == ExpiredPartiallyPaid && current != ExpiredPartiallyPaid {
-		// Held for the payer (D-26): what was owed to the creator is theirs again only if the owner reopens (R-130).
+		// Held for the payer: what was owed to the creator is theirs again only if the owner reopens.
 		if !eventExpired {
 			if _, err := book(ctx, tx, invoiceID, "expiry", nil, new(big.Int), new(big.Int).Neg(owed), owed); err != nil {
 				return err
 			}
 			hold(HeldExpired, owed)
 		}
-		// A reopen must end before the receiver's settle window does (R-130).
+		// A reopen must end before the receiver's settle window does.
 		readCtx, cancel := context.WithTimeout(ctx, BalanceTimeout)
 		deployedAt, err := s.deployed(readCtx, chainID, factory, receive)
 		cancel()
@@ -324,7 +319,7 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		return err
 	}
 	if next == Paid && current != Paid && !settled {
-		// The signer settles it; one intent per invoice (R-22).
+		// The signer settles it; one intent per invoice.
 		if _, err := tx.Exec(ctx, `WITH i AS (INSERT INTO settlement_intents (invoice_id) VALUES ($1) ON CONFLICT DO NOTHING)
 			UPDATE invoices SET settlement_status = 'pending' WHERE id = $1`, invoiceID); err != nil {
 			return fmt.Errorf("queue invoice %s settlement: %w", invoiceID, err)
@@ -334,8 +329,8 @@ func (s *Service) Process(ctx context.Context, invoiceID string) error {
 		}
 	}
 	if depositsBooked > 0 {
-		// A payment-link invoice takes the profile's next number with its first booked deposit (D-50, R-141). Last,
-		// so the profile row isn't locked while the selected RPC is read.
+		// A link invoice takes the profile's next number with its first booked deposit; last, so the profile row isn't
+		// locked while the RPC is read.
 		tag, err := tx.Exec(ctx, `WITH n AS (UPDATE profiles p SET invoice_seq = invoice_seq + 1 FROM invoices m
 			    WHERE m.id = $1 AND m.number IS NULL AND m.document_kind <> 'none' AND p.id = m.profile_id RETURNING p.invoice_seq)
 			UPDATE invoices i SET number = n.invoice_seq FROM n WHERE coalesce(i.main_id, i.id) = $1`, group)

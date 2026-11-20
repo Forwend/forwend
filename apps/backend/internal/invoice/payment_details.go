@@ -46,14 +46,12 @@ type PaymentSettlement struct {
 	Progress      *finality.Progress
 }
 
-type PaymentDelivery = webhook.PaymentDelivery
-
 type PaymentDetails struct {
 	DeliveryCount int64
 	Invoice       Invoice
 	SnapshotAt    time.Time
 	Options       []PaymentOption
-	Deliveries    []PaymentDelivery
+	Deliveries    []webhook.PaymentDelivery
 	Problems      []PaymentProblem
 }
 
@@ -173,13 +171,12 @@ func readPaymentSettlements(ctx context.Context, db paymentReader, ids []string)
 	return result, rows.Err()
 }
 
-// heldHistory is what the ledger wrote to the history about an option's held money since the last reopen (R-130).
+// heldHistory is what the ledger wrote to the history about an option's held money since the last reopen.
 type heldHistory struct {
 	Reason string   // its one reason; "" when the holds have several
 	Amount *big.Int // the sum of those holds
 }
 
-// readHeldReasons reads each option's heldHistory (D-26), by option id.
 func readHeldReasons(ctx context.Context, db paymentReader, mains []string) (map[string]heldHistory, error) {
 	rows, err := db.Query(ctx, `SELECT coalesce(nullif(h.data->>'option', ''), h.invoice_id) AS option,
 		       CASE WHEN count(DISTINCT h.data->>'reason') = 1 THEN min(h.data->>'reason') ELSE '' END,

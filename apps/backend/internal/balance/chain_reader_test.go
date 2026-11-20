@@ -53,7 +53,7 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	c := NewChainReader(map[uint64]chain.Spec{
 		chaintest.ChainID: {ChainID: chaintest.ChainID, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: anvil.URL, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(anvil.URL, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
 		dead:              {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: h, BudgetGroup: "budget-0"}, {ID: "rpc-1", Provider: "provider-1", Role: chain.Confirmation, Tier: chain.Public, Priority: 1, URL: strings.Replace(h, "127.0.0.1", "localhost", 1), BudgetGroup: "budget-1"}}},
-	}, 1000)
+	}, 1000, nil)
 	ctx := context.Background()
 	if _, _, err := c.Read(ctx, chaintest.ChainID, token, holder); err != nil {
 		t.Fatal(err)
@@ -75,7 +75,6 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 		t.Fatal("the hung chain gave a balance")
 	}
 
-	// A request that ends early says nothing about the RPC: the next read is answered at once.
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
 	if _, _, err := c.Read(cancelled, chaintest.ChainID, token, holder); err == nil {
@@ -87,13 +86,11 @@ func TestOneHungChainDoesNotBlockTheOthers(t *testing.T) {
 	}
 }
 
-// A read that starts while a hung read of the same chain runs gets its failure, instead of starting another hung
-// request. A hung RPC rests after the pool's attempt timeout (chain tests), longer than these deadlines.
 func TestReadDuringAHungReadSharesItsFailure(t *testing.T) {
 	h, accepted := hungCounting(t)
 	c := NewChainReader(map[uint64]chain.Spec{
 		dead: {ChainID: dead, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0", Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, Priority: 0, URL: h, BudgetGroup: "budget-0"}}},
-	}, 1000)
+	}, 1000, nil)
 	ctx := context.Background()
 	first, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()

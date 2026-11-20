@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/mail"
 	"time"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
@@ -14,8 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Accept (R-100) makes a deposit invoice in the same transaction; an accepted job answers the same. allow is asked
-// only when this accept would change the job, so an unknown link or a bad body spends none of it (R-117).
+// Accept makes a deposit invoice in the same transaction; allow is asked only when the job would change.
 func (s *Service) Accept(ctx context.Context, token, name, email string, allow func() time.Duration) (Job, error) {
 	if err := checkTyped(name, email); err != nil {
 		return Job{}, err
@@ -63,8 +61,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 				j.ID, deposit.Position, invoiceID)
 			return err
 		}
-		// A concurrent accept the same UTC day makes the same request with the same key, so it gets this invoice back.
-		// One across midnight has another due date: its key is taken, and the job reads as accepted.
+		// A concurrent accept the same UTC day makes the same request and key, so it gets this invoice back.
 		_, _, err = s.invoices.Create(ctx, j.profileID, paymentKey(j.ID, deposit.Position), r)
 		if errors.Is(err, invoice.ErrConflict) {
 			if again, readErr := s.ByToken(ctx, j.Token); readErr == nil && !again.AcceptedAt.IsZero() {
@@ -80,8 +77,7 @@ func (s *Service) accept(ctx context.Context, j Job, name, email string) (Job, e
 }
 
 func checkTyped(name, email string) error {
-	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > profile.MaxClientName ||
-		!profile.PlainText(name, false) {
+	if name == "" || !profile.ValidText(name, profile.MaxClientName, false) {
 		return fmt.Errorf("%w: name must be 1 to %d characters of plain text", ErrInvalid, profile.MaxClientName)
 	}
 	if a, err := mail.ParseAddress(email); err != nil || a.Address != email || len(email) > profile.MaxClientEmail {
@@ -90,11 +86,9 @@ func checkTyped(name, email string) error {
 	return nil
 }
 
-// paymentKey is the idempotency key of the invoice of a job's payment.
 func paymentKey(jobID string, position int) string { return fmt.Sprintf("job:%s:%d", jobID, position) }
 
-// paymentRequest is a payer-chooses invoice (D-75), open DueGraceDays past its due date (D-80), and up to a day
-// longer, so the same request made again the same UTC day has the same idempotency hash.
+// paymentRequest is a payer-chooses invoice open DueGraceDays past its due date, so a same-day retry matches.
 func (s *Service) paymentRequest(j Job, p Payment) invoice.Request {
 	usd := invoice.USD(p.AmountCents)
 	today := s.now().UTC().Truncate(24 * time.Hour)

@@ -138,7 +138,7 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
     - It buys nothing while one of the executor's transactions waits to be mined.
     - A failed or refused swap adds its reason to the alert; settlement waits as before.
     - `go test -tags mainnetfork` runs it on forks of both mainnets through their public RPCs.
-  - No fee it signs exceeds the chain's ceiling per gas unit (`settlement.maxFeePerGas`), whatever a provider suggests.
+  - No fee it signs exceeds the chain's ceiling per gas unit (`chain.FeeCeiling`), whatever a provider suggests.
     - Base and Arbitrum Sepolia: 1 gwei. Arc: 1,000 gwei. Tempo: 100 gwei (attodollars). Fees in October 2026 were far below.
     - Replacements and stuck-deploy replacements stop at it too; above it a settlement waits and its delay alert fires.
     - A chain without a ceiling fails the start-up check, so the signer never serves it unbounded.
@@ -168,8 +168,7 @@ Deployment model (D-72): the api is stateless and runs as N replicas behind a lo
 one signer run beside it (more copies wait on their locks, [startup](#startup)). Each api replica keeps its own
 balance cache and rate-limit buckets in memory, so with N replicas the RPC reads and each caller's limit grow N times.
 Redis is the next step when more than a few replicas run: the balance cache in `internal/balance` (`memoryCache`)
-uses string keys and values so a Redis store can take its place; the limit buckets in `internal/httpapi/mid` would
-move with it. Nothing else in the api keeps state between requests.
+and the limit buckets in `internal/httpapi/mid` would move to it. Nothing else in the api keeps state between requests.
 
 - Balance reads (`balance.ChainReader`): a chain's finalized block is read once per 3 s (`finalizedTTL`) for every
   request, then `balanceOf` once per chain, token, wallet and that block. Requests asking for the same key meanwhile

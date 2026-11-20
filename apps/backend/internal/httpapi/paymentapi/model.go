@@ -73,6 +73,7 @@ type optionJSON struct {
 	DepositsTruncated bool                `json:"depositsTruncated"`
 }
 
+// coverageJSON keeps verifiedHash, observedBalance, balanceDifference and bookingError as always-null keys.
 type coverageJSON struct {
 	HistoryComplete     bool    `json:"historyComplete"`
 	VerifiedBlock       *uint64 `json:"verifiedBlock"`
@@ -171,10 +172,9 @@ func toDetails(detail invoice.PaymentDetails, webURL string, access auth.Access)
 		row := optionJSON{OptionID: option.ID, ChainID: option.ChainID, Token: option.Token, Symbol: option.Symbol, Decimals: option.Decimals,
 			Amount: option.Amount.String(), Fees: paymentio.FromFees(option.Amount, option.Fees), ReceiveAddress: option.ReceiveAddress, ClosesAt: option.ClosesAt.UTC().Format(time.RFC3339),
 			PaymentStatus: state.PaymentStatus, SettlementStatus: state.SettlementStatus, RefundStatus: state.RefundStatus, Amounts: paymentio.FromAmounts(option.Amounts),
-			Coverage: coverageJSON{HistoryComplete: state.HistoryComplete, VerifiedBlock: state.VerifiedBlock, VerifiedHash: httpio.OrNull(state.VerifiedHash),
-				VerifiedTime: optionalTime(state.VerifiedTime), ObservedBalance: optionalAmount(state.ObservedBalance), BalanceDifference: optionalAmount(state.BalanceDifference),
-				ReconciliationError: httpio.OrNull(state.ReconciliationError), BookingError: httpio.OrNull(state.BookingError), RetryAt: optionalTime(state.RetryAt),
-				UpdatedAt: state.UpdatedAt.UTC().Format(time.RFC3339Nano), ChainFinalizedBlock: state.ChainFinalizedBlock, PendingDeposits: state.PendingDeposits,
+			Coverage: coverageJSON{HistoryComplete: state.HistoryComplete, VerifiedBlock: state.VerifiedBlock,
+				VerifiedTime: optionalTime(state.VerifiedTime), ReconciliationError: httpio.OrNull(state.ReconciliationError), RetryAt: optionalTime(state.RetryAt),
+				UpdatedAt: state.UpdatedAt.UTC().Format(time.RFC3339Nano), ChainFinalizedBlock: state.VerifiedBlock, PendingDeposits: state.PendingDeposits,
 				UnbookedDeposits: state.UnbookedDeposits, UnprovedDeposits: state.UnprovedDeposits, UnbookedOutflows: state.UnbookedOutflows},
 			Deposits: paymentio.Deposits(option.Deposits), DepositsTruncated: option.DepositsTruncated, Returns: []returnJSON{}}
 		for _, r := range option.Returns {

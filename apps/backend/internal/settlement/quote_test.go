@@ -24,7 +24,6 @@ func TestCeilCentsRoundsUpToACent(t *testing.T) {
 	}
 }
 
-// R-227: a deploy and a settle at the chain's fee cap, twice over, in USD rounded up to a cent: ETH/USD prices ether.
 func TestNetworkFeeIsADeployAndSettleAtTheFeeCap(t *testing.T) {
 	a := chaintest.Start(t)
 	client, err := ethclient.Dial(a.URL)
@@ -33,7 +32,7 @@ func TestNetworkFeeIsADeployAndSettleAtTheFeeCap(t *testing.T) {
 	}
 	t.Cleanup(client.Close)
 	ctx := context.Background()
-	_, feeCap, err := Fees(ctx, client, chaintest.ChainID)
+	_, feeCap, err := chain.Fees(ctx, client, chaintest.ChainID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,16 +48,12 @@ func TestNetworkFeeIsADeployAndSettleAtTheFeeCap(t *testing.T) {
 	if got.Cmp(CeilCents(want)) != 0 {
 		t.Fatalf("network fee %s USD, want %s rounded up to a cent", got.FloatString(2), want.FloatString(6))
 	}
-	// A chain's quote serves its invoices for a while: a price change shows only after QuoteAge.
 	a.PriceFeed(big.NewInt(1e8))
 	if again, err := q.NetworkFee(ctx, chaintest.ChainID); err != nil || again.Cmp(got) != 0 {
 		t.Fatalf("quote again: %v (%v), want the kept %s", again, err, got.FloatString(2))
 	}
 }
 
-// R-227: without an ETH/USD feed the gas coin is dollars (Arc's native USDC, 18 decimals); with Tempo's fee manager,
-// fees are attodollars for Tempo's larger deploy and settle. A quote over NetworkFeeMax is a lie, never terms; a read
-// that fails serves the last good quote for a while.
 func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	a := chaintest.Start(t)
 	client, err := ethclient.Dial(a.URL)
@@ -67,7 +62,7 @@ func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	}
 	t.Cleanup(client.Close)
 	ctx := context.Background()
-	_, feeCap, err := Fees(ctx, client, chaintest.ChainID)
+	_, feeCap, err := chain.Fees(ctx, client, chaintest.ChainID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +85,6 @@ func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	if got, err := NewQuotes(q.client).NetworkFee(ctx, chaintest.ChainID); err != nil || got.Cmp(usd(TempoMinGas)) != 0 {
 		t.Fatalf("Tempo-like: %v (%v), want %s", got, err, usd(TempoMinGas).FloatString(2))
 	}
-	// Past QuoteAge with the RPC down, the kept quote serves until QuoteStale.
 	reachable = false
 	q.kept[chaintest.ChainID] = quote{usd: big.NewRat(3, 100), at: time.Now().Add(-QuoteAge)}
 	if got, err := q.NetworkFee(ctx, chaintest.ChainID); err != nil || got.Cmp(big.NewRat(3, 100)) != 0 {
@@ -100,7 +94,6 @@ func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	if _, err := q.NetworkFee(ctx, chaintest.ChainID); err == nil {
 		t.Fatal("a quote past QuoteStale served with the RPC down")
 	}
-	// A feed price that makes a settlement cost over NetworkFeeMax is refused.
 	reachable = true
 	chain.EthUSD[chaintest.ChainID] = chain.PriceFeed{Address: a.PriceFeed(new(big.Int).Mul(big.NewInt(1e15), big.NewInt(1e8))),
 		Heartbeat: time.Hour}
@@ -110,7 +103,6 @@ func TestNetworkFeeInDollarsTempoCapAndStaleQuote(t *testing.T) {
 	}
 }
 
-// R-227: a stale ETH/USD price prices no fee: the chain's last good quote serves until QuoteStale, then none.
 func TestAStalePriceKeepsTheLastGoodQuote(t *testing.T) {
 	a := chaintest.Start(t)
 	client := ethclient.NewClient(a.RPC)
@@ -135,8 +127,6 @@ func TestAStalePriceKeepsTheLastGoodQuote(t *testing.T) {
 	}
 }
 
-// R-227: Keep reads each chain's quote at start, so a new invoice right after a restart still gets one with the RPC
-// down; Keep stops with its context.
 func TestKeepReadsAQuoteAtStartForAnRPCThatFailsLater(t *testing.T) {
 	a := chaintest.Start(t)
 	client := ethclient.NewClient(a.RPC)
@@ -167,7 +157,6 @@ func TestKeepReadsAQuoteAtStartForAnRPCThatFailsLater(t *testing.T) {
 	cancel()
 	<-stopped
 	reachable = false
-	// Past QuoteAge the invoice reads again, and the read fails: the quote Keep read serves.
 	q.kept[chaintest.ChainID] = quote{usd: q.kept[chaintest.ChainID].usd, at: time.Now().Add(-QuoteAge)}
 	if _, err := q.NetworkFee(context.Background(), chaintest.ChainID); err != nil {
 		t.Fatalf("a new invoice with the RPC down after a restart: %v", err)

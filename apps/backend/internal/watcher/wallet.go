@@ -15,8 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// tokens holds, as false, each disabled token with detected rows (R-38): its logs are read until those rows
-// confirm or are reorged, so they never hold the scan's start, but none of its transfers is recorded anew.
+// tokens holds each disabled token with detected rows as false: read until they settle, never recorded anew.
 type wallets struct {
 	addresses map[common.Address]bool
 	tokens    map[common.Address]bool // token -> enabled
@@ -74,7 +73,7 @@ func (c *Chain) walletLogs(ctx context.Context, lo, hi uint64, w wallets) ([]typ
 	// One filter can't match a wallet as sender or receiver, so: sent, then received.
 	var filters [][][]common.Hash
 	for _, part := range parts(addresses) {
-		filters = append(filters, [][]common.Hash{{TransferTopic}, part}, [][]common.Hash{{TransferTopic}, nil, part})
+		filters = append(filters, [][]common.Hash{{chain.TransferTopic}, part}, [][]common.Hash{{chain.TransferTopic}, nil, part})
 	}
 	for _, topics := range filters {
 		logs, err := c.filterLogs(ctx, ethereum.FilterQuery{
@@ -162,15 +161,8 @@ func (c *Chain) recordWalletTransfers(ctx context.Context, tx pgx.Tx, transfers 
 			final = append(final, id)
 		}
 	}
-	// Money out of a profile wallet that no send the owner approved explains: a stolen session can sign through Privy
-	// without Forwend's screens (D-49), so the owner hears at once. Checked once final: by then the browser reported its
-	// send's hash, or the send waits approved for this transfer, or its approval ended within the hour before. Only the
-	// same wallet, token, recipient and amount explain it, so a hash reported on another send can't hide the transfer.
-	// A relayed send Privy hasn't given a hash yet explains its own transfer for DropAfter, as an approved one does.
-	// A send's network fee is the one other transfer its transaction explains: a Tempo send's (chain.TempoFee), or a
-	// relayed send's paymaster's (chain.PaymasterFee), for which only Privy gives the hash, never the browser or the
-	// chain (R-225). Checked after the whole batch is recorded, so a fee logged before the send's own transfer is still
-	// explained.
+	// Money out no approved send explains: a stolen session can sign through Privy, so the owner hears at once.
+	// Only the same wallet, token, recipient and amount explain it; a send's Tempo or paymaster fee is explained too.
 	for _, id := range final {
 		if _, err := tx.Exec(ctx, `INSERT INTO outbox_events (kind, wallet_transfer_id, payload)
 			SELECT $2, w.id, '{}' FROM wallet_transfers w WHERE w.id = $1

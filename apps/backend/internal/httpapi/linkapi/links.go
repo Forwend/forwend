@@ -3,15 +3,12 @@ package linkapi
 import (
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/mid"
-	"github.com/forwend/forwend/apps/backend/internal/invoice"
 	"github.com/forwend/forwend/apps/backend/internal/link"
 )
 
@@ -59,7 +56,7 @@ func putLink(links *link.Service) http.HandlerFunc {
 			httpio.WriteError(w, r, err)
 			return
 		}
-		// R-138: a Developer or Finance member makes links for their own stores, the first one by default.
+		// A Developer or Finance member makes links for their own stores, the first one by default.
 		if access := mid.ProfileAccess(r); access.Stores != nil {
 			if body.StoreID == "" {
 				prior, err := links.Get(r.Context(), r.PathValue("profileId"), r.PathValue("linkId"))
@@ -98,7 +95,7 @@ func putLink(links *link.Service) http.HandlerFunc {
 	}
 }
 
-// R-142: no sign-in; anyone with the link may pay.
+// No sign-in: anyone with the link may pay.
 func getPublicLink(links *link.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, err := links.Public(r.Context(), r.PathValue("slug"))
@@ -142,12 +139,6 @@ func payLink(links *link.Service, all *mid.Buckets) http.HandlerFunc {
 			AmountUSD: strings.TrimSpace(body.AmountUSD), ExpectedAmountUSD: strings.TrimSpace(body.ExpectedAmountUSD),
 			ExpectedVersion: body.ExpectedVersion, Allow: allow,
 		})
-		var soon *invoice.TooSoonError
-		if errors.As(err, &soon) {
-			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-			httpio.WriteError(w, r, httpio.ErrRateLimited)
-			return
-		}
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

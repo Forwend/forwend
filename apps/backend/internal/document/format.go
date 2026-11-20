@@ -11,8 +11,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// network is a chain's name and block explorer, as apps/web/src/shared/constants/chains.ts has them (a test keeps them
-// equal). Transactions are at <url>/tx/<hash>.
+// network is a chain's name and explorer as apps/web/src/shared/constants/chains.ts has them; a test checks.
 type network struct{ name, explorer, url string }
 
 var networks = map[uint64]network{
@@ -42,14 +41,14 @@ func NetworkName(chainID uint64) string {
 	return "Chain " + strconv.FormatUint(chainID, 10)
 }
 
-// TestMode marks a test-mode invoice's PDFs (R-143).
+// TestMode marks a test-mode invoice's PDFs.
 const TestMode = "Test mode: testnet tokens have no value"
 
 func Number(n int64) string {
 	return fmt.Sprintf("INV-%04d", n)
 }
 
-// InvoiceNumber is "" for a link invoice before its first deposit (R-141).
+// InvoiceNumber is "" for a link invoice before its first deposit.
 func InvoiceNumber(inv invoice.Invoice) string {
 	if inv.Number == nil {
 		return ""
@@ -57,15 +56,19 @@ func InvoiceNumber(inv invoice.Invoice) string {
 	return Number(*inv.Number)
 }
 
-// PaidWith is what the payer sent through NEAR Intents (R-239), as "1,263.00 USDT on Tron through NEAR Intents". The
-// receipt, the paid email and the payments export all say it this way.
+// PaidWith is what the payer sent through NEAR Intents: "1,263.00 USDT on Tron through NEAR Intents".
 func PaidWith(sent *big.Int, decimals int, symbol, blockchain string) string {
 	return Amount(sent, decimals, symbol) + " on " + intents.ChainName(blockchain) + " through NEAR Intents"
 }
 
+// Decimal writes base units exactly, with every decimal: 1250000 at 6 decimals is 1.250000.
+func Decimal(n *big.Int, decimals int) string {
+	return new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
+}
+
 // Amount writes base units exactly, with at least 2 decimals when the token has them: 1,250.00 USDC.
 func Amount(n *big.Int, decimals int, symbol string) string {
-	s := new(big.Rat).SetFrac(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)).FloatString(decimals)
+	s := Decimal(n, decimals)
 	whole, frac, ok := strings.Cut(s, ".")
 	for i := len(whole) - 3; i > 0; i -= 3 {
 		whole = whole[:i] + "," + whole[i:]

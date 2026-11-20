@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/document"
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
@@ -19,14 +18,13 @@ const MaxDeliveryLink = 2000
 // errScheduleChanged rolls back an invoice made for a schedule a change altered meanwhile.
 var errScheduleChanged = errors.New("the job's payments changed")
 
-// MarkDone (R-103, D-66) answers the same once the payment has its invoice. The final invoice waits until no change
-// does (ErrChangePending), so a change can't come after it.
+// MarkDone answers the same once the payment has its invoice; the final one waits for no pending change.
 func (s *Service) MarkDone(ctx context.Context, profileID, id string, position int, link string) (Job, error) {
 	if link != "" {
 		// url.Parse lowers the scheme; the database takes only "https://" as written.
 		u, err := url.Parse(link)
 		if err != nil || !strings.HasPrefix(link, "https://") || u.Host == "" || u.User != nil ||
-			utf8.RuneCountInString(link) > MaxDeliveryLink || !profile.PlainText(link, false) {
+			!profile.ValidText(link, MaxDeliveryLink, false) {
 			return Job{}, fmt.Errorf("%w: deliveryLink must be an https link of at most %d characters", ErrInvalid,
 				MaxDeliveryLink)
 		}
@@ -54,7 +52,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 		}
 	}
 	r := s.paymentRequest(j, p)
-	// The final invoice is the last payment the client agreed to; a change still waiting comes first (R-105).
+	// The final invoice is the last payment the client agreed to; a change still waiting comes first.
 	last := len(j.Payments)
 	if pending := j.Payments[last-1]; !pending.ProposedAt.IsZero() && pending.AcceptedAt.IsZero() {
 		if position == last-1 {
@@ -66,8 +64,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 		r.Note = finalNote(j, p)
 	}
 	r.Caller.After = func(ctx context.Context, tx pgx.Tx, invoiceID string) error {
-		// The job row lock orders this with a proposal: a schedule that changed since the read is read again. The count
-		// is its own statement, so it sees what committed while the lock waited.
+		// The job row lock orders this with a proposal; the count's own statement sees what committed meanwhile.
 		if _, err := tx.Exec(ctx, "SELECT 1 FROM jobs WHERE id = $1 FOR UPDATE", j.ID); err != nil {
 			return err
 		}
@@ -82,8 +79,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 			WHERE job_id = $1 AND position = $2`, j.ID, position, invoiceID, link)
 		return err
 	}
-	// A concurrent call the same UTC day makes the same request with the same key, so it gets this invoice back; one
-	// with other values (a payment paid in between changes the final note) finds the invoice made.
+	// A concurrent call the same UTC day makes the same request and key, so it gets this invoice back.
 	_, _, err = s.invoices.Create(ctx, profileID, paymentKey(j.ID, position), r)
 	if errors.Is(err, errScheduleChanged) {
 		return s.MarkDone(ctx, profileID, id, position, link)
@@ -99,7 +95,7 @@ func (s *Service) MarkDone(ctx context.Context, profileID, id string, position i
 	return s.Get(ctx, profileID, id)
 }
 
-// finalNote (R-103, D-81) fits the invoice's note length.
+// finalNote fits the invoice's note length.
 func finalNote(j Job, final Payment) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Final invoice for %s. Job total: %s USD.\nEarlier payments:", j.Title, invoice.USD(j.TotalCents()))

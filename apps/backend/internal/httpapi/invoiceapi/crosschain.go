@@ -3,9 +3,7 @@ package invoiceapi
 import (
 	"encoding/json"
 	"errors"
-	"math"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/forwend/forwend/apps/backend/internal/httpapi/httpio"
@@ -14,9 +12,7 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/invoice"
 )
 
-// Each pick asks for a dry quote, so a payer browsing tokens spends from this; a real quote also counts in the
-// database (invoice.CrossChainPerHour). Anyone can make pay tokens from a public link, so all invoices also share a
-// budget of 1Click calls made with Forwend's key, spent only when 1Click is called: a kept price or quote is free.
+// Browsing tokens spends dry quotes; all invoices also share a budget of 1Click calls made with Forwend's key.
 const (
 	CrossTokensRate, CrossTokensBurst = 0.5, 10
 	DryQuoteRate, DryQuoteBurst       = 1, 20
@@ -25,7 +21,7 @@ const (
 	QuoteAllBurst                     = 10
 )
 
-// The shared budgets' refill per second; a variable only so a test can stop the refill and count a burst exactly.
+// The shared budgets' refill per second; vars so a test can stop the refill.
 var DryQuoteAllRate, QuoteAllRate = 1.0, 0.2
 
 type crossTokensJSON struct {
@@ -35,16 +31,14 @@ type crossTokensJSON struct {
 }
 
 type crossTokenJSON struct {
-	AssetID    string  `json:"assetId"`
-	Blockchain string  `json:"blockchain"`
-	Symbol     string  `json:"symbol"`
-	Decimals   int     `json:"decimals"`
-	Contract   *string `json:"contract"`
-	PriceUSD   string  `json:"priceUsd"`
-	Estimate   *string `json:"estimate"` // in the list only
-	// In the list only: the Base USDC base units 1Click needs at least from it (D-126).
-	Minimum *string `json:"minimum"`
-	// The web finds a logo file it ships by it; payers never see it (R-250).
+	AssetID     string  `json:"assetId"`
+	Blockchain  string  `json:"blockchain"`
+	Symbol      string  `json:"symbol"`
+	Decimals    int     `json:"decimals"`
+	Contract    *string `json:"contract"`
+	PriceUSD    string  `json:"priceUsd"`
+	Estimate    *string `json:"estimate"` // in the list only
+	Minimum     *string `json:"minimum"`  // list only: least Base USDC base units
 	CoingeckoID *string `json:"coingeckoId"`
 }
 
@@ -84,7 +78,7 @@ func toCrossQuote(q invoice.CrossQuote) crossQuoteJSON {
 		Deadline: httpio.OrNullTime(q.Deadline), CreatedAt: httpio.OrNullTime(q.CreatedAt), Signed: signed}
 }
 
-// R-232: what the payer can pay with from another chain, and about how much of each.
+// What the payer can pay with from another chain, and about how much of each.
 func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		due, decimals, tokens, err := invoices.CrossChainTokens(r.Context(), r.PathValue("payToken"))
@@ -105,7 +99,7 @@ func getCrossTokens(invoices *invoice.Service) http.HandlerFunc {
 	}
 }
 
-// R-232: a dry quote prices a pick, without an address.
+// A dry quote prices a pick, without an address.
 func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allow := func() time.Duration { return all.Wait(mid.Everyone(r)) }
@@ -115,7 +109,7 @@ func getCrossPrice(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc
 	}
 }
 
-// R-231, R-233: the deposit address for the payer's token and refund address, signed by 1Click (D-124).
+// The deposit address for the payer's token and refund address, signed by 1Click.
 func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -136,12 +130,6 @@ func postCrossQuote(invoices *invoice.Service, all *mid.Buckets) http.HandlerFun
 
 func writeCrossQuote(w http.ResponseWriter, r *http.Request, q invoice.CrossQuote, err error, status int) {
 	var below *intents.BelowMinimum
-	var soon *invoice.TooSoonError
-	if errors.As(err, &soon) {
-		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(soon.Wait.Seconds())))))
-		httpio.WriteError(w, r, httpio.ErrRateLimited)
-		return
-	}
 	if errors.As(err, &below) {
 		httpio.WriteJSON(w, http.StatusUnprocessableEntity, map[string]map[string]string{"error": {
 			"code": "below_minimum", "message": "this token's route needs a larger amount: choose another token",

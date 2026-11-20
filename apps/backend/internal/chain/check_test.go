@@ -14,7 +14,6 @@ import (
 	"github.com/forwend/forwend/apps/backend/internal/database/databasetest"
 )
 
-// D-71: a mistake stops the process; a chain whose hosts don't answer is logged and skipped.
 func TestCheckEnabled(t *testing.T) {
 	ctx := context.Background()
 	a := chaintest.Start(t)
@@ -60,7 +59,7 @@ func TestCheckEnabled(t *testing.T) {
 			err := CheckEnabled(ctx, db, specs, 1000, func(_ context.Context, id uint64, _ RPCs) error {
 				checked = append(checked, id)
 				return tc.further
-			})
+			}, nil)
 			if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
 				t.Fatalf("got %v; want %q", err, tc.want)
 			}
@@ -74,13 +73,13 @@ func TestCheckEnabled(t *testing.T) {
 		specs := map[uint64]Spec{chaintest.ChainID: testSpec(chaintest.ChainID, a.URL, localhost(a.URL))}
 		err := CheckEnabled(ctx, db, specs, 1000, func(context.Context, uint64, RPCs) error {
 			return errors.New(`Post "https://base-sepolia.infura.io/v3/SECRETKEY": context deadline exceeded`)
-		})
+		}, nil)
 		if err == nil || strings.Contains(err.Error(), "SECRETKEY") {
 			t.Fatalf("got %v; want an error without the key", err)
 		}
 	})
 
-	// Last: it enables a second chain. Chain 2 is checked first and skipped; the anvil chain is still checked after it.
+	// Enables a second chain: checked first and skipped, then the anvil chain is still checked.
 	t.Run("an unreachable chain skips only itself", func(t *testing.T) {
 		if _, err := db.Exec(ctx, "INSERT INTO chains (chain_id, chain_family, name, enabled) VALUES (2, 'evm', 'two', true)"); err != nil {
 			t.Fatal(err)
@@ -91,7 +90,7 @@ func TestCheckEnabled(t *testing.T) {
 		err := CheckEnabled(ctx, db, specs, 1000, func(_ context.Context, id uint64, _ RPCs) error {
 			checked = append(checked, id)
 			return nil
-		})
+		}, nil)
 		if err != nil || !slices.Equal(checked, []uint64{chaintest.ChainID}) {
 			t.Fatalf("got %v, checked %v; want chain 2 skipped and the anvil chain checked", err, checked)
 		}

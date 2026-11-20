@@ -24,7 +24,7 @@ var (
 )
 
 func arcLog(from common.Address, emitter common.Address, tx byte, index uint, value *big.Int) types.Log {
-	return types.Log{Address: emitter, Topics: []common.Hash{TransferTopic, common.BytesToHash(from.Bytes()),
+	return types.Log{Address: emitter, Topics: []common.Hash{chain.TransferTopic, common.BytesToHash(from.Bytes()),
 		common.BytesToHash(arcReceiver.Bytes())}, Data: common.LeftPadBytes(value.Bytes(), 32), BlockNumber: 7,
 		TxHash: common.Hash{tx}, BlockHash: common.Hash{0xbb}, Index: index}
 }
@@ -42,7 +42,7 @@ func credited(logs []types.Log) []string {
 
 func TestArcUSDCIsCreditedOncePerMovement(t *testing.T) {
 	toOther := arcLog(arcPayer, ArcEmitter, 1, 1, micro(1000000))
-	toOther.Topics = []common.Hash{TransferTopic, common.BytesToHash(arcPayer.Bytes()), common.BytesToHash(arcPayer.Bytes())}
+	toOther.Topics = []common.Hash{chain.TransferTopic, common.BytesToHash(arcPayer.Bytes()), common.BytesToHash(arcPayer.Bytes())}
 	for name, c := range map[string]struct {
 		logs []types.Log
 		want []string
@@ -88,8 +88,7 @@ func TestArcUSDCIsCreditedOncePerMovement(t *testing.T) {
 	}
 }
 
-// arcNode answers eth_getLogs with answer's logs for the addresses asked, and eth_getTransactionReceipt with mined's
-// logs of the transaction. It keeps the addresses last asked and counts the receipts read.
+// arcNode answers eth_getLogs with answer's logs for the asked addresses and receipts with mined's logs.
 type arcNode struct {
 	asked    []common.Address
 	receipts int
@@ -153,7 +152,6 @@ func asked(logs []types.Log) func([]common.Address) []types.Log {
 	}
 }
 
-// The deposit scan asks for Arc's system logs with the token's and counts a native send as the invoice's token.
 func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	lookalike := common.HexToAddress("0x00000000000000000000000000000000000000c3")
 	mined := []types.Log{
@@ -172,7 +170,6 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	if got := credited(logs); !slices.Equal(got, []string{"0x3600:0:4000000", "0x3600:1:1000000"}) {
 		t.Fatalf("credited %v; want the native send and the ERC-20 transfer once each, never the look-alike", got)
 	}
-	// An invoice in another token never counts the system emitter's logs, which move only USDC.
 	logs, err = c.logs(t.Context(), 1, 10, map[common.Address]receiver{arcReceiver: {"0x01", hexutil.Encode(lookalike[:])}})
 	if err != nil {
 		t.Fatal(err)
@@ -185,8 +182,6 @@ func TestArcDepositScanReadsNativeSends(t *testing.T) {
 	}
 }
 
-// An answer with an ERC-20 transfer's system log but without its token log must not make it a second deposit, at
-// another log index: the receipt shows the token log, so the transfer counts at that index, as in a whole answer.
 func TestArcTransferMissingItsTokenLogCountsOnce(t *testing.T) {
 	system, token := arcLog(arcPayer, ArcEmitter, 1, 4, micro(5000000)), arcLog(arcPayer, arcUSDC, 1, 5, big.NewInt(5000000))
 	c, node := arcChain(t, asked([]types.Log{system}), []types.Log{system, token})
@@ -209,7 +204,6 @@ func TestArcTransferMissingItsTokenLogCountsOnce(t *testing.T) {
 	}
 }
 
-// The wallet scan reads Arc's system logs too, so a native send shows in activity once, as the ERC-20 transfer does.
 func TestArcWalletScanReadsNativeSends(t *testing.T) {
 	mined := []types.Log{
 		arcLog(arcPayer, ArcEmitter, 1, 0, micro(4000000)),
@@ -226,7 +220,6 @@ func TestArcWalletScanReadsNativeSends(t *testing.T) {
 	}
 }
 
-// When every endpoint refuses the receivers' list for its length, the scan reads it in smaller parts.
 func TestReceiverEventsAreReadInPartsWhenEveryEndpointRefusesTheList(t *testing.T) {
 	var asked []int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -257,7 +250,7 @@ func TestReceiverEventsAreReadInPartsWhenEveryEndpointRefusesTheList(t *testing.
 	}))
 	t.Cleanup(server.Close)
 	r, err := chain.NewRPCs(chain.Spec{ChainID: 5042002, AllowLoopback: true, Endpoints: []chain.Endpoint{{ID: "rpc-0",
-		Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, URL: server.URL, BudgetGroup: "budget-0"}}}, 1000)
+		Provider: "provider-0", Role: chain.Primary, Tier: chain.Public, URL: server.URL, BudgetGroup: "budget-0"}}}, 1000, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

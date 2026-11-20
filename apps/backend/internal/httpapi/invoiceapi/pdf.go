@@ -32,7 +32,6 @@ func servePDF(invoices *invoice.Service, profiles *profile.Service, webURL, kind
 			httpio.WriteError(w, r, err)
 			return
 		}
-		// R-135: the store's logo, when its invoice has one.
 		var logo []byte
 		if inv.LogoAt != nil {
 			if logo, _, err = profiles.StoreLogo(r.Context(), inv.StoreID); err != nil && !errors.Is(err, profile.ErrNoLogo) {
@@ -40,7 +39,7 @@ func servePDF(invoices *invoice.Service, profiles *profile.Service, webURL, kind
 				return
 			}
 		}
-		pdf, err := render(inv, webURL+"/pay/"+inv.PayToken, logo)
+		pdf, err := render(inv, invoice.PayURL(webURL, inv.PayToken), logo)
 		if err != nil {
 			httpio.WriteError(w, r, err)
 			return

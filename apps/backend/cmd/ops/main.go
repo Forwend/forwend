@@ -1,5 +1,4 @@
-// Command ops is support's tool for money held for payers (D-118). It reads a case, records a deposit the scan missed,
-// queues a return and prints the calls for the refund authority to send; it holds no key and sends nothing.
+// Command ops is support's tool for money held for payers; it holds no key and sends nothing.
 package main
 
 import (
@@ -65,8 +64,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	}
 	defer pool.Close()
-	// Who ran what, before anything changes: case can lock a stray transfer, return and release move held money.
-	// The OS user names a person when each operator logs in to the server as themselves.
+	// Log who ran what before anything changes: the OS user names the operator.
 	who, err := user.Current()
 	if err != nil {
 		return fmt.Errorf("read who runs ops: %w", err)
@@ -75,7 +73,6 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return fmt.Errorf("record this run: %w", err)
 	}
 	options, err := settlement.CaseOptions(ctx, pool, ref)
-	// A transaction no invoice booked may be a stray transfer: case looks for it on every chain, release unlocks it.
 	stray := errors.Is(err, settlement.ErrNoCase) && hashShape.MatchString(strings.TrimSpace(ref)) &&
 		(args[0] == "case" || args[0] == "release")
 	if err != nil && !stray {
@@ -174,7 +171,6 @@ func showCase(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Write
 	return nil
 }
 
-// queueReturn queues the return of the payment tx made to this case's option.
 func queueReturn(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Writer, options []settlement.CaseOption,
 	ref, tx string, dest *common.Address, amount string) error {
 	// One transaction can pay several invoices: the option is this case's one the payment went to.
@@ -243,7 +239,6 @@ func release(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Writer
 	return nil
 }
 
-// recordDeposits records the case's deposits in transaction tx that the watcher's scan missed.
 func recordDeposits(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io.Writer, options []settlement.CaseOption,
 	tx string) error {
 	byChain := map[uint64][]string{}
@@ -277,7 +272,6 @@ func recordDeposits(ctx context.Context, pool *pgxpool.Pool, chains rpcs, out io
 	return nil
 }
 
-// rpcs opens an enabled chain's RPC pool when a command needs it.
 type rpcs struct {
 	specs map[uint64]chain.Spec
 	rate  float64
@@ -288,7 +282,7 @@ func (r rpcs) raw(chainID uint64) (*rpc.Client, error) {
 	if !ok {
 		return nil, fmt.Errorf("chain %d is not enabled", chainID)
 	}
-	pool, err := chain.NewRPCs(spec, r.rate)
+	pool, err := chain.NewRPCs(spec, r.rate, nil)
 	return pool.Client, err
 }
 

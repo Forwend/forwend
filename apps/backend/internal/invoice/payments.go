@@ -48,9 +48,8 @@ var (
 	WalletStates  = []string{"none", "pending", "in_wallet", "delayed", "refused"}
 )
 
-// PaymentStateSQL: a checkout has no cancel of its own, so its expire action's cancel reads expired, as the session
-// status does. Overpaid is paid with money held for the payer on any option.
-const PaymentStateSQL = `CASE WHEN invoices.payment_status = 'canceled' AND invoices.purpose <> 'checkout' THEN 'canceled'
+// PaymentStateSQL: a checkout's expire-cancel reads expired; overpaid is paid with money held for the payer.
+var PaymentStateSQL = `CASE WHEN invoices.payment_status = 'canceled' AND invoices.purpose <> 'checkout' THEN 'canceled'
  WHEN invoices.payment_status = 'paid' AND EXISTS (SELECT 1 FROM invoices held_option
    JOIN ledger_transactions held_journal ON held_journal.invoice_id = held_option.id
    JOIN ledger_entries held_entry ON held_entry.transaction_id = held_journal.id AND held_entry.account = 'payer_held'
@@ -73,7 +72,7 @@ var PaymentStateColumnsSQL = map[string]string{
 	"canceled":       "invoices.payment_status = 'canceled'",
 }
 
-// WalletSQL: a settle that waits for a retry, the daily cap or an unresolved transaction is delayed (D-114).
+// WalletSQL: a settle that waits for a retry, the daily cap or an unresolved transaction is delayed.
 const WalletSQL = `CASE WHEN invoices.settlement_status = 'settled' THEN 'in_wallet' WHEN invoices.payment_status <> 'paid' THEN 'none'
  ELSE coalesce((SELECT CASE WHEN wallet.status = 'refused' THEN 'refused' WHEN wallet.wait IS NOT NULL THEN 'delayed' END
    FROM settlement_intents wallet WHERE wallet.invoice_id = invoices.option_id), 'pending') END`
@@ -166,7 +165,7 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 	for i := range page.Items {
 		page.Items[i].Receipts = receipts[page.Items[i].ID]
 	}
-	// The list tags a payment that a deposit through 1Click pays (R-239).
+	// The list tags a payment that a deposit through 1Click pays.
 	crossChain, err := readCrossChainFor(ctx, db, mains, true)
 	if err != nil {
 		return Page{}, err
@@ -182,8 +181,7 @@ func readPaymentPage(ctx context.Context, db paymentReader, profileID string, q 
 const paymentSearchText = `(coalesce(reference,'') || ' ' || coalesce(title,'') || ' ' || coalesce(client_name,'') || ' ' || coalesce(client_email,'') || ' ' || id
 	|| ' ' || coalesce('INV-' || lpad(number::text, greatest(length(number::text), 4), '0'), '') || ' ' || main_receive_address)`
 
-// A whole transaction hash or receive address also finds deposits, returns and other options; chains lead the unique
-// (chain_id, ...) indexes these lookups use.
+// A whole tx hash or receive address also finds deposits, returns and other options via (chain_id, ...) indexes.
 var fullHex = regexp.MustCompile(`^0x([0-9a-f]{40}|[0-9a-f]{64})$`)
 
 const hexMatchSQL = `SELECT coalesce(o.main_id,o.id) FROM chains c JOIN invoices o ON o.chain_id=c.chain_id WHERE o.receive_address=$%[1]d

@@ -116,11 +116,10 @@ func TestHangingHostRestsWhole(t *testing.T) {
 	}
 }
 
-// At 10 calls a second the 5 requests queue on the first endpoint; the burst must count as one failure.
 func TestQueuedRequestsSkipAnEndpointThatStartsToRest(t *testing.T) {
 	a := chaintest.Start(t)
 	bad := a.Proxy()
-	r, err := NewRPCs(testSpec(chaintest.ChainID, bad.URL, a.URL, localhost(a.URL)), 10)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, bad.URL, a.URL, localhost(a.URL)), 10, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,10 +215,9 @@ func TestURLsStayOutOfErrorsAndLogs(t *testing.T) {
 	}
 }
 
-// A batch counts each of its calls against the selected endpoint's pace.
 func TestEachEndpointIsPaced(t *testing.T) {
 	a := chaintest.Start(t)
-	r, err := NewRPCs(testSpec(chaintest.ChainID, a.URL), 20) // 50 ms a call
+	r, err := NewRPCs(testSpec(chaintest.ChainID, a.URL), 20, nil) // 50 ms a call
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +295,6 @@ func TestOutageIsToldFromAnAnswer(t *testing.T) {
 	}
 }
 
-// Only a refused range or result narrows a log query; a rate limit never does.
 func TestTooLarge(t *testing.T) {
 	for _, c := range []struct {
 		err  error
@@ -346,7 +343,6 @@ func answered(p *chaintest.Proxy) int {
 	return n
 }
 
-// 20 rounds of 10 calls at once should open about 10 connections, not one per call (net/http keeps 2 idle).
 func TestCallsReuseConnections(t *testing.T) {
 	var conns atomic.Int32
 	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -428,7 +424,7 @@ func TestCallerDeadlineDoesNotRestProviderForOtherWork(t *testing.T) {
 func TestRequestsThatCannotMeetTheirDeadlineDoNotDelayLaterReads(t *testing.T) {
 	a := chaintest.Start(t)
 	proxy := a.Proxy()
-	r, err := NewRPCs(testSpec(chaintest.ChainID, proxy.URL), 10)
+	r, err := NewRPCs(testSpec(chaintest.ChainID, proxy.URL), 10, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -650,7 +646,6 @@ func TestMissingBlockGoesToAnEndpointThatHasIt(t *testing.T) {
 	}
 }
 
-// A node that can't give its finalized block fails its health check and rests, like any failed one.
 func TestHealthCheckMissingTheFinalizedBlockRestsTheEndpoint(t *testing.T) {
 	broken, _ := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, method string, _ []json.RawMessage) {
 		if method == "eth_getBlockByNumber" {
@@ -738,7 +733,6 @@ func TestSecondSendNeverDelaysTheCaller(t *testing.T) {
 	}
 }
 
-// PublicNode answers a log query naming more than 10 contracts with HTTP 403: the query goes on, the endpoint stays healthy.
 func TestAddressLimitGoesToTheNextEndpoint(t *testing.T) {
 	limited, limitedCalls := rpcServer(t, func(w http.ResponseWriter, id json.RawMessage, _ string, params []json.RawMessage) {
 		var filter struct{ Address []string }

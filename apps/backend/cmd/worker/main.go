@@ -75,17 +75,9 @@ func run() error {
 
 	w := worker.New(pool, specs, cfg.Chains.RPCRate, budget)
 	defer w.Close()
-	// Owner email (R-80): without a key nothing is sent, and the events wait in the outbox.
-	var sender email.Sender
-	if cfg.Email.ResendKey != "" {
-		r := email.NewResend(cfg.Email.ResendKey, cfg.Email.From)
-		if cfg.Email.ResendURL != "" {
-			r.URL = cfg.Email.ResendURL // the gate's fake Resend
-		}
-		sender = r
-	}
+	// Without a Resend key nothing is sent, and the events wait in the outbox.
+	sender, site := notify.FromConfig(cfg.Email)
 	invoices := invoice.NewService(pool)
-	// A retainer's later month is quoted like any new invoice (R-227).
 	quotes := balance.NewChainReader(specs, cfg.Chains.RPCRate, budget)
 	defer quotes.Close()
 	fees := settlement.NewQuotes(quotes.Client)
@@ -96,21 +88,18 @@ func run() error {
 		// The key's header would follow a redirect to any host.
 		Client: &http.Client{Timeout: 10 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
-	// The token list payers pick from (R-232) and each quote's status (R-234); quotes are the api's.
 	oneClick := intents.NewClient(cfg.OneClick.URL, cfg.OneClick.Key, cfg.Chains.AllowLoopback)
 	tokens := &intents.Keeper{Pool: pool, Client: oneClick, Every: intents.TokensEvery}
 	invoices.SetCrossChain(oneClick)
 	slog.Info("worker ready", "every", cfg.Chains.PollInterval, "email", sender != nil)
-	// Housekeeping calls Resend, the ECB and CoinGecko: on its own loop, a slow answer never delays a chain round. It
-	// stops with the chain loop, before the pool closes.
+	// Housekeeping runs on its own loops, so a slow outside service never delays a chain round.
 	ctx, stopHousekeeping := context.WithCancel(ctx)
 	var housekeeping sync.WaitGroup
 	defer housekeeping.Wait()
 	defer stopHousekeeping()
 	housekeeping.Go(func() {
-		repeat(ctx, cfg.Chains.PollInterval, func() { keepHouse(ctx, cfg, invoices, rates, prices, tokens, sender, pool) })
+		repeat(ctx, cfg.Chains.PollInterval, func() { keepHouse(ctx, invoices, rates, prices, tokens, sender, site, pool) })
 	})
-	// So do the minimum checks (D-126): a dry quote can take seconds. They keep their own pace, not the chains' poll.
 	housekeeping.Go(func() {
 		repeat(ctx, intents.ProbeGap, func() {
 			if err := tokens.Probe(ctx, time.Now()); err != nil {
@@ -118,7 +107,6 @@ func run() error {
 			}
 		})
 	})
-	// 1Click's status reads have their own loop: a slow answer never delays a chain round or an email.
 	housekeeping.Go(func() {
 		repeat(ctx, cfg.Chains.PollInterval, func() {
 			if err := invoices.TrackCrossChain(ctx, time.Now()); err != nil {
@@ -139,7 +127,6 @@ func run() error {
 	}
 }
 
-// repeat runs fn, then again every d, until ctx ends.
 func repeat(ctx context.Context, d time.Duration, fn func()) {
 	for {
 		fn()
@@ -151,30 +138,25 @@ func repeat(ctx context.Context, d time.Duration, fn func()) {
 	}
 }
 
-func keepHouse(ctx context.Context, cfg config.Worker, invoices *invoice.Service, rates *ecb.Keeper, prices *price.Keeper,
-	tokens *intents.Keeper, sender email.Sender, pool *pgxpool.Pool) {
-	// Payment reminders (R-96) wait in the outbox like the other emails when there is no key.
+func keepHouse(ctx context.Context, invoices *invoice.Service, rates *ecb.Keeper, prices *price.Keeper,
+	tokens *intents.Keeper, sender email.Sender, site notify.Site, pool *pgxpool.Pool) {
 	if err := invoices.QueueReminders(ctx); err != nil {
 		slog.Error("queue reminders", "err", err)
 	}
 	if err := invoices.MakeRetainerInvoices(ctx); err != nil {
 		slog.Error("make retainer invoices", "err", err)
 	}
-	// Records in another currency (R-110) wait for the rates when the ECB can't be read.
 	if err := rates.Tick(ctx, time.Now()); err != nil {
 		slog.Warn("keep ECB rates", "err", err)
 	}
-	// Prices are for display only (R-178): when CoinGecko can't be read, the app shows the last ones as stale.
 	if err := prices.Tick(ctx, time.Now()); err != nil {
 		slog.Warn("keep CoinGecko prices", "err", err)
 	}
-	// Without a fresh list payers pick from the last one; 1Click's own quote is what counts.
 	if err := tokens.Tick(ctx, time.Now()); err != nil {
 		slog.Warn("keep 1Click tokens", "err", err)
 	}
 	if sender != nil {
-		if err := notify.Deliver(ctx, pool, sender, notify.Site{WebURL: cfg.Email.PublicWebURL, PostalAddress: cfg.Email.PostalAddress,
-			Support: cfg.Email.Support}); err != nil {
+		if err := notify.Deliver(ctx, pool, sender, site); err != nil {
 			slog.Error("deliver email", "err", err)
 		}
 	}

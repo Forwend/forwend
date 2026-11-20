@@ -29,8 +29,7 @@ var (
 	feesPaidTopic  = crypto.Keccak256Hash([]byte("FeesPaid(bytes32,address,uint256,uint256)"))
 )
 
-// Outflow is one settle, fees, refund or recover event of a receiver at or below the finalized block, with the token
-// Transfer logs of its transaction, which name the transfer that moved the money.
+// Outflow is one receiver event at or below the finalized block, with its transaction's token Transfer logs.
 type Outflow struct {
 	InvoiceID string
 	Log       types.Log
@@ -46,8 +45,7 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 		addresses = append(addresses, addr)
 	}
 	var out []types.Log
-	// Endpoints limit how many contracts one query names (PublicNode: 10). The pool tries the others first; when none
-	// takes this many, smaller parts are read instead.
+	// Endpoints limit how many contracts one query names (PublicNode: 10); smaller parts are read when none takes it.
 	size := topicLimit
 	for len(addresses) > 0 {
 		part := addresses[:min(size, len(addresses))]
@@ -66,9 +64,8 @@ func (c *Chain) outflowLogs(ctx context.Context, lo, hi uint64, invoices map[com
 	return out, nil
 }
 
-// outflows keeps new events of canonical blocks at or below finalized and reads their transactions' token transfers.
-// Events already recorded cost no reads, so the scan's overlap stays cheap; one recorded without its transfer, as when
-// a node answered part of the logs, is read again until the transfer is found.
+// outflows keeps new events of canonical finalized blocks and reads their transfers; one recorded without its
+// transfer, as when a node answered part of the logs, is read again until it is found.
 func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint64]header,
 	invoices map[common.Address]receiver, finalized uint64) ([]Outflow, error) {
 	var hashes []string
@@ -118,7 +115,7 @@ func (c *Chain) outflows(ctx context.Context, logs []types.Log, headers map[uint
 			block := new(big.Int).SetUint64(l.BlockNumber)
 			var err error
 			transfers, err = c.filterLogs(ctx, ethereum.FilterQuery{FromBlock: block, ToBlock: block,
-				Addresses: []common.Address{key.token}, Topics: [][]common.Hash{{TransferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
+				Addresses: []common.Address{key.token}, Topics: [][]common.Hash{{chain.TransferTopic}, {common.BytesToHash(l.Address.Bytes())}}})
 			if err != nil {
 				return nil, fmt.Errorf("read chain %d receiver %s transfers: %w", c.chainID, l.Address.Hex(), err)
 			}
@@ -148,8 +145,7 @@ func ReceiptOutflows(invoiceID string, receiver common.Address, r *types.Receipt
 
 var errBadEvent = errors.New("not a movement of the receiver's invoice")
 
-// RecordOutflows records receiver events once; booking them is the ledger's. An event a receiver did not emit for its
-// own invoice is refused, so look-alike contracts can't move booked money.
+// RecordOutflows records receiver events once; one a receiver did not emit for its own invoice is refused.
 func RecordOutflows(ctx context.Context, tx pgx.Tx, chainID uint64, outflows []Outflow) error {
 	slices.SortFunc(outflows, func(a, b Outflow) int {
 		if order := cmp.Compare(a.Log.BlockNumber, b.Log.BlockNumber); order != 0 {
@@ -175,8 +171,7 @@ func RecordOutflows(ctx context.Context, tx pgx.Tx, chainID uint64, outflows []O
 	return nil
 }
 
-// recordOutflow pairs the event with the latest matching token transfer before it in the same transaction, and after
-// the previous event of that transaction.
+// recordOutflow pairs the event with the latest matching transfer before it, after the transaction's previous event.
 func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, previous *uint) error {
 	var receive, token, recipient, factory, amountText string
 	var fees [2]string // network, platform
@@ -226,7 +221,7 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 		return fmt.Errorf("receiver %s emitted unknown movement: %w", o.InvoiceID, errBadEvent)
 	}
 	amount := new(big.Int).SetBytes(l.Data)
-	if kind == "settlement" { // the recipient gets the amount less the fees (R-230)
+	if kind == "settlement" { // the recipient gets the amount less the fees
 		net, _ := new(big.Int).SetString(amountText, 10)
 		if amount.Cmp(net.Sub(net, terms[0]).Sub(net, terms[1])) != 0 {
 			reason = "invalid_terms"
@@ -251,9 +246,8 @@ func recordOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, pr
 	return insertOutflow(ctx, tx, chainID, o, receive, token, kind, destination, amount, reason, transferIndex)
 }
 
-// recordFees records FeesPaid as an outflow per fee above 0: the network fee to the settler, the platform fee to the
-// factory's refund authority (R-230). Their transfers are settle's own, in that order, after its transfer to the
-// recipient and before Settled, so they are found once Settled's transfer is.
+// recordFees records FeesPaid as an outflow per fee above 0; their transfers come after settle's to the recipient,
+// network fee first, and before Settled.
 func recordFees(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, receive, token, factory string, terms [2]*big.Int) error {
 	l := o.Log
 	known, ok := address.KnownFactory(factory)
@@ -293,8 +287,7 @@ func recordFees(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, recei
 	return nil
 }
 
-// transfers are the indexes, in order, of the event's transaction's token transfers from receive to destination of
-// amount, after lo (nil: any) and before hi.
+// transfers are the indexes of the transaction's transfers from receive to destination of amount, in (lo, hi).
 func transfers(o Outflow, token, receive string, destination common.Address, amount *big.Int, lo *uint64, hi uint64) []uint64 {
 	l := o.Log
 	var out []uint64
@@ -322,8 +315,7 @@ func insertOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, re
 	if err != nil || tag.RowsAffected() == 1 || transferIndex == nil {
 		return err
 	}
-	// Recorded before without its transfer and not booked: the transfer found now completes it, and the ledger books
-	// it as any other. Only the same event of the same block, and only a transfer no other event claims.
+	// Recorded before without its transfer and not booked: this transfer completes it, unless another event claims it.
 	_, err = tx.Exec(ctx, `UPDATE receiver_outflows o SET transfer_log_index = $4, reconciliation_error = $5
   WHERE o.chain_id = $1 AND o.block_hash = $2 AND o.log_index = $3 AND o.transfer_log_index IS NULL
     AND o.ledger_transaction_id IS NULL AND o.kind = $6 AND o.amount = $7 AND o.destination = $8
@@ -337,8 +329,8 @@ func insertOutflow(ctx context.Context, tx pgx.Tx, chainID uint64, o Outflow, re
 	return nil
 }
 
-// deployTimes reads factory.deployedAt for receivers with events and no deploy time yet. A receiver deployed early by
-// a recovery settles only until 30 days after its deploy, which shortens its checkout close.
+// deployTimes reads factory.deployedAt for receivers with events and no deploy time: an early deploy settles only
+// until address.MaxHold after it.
 func (c *Chain) deployTimes(ctx context.Context, outflows []Outflow, finalized uint64) (map[string]uint64, error) {
 	var ids []string
 	for _, o := range outflows {

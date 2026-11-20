@@ -6,26 +6,24 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/forwend/forwend/apps/backend/internal/history"
 	"github.com/forwend/forwend/apps/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 )
 
-// MaxMemo bounds the memo, the owner's own note on an invoice (R-127).
+// MaxMemo bounds the memo, the owner's own note on an invoice.
 const MaxMemo = 2000
 
 var ErrNotEditable = errors.New("invoice details can't change after money was seen or the checkout closed")
 
-// Editable is what the owner may change (R-127): the first three at any time, the rest only before any money while
-// the checkout is open (R-128). "" clears a field.
+// Editable is what the owner may change: the first three any time, the rest before money while open.
 type Editable struct {
 	Memo, ClientEmail, ReturnURL string
 	Reference, Note, DueDate     string
 }
 
-// Update is an edit the payer sees (R-128): a due date's has its old and new date.
+// Update is an edit the payer sees: a due date's has its old and new date.
 type Update struct {
 	At              time.Time
 	Field, From, To string
@@ -35,7 +33,7 @@ type Update struct {
 func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (Invoice, error) {
 	e = Editable{strings.TrimSpace(e.Memo), strings.TrimSpace(e.ClientEmail), strings.TrimSpace(e.ReturnURL),
 		strings.TrimSpace(e.Reference), strings.TrimSpace(e.Note), strings.TrimSpace(e.DueDate)}
-	if !utf8.ValidString(e.Memo) || utf8.RuneCountInString(e.Memo) > MaxMemo || !profile.PlainText(e.Memo, true) {
+	if !profile.ValidText(e.Memo, MaxMemo, true) {
 		return Invoice{}, fmt.Errorf("%w: memo must be at most %d characters of plain text", ErrInvalid, MaxMemo)
 	}
 	if err := (Details{ClientEmail: e.ClientEmail, ReturnURL: e.ReturnURL, Reference: e.Reference, Note: e.Note,
@@ -43,8 +41,7 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 		return Invoice{}, err
 	}
 	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
-		// Options first, main row last, in the ledger's lock order, as Cancel: FOR UPDATE also holds off the watcher's
-		// new transfers, whose foreign key needs a share lock on the row.
+		// Options first, main row last, in the ledger's lock order; FOR UPDATE also holds off the watcher's inserts.
 		rows, err := tx.Query(ctx, `SELECT main_id IS NULL, payment_status = 'open' AND expires_at > $3, expires_at,
 			    id, coalesce(store_id::text, ''), coalesce(memo, ''), coalesce(client_email, ''), coalesce(return_url, ''),
 			    coalesce(reference, ''), coalesce(note, ''), coalesce(to_char(due_date, 'YYYY-MM-DD'), '')
@@ -94,8 +91,7 @@ func (s *Service) Edit(ctx context.Context, profileID, id string, e Editable) (I
 				}
 			}
 			var seen bool
-			// Dust chooses nothing and is the payer's (R-119), so a stranger's 0.01 can't stop the owner editing. A
-			// deposit 1Click converts is on its way, as money seen is (R-233).
+			// Dust is the payer's, so a stranger's 0.01 can't stop the owner editing; a 1Click deposit counts as seen.
 			if err := tx.QueryRow(ctx, "SELECT "+moneySeenSQL, main.ID).Scan(&seen); err != nil {
 				return fmt.Errorf("read invoice %s transfers: %w", main.ID, err)
 			}

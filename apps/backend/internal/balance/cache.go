@@ -6,9 +6,7 @@ import (
 	"time"
 )
 
-// memoryCache shares chain reads between requests: one read per key at a time, a value kept for ttl, an error not
-// kept. Values are strings so a shared store such as Redis can take its place across replicas
-// (docs/backend/architecture.md#scaling).
+// memoryCache shares chain reads between requests: one read per key at a time, a value kept for ttl, an error not kept.
 type memoryCache struct {
 	mu      sync.Mutex
 	entries map[string]*entry
@@ -18,7 +16,7 @@ type memoryCache struct {
 // entry is in flight while expires is zero.
 type entry struct {
 	done    chan struct{}
-	value   string
+	value   any
 	err     error
 	expires time.Time
 }
@@ -28,9 +26,9 @@ func newMemoryCache() *memoryCache {
 }
 
 func (m *memoryCache) get(ctx context.Context, key string, ttl time.Duration,
-	read func(context.Context) (string, error)) (string, error) {
+	read func(context.Context) (any, error)) (any, error) {
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return nil, err
 	}
 	now := time.Now()
 	m.mu.Lock()
@@ -46,13 +44,13 @@ func (m *memoryCache) get(ctx context.Context, key string, ttl time.Duration,
 	case <-e.done:
 		return e.value, e.err
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
 // The starting request may leave while others wait, so its cancel doesn't stop the read; its deadline still bounds it.
 func (m *memoryCache) fill(ctx context.Context, key string, e *entry, ttl time.Duration,
-	read func(context.Context) (string, error)) {
+	read func(context.Context) (any, error)) {
 	shared := context.WithoutCancel(ctx)
 	if deadline, ok := ctx.Deadline(); ok {
 		var cancel context.CancelFunc

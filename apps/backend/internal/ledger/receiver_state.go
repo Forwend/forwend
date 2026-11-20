@@ -2,27 +2,21 @@ package ledger
 
 import (
 	"context"
-	"math/big"
 	"time"
+
+	"github.com/forwend/forwend/apps/backend/internal/address"
 )
 
-// ReceiverState is what the chain's scan has verified for a receive address. The scan reads every watched address
-// together, so its coverage is the chain's finalized cursor; a balance the ledger can't explain has a balance alert.
-// HistoryComplete holds while the scan still reads the address's deposits: until 30 days after its settle deadline
-// (watcher.watchedAfterDeadline), or while a deposit to it is detected. UnprovedDeposits is 1 while the chain holds money no recorded deposit explains.
+// ReceiverState is what the chain's scan verified for a receive address, at the chain's finalized cursor.
 type ReceiverState struct {
 	InvoiceID                                                                            string
 	PaymentStatus, SettlementStatus, RefundStatus                                        string
 	HistoryComplete                                                                      bool
 	VerifiedBlock                                                                        *uint64
-	VerifiedHash                                                                         string
 	VerifiedTime                                                                         *time.Time
-	ObservedBalance                                                                      *big.Int
-	BalanceDifference                                                                    *big.Int
-	ReconciliationError, BookingError                                                    string
+	ReconciliationError                                                                  string
 	RetryAt                                                                              *time.Time
 	UpdatedAt                                                                            time.Time
-	ChainFinalizedBlock                                                                  *uint64
 	TotalDeposits, PendingDeposits, UnbookedDeposits, UnprovedDeposits, UnbookedOutflows int64
 }
 
@@ -34,10 +28,10 @@ func ReadReceiverStates(ctx context.Context, db querier, ids []string) (map[stri
    (SELECT count(*) FROM chain_transfers d WHERE d.invoice_id = i.id AND d.status = 'confirmed' AND NOT d.booked),
    (SELECT count(*) FROM receiver_outflows o WHERE o.invoice_id = i.id AND o.kind <> 'recovery' AND o.ledger_transaction_id IS NULL),
    (a.excess IS TRUE)::int,
-   i.settle_deadline > extract(epoch FROM now())::bigint - 2592000
+   i.settle_deadline > extract(epoch FROM now())::bigint - $2
    FROM invoices i LEFT JOIN chain_cursors c ON c.chain_id = i.chain_id
    LEFT JOIN invoice_balance_alerts a ON a.invoice_id = i.id
-   WHERE i.id = ANY($1::text[])`, ids)
+   WHERE i.id = ANY($1::text[])`, ids, int64(address.MaxHold/time.Second))
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +49,6 @@ func ReadReceiverStates(ctx context.Context, db querier, ids []string) (map[stri
 		}
 		// As watcher.invoices: past the window, a receiver with a detected deposit is still read until it confirms.
 		state.HistoryComplete = state.HistoryComplete || state.PendingDeposits > 0
-		state.ChainFinalizedBlock = state.VerifiedBlock
 		if at != nil {
 			value := time.Unix(*at, 0).UTC()
 			state.VerifiedTime = &value

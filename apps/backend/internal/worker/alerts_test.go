@@ -84,7 +84,7 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 	var logs bytes.Buffer
 	defer slog.SetDefault(slog.Default())
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
-	if err := New(pool, nil, 1).alert(ctx); err != nil {
+	if err := New(pool, nil, 1, nil).alert(ctx); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"ALERT chain scan stalled", "ALERT paid invoice not settled close to its settle deadline",
@@ -103,9 +103,6 @@ func TestAlertsNameAStalledChainAndPaidMoneyNotSettled(t *testing.T) {
 	}
 }
 
-// R-234: a cross-chain payment holding a payer's money alerts: a failed swap, a seen deposit unfinished an hour past its
-// deadline, a delivery whose Base transfer never came, and two quotes of one invoice that both saw deposits. One that
-// delivered and booked, or one nobody paid, doesn't; nor does a deposit beside one 1Click returned.
 func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 	ctx := context.Background()
 	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
@@ -164,7 +161,7 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 	var logs bytes.Buffer
 	defer slog.SetDefault(slog.Default())
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
-	if err := New(pool, nil, 1).alertCrossChain(ctx); err != nil {
+	if err := New(pool, nil, 1, nil).alertCrossChain(ctx); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"ALERT cross-chain swap failed: check 1Click returned the deposit\" quote=" + ids["failed-addr"],
@@ -184,9 +181,6 @@ func TestAlertsNameCrossChainPaymentsThatHoldMoney(t *testing.T) {
 	}
 }
 
-// A delivery alert ends once the option holds a deposit of at least what 1Click delivers, also when 1Click names its
-// transaction in another form, or a week after the deposit was seen. The newest alerts come first, so twenty old ones
-// can't hide a new one.
 func TestCrossChainAlertsEndAndTheNewestComeFirst(t *testing.T) {
 	ctx := context.Background()
 	pool, err := database.Open(ctx, databasetest.Migrated(t, database.Migrate))
@@ -239,7 +233,7 @@ func TestCrossChainAlertsEndAndTheNewestComeFirst(t *testing.T) {
 	var logs bytes.Buffer
 	defer slog.SetDefault(slog.Default())
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
-	if err := New(pool, nil, 1).alertCrossChain(ctx); err != nil {
+	if err := New(pool, nil, 1, nil).alertCrossChain(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(logs.String(), ids["new-failed-addr"]) {
