@@ -1,7 +1,7 @@
 # Contracts
 
 Solidity invoice receivers: a factory and one receiver clone per invoice (Foundry, OpenZeppelin in `lib/`).
-The current release is v2; `deployments.json` lists it and the superseded ones.
+The current release is v2, on testnets and the development mainnets; `deployments.json` lists it and the superseded ones.
 
 ## Commands
 

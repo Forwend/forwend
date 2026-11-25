@@ -14,8 +14,9 @@ apps/web/src/
   screens/                     full screens that assemble features; one folder per screen
   features/                    product behavior, one folder per domain, every one laid out the same way
   shared/                      code with a concrete purpose and unrelated consumers, laid out like a feature
-  store/                       Redux store assembly and typed hooks
+  store/                       Redux store assembly (store.ts)
   providers/                   application provider composition
+  proxy.ts                     Next.js proxy: the /embed frame policy
 ```
 
 ## One layout everywhere
@@ -153,9 +154,9 @@ The store holds only the RTK Query request cache. What exists:
   `features/<feature>/api/<feature>-api.ts` with `injectEndpoints`; no endpoints in the shared file and no second
   `createApi`.
 
-No slices, typed store hooks or plain fetch client exist. Add `store/hooks.ts` and
-`features/<feature>/store/<feature>-slice.ts` only with the first client state shared across screens, and never fetch
-an endpoint outside RTK Query.
+No slices, typed store hooks or plain fetch client exist. `shared/api/server-reach.ts` reads the cache with `useSelector`
+and `RootState`. Add typed hooks in `store/` and a slice in `features/<feature>/store/` only with the first client
+state shared across screens. Never fetch an endpoint outside RTK Query.
 
 Keep menu state, forms and animations local. Put shareable filters in the URL. Use a request cache for server
 data; do not also copy the same responses into ordinary slices. Redux is for client state shared across screens.
@@ -194,10 +195,12 @@ packages/ui-web/src/
   index.ts                     stable public package exports
 ```
 
-- Start with `components/buttons/button.tsx`. When a component gains supporting files, give it a folder and name
-  each file after its topic, as `payments/money/` holds `money.tsx` and `token-amount.ts`. Keep simple props in the component file. Do not create a folder just to hold a single
-  file.
-- Keep related compound parts together: `Menu`, `MenuItem` and `MenuTrigger` can share `overlays/menu.tsx`.
+- A component starts as one file in its family folder, such as `packages/ui-web/src/components/buttons/button.tsx`.
+  When it gains supporting files, give it a folder and name each file after its topic.
+  `packages/ui-web/src/components/payments/money/` holds `money.tsx`, `big-amount.tsx` and `token-amount.ts`.
+  Keep simple props in the component file. Do not create a folder just to hold a single file.
+- Keep related compound parts together: `Menu`, `MenuItem` and `MenuTrigger` share
+  `packages/ui-web/src/components/overlays/menu.tsx`.
   Independently maintained components deserve separate files. Split by responsibility, not an arbitrary line limit.
 - Put family-only hooks, styles, types and constants in that family; promote them to package-wide folders only
   for real reuse. Avoid a mixed file containing props for unrelated components.

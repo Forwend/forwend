@@ -326,7 +326,7 @@ R-86; the full schema is in openapi.yaml. Members reach it with `clients.read` a
 - `GET /v1/profiles/{profileId}/clients` lists one page of the saved clients by name, then id (R-177).
   - `limit` is 1 to 100, 50 by default; `cursor` is the last page's `nextCursor`, null on the last page.
   - `q` searches the name, the email and the tax ID in any letter case, as the jobs search does.
-  - A profile still holds at most 1000 clients.
+  - A profile holds at most 1000 clients.
 - `GET /v1/profiles/{profileId}/clients/{clientId}` reads one client; another profile's or an unknown id is 404 `client_not_found`.
 - `PUT /v1/profiles/{profileId}/clients/{clientId}` creates or replaces one.
   - The caller picks the id (a lowercase UUID), so no Idempotency-Key is needed.
@@ -358,7 +358,7 @@ R-136; the full schema is in openapi.yaml. Members reach it with `tokens.read` a
   - Nothing left is 422 too.
   - A fixed retainer's later month keeps its token; a payer-chooses month offers what is on then.
   - A later month keeps the first month's mode (R-156).
-  - Invoices made earlier keep their options.
+  - An invoice already made keeps its options.
 
 ## Prices
 
@@ -855,7 +855,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - true only for an origin exactly as a browser writes it, on the list of the store the invoice records.
   - A live invoice takes https origins only; a test-mode invoice also takes the store's loopback http origins.
   - An invoice without a store is never framed. An unknown token is 404; the store's origins are never listed.
-- Cross-chain limits (D-123) per invoice are in `invoiceapi/crosschain.go`.
+- Cross-chain limits (D-123) per invoice are in `internal/httpapi/invoiceapi/crosschain.go`.
   - Tokens 10 at once, then one every 2 s; prices 20 at once, then one a second.
   - Quotes 5 at once, then one every 10 s, apart from the 20 an hour kept in Postgres.
   - Anyone can make pay tokens from a public link, so all invoices also share a budget of 1Click calls.
@@ -960,7 +960,7 @@ R-19 and R-42; the full schema is in openapi.yaml.
   - The chain shows `invoiceId` and option ids (`ReceiverDeployed`, `Settled`, the deploy calldata), so no public route
     takes them: an id there is 404 `invoice_not_found`.
   - Create, the owner's reads and a job's payments give `payToken`.
-  - An invoice without one (`null`, made before D-86) has no public route.
+  - An invoice without one (`null`) has no public route.
     - Its Send to client, reminder and receipt emails are dropped: they would link nowhere.
 - The public `GET /v1/invoices/{payToken}` has no `client`: the token is a bearer link (OWASP API Security Top 10 2023, API3).
   - It returns only what the payer needs, listed once in `getInvoice` in [openapi.yaml](../../apps/backend/api/openapi.yaml).
@@ -1181,7 +1181,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
   - Warnings: `contract` (the recipient has code that isn't an EIP-7702 delegation) and `newRecipient`.
   - The wallet pays its fee from the token it sends (D-121). Only a `native_gas` or `fee_asset` token offers Send.
   - `networkFee.paidBy` says how: `wallet` for a `native_gas` token, `paymaster` for a `fee_asset` token.
-    - `forwend`, with 0, is a send Forwend sponsored before D-121.
+    - `forwend`, with 0, marks a send Forwend sponsored. Forwend sponsors no new send (D-121).
   - A `native_gas` token is its chain's gas coin (Arc USDC, Tempo OUSD; R-216, R-223).
     - The server estimates the gas and a fifth more, at the fee cap of `chain.Fees` (R-189).
     - Amount plus fee must fit the wallet's gas-coin balance; on Tempo, its token balance (its native balance is a placeholder).
@@ -1199,7 +1199,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
       that moves exactly the send counts: Tempo blocks are final at once. It hides from Transactions and tells nobody (D-49).
   - `feePaid` is what the wallet really paid once the send is mined or reverted, from its receipt (R-224).
     - For a paymaster send it is what else of the token left the wallet in that transaction, less what came back.
-    - It is 0 for a send Forwend sponsored before D-121, and null until the receipt is read.
+    - It is 0 for a send Forwend sponsored, and null until the receipt is read.
     - A transactions row of an outgoing transfer carries its send's `feePaid`.
   - `GET .../sends/fee?chainId=&token=&to=` is that fee now, for the amount step's fee and Max.
     - It prices every amount byte as non-zero, so it covers a send of any amount, Max too.
@@ -1361,7 +1361,7 @@ A send moves a token out of a profile wallet (R-211, R-212, D-119). The schema i
 ## Rate limits
 
 The buckets are in `internal/httpapi/mid/ratelimit.go`. Per-route limits are constants in their module's `routes.go`
-(cross-chain's in `invoiceapi/crosschain.go`).
+(cross-chain's in `internal/httpapi/invoiceapi/crosschain.go`).
 
 - Each caller has a token bucket: a request takes a token, and tokens come back at a fixed rate up to the burst size.
 - An empty bucket answers 429 `rate_limited` with `Retry-After` in whole seconds, when the next token is back.
@@ -1386,14 +1386,14 @@ The buckets are in `internal/httpapi/mid/ratelimit.go`. Per-route limits are con
 - `POST /v1/invoices/{payToken}/views` (R-125): per link, 5 at once, then one every 5 s. It slows a run-up of one link's
   count; it can't stop one.
 - `POST /v1/links/{slug}/visits` (R-142): per link, 5 at once, then one every 5 s.
-- `POST /v1/links/{slug}/pay` makes a checkout, so it has limits in `linkapi/routes.go` (R-142).
+- `POST /v1/links/{slug}/pay` makes a checkout, so it has its own limits (R-142).
   - Per payer: 5 at once, then one every 10 s. The payer is the last `X-Forwarded-For` address when
     `TRUST_PROXY_HEADER=1`, which a proxy in front (Traefik on staging) sets. Without it every caller looks alike, so
     the budget is per link.
   - For all links together: 20 at once, then one a second, spent only by a Pay that makes an invoice (R-117).
   - It is asked just before the insert, so any Pay that makes no invoice spends none, a repeated key included.
-- `POST /v1/jobs/{token}/accept` makes an invoice, so it has limits in `jobapi/routes.go`. Accepting a change has its
-  own per-link limit and shares the one for everyone.
+- `POST /v1/jobs/{token}/accept` makes an invoice, so it has its own limits. Accepting a change has its own per-link
+  limit and shares the one for everyone.
   - Per link: 3 at once, then one every 10 s.
   - For everyone together: 20 at once, then 5 a second, spent only by an accept that changes a job (R-117).
   - A bad body, an unknown link or a job already accepted answers before it.
@@ -1413,5 +1413,5 @@ The buckets are in `internal/httpapi/mid/ratelimit.go`. Per-route limits are con
 ## Handlers and tests
 
 - Module layout: [rules.md](rules.md). Handlers hold no SQL and no business rules. API tests go through the whole
-  router in `internal/httpapi/tests/`, one file per module.
+  router in `internal/httpapi/tests/`, one file per feature.
 - Each route has a test for success and for every error code it can return, on real Postgres.

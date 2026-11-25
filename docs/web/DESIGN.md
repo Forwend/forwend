@@ -93,7 +93,7 @@ Read only the sections your change touches. Any new control also needs
 - Links that lead to another record are underlined ink (`RecordLink`), never colored text.
 - Success, warning, error and information use their matching text/background token pairs. Art never becomes a UI color.
 - Sending, detected and confirming are pending: a neutral badge with a turning icon, never a success color.
-  Only paid and In wallet look done.
+  Only paid, In wallet and a confirmed transfer look done.
 - Panels and fields are flat with hairlines. Menus, toasts and the sample receipt float with soft shadows.
 - Fields share one edge (the `field` tokens): quiet at rest, a gray step toward the ink with a faint ring on focus,
   no hover change. A field's action button takes the field's height.
@@ -119,10 +119,10 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
   each shrinks to its own label first. It holds a few short options: a chart range, Transactions' direction (All, In,
   Out) and a choice inside a form; 40px in toolbars and forms, 32px beside a chart or in a panel's header. If it still
   can't fit, the track scrolls sideways, fading at the edge that has more (a scroll-driven mask, so no script).
-- A longer choice (the status of invoices, requests and activity) is a select menu: a secondary button showing the
-  choice with its icon (and the filter's name from small screens up), opening a menu of every option, each with the
-  icon its pill or bell event uses (Open a circle, Paid a check in a circle, In wallet a wallet, Closed unpaid a clock,
-  Canceled a ban).
+- A longer choice (the status of payments, invoices, requests and activity) is a select menu: a secondary button showing the
+  choice with its icon (and the filter's name from small screens up), opening a menu of every option.
+  - Each option has its status pill's label and icon: Waiting for payment a circle, Paid a check, Closed unpaid a clock,
+    Canceled a ban.
 - A long list to choose from (a country, a saved client) is a search select (`ComboboxField`): the field looks like a
   select and opens a panel under it with a search box over the options; typing narrows them, ignoring letter case and
   accents ("cote" finds Côte d'Ivoire), arrow keys move, Enter picks and Escape closes. A short list (a network, a
@@ -138,10 +138,9 @@ Every control comes from `@forwend/ui-web`; a link that looks like a button uses
 - Accepted assets (Settings and a store's form) use one selector (`AssetSelection`, `shared/components/chains`).
   - One row per asset with a tri-state checkbox, "n of m networks" and an expand control; each network below it is its
     own exact contract, shown shortened with the full address as its title.
-  - A summary line says what is accepted ("Accepting USDC on 3 networks and OUSD on 1").
+  - A summary line says what is accepted ("Accepting USDC on 3 networks and OUSD on 1 network.").
   - Search matches the name, the network or the contract; All or Selected narrows the list.
   - It renders 30 assets and 12 networks at a time with Show more, so thousands of pairs keep a small page.
-  - Measured with 10,000 pairs: about 1,200 DOM nodes, search under 0.1 s in development mode.
 - Search is a soft filled field without an outline at rest, with a clear button once it holds text: the list search
   fields and both header search triggers.
 - A list's toolbar (Invoices or Requests, Activity, Transactions, Payments): the search on the left, the filters beside
@@ -188,7 +187,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - ⌘K (or the search field) opens one command dialog: pages, actions, other profiles and recent transactions,
   filtered as you type. Arrow keys move, Enter opens, Escape closes.
   - Pages are the role's sidebar pages, then Settings.
-  - Actions: Receive, then the create pages the role can use, then New profile and the theme.
+  - Actions: Receive, Send and Transfer as the role allows, then the create pages, New profile and the theme.
   - A business gets New invoice, New payment link and New client; a personal profile gets Request money.
 - The bell (R-81) lists the six newest events, each as what happened, then the payment or sender it names.
   - Paid, In your wallet and Held for the payer name the payment (its number, else title) and open its page.
@@ -208,7 +207,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Phones open `/app/settings` as a list of the sections, like a phone's settings app: grouped rows with an icon
     and a chevron. Each section page starts with a back link to that list. No row of tabs scrolls sideways.
   - Your account: Security, Notifications. This profile (its name): Billing details, Accepted assets,
-    Developer mode, Team, Wallet.
+    Developer mode, Team (merchants), Wallet.
   - A section page is its title (large on phones), then groups (`SettingsGroup`): a small title, one panel of rows,
     and at most one short note under it. No intro line and no description column.
   - A row (`SETTINGS_ROW`) has its label on the left and its value or control on the right, on phones too.
@@ -270,16 +269,16 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A full code is checked whatever the send did: an earlier email's code may still be the one.
   - Confirm full width, then a quiet Cancel; a sheet's Back or a dialog's Close gives up as Cancel does.
   - A send's confirm is the sheet's own step, after Send is held (see Send).
-  - Cancel and Confirm end the foot's one row.
   - Cancel gives the form its buttons back, with no error, and the focus returns to the form's action.
-  - A wrong or expired code reads "Wrong or expired code", and the step stays open.
+  - A wrong or expired code reads "That code is wrong or expired.", and the step stays open.
   - A user with no email login reads that they need one.
   - A request no form claimed asks in a dialog of its own.
-- Phones: the header becomes a top bar with the account initial, a search pill and notifications. A bottom tab bar has Home, Transactions, My assets and More;
-  large icons over labels, with the whole current tab on the second surface. More opens a sheet: first a profile card
-  (avatar, name, Switch profile and an up/down selector icon), then the setup guide while steps remain, then the remaining
+- Phones: the header becomes a top bar with the account initial, a search field and notifications. A bottom tab bar has Home, Transactions, My assets and More;
+  large icons over labels, with the whole current tab on the second surface. More opens a sheet: first the setup guide
+  while steps remain, then one card with the profile row (avatar, name, Switch profile and an up/down selector icon)
+  and Settings, then the remaining
   sidebar pages for the profile type as grouped cards of rows with an icon tile (white cards with hairlines, neutral
-  tiles; the current page's icon is olive), then Settings, then unbuilt pages as small
+  tiles; the current page's icon is olive), then unbuilt pages as small
   Coming soon chips that are not links. Current-page links include nested pages; More stays selected for those pages.
   The bar and page padding include the bottom safe area, and toasts sit above it. A switch opens the new profile's overview (R-76).
 - A choice opened from the sidebar is a menu; the same choice on a phone is a bottom sheet, which becomes a centered
@@ -308,7 +307,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     the sidebar, never on the overview.
   - Recent transactions spans the width below. Phones stack them in that order.
   - The balance card: Total balance, the total (`BigAmount`, cents subtle), its change over the past month.
-  - Under them the pending and held links, the prices line, then the round actions at the card's foot.
+  - Under them the no-prices line when there is no total, the pending and held links, then the round actions at the card's foot.
   - The valley art sits behind a surface veil: from small screens it shows only on the right, on phones it is faint.
   - The card is at least 16rem tall (20rem on phones). The total scales with its column (container units).
   - It keeps its own height: a taller My assets beside it doesn't stretch it.
@@ -335,7 +334,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     My assets (a share bar, then each token's amount and market value).
     - On phones the range control has its own line under the title, so the transfer count never moves it (R-203).
     - My assets' placeholder is the share bar and two rows, in a body with its empty state's minimum height.
-  - Row 3: Unpaid beside Latest payments; each sizes to its rows instead of matching the other's height.
+  - Row 3: Latest payments beside Unpaid; each sizes to its rows instead of matching the other's height.
   - Latest payments: six rows from the Payments list's first page, with a source icon (the payment always comes in).
   - Phones stack the cards in that order. Filters, search and CSV export live on Transactions.
   - A range with nothing received draws a flat line at zero, as a real zero should.
@@ -346,7 +345,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Rows: the client (or title, or number), then the number and "12 days late" (warning color) or "Partially paid".
   - The amount sits on the right with "left to pay" under it. A checkout row opens its payment, an invoice row its invoice.
   - Money on hold shows as Overpaid on its payment and as On hold in My assets, never here.
-  - Five rows, then Show all n, which moves focus to the first row it adds. Nothing unpaid says so in one quiet line.
+  - Five rows, then Show all n, which moves focus to the first row it adds.
+  - Nothing unpaid is a compact empty state: "Nothing unpaid right now."
 - Charts are drawn by us, with no grid lines and no value axis: the readout gives each exact amount and the dates
   (first, middle, last; first and last on phones) sit under the plot. The balance is one smooth ink line (monotone, so
   it never overshoots a real value or dips under zero) over a wash that fades down, from zero with a little headroom;
@@ -357,7 +357,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   Pointer, tap or arrow keys choose a point; only keyboard moves are announced, and a hidden table gives screen
   readers every value. Range choice is a segmented control. Reduced motion shows every chart in place. A failed figure shows "—" with Try again,
   never an endless skeleton.
-- My assets: Total balance (`BalanceFigure`, as on the overview, centered on phones), then one row per token.
+- My assets: Total balance (`BalanceFigure`, as on the overview, centered on phones), then one row per held token.
+  - Tokens with nothing in them wait behind Show n empty tokens. Past 10 tokens a Search tokens field leads the list.
   - Below large screens, round Receive (lime) and Send sit under the total, as the header's buttons are hidden there.
   - So a business reaches Send on a phone from the My assets tab.
   - Wide screens: columns Asset, In wallet, Moving to wallet, Not final, On hold.
@@ -370,7 +371,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Money moving, not final or on hold shows in a small box under the row, one labelled line per kind.
     - A token with none of it has no box.
   - The placeholder is two rows of that shape, under the column titles on wide screens.
-- Invoices and Activity: the shared status filter (below) and a search; a row opens its
+- Invoices and Activity: the shared status filter (below) and a search; an Invoices row opens its
   invoice. An Activity row is a past-tense event ("Invoice created", "Payment received", "Held for the customer");
   its status column is headed Status, and the intro says it is where the payment stands now, not what the event did. Activity and Transactions page through the API's cursor, so their history reaches its start.
   Transactions has a direction filter (All, In, Out) and a search. The API filters and searches the whole list, and the
@@ -396,7 +397,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Phone rows have the real rows' two lines, with the icon and day heading where the list has them.
   - A failed read is one `LoadError` with Try again; an empty list says what fills it and offers its next step.
   - A filter with no rows names the list ("No payments match") and what narrowed it ("Search “mara”, status
-    Expired."), with a button to clear it.
+    Closed unpaid."), with a button to clear it.
 - One status filter on every payment list (Payments, Invoices, Activity): `paymentStateGroup`, shown by `ListFilters`.
   - All, then the D-114 states: Waiting for payment, Confirming, Partially paid, Paid, Overpaid, Closed unpaid, Canceled.
   - Each option has its status pill's label and icon. In wallet is a wallet state, so it is a column, not a status.
@@ -516,21 +517,21 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A client's page is a record page: New invoice (lime, `?client=<id>` fills the client), Edit and More actions.
     Its main column lists invoices that mention the client; Details sit on the side.
   - The form asks "Who is this client?": a person (full name, no tax ID) or a business (legal name, tax ID).
-  New client and Edit client are
-  form pages under Clients laid out like New invoice (Contact, Address and tax, and On invoices with the default PO
-  or reference and the payment reminders default (R-97), as panels); Delete waits in the More actions menu at the page's top right and asks to confirm in a
-  dialog, as Cancel does on an invoice.
+  - New client and Edit client are step forms under Clients (see the step form layout).
+    - Steps: Contact, Address and tax (Address for a person), then On invoices.
+    - On invoices holds the default PO or reference and the payment reminders default (R-97).
+  - Delete sits in the client page's More actions and asks to confirm in a dialog, as Cancel does on an invoice.
 - Stores (R-134) sits in a merchant's Get paid group after Clients. It is laid out like Clients, without search.
   A store's page is a record page (project ID with Copy, Edit for stores.write) with its payments:
   - The toolbar holds a one-line intro, with Add store at its end (beside the title on phones).
   - The table shows the store, its project ID, when its checkout closes and its allowed origins.
   - New store and Edit store are step forms, as New client is (see the step form layout).
   - The store's page shows the project ID with a Copy button; the form does not. A store has no delete.
-  - An Accepted assets panel (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
+  - The Accepted assets step (R-136) uses the accepted-assets selector over the tokens the profile has on; one must
     stay chosen.
-  - A Brand panel holds the logo and the accent color (R-135).
-  - The logo shows in a bordered box with Upload or Replace logo, and Remove logo; a chosen file uploads at once.
-  - New store says to save first, then add the logo.
+  - The Brand step holds the logo and the accent color (R-135).
+  - The logo shows in a bordered box with Upload or Replace logo, and Remove logo; on Edit a chosen file uploads at once.
+  - On New store a chosen logo uploads when the store is saved.
   - Accent color is a text field for `#rrggbb` with the browser's color picker as its action.
   - New invoice shows a Store select in Details when the profile has two or more stores.
   - Picking a store sets the close to its default, unless a due date or the owner set one.
@@ -633,22 +634,21 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A missing total shows "Confirming"; its info tooltip keeps remaining blocks and estimated time when available.
   - Normal detail polling requests only used options and options with money or actionable errors.
   - Test payments have a small Testnet label in lists, details and the public checkout header.
-  - Layout references: [Stripe payment records](https://support.stripe.com/questions/view-payment-records-in-the-dashboard?locale=en-GB), [Adyen payment management](https://docs.adyen.com/account/manage-payments/), and [BitPay payments](https://support.bitpay.com/hc/en-us/articles/205769245-View-Payments-in-the-merchant-dashboard).
-  - These examples separate payment identity, amounts and status from investigation details.
-
+  - Payment identity, amounts and status stay apart from investigation details.
   - Each token and network keeps its own receive balance, merchant payable, payer-held funds and observed returns.
-  - Movement rows show network, contract and signed receiver/payable/held changes; allocation rows never imply another token transfer.
+  - The Payments CSV has one row per movement: network, token contract and the signed receiver, payable and held changes.
+    - An allocation row never implies another token transfer.
   - Unused pending history creates no merchant warning. Conflicting evidence shows a short explanation and the required action.
-  - Shared wallet transactions and invoice activity explicitly name their profile-wide scope.
+  - Transactions' intro names its profile-wide scope: every transfer of the wallet, across all stores.
   - Reconciliation follows recorded UTC periods; opening, changes and closing remain separate per store and token.
     - One row per token and store: Asset, Store, Status (a dot and Verified, Still checking or Needs review), the
       closing balance of each account, and Moved to wallet in the period. It shows no read time.
-    - Search is always there; a segmented control filters by status with counts. Rows show 20 at a time.
+    - Once there is a row, a search and a status segmented control with counts show. Rows show 20 at a time.
     - A row is Verified only while its network's scan is current; a lagging scan reads Still checking and the breakdown says so.
     - A row's button opens its breakdown: each account's opening, changes and closing, then the checks.
     - The period is one `DateRangePicker`, as on both exports (Payments, Transactions).
-    - Built for thousands of tokens: a search past 10, tokens with nothing in them folded away, 20 groups at a time.
-    - The count line (verified, still checking, needs review) covers only the tokens the table lists.
+    - Built for thousands of tokens: tokens with nothing in them fold away, and rows show 20 at a time.
+    - The status counts cover only the tokens left after the search and the folding.
   - Export uses the list's filters and the same period field as Transactions; invalid or unresolved filters disable it.
   - Invoices name a customer by name or email; business tax fields are optional, and personal requests keep a shorter form.
   - Failed store, billing or token loads show explicit retry actions; empty acceptance never restores disabled tokens.
@@ -661,7 +661,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The link page reads one link (`GET /links/{id}`) and opens with `DetailHeader`: a link icon tile, the title with
     status and mode badges, "Payment link · Created …", the price as the figure and More actions.
   - More actions holds Edit payment link and Turn off or Turn on, which saves at once with a toast.
-  - Main column: Visits, Paid (with its share of visits) and Checkouts open, then the purchases.
+  - Main column: Visits, Paid (with its share of visits) and Slots held, then the purchases.
   - Side column (first on narrower screens): Share, with the address in a `CopyValue` (Open in a new tab, Copy) and a
     QR code; then Details with the store, last day, payment limit and last update.
   - Open in Payments shows the same purchases on the Payments page with search and filters.
@@ -670,7 +670,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A new link opens on its page after saving, where the address shows with a Copy button.
   - Editing keeps the store selector disabled; failed store loading blocks the form with a retry action.
 - Settings opens from the account menu, and on phones from More (see App shell); its sections share one frame.
-  - Developers keeps the full content width: its tables need the room.
+  - Developers is a sidebar page, not a Settings section, so its tables keep the full content width.
 - Accepted assets (R-136) uses the accepted-assets selector: one row per asset, its networks under it.
   - Under it, a `SwitchCard` "Accept other tokens" (R-240), on by default; its line names NEAR Intents.
     - It follows the box rules below, with its own status line, and saves only the switch.
@@ -678,7 +678,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - A box changes the moment it is pressed, and every box stays usable while it saves. A refused save puts it back.
   - The last token on can't be turned off; a quiet line under it says one stays on.
   - New invoice offers only the tokens on for the profile and the picked store.
-- Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins. It is laid out like Team.
+- Developers (R-145) is in the sidebar's Build group for a freelancer's or merchant's owner and Admins.
   - An intro line says keys belong on a server, with a Read the API docs link to `/docs`.
   - The profile ID follows, with Copy: the API's routes name it. API keys is a panel with a table, New key (lime) in its head.
   - Columns: Name, Key (`fw_live_…` or `fw_test_…` and the last 4), Store (merchants), Access, Last used.
@@ -700,7 +700,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Results and errors in the sheet show in its status line, not as toasts.
 - Team (R-139) is a Settings section for a merchant profile's owner and members.
   - It is laid out like the other sections: a title, then panels. No open invites is one quiet line.
-  - An Admin sees Members, then Open invites, each a panel with a compact table (Member or Email, Stores, Role).
+  - An Admin sees Members, then Open invites, each a panel with a compact table.
+    - Members: Member, Stores, Role. Open invites: Email, Stores, Expires, Role.
   - Invite sits beside the Members heading and opens a dialog: Email, a Role select with a hint, and store checkboxes.
   - The checkboxes show for Developer and Finance only.
   - A member's More actions menu holds Change role, a dialog like Invite without the email, and Remove, which confirms.
@@ -711,7 +712,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Signed in with another address, it says so in red with Sign out in place of Accept.
 - Navigation by role (D-93): the sidebar, the phone tabs, ⌘K and the account menu show only the pages a role can use.
   - A role without the money pages has no Receive button and a bell with invoice events only.
-- Jobs (R-101) sits in a freelancer's Get paid group after Invoices. It is laid out like Clients:
+- Jobs (R-101) sits in a freelancer's Get paid group after Payment links. It is laid out like Clients:
   - The toolbar searches the title and client, with New job at its end (beside the title on phones).
   - The table shows the job, client, total, state and created day.
   - Below xl the rows stack, as on Clients: the title, then the client and state, with the total on the right.
@@ -795,7 +796,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Every step: the logo where landing and sign-in put it (`SiteBar`, plain), "Step 2 of 5" and Sign out at the right,
     then a bar with one segment per step, the question and its fields in one column.
   - Motion: each step rises in (`fw-pop-in`, slow); the bar's segments fill from the left.
-  - The step sits in the middle of the space below the bar from sm up; the heading is one line at 36px.
+  - The step sits in the middle of the space below the bar from sm up.
+  - The heading is 28px on phones and 30px from sm up, balanced across its lines.
   - The footer: Back on the left, the main action on the right; Skip for now or Not now sits left of the main action.
   - Phones: the main action spans the foot; Back and Skip share one row under it, in two equal outlined buttons.
   - Back shows on every step after the first. After the save, the details stay editable and save again as billing details.
@@ -820,18 +822,19 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Onboarding checklist: the setup guide at the sidebar's foot (see App shell), never a card on the overview.
   Steps come from data: passkey linked, billing details (freelancer), first invoice or request, first paid in full,
   first final money in. Skipped steps are remembered per profile in the browser.
-- Step form pages stop at 72rem (`max-w-6xl`), with the preview beside the fields; settings pages sit in the
-  settings frame (48rem).
+- Client, store, link and job form pages stop at 72rem (`max-w-6xl`), with the preview beside the fields.
+  - New invoice and Request money use the full content width. Settings pages sit in the settings frame (48rem).
 - New profile: "Add a profile" over the form (37.5rem), beside a preview (22.5rem) from lg up, centered in the page.
   - The heading shows at every width; the header's breadcrumb still names the page.
   - Two type cards side by side, each with what it includes (hidden on phones), then the optional name.
   - The preview lists the user's profiles with the new one marked New; phones show only the new row.
   - The footer: Cancel on the left; the owned count ("5 of 10 profiles") and Create profile on the right.
   - At the cap Create is off and the cap message shows before any try.
-  - Each field group is a full-width panel with its title ruled off. Billing details has Contact, then Address and tax.
-  - Inside a panel, short fields pair up in two columns from small screens up.
-  - The pairs: network and amount, title and reference, the dates, name and email, country and tax ID.
-  - Request money pairs Your name with the return link.
+  - In Billing details each field group is a full-width panel with its title ruled off: Contact, then Address and tax.
+  - In a step form a field group is a titled section of the form's card (see the step form layout).
+  - Inside a group, short fields pair up in two columns from small screens up.
+  - The pairs: how the client pays and the network, title and reference, name and email, country and tax ID.
+  - Request money's Your name keeps one column of the two.
   - A note, an address, an invoice's return link, a choice row or a list of rows takes the whole row.
   - A lone date keeps one column, in line with the dates above it. Phones keep one column.
 - New invoice and Request money are steps: Customer, Items, Details, Review (a request has no Customer step).
@@ -880,26 +883,25 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Jobs: Work, Client, Payments; the preview is the quote with its schedule and total.
   - Editing opens every step from the stepper (numbers, no checks) and puts Save on each step beside Continue.
   - Continue checks the step on screen; Save checks everything and opens the step of the first error.
-- New invoice and Request money: each field group is a panel with its title ruled off.
-  - New invoice opens with Customer, because who is billed comes first; then Amount, Details and Dates.
+- New invoice and Request money: each field group is a titled section of the form's card (`FlatFieldGroups`).
+  - New invoice opens with Customer, because who is billed comes first.
   - Customer asks "Who are you billing?": a business (Legal name, tax ID) or a person (Full name, no tax ID).
     Both have email, address and country, as on the client form. A saved client sets the choice.
-  A freelancer or merchant without billing details sees, in place of the form, an empty state that says the invoice
-  needs them with an Add billing details button (R-92); saving them there, or Cancel, comes back to New invoice.
-  Dates on New invoice holds Supply date (R-89, optional, any day), then Due date, then Checkout closes after, so the
-  due date sits next to the close it moves; the invoice page lists Supply date in Details after Created. Last in
-  Dates, a Send payment reminders checkbox with a quiet line under it (R-97): a saved client sets it from its
-  default, Duplicate copies it unless the client stopped them, and checked without a due date or client email it
-  shows an error there. Then Repeat every month (R-99), the same kind of checkbox and line; checked, it shows Last
-  due date (optional, from the due date on). Duplicate leaves it unchecked. Details on
-  New invoice holds PO or reference (R-90) after Title, filled from the saved client's default when the client has
-  one; the invoice page lists Reference first in Details. Add agreed value (secondary, small, last in Amount; not on
-  Request money) shows Agreed in (a searchable currency list), Agreed amount and Agreed on (today, no later day) in
-  one row from small screens up, with a remove button and a quiet line that the client still pays the amount above
-  (R-93); the invoice page lists Agreed value in Details after Supply date.
-  Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80), with one quiet line
-  saying why; a close the owner picks before that day stays allowed, with a warning line (icon and warning text, as on
-  the pay page) that a later payment would be held for the payer.
+  - A freelancer or merchant without billing details sees an empty state in place of the form (R-92).
+    - It says the invoice needs them and offers Add billing details. Saving them there, or Cancel, comes back here.
+  - Supply date (R-89, optional, any day) sits in More options. The invoice page lists it in Details after Created.
+  - Send payment reminders (R-97) is a checkbox in More options, with a quiet line under it.
+    - A saved client sets it from its default; Duplicate copies it unless the client stopped them.
+    - Checked without a due date or client email, it shows an error there.
+  - Repeat every month (R-99) follows, the same kind of checkbox and line.
+    - Checked, it shows Last due date (optional, from the due date on). Duplicate leaves it unchecked.
+  - PO or reference (R-90) sits beside Title, filled from the saved client's default when the client has one.
+  - Add agreed value is not on Request money. It shows three fields in one row from small screens up (R-93).
+    - Agreed in (a searchable currency list), Agreed amount and Agreed on (today, no later day).
+    - A remove button, and a quiet line that the client still pays the amount above.
+    - The invoice page lists Agreed value in Details after Supply date.
+  - Picking a due date switches Checkout closes after to Custom on the due date plus 60 days (D-80).
+    - One quiet line says why. A close the owner picks before that day stays allowed, with the warning box.
   The Items step reads like the invoice (R-252): How the client pays beside Network and token, then one bordered box.
   - The box holds the amount field, or the item rows; then the totals on a soft ground; then the agreed value.
   - It opens on the amount; Add item turns it into the first row, the amount becoming its price (R-88).
@@ -915,13 +917,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - Network fee carries a small switch, "You pay it" or "Client pays it", and reads "− 0.06 USDC" or "+ 0.06 USDC".
     - While the fee is priced a quiet line says so; without a quote the fee and You receive read "—".
   - Add agreed value is a ghost button with one quiet line under it; pressed, its three fields take its place.
-  The invoice page lists the items in an Items panel: each row the description with "qty × unit price" quietly under
-  it and the line's amount on the right, then Total, Received and Still due, the same on every width.
-  - Without items the panel is Summary, with those three rows only. Received counts money sent before the close.
-  - Received and Still due show only on a one-token invoice: other tokens' money is in other units.
-  - The side column holds Details, then a Timeline: Created, Emailed to the client (once sent), Pay page opened (with
-    how many times), Paid, In your wallet (or Checkout closed, or Canceled).
-  It uses the step form layout below: the card and the preview fill the screen and scroll on their own.
+  The invoice page lists the items in an Items panel, only when the invoice has lines, the same on every width.
+  - Each row is the description with "qty × unit price" quietly under it, and the line's amount on the right.
+  - Past 10 lines, the rest wait behind Show all n items.
+  - Then Total. When the client pays the fees, Subtotal and each fee above 0 come first, so the rows add up.
+  New invoice uses the step form layout above: the card and the preview fill the screen and scroll on their own.
   - Its tabs are Invoice, Payer page and Email; switching keeps every typed value.
   - Invoice draws the PDF (`InvoiceDocument`): A4 pages in mm with the PDF's blocks, sizes, Noto Sans face and page
     breaks, on white paper in both themes. The number reads Draft until the invoice exists.
@@ -946,10 +946,10 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - In the desktop sidebar, a feature that is not built yet keeps its place in the subtle text color, with "Soon" as
   plain text at the end: no badge, no link. A disabled action says why in its accessible name and shows "Coming soon" in a tooltip on
   hover, focus or tap; no notice text is added to the page.
-- A toast is only for an event the user did not just do on that spot: a payment detected or settled while the app is
-  open, or a save that leaves the page (billing details, a client saved or deleted). A payment toast uses the bell's
-  words and names the payment: "Payment received" or "In your wallet". Errors and anything that needs an answer stay inline beside
-  their field or form. Toasts sit top right on desktop and above the tab bar on phones, as solid surface panels with
+- A toast reports a payment detected or settled while the app is open, or confirms a finished save or change.
+  A payment toast uses the bell's
+  words and names the payment: "Payment received" or "In your wallet". Field errors and anything that needs an answer stay inline beside
+  their field or form; a failed row action with no field beside it says so in a toast. Toasts sit top right on desktop and above the tab bar on phones, as solid surface panels with
   the float shadow; at most three, each gone after 5 s unless hovered, focused or the tab is hidden, with a close
   button. They enter from the edge they sit on and leave faster than they came. Screen readers hear them through a
   polite live region.
@@ -957,7 +957,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 ## Checkout
 
 - Document-free checkout shows "Checkout" under the payee and offers no invoice PDF.
-- Issued invoices and legacy payment-link invoices (R-141) keep their invoice labels and PDF.
+- Issued invoices, and payment-link checkouts stored as invoices (R-141), keep their invoice labels and PDF.
 - Both offer a receipt once the payment is paid.
 
 - `/l/<slug>` (R-142), a payment link's page, is split as the invoice checkout below, with the same backdrop and footer.
@@ -969,7 +969,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - An amount outside them says so in the same words.
   - A link that is off, ended, full or unready explains why, with no Pay.
   - Pay first records one purchase identity, original amount and offer version in the URL.
-  - Returning or refreshing offers Continue this checkout and Start another purchase; independent visitors never share an attempt.
+  - Returning or refreshing offers Continue payment and Start another purchase; independent visitors never share an attempt.
   - Uncertain failures preserve that identity; changed offers require reviewing a new purchase.
   - Pay keeps the link's page as it is, with the button busy, until the checkout's invoice is read.
   - The checkout then opens whole: no placeholder or empty page between the two.
@@ -1001,7 +1001,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - A merchant store's logo (R-135) takes the tile's place, in a light box as tall as the tile, without a border.
     - The box stays light in the dark theme too, since most logos are drawn for a light page.
     - "Invoice INV-0001" under the name; a payment-link invoice before its first deposit reads "Invoice" alone (R-141).
-    - A test-mode invoice (R-143) starts the column with a warning box: its testnet tokens have no value.
+    - A test-mode invoice (R-143) shows the Testnet badge beside the payee; its tooltip says test tokens have no value.
     - The amount (tabular figures, featured size) and "on <network>". USD until the payer picks.
       - The token's small logo, its network on the corner, leads the "on <network>" line.
       - When the client pays fees, a muted line says "1,250.00 USD plus 0.05 USD network fee" (R-228).
@@ -1164,7 +1164,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Held money gets one short line, such as "Overpaid by X", with How to get it back on its right. It opens Need help
     (D-118).
   - Once the money went back the line is gone, and the payer reads Recorded returns with the return's transaction.
-  - Copy names the payee, or "the invoice's creator". Never "the sender".
+  - Copy names the payee, or "the recipient". Never "the sender".
   - Footer: one quiet line.
     - "Payments by" with the mark and Forwend, opening the site in a new tab.
     - "Need help?" opens a dialog, so the pay box never grows. Short sections with headings, split by hairlines:
@@ -1172,28 +1172,28 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
       - Sent too much, too late or after it closed: held for you, returned through support.
       - Sent on the wrong network or token: support checks, and can't promise.
       - Email support opens a message with the pay link. The address shows as text with a copy button.
-- No image and no glass; it follows the system theme. The invoice PDF link stays in every state; the receipt link
-  appears once paid.
+- No image and no glass. It takes the theme the app applies: the saved choice, else the system's.
+- An invoice or request keeps its PDF link in every state; the receipt link appears once paid.
 - When a refresh fails the page keeps the last read under a notice across its top (R-194).
   - It says "Can't reach the server. Retrying…", centered, with no button: the page retries on its own.
   - From large screens it spans both halves.
 - PDFs open through the same-origin `/api` path. The invoice detail lists the invoice PDF under Documents.
   - Once paid, Receipt PDF sits in the header, on phones in the bottom bar; Details lists both PDFs.
-- While a payment confirms, the step label stays "Confirming"; one full-width row below the steps shows "Confirming (4/12)"
-  and a small info icon whose tooltip says "About 19 min left". Keep the count out of the narrow
-  step columns on owner pages, including four-digit counts on phones. The pay page shows its own line under the step. Its ring fills as blocks pass
-  (a turning quarter until the first block passes); done, the step reads "Confirmed". The count is blocks passed of those the
-  payment had to wait when first seen, from the API, so a reload keeps it (R-73). The live status announces the count; the estimate opens on hover, keyboard focus or tap.
-  The owner's steps are Waiting, Detected, Confirming, Paid and In wallet.
+- While a payment confirms, the owner sees "Confirming (4/12)" and a small info icon (`ConfirmingStatus`).
+  - It sits in the invoice header's status slot and on the payment page's deposit row.
+  - The icon's tooltip gives the time left; it opens on hover, keyboard focus or tap.
+  - The count is blocks passed of those the payment had to wait when first seen, from the API, so a reload keeps it (R-73).
+  - The live status announces the count. The pay page shows its own line under the step.
+- The kit's `PaymentTimeline` draws steps side by side; the landing's samples use it.
   - Done, now and next differ by shape: a filled ink disc with a check, a ring, and an empty circle.
   - The line to the next step is ink once a step is done.
   - Side by side, the path runs edge to edge: the first step at the start, the last at the end, the rest evenly between.
     - The first label starts under its marker, the last ends under it, and the others center under theirs.
   - The current ring fills only by real evidence (blocks passed, or the share received when partly paid, R-69).
   - Without a known share it turns; reduced motion keeps a still quarter. Nothing fills because time passed.
-  Up to four steps always sit side by side (the payer's timeline, the landing's samples). The owner's five don't fit a
-  phone, so in a container narrower than 28rem they stack into one upright list of markers beside larger labels.
-- A test-mode invoice's page (R-143) has a warning Test mode badge under its header's name.
+  - Up to four steps always sit side by side.
+  - Five or more stack below 28rem of width: one upright list of markers beside larger labels.
+- A test-mode invoice's page (R-143) has a warning Testnet badge beside its number, before the status.
 - The invoice page (R-60) uses few words and says each fact once.
   - The header: the file tile, the number, the status badges (the confirming count while confirming).
   - One quiet line under it: "<title> · Billed to <client>".
@@ -1210,9 +1210,11 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The figure is the page's one large type (`BigAmount`). A canceled invoice's figure is faded.
   - Under it the token mark with "USDC on Base", or "Client picks the token".
   - Then one sentence: a bold part and at most one short quiet part ("3 days late. The link works until Jan 5.").
-  - The money line (R-228) is a ruled statement: "Client pays", "− Network fee", then "You receive".
+  - The money line (R-228) is a ruled statement: "Client pays", then each fee with a minus, then "You receive".
+    - The fees are Network fee and Platform fee.
     - Each term is a row, the term left and the amount right; the result is bold under a rule.
-    - Once paid: "Customer paid − Refunded − Held for the customer − Network fee = In your wallet".
+    - Once paid: "Customer paid − Refunded − Held for the customer − each fee = To your wallet".
+    - The last term reads In your wallet once the wallet transfer has settled.
     - Refunded is the extra money returned to the customer, with the return's explorer link after the amount.
     - The extra not returned yet stays Held for the customer. The page has no separate line about returns.
     - A fee of 0 is no term. A line that would only repeat the figure is left out.
@@ -1223,35 +1225,36 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - The steps share the width; the last takes its own width, so the row ends at the card's edge.
     - A closed or canceled invoice ends on Checkout closed or Canceled, marked with a lock.
     - Done is a check, now an accent ring, next an empty circle; each step shows its short date.
+    - Pay page opened shows how many times instead: "Once" or "3 times".
   - Details says the times: when the checkout closes ("Checkout closed" once past) and, once canceled, Canceled on.
   - Its progress and every transaction show once, on its payment page: View payment opens it.
   - Motion: the page fades in over its placeholder, and a new state fades in the amount card. Polling moves nothing.
   - While it loads, placeholders keep the page's shape: the header and its buttons, the amount card, then each panel.
     - Panel titles show at once; only the data is a placeholder.
-  - Under the amount card, the main column holds Items (only with lines) and History.
-  - History (R-124) ends the main column: a ruled table of changes, newest first, like the other tables.
+  - Under the amount card, the main column holds Items (only with lines) and Document history.
+  - Document history (R-124) ends the main column: a ruled table of changes and emails, newest first.
+    - Payments are left out: the payment page shows them.
     - Columns: Event, By (You, Payer, Forwend), Details and Time, which sits on the right.
-    - Event is the short name in medium weight after a dot in its category's color: payments success, changes subtle,
-      emails info.
-    - Details holds what the name leaves out: the amount with its token, the network, a settle's hash and explorer link.
+    - Event is the short name in medium weight after a dot in its category's color: changes subtle, emails info.
+    - Details holds what the name leaves out, such as a new close or a moved due date.
       Without any, a quiet dash.
     - An email's Details say who it went to, or a reminder's step: "On the due date".
     - A Revise's rows name the other invoice: "By INV-0012" on Replaced, "Replaces INV-0007" on the new one's Created.
     - Reminders stopped says it came from the reminder email's stop link.
     - Time is the short date and time; the year shows only for another year.
     - Under 36rem of panel width each change is two lines: the event with the time on the right, then By and Details.
-    - A small segmented control in the head shows All, Payments, Changes or Emails.
+    - A small segmented control in the head shows All, Changes or Emails.
     - Under the table, ruled off, one quiet line says how often the pay link was opened, first and last (R-125).
-    - An invoice made before pay links (R-114) has no such line.
+    - An invoice without a pay link (R-114) has no such line.
   - The side column holds Billed to, then the details panel (empty rows left out).
-  - Billed to: the client, then Email the client (R-94), Payment reminders and Repeats monthly.
+  - Billed to: the client, then Email the client (R-94), Payment reminders and Repeats every month.
     - One quiet line under Email the client: "Emailed Oct 23", or "Sending to <address>…".
     - Email the client gives way to "You can send it again after <time>" for a day; focus moves there.
   - From is a Details row, stacked under its term. The PDFs are a Details row.
   - Your memo (R-127) is a Details row after the note: the owner's own text, stacked under its term.
   - Replaced by and Replaces (R-129) are Details rows after Canceled on, each the other invoice's number as a link.
   - From shows "None on this invoice" with a link to add billing details when there are none.
-  - Below large screens: the amount card, the pay link's rows, Progress, Billed to, Items, Details, then History.
+  - Below large screens: the amount card, the pay link's rows, Progress, Billed to, Items, Details, then Document history.
 - An expired or canceled invoice's next step sits in the header, and on phones in the bar at the bottom (R-77).
   - New invoice (lime) opens New invoice filled from it; the status badge and Details say what happened.
   - While the API's `reopenUntil` is set, Reopen checkout (lime) sits before it, and New invoice turns secondary (R-130).
@@ -1310,7 +1313,6 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - Record is the job page's timeline, without the client's email.
 
 - The embedded checkout `/embed/<token>` (R-168, D-117) is the pay page inside a merchant's page.
-  - Patterns from Stripe's embedded form and Payment Element, Paddle inline, BitPay's modal and Daimo's embed.
   - It is as tall as its content, never the screen; the merchant's page sizes the frame from `ready` and `resize`.
   - Height goes out at most once per frame, after layout, so a step's rise sends one change.
   - Until the checkout loads, the frame shows its own placeholders or its error with Try again; `ready` follows.
@@ -1338,7 +1340,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
 - Disclosures use the chevron the FAQ uses, turning when open, instead of the browser's triangle.
 - All examples distinguish test mode, server secrets, base-unit amounts and verified completion.
 - The route helper keeps documentation paths separate from application destinations and API origins.
-- Old `/docs` anchors map to their topics (`LEGACY_DOCS_ANCHORS`); canonical metadata and sitemap entries follow the routes.
+- A `/docs#anchor` link opens its topic page (`LEGACY_DOCS_ANCHORS`); canonical metadata and sitemap entries follow the routes.
 
 ## Emails
 
@@ -1380,20 +1382,21 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   circle, a title ("No invoices yet", "No invoices match"), a line or the next step under it ("Clear filter and
   search"), as wide as the list and at least about half the screen tall. Inside an overview card it drops its frame
   and most of its height.
-- A notice (`Notice`) is one short warning line across the view's full width.
+- A notice (`Notice`) is one short warning or danger line across the full width of its view or step.
   - At most one action sits at its end, such as Try again.
   - A notice with no way out can center its line (`align="center"`), as `ServerStrip` does.
-  - It is for what concerns the whole view: a refresh that failed, or a problem the view shows nowhere else.
+  - It is for what concerns the whole view or step: a refresh that failed, a problem shown nowhere else, or Send's address warnings.
   - A failed refresh's notice stays while its retry runs, with its button busy.
   - Only a read that works removes it.
   - Plain words, never blame: say what happened and what to do, not whose money it is.
 
 - Apply the saved theme, otherwise the system choice, before first paint using `data-theme` on `<html>`.
-  Product sections can force dark with their own `data-theme="dark"`. Use the theme variant for theme-only differences.
+  A part can force its theme with its own `data-theme`: invoice paper and logo boxes stay light, the landing's code
+  samples dark. Use the theme variant for theme-only differences.
 - A loading button shows only a centered spinner, at its own size and colors, and keeps its accessible name.
 - Status changes keep row geometry stable. Labels accompany status colors. Mark all demonstration data as Sample.
 - Use motion tokens; respect reduced motion. No scroll hijacking or layout jumps during state changes. Loading
-  spinners (`data-motion="essential"`) keep turning under reduced motion; everything else stops. A pressed button
+  spinners and the hold button's fill (`data-motion="essential"`) keep moving under reduced motion; everything else stops. A pressed button
   scales to 0.98 on a fast ease-out (a round money action to 0.95), like a physical key; reduced motion keeps only the
   color change.
 - Hero and footer artwork remain static in both themes.
@@ -1405,7 +1408,7 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
   - The current page's mark (sidebar, tab bar, settings, profile sheet) moves with the page at once; only hover
     fades.
   - Enter from an edge: menus, toasts and the phone sheet rise from where they open on `duration-base` with
-    `ease-out`, and close at once.
+    `ease-out`. Menus and the sheet close at once; toasts leave on `duration-fast`.
   - A modal dialog and the centered sheet fade in on `duration-base`, and close at once.
     - No scale or translate: either would misplace a date picker opened inside while it runs.
     - The ⌘K dialog is the exception: no motion, as above.
@@ -1415,6 +1418,8 @@ The signed-in app (`/app`) uses these patterns. Menu, sheet, action button, segm
     - The first step shows at once: the sheet itself fades in. Reduced motion shows each step at once.
   - Disclosure: the chevron turns on `duration-fast`; the content appears without a height animation, since
     tables inside can be long.
+    - The landing's FAQ accordion is the exception: its chevron turns and its answer opens on `duration-base`.
+  - A first-run step rises in (`fw-pop-in`) on `duration-slow`.
   - Data: typing, filtering, polling and new rows never animate. A list waiting for a new filter dims its last rows
     (opacity, `duration-fast`) and keeps their place.
   - Progress: a bar fills once with `ease-out` on `duration-slower`; a spinner turns while work runs.
@@ -1439,7 +1444,7 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   page; the new invoice or request action sits beside its title.
 - Filters stay one row, never a grid (see Controls); a segmented control keeps native radio keyboard behavior, a
   select menu the menu's arrow keys.
-- Receive walks token, then network, as Send does: one step at a time, each fading in place, with Back.
+- Receive walks token, then network: one step at a time, each fading in place, with Back.
   - The title names the token once it is chosen ("Receive USDC"); a step with one choice is skipped.
   - Then Send's chip (token mark, symbol, network) centered over a QR on a surface-2 tile that follows the theme; the
     code alone stays dark on light.
@@ -1448,7 +1453,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
   Send also offers Wallet address.
   - Steps: To, Wallet address, What to send, Amount, Summary, Confirm it's you when asked, then the progress.
     - A step with one choice is skipped.
-  - The title names the step; a Back button sits before it from the second step on.
+  - The title reads Send or Transfer on the first step and the progress, and names the step otherwise.
+  - A Back button sits before the title from the second step on.
   - Wallet address: the title names the field, so its label is for screen readers only.
     - Paste sits inside the field and gives way to Clear once there is text; only the address is set in mono.
     - A whole address that isn't valid, its EIP-55 checksum too, says so at once. Continue waits for a valid one.
@@ -1457,7 +1463,8 @@ Product wording: [PRODUCT.md](PRODUCT.md). Code rules: [rules.md](rules.md). Ima
     - Under it "1.2665 USDC available" (cut to 4 decimals, never rounded up) and a Max button.
     - Then one ruled line: Network fee, "≈ 0.0025 USDC" (D-121). Max leaves room for that fee, and waits until it is read.
   - Summary: the amount large and centered, then a ruled box: From, To, Network, Network fee.
-    - Total (≈ amount plus fee) follows when the wallet pays the fee from the same token, as every send does (R-216, R-225).
+    - Total (≈ amount plus fee) follows, since the wallet pays the fee from the same token (R-216, R-225).
+    - A fee of 0 reads Free, with no Total.
   - An estimated fee rounds up to 4 decimals and leads with ≈. No "Up to", no "They receive": the amount says it.
   - From and To read the same: the profile name, or "Another wallet" for a pasted address, then the address shortened
     (`0x4edd…81fc`) under it.

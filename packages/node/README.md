@@ -37,7 +37,7 @@ if (payment.paymentStatus === "paid") fulfil();
 - `feesPaidBy` on an invoice or checkout create says who pays the fees: `owner`, deducted at settlement, or `client`,
   added on top of the price.
   - Left out, the profile's choice applies.
-  - `GET /v1/profiles/{profileId}/fees` previews the fees for a price; the package has no method for it yet.
+  - `GET /v1/profiles/{profileId}/fees` previews the fees for a price; the package has no method for it.
 - Invoices, payments and each option carry `networkFee`, `platformFee` and `netAmount`, in the token's base units.
   - `netAmount` is the amount less both fees: what you receive.
 - A payment's `amounts.settled` is what reached your wallet, net of fees; `amounts.fees` is what settlement paid in fees.

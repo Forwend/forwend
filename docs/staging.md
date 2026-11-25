@@ -4,7 +4,7 @@
   required review. Automatic GitHub Actions runs are disabled for PRs into main and pushes to main.
 - `staging` is the batch-validation branch. Its push event runs all required and CI-only checks fresh (`harness.py check --ci`).
   - One job runs each lane of the [check registry](config.json) side by side (`check --ci --lane NAME`).
-  - The harness tests fail when the workflow's lane list misses a lane.
+  - The harness tests fail when the workflow's lane list differs from the registry's lanes.
   There is no additional PR-triggered run. CI deploys nothing; the Dokploy environment below is configured separately.
 - Each staging job allows 30 minutes for setup, all fresh checks and cleanup. Individual check limits remain in the check registry.
 - PostgreSQL uses the official `postgres:17` image directly from Docker Hub. GitHub-hosted runners are
@@ -35,7 +35,7 @@
 - Set `ENABLE_TESTNET_USDC=0` to keep the database's current network settings unchanged at startup.
 - PostgreSQL keeps its data in the `postgres-data` named volume. Keep the Dokploy service and Compose project name stable.
 - Keep one worker and one signer. Their existing database locks prevent duplicate work during restarts.
-- The executor must already be authorized by the deployed testnet factories and funded for gas on every enabled chain.
+- The executor must already be authorized by the deployed factories and funded for gas on every enabled chain.
 - The API never receives the executor key. The signer never receives Privy or email credentials.
 - The webhooks sender receives only the database URL and `WEBHOOK_SECRET_KEY`.
 - The independent canary runs on another host; see [money safety](backend/money-safety.md#canary).
@@ -76,7 +76,7 @@
 | `PUBLIC_WEB_URL` | Your staging HTTPS origin, without a trailing slash. |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | The test Privy app ID; must match the secret below. |
 | `PRIVY_APP_SECRET` | That test Privy app's secret from `apps/backend/.env`. |
-| `EXECUTOR_PRIVATE_KEY` | The existing authorized testnet executor key from `apps/backend/.env`. |
+| `EXECUTOR_PRIVATE_KEY` | The authorized executor key from `apps/backend/.env`. |
 | `RPC_ENDPOINT_SECRETS` | Backend-only JSON map of secret references to complete private URLs; see [RPC operations](backend/rpc.md). |
 | `RPC_RATE_PER_SECOND` | `10` by default. Also sets the shared weighted budget to 800 units/second, 160 for the api and 640 for worker and signer; see [RPC pacing](backend/architecture.md#running-the-loop). |
 | `POLL_INTERVAL` | `5s` by default, for the worker and signer. |

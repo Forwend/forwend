@@ -190,7 +190,7 @@ Every test passes.
 | [`@forwend/js`](packages/js) | The checkout in any web page: a pay link, the full checkout, or its pay panel beside your summary. |
 | [`@forwend/react`](packages/react) | The same checkout for React 18 and 19: `PayButton`, `Checkout` and `PaymentElement`. |
 
-None of them has runtime dependencies, and none loads a script from Forwend.
+None of them has a third-party runtime dependency, and none loads a script from Forwend.
 
 ```sh
 npm install forwend               # on your server

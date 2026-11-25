@@ -4,8 +4,9 @@ Every rule has a test.
 
 ## Status
 
-- Pre-release: redesign freely, keep every test green, update `docs/contracts/` and `docs/diagrams/` in the same PR.
-- After the first mainnet deploy, deployed code never changes. A fix is a new factory version; old ones stay for recovery.
+- Before production, redesign freely, keep every test green, update `docs/contracts/` and `docs/diagrams/` in the same PR.
+- Factories are deployed on testnets and the development mainnets. Deployed code never changes.
+  - A fix is a new factory version; old ones stay for recovery.
 
 ## Terms (immutable clone args)
 
@@ -21,8 +22,8 @@ Every rule has a test.
 
 ## Factory
 
-- `refundAuthority`: immutable constructor argument (Safe on mainnet, test EOA on testnets). Losing it means a new
-  factory, so the Safe must always be able to rotate its own owners.
+- `refundAuthority`: immutable constructor argument (the Safe in production, a test EOA on testnets and development
+  mainnets). Losing it means a new factory, so the Safe must always be able to rotate its own owners.
 - `executor`: stored; only the refund authority changes it. The first executor is part of the factory address: use the
   same one on every chain and keep passing it as `EXECUTOR` to `script/Deploy.s.sol`. On a new chain, call
   `setExecutor` right after deploying.
@@ -79,5 +80,5 @@ Every rule has a test.
   - the executor moves money only to `recipient`, and to itself only the network fee;
   - the factory returns only its own balance.
 - Halmos for `settle` (with any fees too), `refund`, and receiver, implementation and factory `recover` (`forge clean` first).
-- Cross-chain: same terms, same address on two Anvil chains; calls revert on the wrong one.
+- Cross-chain: the same terms give the same address on two chain IDs. `settle` and `refund` revert on the wrong chain.
 - Fork test on Base Sepolia with real USDC; a mock token for USDT behaviour.

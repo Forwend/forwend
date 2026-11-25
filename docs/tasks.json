@@ -269,14 +269,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-10T22:30:00Z",
-    "clean": false,
-    "problems": [
-      "F332: depends on unknown task F335",
-      "F332: depends on unknown task F412",
-      "F439: depends on unknown task F438",
-      "F452: depends on unknown task F451"
-    ],
-    "note": "F469 merged in #481; next queued task is F435"
+    "at": "2026-11-25T19:37:55Z",
+    "clean": true,
+    "problems": [],
+    "note": "Harness 2.3.0 rerun: coding skills and CLAUDE.md added, runner kept; PLAN and PROJECT trimmed. Next: start F435."
   }
 }
