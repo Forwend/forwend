@@ -32,23 +32,6 @@
       "evidence": null
     },
     {
-      "id": "F418",
-      "type": "fix",
-      "behavior": "Fix IDs on payments, checkouts, invoices and payment links",
-      "acceptance": [],
-      "dependsOn": [],
-      "state": "blocked",
-      "verification": [],
-      "refs": [],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
-      ],
-      "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
-      "evidence": null
-    },
-    {
       "id": "F435",
       "type": "fix",
       "behavior": "The 2026-11-07 audit's low findings are triaged, and an owner with no login email still hears when money leaves a wallet",
