@@ -188,7 +188,7 @@
         "Under reduced motion, the spinners that show money on its way keep turning: the pay page status and the phone transaction row."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "web-unit",
         "e2e"
@@ -265,11 +265,18 @@
           "summary": "Re-review after the fix. The blocking finding is fixed: pay-box.tsx:328 hides the late note in closedPartial, and pay.spec.ts uses a strict How to get it back click again, so each held case shows one button. No other closedPartial case loses money information: the backend always sends amounts (ledger.ReadAmountsFor returns a row for every invoice; get.go sets inv.Amounts), so a closed checkout's received is payable 0 + held, and held already contains the late money (pay.late is capped at held). On-time 400 + late 600 shows 1,000 held, the right total; only the on-time/late split is gone, and both parts go back through the same support path. The other late cases still show the note (closed with nothing received, canceled, open or paid). Note, not blocking: if amounts were missing (the schema allows it, this backend never sends it), received would count only on-time money and the late money would vanish from the page. payState change, unit test (fails on the pre-fix pay.ts), e2e case and the reduced-motion spinners were checked in the first review and are unchanged. Pay unit tests 101/101 pass; verify passed at 20:56.",
           "at": "2026-11-25T20:58:10Z",
           "filesHash": "0f4980f9478e2b4d"
-        }
+        },
+        "commit": "e8685cdf",
+        "doneAt": "2026-11-25T21:09:43Z"
       },
       "branch": "fix/f475-a-closed-pay-page-whose-held-money-reach",
       "baseCommit": "a0a059ad92254bd58e330b30cdbebbf9968646ec",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "fix/f475-a-closed-pay-page-whose-held-money-reach",
+        "base": "main"
+      }
     },
     {
       "id": "F477",
