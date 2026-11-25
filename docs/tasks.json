@@ -12,10 +12,7 @@
         "KYB honestly remains not_required and never blocks test keys or invoices; obsolete API-later messaging is removed.",
         "Onboarding starts only after all other phase 11 features and their checks are complete, including integration, held-money refunds and history."
       ],
-      "dependsOn": [
-        "F335",
-        "F412"
-      ],
+      "dependsOn": [],
       "state": "blocked",
       "verification": [
         "web-unit",
@@ -35,30 +32,12 @@
       "evidence": null
     },
     {
-      "id": "F418",
-      "type": "fix",
-      "behavior": "Fix IDs on payments, checkouts, invoices and payment links",
-      "acceptance": [],
-      "dependsOn": [],
-      "state": "blocked",
-      "verification": [],
-      "refs": [],
-      "keep": [],
-      "review": false,
-      "notes": [
-        "2026-11-05 blocked: Deferred by owner (2026-11-05): low priority for now."
-      ],
-      "blockedReason": "Deferred by owner (2026-11-05): low priority for now.",
-      "evidence": null
-    },
-    {
       "id": "F435",
       "type": "fix",
-      "behavior": "The audit's low findings worth fixing are fixed, and live mode, gas sponsorship and the mainnet business model are recorded as open questions",
+      "behavior": "The 2026-11-07 audit's low findings are triaged, and an owner with no login email still hears when money leaves a wallet",
       "acceptance": [
         "The low findings are triaged with the owner first; the ones agreed on are fixed with tests.",
-        "PROJECT.md records testnet-only gas sponsorship and the mainnet business model, with the settle cap's gas, as open questions; live mode is decided in D-120.",
-        "What F433 left of the mediums is fixed or recorded: an Admin who leaves gives the owner keys to roll; the owner hears when an email or passkey is linked at Privy; an owner with no login email gets the wallet.outflow alert another way; one Pay per close can hold a one-time link; the checkout quota is per profile, not per store or mode."
+        "An owner with no login email still gets the wallet.outflow alert by another way, with a test."
       ],
       "dependsOn": [],
       "state": "not_started",
@@ -83,9 +62,7 @@
         "One owner invoice per chain pays, settles and reconciles to zero, with livemode true; the run is recorded in docs/runs.",
         "A Developer-mode invoice on the same profile still runs on testnet."
       ],
-      "dependsOn": [
-        "F438"
-      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [
         "docs-check"
@@ -109,9 +86,7 @@
         "Small live invoices paid with Arbitrum USDT, Ethereum ETH and Solana USDC each convert, become paid and settle, and the owner's pages show Paid with (R-241).",
         "An overpayment's extra returns to the refund address, and a deposit after the price window still converts or is refunded (R-241, A-4)."
       ],
-      "dependsOn": [
-        "F451"
-      ],
+      "dependsOn": [],
       "state": "blocked",
       "verification": [
         "live-e2e"
@@ -139,9 +114,7 @@
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise.",
         "Before review, each screen is compared side by side with its template at 1440 and 390 wide."
       ],
-      "dependsOn": [
-        "F464"
-      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [
         "web-unit",
@@ -160,9 +133,9 @@
     {
       "id": "F466",
       "type": "feat",
-      "behavior": "Payment links, Stores, in-person Checkout and Clients follow the redesigned layouts",
+      "behavior": "Payment links, Stores and Clients follow the redesigned layouts",
       "acceptance": [
-        "These screens match the approved templates (Forwend Redesign Templates), Option A; the in-person checkout hides its QR code while a payment confirms.",
+        "These screens match the approved templates (Forwend Redesign Templates), Option A.",
         "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
@@ -191,34 +164,12 @@
         "At 390px no screen of this step scrolls sideways, and each loading placeholder has the shape of what it replaces.",
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
-      "dependsOn": [
-        "F467"
-      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [
         "web-unit",
         "lint",
         "typecheck"
-      ],
-      "refs": [],
-      "keep": [],
-      "review": false,
-      "notes": [],
-      "blockedReason": null,
-      "evidence": null
-    },
-    {
-      "id": "F471",
-      "type": "fix",
-      "behavior": "The signed-in browser tests for payment links and empty lists pass again",
-      "acceptance": [
-        "links.spec.ts:91 passes: the saved link body it expects matches what the form sends, feesPaidBy included, or the form is fixed if it should not send it.",
-        "navigation.spec.ts:1089 passes: an empty list's block sits within 24px of the middle of the space under the header, with the developer mode strip shown."
-      ],
-      "dependsOn": [],
-      "state": "not_started",
-      "verification": [
-        "live-e2e"
       ],
       "refs": [],
       "keep": [],
@@ -306,9 +257,7 @@
         "The invoice and receipt PDFs match the redesigned document look, with each fee shown when the client pays it.",
         "Requests, money figures and existing behavior stay as they are unless the step's requirement row says otherwise."
       ],
-      "dependsOn": [
-        "F470"
-      ],
+      "dependsOn": [],
       "state": "not_started",
       "verification": [],
       "refs": [],
@@ -317,350 +266,6 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
-    },
-    {
-      "id": "F498",
-      "type": "refactor",
-      "behavior": "The codebase is untangled: comments and tests are cut to what guards a break, owners are clear, and the docs match the code.",
-      "acceptance": [
-        "Every required check passes on the final commit: harness, docs-check, lint, typecheck, unit, build and e2e.",
-        "The balance report reads Still checking while a network's scan lags, and the send summary shows To shortened as From does."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "harness",
-        "docs-check",
-        "lint",
-        "typecheck",
-        "unit",
-        "build",
-        "e2e"
-      ],
-      "refs": [],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-20 review pass by four fresh-context reviewers (backend money paths, backend HTTP/API, web and UI kit, packages/contracts/docs): Read-only review of origin/main..HEAD, 1223 files, by area. No confirmed behavior regression in production code. Backend: route table identical (120 routes), no migration changed, JSON tags unchanged, moved or split functions compared by AST and body. Contracts: Solidity code lines identical, deploy records untouched. Found and fixed: settle read waits and amounts in two reads, now waits first (4a1219b8). Restored: concurrent option-choice test, node no-runtime-dependencies test. Known and left for the owner: cut tests for ErrFeeQuote, receiveAddress refusals, some PDF and receipt assertions, webhook redirect, Open error wrapping, onboarding repeats, js/react iframe and PayButton assertions; PLAN.md sections 11.x that PROJECT.md, openapi.yaml and pay.spec.ts still cite; Shift+PageDown in the range calendar now jumps 12 months; the held-on-other-option note skips tokens missing from PAY_TOKENS. Not covered: reviewers ran no tests; web invoice-detail, new-invoice-form and landing/kit screens were skimmed, not read line by line."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-20T15:58:06Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 5.1,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.3,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.7,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 80.6,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.2,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 49.7,
-            "log": ""
-          },
-          {
-            "id": "browser-packages",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.9,
-            "log": ""
-          }
-        ],
-        "taskHash": "fd6d9b47fb9f3435",
-        "filesHash": "cddd12f68d797efb",
-        "proof": {
-          "1": "e2e: all seven required checks pass; the web e2e needs the Privy app id blank locally because the test server runs on a port Privy does not allow",
-          "2": "unit: the new scanCurrent Go test, the web status test and the unchanged send tests pass; the Go e2e covers the report"
-        },
-        "review": {
-          "result": "pass",
-          "by": "four fresh-context reviewers (backend money paths, backend HTTP/API, web and UI kit, packages/contracts/docs)",
-          "summary": "Read-only review of origin/main..HEAD, 1223 files, by area. No confirmed behavior regression in production code. Backend: route table identical (120 routes), no migration changed, JSON tags unchanged, moved or split functions compared by AST and body. Contracts: Solidity code lines identical, deploy records untouched. Found and fixed: settle read waits and amounts in two reads, now waits first (4a1219b8). Restored: concurrent option-choice test, node no-runtime-dependencies test. Known and left for the owner: cut tests for ErrFeeQuote, receiveAddress refusals, some PDF and receipt assertions, webhook redirect, Open error wrapping, onboarding repeats, js/react iframe and PayButton assertions; PLAN.md sections 11.x that PROJECT.md, openapi.yaml and pay.spec.ts still cite; Shift+PageDown in the range calendar now jumps 12 months; the held-on-other-option note skips tokens missing from PAY_TOKENS. Not covered: reviewers ran no tests; web invoice-detail, new-invoice-form and landing/kit screens were skimmed, not read line by line.",
-          "at": "2026-11-20T16:00:42Z",
-          "filesHash": "cddd12f68d797efb"
-        },
-        "commit": "b9e3ed18",
-        "doneAt": "2026-11-20T16:00:48Z"
-      },
-      "branch": "refactor/f498-the-codebase-is-untangled-comments-and-t",
-      "baseCommit": "ca13cffb0b277c388443f1780521485122549fa6",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "refactor/f498-the-codebase-is-untangled-comments-and-t",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F499",
-      "type": "fix",
-      "behavior": "Guards the refactor cut are back: the tests for fee quotes, receive-address refusals, receipts, webhooks, database open, onboarding and the checkout packages, and no document cites a PLAN section that is gone.",
-      "acceptance": [
-        "Each restored test passes, and fails when the behavior it guards is broken.",
-        "Every PLAN section cited in code and docs exists, and the held-on-another-option note and the range calendar keys are as the docs say."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "harness",
-        "docs-check",
-        "lint",
-        "typecheck",
-        "unit",
-        "build",
-        "e2e"
-      ],
-      "refs": [],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-20 review pass by fresh-context reviewer of the F499 diff, plus the earlier four-area review of the refactor: Read-only review of origin/main..HEAD for F499. No production code changed: only openapi.yaml description text and pay.spec.ts comments outside tests and docs. Every restored test was diffed against the pre-refactor tree and matches it except deliberate renames to current names; none skipped or weakened; the riskiest ones were read and fail when the guarded code is removed. Mutation checks were run by the authors for each restored guard. Docs citations to PLAN sections that shipped were removed or retargeted to D-118 and D-102 and read correctly. Review findings fixed in the last commit: D-97 target, a dead PLAN 12.2a cite in D-120, two cut profile checks, and a component test for the range calendar's Shift keys. Known and left: three cases of the old fee table test (covered at HTTP level by TestEveryOptionCarriesTheHighestNetworkFee and TestAChainThatCantBePricedLeavesThePayerTheOthers); D-79 and D-80 read as history; the PLAN 10.1 comment in migration 00029 is untouched because editing a migration changes its checksum. Not covered: the full test suite and e2e were run by verify, not by the reviewer; docs/tasks.json was not reviewed."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-20T16:49:05Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 4.5,
-            "log": ""
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.2,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 1.7,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 108.5,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 6.1,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 51.5,
-            "log": ""
-          },
-          {
-            "id": "browser-packages",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.8,
-            "log": ""
-          }
-        ],
-        "taskHash": "f50fdefc85686f83",
-        "filesHash": "29c125961c84b464",
-        "proof": {
-          "1": "unit: every restored Go and web test passes, and each fails when the code it guards is broken",
-          "2": "docs-check: no PLAN section that is gone is cited; the calendar rule is in R-59 with a component test; the held note is covered by its existing test"
-        },
-        "review": {
-          "result": "pass",
-          "by": "fresh-context reviewer of the F499 diff, plus the earlier four-area review of the refactor",
-          "summary": "Read-only review of origin/main..HEAD for F499. No production code changed: only openapi.yaml description text and pay.spec.ts comments outside tests and docs. Every restored test was diffed against the pre-refactor tree and matches it except deliberate renames to current names; none skipped or weakened; the riskiest ones were read and fail when the guarded code is removed. Mutation checks were run by the authors for each restored guard. Docs citations to PLAN sections that shipped were removed or retargeted to D-118 and D-102 and read correctly. Review findings fixed in the last commit: D-97 target, a dead PLAN 12.2a cite in D-120, two cut profile checks, and a component test for the range calendar's Shift keys. Known and left: three cases of the old fee table test (covered at HTTP level by TestEveryOptionCarriesTheHighestNetworkFee and TestAChainThatCantBePricedLeavesThePayerTheOthers); D-79 and D-80 read as history; the PLAN 10.1 comment in migration 00029 is untouched because editing a migration changes its checksum. Not covered: the full test suite and e2e were run by verify, not by the reviewer; docs/tasks.json was not reviewed.",
-          "at": "2026-11-20T16:52:07Z",
-          "filesHash": "29c125961c84b464"
-        },
-        "commit": "acac6d52",
-        "doneAt": "2026-11-20T17:01:08Z"
-      },
-      "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
-      "baseCommit": "ee3372cf2e6b11dbf3c9903b93db843aa94bc68a",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "fix/f499-guards-the-refactor-cut-are-back-the-tes",
-        "base": "main"
-      }
-    },
-    {
-      "id": "F500",
-      "type": "perf",
-      "behavior": "Checks give their answer fast and never hide a failure",
-      "acceptance": [
-        "The slowest Go packages (httpapi/tests, settlement, ledger, database) run their tests in parallel and pass with -race and -shuffle=on several times in a row; the backend unit check is at least twice as fast as before (97 s).",
-        "The backend e2e tests run in parallel and pass; the backend e2e check is faster than before (31 s).",
-        "Browser tests run fully parallel with no retries on CI and pass several times in a row.",
-        "Verification runs checks in different lanes at the same time; a failure stops only its lane; every failure is reported; harness tests cover it.",
-        "Staging CI runs each lane as its own job and still runs every required and CI-only check.",
-        "Tests that guard nothing in Which tests to keep are removed: a layout-only pay check, a logo picture check and two job tests an always-on e2e test repeats; every guard stays."
-      ],
-      "dependsOn": [],
-      "state": "passing",
-      "verification": [
-        "harness",
-        "unit",
-        "e2e"
-      ],
-      "refs": [
-        "R-257",
-        "R-158",
-        "R-40"
-      ],
-      "keep": [],
-      "review": true,
-      "notes": [
-        "2026-11-20 review pass by reviewer: No blocking defect. Checked: every parallel Go test vs process-wide writes (slog default, http.DefaultTransport, chain.EthUSD, reauth.TwoStepWait stay in sequential tests with Cleanup restore; removed signedInAt write was the only shared var); go test -race -count=3 -shuffle=on on httpapi/tests, settlement, ledger, database passes; backend e2e -count=2 -shuffle passes; harness 67 tests and docs-check pass. Lanes: cache writes under lock, done/errors safe, lane exception propagates and stops other lanes (tried), SIGTERM/Ctrl-C stop every RUNNING check, cmd_verify fails when a lane stops early (len(results) < len(order)). CI matrix [main, unit] covers all required and CI-only checks; artifact names unique. Non-blocking: (1) docs/workflow.md:73 says Go and forge checks share the unit lane, but backend-e2e and e2e (Go e2e reading packages/contracts/out) and build (forge build via turbo) are main lane; a local check --ci without --lane, or an explicit symbolic task check, can run forge clean while backend e2e reads out/ and fail spuriously; CI jobs are separate so CI is safe. Concurrent forge compiles showed no torn artifact reads in 3 trials. (2) verification.run: a lane thread that passed cancelled.is_set() just before stop_running() can still start one check that outlives the harness; tiny window. (3) signedInAt is now fixed at process start: fresh-sign-in tests need the httpapi/tests process to finish within auth.FreshWindow (15 min); now about 66 s. (4) e2e freeAddr reserves then closes a port; with parallel stacks a reused port would let waitFor(api healthy) reach another test's API; low odds. (5) The CI Postgres restart step is only actionlint-checked until a staging run.",
-        "2026-11-20 review pass by reviewer: Re-review of changes since the last pass; no blocking defect. (1) e2e/gate_test.go apiStart mutex: freeAddr through /healthz runs under the lock, and defer Unlock covers t.Fatal; the only other freeAddr caller is the sequential loadtest. (2) docs/workflow.md lane bullets match config.json. Nit: backend-e2e also reads the contracts build, not only e2e. (3) chain/budget_test: rates give api next_at about now+6.25 s and money about now+0.4 s. The order check catches a shared bucket (no row) and a too-small money share, and drops only the 200 ms wall-clock bound. (4) pay.spec.ts reads the three rects in one evaluate: 10/10 with --repeat-each=10; tsc and biome clean. (5) PayerEmailAllRate var: routes.go reads it once when the router is built, the test is sequential with a Cleanup restore, and mid.Buckets handles rate 0 (as DryQuoteAllRate already does). (6) TestUserRateLimit with burst 3 still checks 429, rate_limited, Retry-After 1, per-user buckets and refill. It no longer asserts the default 60 or the 0->mid.UserBurst fallback in guards.go:27: a small, acceptable loss. Ran: go test -race -count=3 -shuffle=on ./internal/chain ./internal/httpapi/tests ok; the two rate tests with -count=5 ok; e2e -count=2 -shuffle ok; harness tests and docs-check ok.",
-        "2026-11-20 review pass by reviewer: Third re-review, of 58426cb1 and 9b5263b2 only; no blocking defect. (1) ci.yml: the unit lane needs Chromium because internal/canary tests run apps/web/scripts/canary-pay-page.ts (canary_test.go:83, :258), so installing Playwright in both lanes is right. Trace upload stays main-only and the artifact names stay unique. 9b5263b2 restores the staging-only trigger, and the harness test that ties the matrix to the registry passes. gh confirms run 44796449618 succeeded on 58426cb1 for checks (unit) and checks (main). (2) webhook_delivery_test: Deliver (internal/webhook/deliver.go:48) keeps claiming in the same batch while earlier attempts run in goroutines. So once the failed attempt records and frees the endpoint, the healthy delivery can go out in that round. That is existing product behavior, not something F500 added, and accepting [notSent, 200] hides nothing: the test still requires the failed attempt first and the healthy delivery after it, and after round 2 it still requires succeeded 1 with exactly 1 request, so a double send still fails. The broken delivery's schedule, its final failed state and the endpoint staying enabled are unchanged. Ran: go test -race -count=30 of that test ok; harness staging-CI test ok.",
-        "2026-11-20 review pass by reviewer: Fourth re-review, of 7d2de2df only; no removal drops a real guard. (1) pay.spec: the deleted part was the pixel alignment loop. It came from UI polish f402071a, not from a bug a user hit, so the keep rule's layout exclusion applies. The kept test still checks that a network that did not answer is named. (2) crosschain-picker: the deleted test only compared two img src values, which is simple rendering. The token-id, too-little and About rounding guards stay. (3) jobs changes: claim checked. In job-quote.spec.ts (default config, not privy/), the R-106 accept test asserts posts equal to name, email and the microsecond proposedAt 2026-10-19T09:00:00.123456Z. The withdrawn test fulfills 404 job_not_found and asserts the withdrawn notice is focused, the form is gone and Extra page leaves Payments, which is AcceptChange's onGone path. plan --paths on accept-change.tsx and crosschain-picker.tsx selects web-e2e, so a local verify still runs that cover. Nothing clearly useless left in the touched files. Ran: vitest on the two unit files 6/6; biome clean; Playwright for the kept pay test and both job-quote tests, --repeat-each=3, 9/9."
-      ],
-      "blockedReason": null,
-      "evidence": {
-        "version": 3,
-        "status": "passed",
-        "at": "2026-11-20T19:07:29Z",
-        "checks": [
-          {
-            "id": "harness",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": "",
-            "cached": true
-          },
-          {
-            "id": "docs-check",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.0,
-            "log": ""
-          },
-          {
-            "id": "lint",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 0.8,
-            "log": ""
-          },
-          {
-            "id": "typecheck",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 6.8,
-            "log": ""
-          },
-          {
-            "id": "unit",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 91.4,
-            "log": ""
-          },
-          {
-            "id": "build",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 8.8,
-            "log": ""
-          },
-          {
-            "id": "e2e",
-            "outcome": "passed",
-            "exit": 0,
-            "seconds": 48.8,
-            "log": ""
-          }
-        ],
-        "taskHash": "dd75e62e991e9074",
-        "filesHash": "91b508e9e5c6b943",
-        "proof": {
-          "1": "unit: backend go test -race passes with t.Parallel in httpapi/tests, settlement, ledger, database (40-43 s vs 97 s); budget, payer-email, user-limit and webhook-round tests no longer depend on machine speed or goroutine order",
-          "2": "e2e: backend e2e tests run in parallel, apis start one at a time on their own port; runs pass in 13-15 s vs 31 s before",
-          "3": "e2e: Playwright fullyParallel, no CI retries; 146/146 pass in 33.5 s vs 53.5 s, 438/438 with --repeat-each=3",
-          "4": "harness: test_lanes_run_side_by_side_and_a_failure_stops_only_its_lane and test_sigterm_stops_the_checks_of_every_lane fail on the old runner and pass now",
-          "5": "harness: test_staging_ci_runs_every_lane matches ci.yml's lane matrix [main, unit]; GitHub run 44796449618 ran both lane jobs green in 411 s vs 11-12 min before",
-          "6": "e2e: 276 unit test files audited against Which tests to keep; removed: pay layout loop (its unread-network check kept, and it fails when that naming breaks), the picker logo check, and two job tests job-quote.spec repeats; unit and e2e still pass"
-        },
-        "review": {
-          "result": "pass",
-          "by": "reviewer",
-          "summary": "Fourth re-review, of 7d2de2df only; no removal drops a real guard. (1) pay.spec: the deleted part was the pixel alignment loop. It came from UI polish f402071a, not from a bug a user hit, so the keep rule's layout exclusion applies. The kept test still checks that a network that did not answer is named. (2) crosschain-picker: the deleted test only compared two img src values, which is simple rendering. The token-id, too-little and About rounding guards stay. (3) jobs changes: claim checked. In job-quote.spec.ts (default config, not privy/), the R-106 accept test asserts posts equal to name, email and the microsecond proposedAt 2026-10-19T09:00:00.123456Z. The withdrawn test fulfills 404 job_not_found and asserts the withdrawn notice is focused, the form is gone and Extra page leaves Payments, which is AcceptChange's onGone path. plan --paths on accept-change.tsx and crosschain-picker.tsx selects web-e2e, so a local verify still runs that cover. Nothing clearly useless left in the touched files. Ran: vitest on the two unit files 6/6; biome clean; Playwright for the kept pay test and both job-quote tests, --repeat-each=3, 9/9.",
-          "at": "2026-11-20T19:10:28Z",
-          "filesHash": "91b508e9e5c6b943"
-        },
-        "commit": "7d2de2df",
-        "doneAt": "2026-11-20T19:12:59Z"
-      },
-      "branch": "perf/f500-checks-give-their-answer-fast-and-never",
-      "baseCommit": "ae2551a25ca1bf117223ca6eb39b97f29914e8e7",
-      "failedVerifies": 0,
-      "delivery": {
-        "mode": "pr",
-        "branch": "perf/f500-checks-give-their-answer-fast-and-never",
-        "base": "main"
-      }
     }
   ],
   "lastWrapup": {
