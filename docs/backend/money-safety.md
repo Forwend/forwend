@@ -17,7 +17,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   receive address or `factory.predict` gives another one (`internal/settlement/settle.go`); the canary checks open
   invoices ([Canary](#canary)).
 - Before showing an address, run the same term checks as `settle`, plus expiry ≤ 365 days and the settle window.
-  - The settle deadline is expiry + 7 days, or + 24 h for invoices made before this window (D-18).
+  - The settle deadline is expiry + 7 days. Older invoices have + 24 h, and the checks accept both (D-18).
   - The contract accepts any terms, so these checks live only here.
 - Reopen (R-130) gives money held for the payer back to the creator. Only for an option that closed partly paid.
   - Once per invoice, a day or more before its receiver's settle deadline, so a payment at the new close still settles.
@@ -223,7 +223,7 @@ Self-serve returns are [deferred](../../PLAN.md#deferred-beyond-mvp).
 - A deposit is received when seen and paid only at or below the chain's `finalized` block (D-45); show blocks and
   time left until then (`internal/finality`). Read headers, logs and receipts only, and compare block hashes the RPC
   returns: go-ethereum can't decode Base, Arbitrum and Tempo system transactions, and its `Header.Hash()` is wrong on
-  Tempo (local S-4 notes (`../spikes/s4-chains.md`)).
+  Tempo.
 
 ## Checkout
 
@@ -366,7 +366,7 @@ check on the last `canary passed`):
 ```
 
 The terms come from stdin, not a database connection, so the canary holds no database credentials; a read-only role
-lists them. An invoice made before D-86 has no pay token and no pay page, so the query leaves it out. `detected` invoices are left out: a deposit that may cover the amount is on its way, and the page then
+lists them. An invoice with no pay token (D-86) has no pay page, so the query leaves it out. `detected` invoices are left out: a deposit that may cover the amount is on its way, and the page then
 stops showing the address. So are the other options of an invoice whose option was chosen: the page no longer shows
 them. An invoice paid between the query and the page read alerts once; the next run passes.
 
@@ -427,7 +427,7 @@ Limits:
   - The link can then sell over its cap; it reads `full` and takes no new purchases.
   - The payer's money is never held or refused for the cap.
 - Expiry releases unused slots only after ledger reconciliation; late held deposits do not count as sales.
-- Creation and legacy reopening lock the link before reading fresh capacity in a separate READ COMMITTED statement.
+- Creation and reopening lock the link before reading fresh capacity in a separate READ COMMITTED statement.
 - Profile coordination uses `FOR NO KEY UPDATE` in creation, link saves and invoice sending.
 - This serializes merchant operations while permitting event foreign-key checks under invoice and link locks.
 - Strong profile locks would form a cycle: create waits for link; reopen holds link and records an event referencing profile.

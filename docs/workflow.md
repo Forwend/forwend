@@ -1,10 +1,12 @@
 # Development workflow
 
 Entry point: `python3 scripts/harness.py`. Add `-h` after any command for options.
-Check commands and path rules live in [config.json](config.json). Staging CI runs the full required and CI-only checks without cached results.
-Open task state lives in `tasks.json` (edit through the runner); completed records live in local-only `archive/`;
-logs of checks that did not pass live in ignored `runs/`; a passed check leaves none.
-Runner regression tests live in `tests/test_harness.py`. No installed skill is needed to use this workflow.
+Check commands and path rules live in [config.json](config.json).
+Staging CI runs every required and CI-only check without cached results, one job per lane ([staging.md](staging.md)).
+Open task state lives in `docs/tasks.json`; change it only through the runner.
+Completed records live in the ignored `docs/archive/`.
+Logs of checks that did not pass live in the ignored `docs/runs/`; a passed check leaves none.
+Runner tests live in `tests/test_harness.py` and `tests/test_verification.py`. The runner needs no installed skill.
 
 - `archive/`, `research/` and `spikes/` are optional local files, excluded from Git.
 - Keep requirements and decisions in tracked docs so a fresh checkout does not depend on those local files.
@@ -27,11 +29,14 @@ Runner regression tests live in `tests/test_harness.py`. No installed skill is n
    Reproduce bugs first. Make the smallest fix and run its direct checks. Keep a test only when the rule in
    [Which tests to keep](#which-tests-to-keep) says so; prove a visual change with screenshots in `docs/runs/`.
 5. `plan ID` shows selected checks. `verify ID --proof "1=CHECK: evidence" ...` runs explicit task checks plus checks selected by changed paths. Each acceptance line needs a named check.
-6. Review is required for every task that changes more than docs (`done` refuses it otherwise; outside a git
-   repository the harness can't tell, so only `--review` tasks need it) and for tasks added with `--review`. A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
+6. Review is required for tasks added with `--review` and for every task that changes more than docs.
+   `done` refuses such a task without a passing review of the current files.
+   Outside a git repository the harness can't see what changed, so only `--review` tasks need review.
+   A fresh reviewer reads `show ID` and the diff, then runs `review ID --pass|--fail --summary "findings"`.
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
    checks the delivery policy ([staging.md](staging.md)) and merges.
-   Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
+   - No GitHub checks run on PRs into `main`, so `done` merges on the recorded local verification.
+   - Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
 8. Before stopping: `wrapup --note "result; next step"` reports verification status and cleanup without running tests. Resolve failures or report the exact remaining blocker.
 
 ## Structure review
@@ -51,15 +56,16 @@ For a refactor, acceptance must require unchanged behavior and public contracts,
 test discovery, and the relevant existing checks. Record unrelated cleanup separately rather than expanding
 the task. The structure rules do not authorize adding dependencies or moving code outside the task scope.
 
-`docs-check` validates documentation links, that cited R-/D-/Q-/A- IDs and PROJECT check names exist, and that each
-decision is defined once; not source architecture. Structure review is
-manual until a task explicitly adds import-boundary checks; do not claim that passing lint proves ownership.
+`docs-check` checks documentation links, that cited R-/D-/Q-/A- IDs and PROJECT check names exist, and that each
+decision is defined once, in PROJECT. It does not check source architecture.
+Structure review is manual: no check enforces import boundaries, so passing lint does not prove ownership.
 
 ## Evidence and scope
 
 - `plan ID` lists local checks for the task. `plan --paths PATH ...` previews selection without running anything.
 - `check` selects checks for changes since HEAD. Named checks run exactly those checks.
 - `check --ci` runs every required and CI-only check fresh, regardless of changed paths.
+  - `--lane NAME` runs only that lane's checks. Each staging CI job runs one lane.
 - Explicit task checks always run, even when path rules would select fewer checks. Choose the smallest checks that prove acceptance.
 - Markdown edits run documentation validation. UI wording runs lint, types and web unit tests.
 - Web behavior includes web unit tests, build and deterministic browser tests. Shared UI also checks its consuming web application.
@@ -75,7 +81,9 @@ manual until a task explicitly adds import-boundary checks; do not claim that pa
   - `symbolic` cleans the contracts build that `e2e` also reads. Run it alone or with `--lane unit`, as staging CI does.
 - Source changes during execution invalidate the result. Changes to task wording require fresh evidence binding, but unchanged checks can be reused.
 - Git-injected commit identity and index-location metadata do not invalidate results; execution configuration still does.
-- Pre-commit checks use the same selection and cache. Stage the complete change first; partially staged inputs are refused.
+- The pre-commit hook runs the selected checks marked `precommit`, with the same cache.
+  - Stage the complete change first; the hook refuses unstaged changes.
+- The pre-push hook blocks pushes to `main`. `start` installs both hooks; `hook install` does it by hand.
 - `wrapup` never executes tests or grants verification. Delivery uses the recorded successful verification and independent review.
 - Auth and Privy integration changes must select live tests when deterministic tests cannot prove the behavior.
 - Live provider checks are explicit: `check live-e2e` or `pnpm --filter @forwend/web e2e:live`.

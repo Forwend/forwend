@@ -10,13 +10,13 @@ Whole system: [architecture.md](../architecture.md).
 
 | Part | Role |
 |---|---|
-| `packages/design-tokens` | Every color, type size, space, radius, shadow, blur and duration as CSS variables, light and dark (D-4). Tailwind v4 reads them; a unit test checks contrast (R-2). |
+| `packages/design-tokens` | Every color, type size, radius, shadow, blur and duration as CSS variables, light and dark (D-4). Tailwind v4 reads them; spacing is Tailwind's 4px scale. A unit test checks contrast (R-2). |
 | `packages/ui-web` | Shared React components built only on the tokens: buttons, fields, address, payment status and money display, motion, theme switch. Money is `bigint` base units plus decimals (D-6). |
 | `apps/web` | Routes, screens and features: landing, kit, `/app`, `/pay`, `/embed`, `/l`, `/reminders`, `/w`, `/docs`. Imports tokens and components; adds no raw colors or sizes. |
 | `/kit` | Shows every token and component with all states; private (`KIT_ENABLED=1`, `noindex`, not in the sitemap) (D-5, R-4). |
 
 The source layout and naming rules are in [structure.md](structure.md): routes assemble screens,
-features own product behavior, and shared UI components are grouped by purpose. `ui-web/src/index.ts` remains the public package entry point.
+features own product behavior, and shared UI components are grouped by purpose. `packages/ui-web/src/index.ts` is the package's public entry point.
 
 ## Visual direction
 
@@ -60,7 +60,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
   - Navigation comes from one `APP_NAV`; switching profile opens the new profile's `/app` (R-76).
   - Each page names the permission it needs; `GET /v1/me` lists each profile's permissions (D-93).
   - `screens/app-shell/lib/app-nav.ts` hides the pages a role can't use; the shell, ⌘K and the bell skip its polls.
-  - The invoice pages take token symbols and decimals from `GET /tokens`, which every role reads, not the balances.
+  - The invoice pages take token symbols and decimals from `GET /v1/profiles/{profileId}/tokens`, which every role reads, not the balances.
   - A role change or removal on the Team page reads `/v1/me` again, so an Admin who changed themselves sees what is left.
   - A hidden page's address opens the role's first page instead. The API refuses those requests anyway.
   - `/invite/<token>` (R-139) sits in the `(app)` group for Privy, outside `/app`: the invited user may have no account.
@@ -77,8 +77,8 @@ features own product behavior, and shared UI components are grouped by purpose. 
       missing one never returns.
     - The hash or the signature goes to the api, and the sheet reads the send every 1.5 s until the watcher says Sent.
       It skips those reads while the tab is not in view.
-  - Receive's choice is keyed by chain family (`features/receive/lib/receive-choice.ts`), so non-EVM families fit
-    later; the address never shows without its exact network and token warning.
+  - Receive finds the wallet address by chain family, not by chain (`features/receive/lib/receive-choice.ts`).
+    The address never shows without its exact network and token warning.
   - Balances and activity are read again every 15 s while the tab is visible and when it comes back. Money sent
     straight to the wallet shows in the balance once final, not in activity.
   - The Payments Issues view is read again every minute (`SLOW_LIVE_QUERY`): it checks each payment's ledger.
@@ -154,7 +154,7 @@ features own product behavior, and shared UI components are grouped by purpose. 
     - the signed request: that receive address, Base USDC, `EXACT_OUTPUT`, the amount due, the token and the refund address.
   - The address and amount shown are read from the signed answer, never from the api's own fields.
   - The amount shows rounded up at the price 1Click signed (R-244); 1Click refunds what the conversion doesn't take.
-  - A slippage above the api's 1% is refused: the extra it lets a payer send goes back to the refund address.
+  - A slippage other than the api's 1% is refused: the extra it lets a payer send goes back to the refund address.
   - A reload shows the kept quote only for the token and refund address this tab asked with (session storage).
     - Without them the payer types the refund address again; Show address then gives the same open quote.
   - A test build's `NEXT_PUBLIC_ONECLICK_TEST_KEY` counts only when the page itself runs on loopback.

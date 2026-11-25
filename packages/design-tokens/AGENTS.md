@@ -1,6 +1,7 @@
 # design-tokens
 
-Design tokens (colors, type, spacing, radius, shadow, motion) as CSS variables, light and dark.
+Design tokens (colors, type, radius, shadow, blur, motion) as CSS variables, light and dark.
+Spacing is Tailwind's own 4px scale, not a token.
 
 - Test: `pnpm --filter @forwend/design-tokens test`.
 - Rules: [docs/web/rules.md](../../docs/web/rules.md). Design: [docs/web/DESIGN.md](../../docs/web/DESIGN.md).

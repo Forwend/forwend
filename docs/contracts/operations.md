@@ -2,8 +2,9 @@
 
 The refund-authority Safe and deploys. Design: [architecture.md](architecture.md). Code rules: [rules.md](rules.md).
 
-## Safe setup (mainnet; testnets use an EOA)
+## Safe setup (production; testnets and development mainnets use an EOA)
 
+- The Safe is not deployed yet; [PLAN](../../PLAN.md) tracks it.
 - Safe 1.4.1+, at least 3 of 5 owners on hardware keys.
 - Same address everywhere. Deploy it on day one on every planned chain and on every EVM chain where a wrong-chain
   deposit could arrive, before any owner change (former owners could otherwise claim the address there).
@@ -54,7 +55,7 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 - The deployer and refund-authority keys in `packages/contracts/.env` also guard the development mainnet factory.
   - Keep them off shared machines.
 - Record it in `packages/contracts/deployments.json`; a replaced factory moves to `superseded`.
-- Every deploy needs Sasha's explicit yes. Results: local docs/spikes/s5-s6-testnets.md notes (`../spikes/s5-s6-testnets.md`).
+- Every deploy needs Sasha's explicit yes.
 
 ## Development mainnet deploys
 
@@ -64,5 +65,5 @@ The refund-authority Safe and deploys. Design: [architecture.md](architecture.md
 - Mainnet runs deploy the factory and probe only, never the flow: its money would go to the keyless test recipient.
 - This is the owner's choice for development. Production gets new contracts with the Safe above.
 - `script/deploy.sh <chain>` takes the mainnet names in `chains.json`. Each run needs Sasha's explicit yes.
-- On Tempo the executor pays fees in OUSD. It set that once with `setUserToken(OUSD)` on the fee manager.
-  - `cast send --tempo.fee-token OUSD` pays for that first call, since the executor holds no pathUSD.
+- On Tempo the executor pays fees in OUSD, its fee token set by `setUserToken(OUSD)` on the fee manager.
+  - That call needs `cast send --tempo.fee-token OUSD`, since the executor holds no pathUSD.

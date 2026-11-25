@@ -23,12 +23,15 @@ Requirements and decisions: [PROJECT.md](PROJECT.md).
 | NEAR Intents 1Click | Converts a payer's token on another chain into USDC on Base | No | [money safety](backend/money-safety.md#cross-chain-payments) |
 | RPC providers | Read chains through prioritized private/public endpoints; one working provider supplies finalized evidence and balances | No | PROJECT D-15 |
 
+The Safe is not deployed yet. On testnets and the development mainnets, a test key is the refund authority
+([contracts operations](contracts/operations.md#development-mainnet-deploys)).
+
 ## Trust boundaries
 
 - The API never holds a private key. A hacked API can write wrong invoice terms, but it cannot move money already in
   a receiver: the receiver only pays its fixed recipient, or returns money through the Safe.
 - The signer has no public routes and no user sessions. It re-reads the ledger and the chain before signing, and the
-  executor key can only settle to the recipient written in the terms. A leaked executor key is replaced by the Safe.
+  executor key can only settle to the recipient written in the terms. The refund authority replaces a leaked executor key.
 - The webhooks sender is the one part that calls URLs users choose. It holds no money, Privy, email or RPC key, and
   sends only to public addresses, checked after DNS.
 - Refunds and recoveries never go through the signer.

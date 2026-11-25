@@ -24,7 +24,7 @@
 - Only `internal/config` reads environment values; `chain.Specs` resolves references into trusted backend memory.
 - No endpoint or secret-management API is exposed to merchants, payers or browsers.
 - A snapshot loads once at process startup; restart API, worker and signer after changing endpoint metadata or credentials.
-- Chain disablement still stops worker and signer jobs through their existing database checks.
+- Disabling a chain in the database stops its worker and signer jobs on their next round.
 - Adding or enabling a chain requires restarting all RPC-consuming processes before serving it.
 
 ## Adding a private endpoint
@@ -117,7 +117,7 @@ VALUES
 - Batches over 50 calls go to HTTPS endpoints first: PublicNode never answers larger WSS batches.
 - The pool subscribes to nothing. Server notifications are ignored; money evidence comes from finalized reads only.
 - The dial uses the same destination checks as HTTPS, never a proxy, sends no `Origin`, and never follows a redirect.
-- `gorilla/websocket`, already built in through go-ethereum's `rpc` package, carries the connection.
+- `gorilla/websocket` carries the connection; go-ethereum's `rpc` package uses the same library.
 
 ## Errors and transaction safety
 

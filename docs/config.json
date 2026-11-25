@@ -337,7 +337,7 @@
     "fallback": ["harness", "docs-check", "lint", "typecheck", "unit", "build", "e2e"],
     "rules": [
       {
-        "paths": ["*.md", "docs/archive/*.json", "docs/tasks.json"],
+        "paths": ["*.md", "docs/archive/*.json", "docs/tasks.json", "docs/install.json"],
         "checks": []
       },
       {

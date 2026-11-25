@@ -11,7 +11,7 @@ This document owns the product boundaries for merchant payments. PROJECT owns re
 | Payment link | Reusable fixed/open offer; each purchase starts an independent checkout. |
 | Checkout session | One purchase attempt with immutable amount, source, store, mode and optional external order reference. |
 | Invoice | Numbered customer billing document with issuer, recipient, line items and due date. |
-| Personal request | A simpler request between people, preserving its existing flow. |
+| Personal request | A simpler request between people. |
 | Payment | Financial aggregate containing accepted options, deposits, held funds and settlement. |
 | Settlement | Confirmed movement of merchant entitlement from a receiver to the profile wallet. |
 | Refund | Evidence of receiver funds returned by the authority; support starts it with `cmd/ops` (D-118). |
@@ -21,7 +21,7 @@ This document owns the product boundaries for merchant payments. PROJECT owns re
 - Products and orders remain in the merchant's application.
 - Checkout accepts item snapshots and an external order reference; it does not introduce catalog or inventory management.
 - A store shares its profile wallet and is not a separate legal entity or spendable balance.
-- Existing SQL and receiver contracts remain the shared payment engine; distinct APIs and screens express distinct workflows.
+- The payment tables and receiver contracts are one shared payment engine. Each workflow has its own APIs and screens.
 
 ```mermaid
 flowchart LR
@@ -105,13 +105,13 @@ Payment status and wallet transfer are separate facts (D-114). The API derives b
 
 ## Compatibility and scope
 
-- Add explicit immutable purposes to the existing payment engine instead of renaming its tables or changing receive addresses.
-- New checkout sessions never allocate invoice numbers or create an invoice document.
-- Existing link attempts retain invoice documents and delayed numbering, including attempts still unnumbered during migration.
+- Each payment has a purpose and a document kind that never change. The engine keeps its tables and receive addresses.
+- Checkout sessions never allocate invoice numbers or create an invoice document.
+- Older link attempts keep their invoice documents and delayed numbering, including attempts not yet numbered.
 - Purpose and attached document kind remain distinct; a legacy checkout may have its original invoice document.
 - Preserve original request hashes for in-flight legacy retries.
-- Existing issued numbers, document URLs, IDs, invoice API defaults and public webhook names remain compatible under D-104.
-- New payment/session read models expose origin independently of document numbering.
+- Issued numbers, document URLs, IDs, invoice API defaults and public webhook names stay compatible under D-104.
+- Payment and session reads expose origin independently of document numbering.
 - Billing composition identifies the recipient by name or email; existing API invoice defaults remain compatible.
 - Notifications retain event names and expose nullable document numbers for checkout.
 - Unused pending history creates no warning; conflicting evidence and affected funds retain a clear action.
@@ -121,24 +121,12 @@ Payment status and wallet transfer are separate facts (D-114). The API derives b
 - Legacy request hashes remain unchanged; supplied amounts must match original terms.
 - Legacy storage cannot prove omitted fixed/open input or old offer versions; new immutable request metadata records both.
 - Links retain their original store; moving a selling channel requires another link.
-- Capacity checks and reservations happen in the payment transaction, including legacy reopening.
+- Capacity checks and reservations happen in the payment transaction, including reopening.
 - Canonical open, detected and partly paid purchases reserve slots; paid purchases consume them.
 - Canonical expiry frees unused slots; wall time alone cannot release unresolved funds.
 - Merchant readiness and failed configuration loads are explained before a customer reaches an unusable payment.
 - Wallet activity stays profile-wide under D-93; store payment views and exports honor store access.
-- Hosted checkout comes first; embedded checkout is restricted to the store's allowed origins.
+- Checkout is hosted or embedded. Embedded checkout runs only on the store's allowed origins.
 - Browser packages never receive secret API keys or decide financial success.
 - Self-serve returns of held money are [deferred](../PLAN.md#deferred-beyond-mvp); support returns it (D-118).
 - Each profile has a Developer mode toggle (D-120): off is live mode on mainnets, on is test mode on testnets.
-
-## Primary evidence
-
-- [Reusable link and checkout relation](https://docs.stripe.com/api/payment-link).
-- [Single-use and reusable link lifecycles](https://docs.adyen.com/unified-commerce/pay-by-link/create-payment-links).
-- [Order-correlated crypto checkout](https://doc.heleket.com/host-to-host).
-- [Customer invoice lifecycle](https://docs.stripe.com/invoicing/overview).
-- [Optional invoices after checkout](https://docs.stripe.com/receipts).
-- [Current Coinbase checkout workflow](https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/overview).
-- [Webhook duplication and ordering](https://docs.stripe.com/webhooks).
-
-Detailed local research lives in ignored `docs/research/merchant-payment-workflows.md`; tracked requirements and decisions remain sufficient for a fresh checkout.

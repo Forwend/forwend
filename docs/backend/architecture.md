@@ -67,8 +67,8 @@ Read only the sections your task touches:
     - Only tests set `COINGECKO_API_URL`: the e2e gate points the worker at a fake CoinGecko.
 - `signer`: separate process, own credentials, no public routes, no user sessions. Accepts only
   typed intents ("settle invoice X") and signs only `factory.deploy` and `receiver.settle`, plus the USDC approve and
-  Uniswap swap that buy its own gas (R-229). Refunds are never signed
-  here: the refund authority's Safe sends them ([returns](money-safety.md#returns-through-support)). Re-reads the ledger and the chain
+  Uniswap swap that buy its own gas (R-229). It also signs a zero-value transfer to itself that fills a nonce gap
+  ([signer](#signer)). Refunds are never signed here: the refund authority's Safe sends them ([returns](money-safety.md#returns-through-support)). Re-reads the ledger and the chain
   itself before signing, and settles at most `SponsoredPerDay` (50) invoices per user a day on the executor's gas.
   An invoice with a network fee pays that gas itself (R-226), so it is not counted or held back.
   Writes settlement intents, the settlement ledger transaction and `settlement_status`. Every process uses one
@@ -108,15 +108,15 @@ D-71); a chain whose RPCs don't answer is logged and skipped:
   - The pool then rides it out as it rides out any outage: requests rest the hosts that fail and use the next one.
     One working endpoint can provide finalized evidence for payment and settlement.
 - The API reads factory code through the same failover pool. No code
-  on an enabled chain, or no answer from either, stops it: invoices there could never settle.
+  on an enabled chain, or a failed read, stops it: invoices there could never settle.
 - The signer: `EXECUTOR_PRIVATE_KEY` is a hex secp256k1 key (the error never shows it), and on every enabled chain the
   executor holds `settlement.MinGas` at the fee cap it would sign with now (twice the base fee plus the tip). `MinGas`
   is one receiver deploy (159,990 gas on Anvil) and one settle (at least `SettleGasFloor`), each plus a fifth: 342,000
   gas, 0.001026 ETH on Anvil (1 gwei base fee and tip). Below it the node would refuse the next deploy and settle. A
   shortfall is not a setup mistake (D-71): the signer logs `ALERT executor gas runs low` and starts. Other chains
   settle, and its first round checks the gas again and buys some (below). The message names the chain, the executor's
-  address and its balance in whole coins. A read that fails on the primary is retried through the endpoint pool; a
-  shortfall ends the check at once. A chain with no fee ceiling stops the signer. It is a floor derived from each chain's own price, not a
+  address and its balance in whole coins. The reads go through the chain's endpoint pool, which tries the next endpoint
+  when one fails. A chain with no fee ceiling stops the signer. It is a floor derived from each chain's own price, not a
   budget: Arbitrum's L1 data cost is not in it. Tempo has no native coin and its RPC reports a placeholder balance:
   where Tempo's fee manager precompile exists, the check reads the executor's fee token instead (its choice in the fee
   manager, else PathUSD) and needs ceil(fee cap × `TempoMinGas` / 10^12) of its 6-decimal units, since Tempo prices
@@ -187,6 +187,7 @@ and the limit buckets in `internal/httpapi/mid` would move to it. Nothing else i
   - Each api replica, the worker and the signer also open a 2-connection pool for the RPC budget.
   - The worker and the signer each hold one more connection for their lock.
   - Keep every process's connections under Postgres `max_connections` (100 by default).
+    - `infra/docker-compose.yml` keeps the default. Local and CI Postgres allow 300, since parallel tests peak near 150.
   - At 20 each, one api, worker, signer and webhooks use 22 + 23 + 23 + 20 = 88.
   - A second api replica would make 110. Lower each replica's pool first (12 each: 94), or raise `max_connections`.
 - Rate limits per user; public routes are limited at the edge: [api.md](api.md#rate-limits). On 429 the web waits and backs off.
@@ -336,8 +337,8 @@ Built in `internal/database/migrations` (R-17). Postgres enforces the rules belo
   invoice to its client (R-94). `invoice.reminder` rows carry their `step` in the payload (R-96). `job.change` rows
   name a `job_id` (no invoice) and carry the change's key in the payload (R-107). `team.invite` rows name an
   `invite_id` and carry the link's token until the worker sends the email or gives up, then drop it (R-139).
-  `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts made
-  after welcome emails existed.
+  `users.login_email` and `profiles.email_notifications` decide where and whether; `users.welcome` marks accounts that
+  get a welcome email, set by sign-up.
   - `wallet.outflow` rows name a `wallet_transfer_id`: money left a profile wallet with no approved send (D-49).
   - `settlement.waiting` rows name one invoice the daily settle cap holds back: one email a day per user (SEC-03).
   - `retainer.failed` rows name a retainer's first invoice and carry the failing month's `due` (R-98).
@@ -346,7 +347,7 @@ Built in `internal/database/migrations` (R-17). Postgres enforces the rules belo
   - A row has the main invoice, `kind`, `actor` (`owner`, `payer` or `system`), `at` and small `data`.
   - Only the option an invoice shows writes its status; an option not chosen adds only money held on it.
   - Append-only like the ledger.
-  - Rows marked `backfilled` were made from older invoices' timestamps.
+  - Rows marked `backfilled` come from migration 00049, which built them from invoice timestamps.
 - `invoice_views` (R-125): pay page loads per invoice: a count, the first and the last time.
 - `invoice_reminders`: one row per invoice once the owner first turns reminders on, with `enabled`, the client's
   `stop_token` and `stopped_at`.
@@ -440,7 +441,7 @@ never holds the app's load.
 - Each worker chain job has a two-minute deadline.
 - Disabling a chain cancels its job; shutdown cancels and joins jobs before closing their connections.
 
-The gate starts all three binaries against Postgres and Anvil (public RPCs only, the first
+The gate starts the api, worker, signer and webhooks binaries against Postgres and Anvil (public RPCs only, the first
 answering every third request with 429), creates an invoice through
 the API, pays it and waits for detected → paid → settled with the deposit going detected → confirmed.
 
@@ -492,8 +493,7 @@ wallet as sender, then as receiver (two `eth_getLogs` per range), one row per wa
 re-mined copy gets a new row). A token disabled while one of its
 transfers is still detected stays in the scan until those rows confirm or are reorged, so their pending state can still resolve;
 its new transfers are not recorded. New wallet subscriptions trigger recovery through the previous checkpoint's 2,000-block overlap.
-Transfers older than that window are not looked for: those of wallets made before this table existed, or before a
-chain's first scan. Arc native-coin sends to a wallet log only the system emitter's `Transfer`; this scan reads it as the deposit scan does, so each counts once as Arc USDC.
+Transfers older than that window are not looked for, such as those before a chain's first scan. Arc native-coin sends to a wallet log only the system emitter's `Transfer`; this scan reads it as the deposit scan does, so each counts once as Arc USDC.
 Only the invoice's own
 token counts. The row stores the emitting contract (`0x3600…` for an Arc native send), so the foreign key also rejects a look-alike. Block hashes and
 times come from the RPC, never computed in Go. On Arc, native USDC sends to a receive address count from the system emitter's logs (R-186, money-safety).
@@ -609,7 +609,7 @@ settle is signed, so the invoice API can tell the owner why the money waits (R-5
 - Receipt waits start with one second, double to four seconds, and stop after one minute.
 - Advisory-lock checks are serialized on their dedicated connection.
 - The signer checks that lock before each intent and again after waiting for the user's turn.
-It signs only `factory.deploy(terms)` and `receiver.settle()`, besides the gas swap above, and only for chains enabled in the database: a chain
+It signs only `factory.deploy(terms)` and `receiver.settle()`, besides the gas swap and nonce filler above, and only for chains enabled in the database: a chain
 disabled there is dropped next round, and a round whose enabled list can't be read sends nothing. A receiver settled
 outside our signer (the refund authority after the deadline) still confirms its intent, with no tx hash: a saved
 settle keeps its hash only if its receipt succeeded with the `Settled` log. `retry` and `refuse` only change an intent still in the status
@@ -690,5 +690,5 @@ open ──transfer seen──▶ detected ──booked < amount──▶ partia
 open/detected/partially_paid ──finalized block time > the close──▶ expired / expired_partially_paid (held)
 expired_partially_paid ──owner reopens once (R-130)──▶ partially_paid, held money owed up to the amount
 any deposit with block_time > the close ──▶ held for the payer, owed to the creator only by a reopen
-paid ──settlement confirmed──▶ settled    held funds ──verified claim + approval──▶ refunded (later)
+paid ──settlement confirmed──▶ settled    held funds ──support's return, sent by the Safe──▶ refunded
 ```
