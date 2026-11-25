@@ -494,6 +494,33 @@ class HarnessTests(unittest.TestCase):
             self.assertEqual(self.run_cli('done', 'F001'), 1)
         deliver.assert_not_called()
 
+    def test_pull_request_text_comes_from_the_task_commits(self):
+        git = lambda *args: subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@example.com', *args],
+                                           cwd=self.root, check=True, capture_output=True, text=True).stdout
+        git('init', '-q', '-b', 'main')
+        git('commit', '-q', '--allow-empty', '-m', 'base')
+        git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        git('switch', '-q', '-c', 'fix/f001-value')
+        git('commit', '-q', '--allow-empty', '-m', 'fix: Value is one (F001)\n\nThe value read two.\nIt now reads one.')
+        git('commit', '-q', '--allow-empty', '-m', 'test: Pin the value')
+        git('commit', '-q', '--allow-empty', '-m', 'chore: record F001 delivery')
+        commits = h.task_commits(self.root, 'main', 'fix/f001-value')
+        self.assertEqual([subject for subject, _ in commits], ['fix: Value is one (F001)', 'test: Pin the value'])
+        self.assertEqual(h.pr_title(self.task, commits), 'fix: Value is one (F001)')
+        self.assertEqual(h.pr_title(self.task, commits[1:]), 'test: Pin the value (F001)')
+        task = {**self.task, 'refs': ['R-1'], 'evidence': {
+            'proof': {'1': 'unit: value assertion, long proof text'}, 'at': '2026-11-25T00:00:00Z',
+            'checks': [{'id': 'unit', 'outcome': 'passed'}],
+            'review': {'result': 'pass', 'by': 'reviewer', 'summary': 'Read the diff.'}}}
+        body = h.pr_body(task, commits, 'abcdef1234')
+        self.assertTrue(body.startswith('## Summary\n\nThe value read two.\nIt now reads one.\n'), body)
+        self.assertIn('- fix: Value is one (F001)\n- test: Pin the value\n', body)
+        self.assertIn('- [x] value is one: `unit`\n', body)
+        self.assertIn('Checks passed on abcdef1: unit.', body)
+        self.assertIn('Refs: R-1', body)
+        for hidden in ('long proof text', 'chore: record F001 delivery', 'Local verify at'):
+            self.assertNotIn(hidden, body)
+
     def test_pending_delivery_rechecks_constraints(self):
         self.verify()
         state = h.State(self.root)
