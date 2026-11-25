@@ -1,18 +1,18 @@
 {
   "schemaVersion": 2,
-  "skillVersion": "2.3.0",
+  "skillVersion": "2.3.2",
   "files": {
     "scripts/harness.py": "9d9e2757829fdcd997d7d3fee18471b08695a21d14e5aa5b446d0c35be2c20b0",
     "scripts/check-docs.py": "3fcedb1a5f3aa347477bd34cc1c683855cf18b05bf6ed4a2ade206ed31ff26a9",
     "AGENTS.md#harness": "73718d6e8f99544530ccb6c065b34a8f44c863f44936032e93971806146341e9",
     "docs/workflow.md": "26d953390c03a407dbc5ed148c52ff12ee9bfd9e4bb5ce46d29498c64a8ee2ac",
     ".agents/skills/checking-impact/SKILL.md": "e879cd2be569699d5ca492b0cf677b4c94ae208aed70af3afd684e8661f3a31b",
-    ".agents/skills/debugging/SKILL.md": "5d937abab37aa857b0a34fbe4a7b63525151ea38de8dbcdc1f77b0a1e2d6ab8f",
-    ".agents/skills/reviewing-changes/SKILL.md": "49e2ba02db250e6b39ed49729a3673e14d1cd45a7149a78091307c54fc4d16f5",
+    ".agents/skills/debugging/SKILL.md": "63c856c1f7f613c3079b1927c6cea5b44d150fedd7b577f9a7e0fb30e555503a",
+    ".agents/skills/reviewing-changes/SKILL.md": "161b40378d508ba462c0ebd0e1c49c22b636c0f99da80cb6e78a7fff264fd5cd",
     ".agents/skills/simplifying-code/SKILL.md": "7fcf269ecbbf19f9a9bca250db15e42fa937d0a75b612702fd5255cc1304f902",
     ".agents/skills/structuring-code/SKILL.md": "9b0c67f823e761493a6806c712f909a75f0c56a80203fe123e81479e2965dd5d",
     ".agents/skills/writing-code/SKILL.md": "34197b3c888946e2b2e8d1b3079ac7c11fe32f34e169cf56528481842eb227a4",
-    ".agents/skills/writing-tests/SKILL.md": "5990d1b578a686e1b7a8b2096587269aa18c3fd6732ee8923116623778afce99"
+    ".agents/skills/writing-tests/SKILL.md": "dd7b69c1c68ca854de062008b25c5fd769b37f221cc87d921f947ad00795f47e"
   },
-  "updatedAt": "2026-11-25T19:34:14Z"
+  "updatedAt": "2026-11-25T21:38:43Z"
 }

@@ -36,6 +36,11 @@ Runner tests live in `tests/test_harness.py` and `tests/test_verification.py`. T
 7. With commit/push/merge authorization, commit the verified files and run `done ID`. It pushes, opens the PR,
    checks the delivery policy ([staging.md](staging.md)) and merges.
    - No GitHub checks run on PRs into `main`, so `done` merges on the recorded local verification.
+   - The PR title is the first task commit's subject, plus ` (ID)` unless the subject already ends with it.
+   - The PR summary is the commit bodies. Write them for a reader who has not seen the task.
+     - Subject: `type: what changed`, under 70 characters.
+     - Body: why and what changed, in plain words.
+     - Don't repeat acceptance lines or proof. The runner adds each line with its proving check, then the checks and the review.
    - Pending CI: repeat `done ID`. Failed CI: fix, verify, review and commit again. Approval or closed PR: ask the owner.
 8. Before stopping: `wrapup --note "result; next step"` reports verification status and cleanup without running tests. Resolve failures or report the exact remaining blocker.
 

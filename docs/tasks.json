@@ -346,9 +346,9 @@
     }
   ],
   "lastWrapup": {
-    "at": "2026-11-25T19:37:55Z",
+    "at": "2026-11-25T21:42:15Z",
     "clean": true,
     "problems": [],
-    "note": "Harness 2.3.0 rerun: coding skills and CLAUDE.md added, runner kept; PLAN and PROJECT trimmed. Next: start F435."
+    "note": "Harness 2.3.2: one regression test per bug in the skills; PR text from task commits. Next: start F435."
   }
 }
