@@ -325,7 +325,10 @@ export function PayBox({
         options={payerNoticeOptions(invoice.options)}
         showVerification={pay.state !== PAY_STATES.review}
       />
-      {pay.late > 0n ? <HeldNote>{COPY.late(money(pay.late))}</HeldNote> : null}
+      {/* A closed checkout's status line already names all its held money, late money included. */}
+      {pay.late > 0n && pay.state !== PAY_STATES.closedPartial ? (
+        <HeldNote>{COPY.late(money(pay.late))}</HeldNote>
+      ) : null}
       {invoice.replacedBy?.payToken ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink">
           {COPY.replaced(invoiceNumber(invoice.replacedBy.number))}

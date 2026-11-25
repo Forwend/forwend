@@ -279,6 +279,38 @@ describe("payState", () => {
     });
   });
 
+  it("says a checkout closed, with its money held, once the held money reaches the amount", () => {
+    const amounts = {
+      receiver: "1000",
+      payable: "0",
+      held: "1000",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+      hasPolicyException: false,
+    };
+    const onTimeAndLate = {
+      ...invoice,
+      paymentStatus: "expired_partially_paid",
+      amounts,
+      deposits: [deposit("400"), deposit("600", { logIndex: 1, late: true, paid: "0" })],
+    };
+    const lateOnly = {
+      ...invoice,
+      paymentStatus: "expired",
+      amounts,
+      deposits: [deposit("1000", { late: true, paid: "0" })],
+    };
+    for (const closed of [onTimeAndLate, lateOnly])
+      expect(payState(closed, after)).toMatchObject({
+        state: PAY_STATES.closedPartial,
+        received: 1000n,
+        canSend: false,
+      });
+  });
+
   it("holds what was sent too late", () => {
     const over = {
       ...invoice,

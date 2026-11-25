@@ -184,10 +184,11 @@
       "behavior": "A closed pay page whose held money reaches the amount says it closed, instead of waiting for a confirmation that never comes",
       "acceptance": [
         "Given a closed checkout whose held money (on time plus late) reaches the amount and nothing is payable, the pay page says it closed and the money is held, not Awaiting confirmation.",
-        "A late-only full payment shows no step that says a network is confirming."
+        "A late-only full payment shows no step that says a network is confirming.",
+        "Under reduced motion, the spinners that show money on its way keep turning: the pay page status and the phone transaction row."
       ],
       "dependsOn": [],
-      "state": "not_started",
+      "state": "verified",
       "verification": [
         "web-unit",
         "e2e"
@@ -197,9 +198,78 @@
       ],
       "keep": [],
       "review": true,
-      "notes": [],
+      "notes": [
+        "2026-11-25 review fail by reviewer: Blocking: apps/web/e2e/pay.spec.ts:869 adds .first() to the How to get it back click. This hides a duplicate status on the page this task fixes. The new lateInFull case (closed, payable 0, held 1,250, one late deposit) now renders two held lines for the same money: 'Closed before the full amount arrived. 1,250.00 USDC is held for you.' (pay-status.tsx:82, closedPartial) and '1,250.00 USDC arrived after the checkout closed' (pay-box.tsx:328, pay.late > 0n), each with its own How to get it back button. That breaks R-68 'no duplicate status' and the test's own title 'every held payment gets one short line', and .first() also drops the one-button guard for the other five held cases. Fix: do not render the late HeldNote when pay.state is closedPartial (its line already counts late held money), e.g. pay-box.tsx:328 'pay.late > 0n && pay.state !== PAY_STATES.closedPartial', and restore the strict .click() without .first(). Checked and fine: payState change (pay.ts:139,168) is correct; earlier branches (paid, review, canceled, checking, confirming, closing) still win; canSend, delayed, clockRuns and pay-box seen behave as intended; the only payState caller is pay-invoice.tsx (pay page and embed), link pay does not use it. The unit test fails against the pre-fix pay.ts (state 'checking'; run with a scratch vitest config aliasing the origin/main copy) and passes now (31/31). The e2e case fails before the fix. Line 3: data-motion=essential matches base.css:127 and docs/web/DESIGN.md:1399 and the existing payment-journey/payment-sum spinners; a kept reduced-motion test would only check styling, so the recorded one-off measurement is acceptable under Which tests to keep. Nit: line 3 is a change independent of the closed-page fix and could have been its own task (docs/workflow.md step 2).",
+        "2026-11-25 review pass by reviewer: Re-review after the fix. The blocking finding is fixed: pay-box.tsx:328 hides the late note in closedPartial, and pay.spec.ts uses a strict How to get it back click again, so each held case shows one button. No other closedPartial case loses money information: the backend always sends amounts (ledger.ReadAmountsFor returns a row for every invoice; get.go sets inv.Amounts), so a closed checkout's received is payable 0 + held, and held already contains the late money (pay.late is capped at held). On-time 400 + late 600 shows 1,000 held, the right total; only the on-time/late split is gone, and both parts go back through the same support path. The other late cases still show the note (closed with nothing received, canceled, open or paid). Note, not blocking: if amounts were missing (the schema allows it, this backend never sends it), received would count only on-time money and the late money would vanish from the page. payState change, unit test (fails on the pre-fix pay.ts), e2e case and the reduced-motion spinners were checked in the first review and are unchanged. Pay unit tests 101/101 pass; verify passed at 20:56."
+      ],
       "blockedReason": null,
-      "evidence": null
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-25T20:56:00Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": "",
+            "cached": true
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.3,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 33.1,
+            "log": ""
+          },
+          {
+            "id": "web-unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 10.6,
+            "log": ""
+          }
+        ],
+        "taskHash": "d80146fd2b02c836",
+        "filesHash": "0f4980f9478e2b4d",
+        "proof": {
+          "1": "e2e: pay.spec.ts \"every held payment gets one short line\": a late-only full payment, closed with payable 0 and held 1,250.00, shows one line, \"Closed before the full amount arrived. 1,250.00 USDC is held for you.\", with one How to get it back button (strict click). The \"arrived after the checkout closed\" note is not repeated. web-unit pay.test.ts \"says a checkout closed, with its money held, once the held money reaches the amount\" pins the state: closedPartial, not \"checking\" as before the fix.",
+          "2": "e2e: the same e2e loop checks that no held case shows \"is confirming the transfer\" or \"Awaiting confirmation\". The late-only full payment case failed before the fix.",
+          "3": "e2e: the pay page status and phone transaction row spinners carry data-motion=\"essential\" (base.css exempts it from reduced motion), and the pay status loses its motion-safe: prefix. A one-off Playwright run of the pay page under reduced motion read the Payment found spinner as fw-spin 0.9s infinite; without the change it was animation none. The phone row (signed-in app) has the same attribute and class and was not measured. Landing e2e still passes: the shared status pill stays still under reduced motion. Not kept, per Which tests to keep."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after the fix. The blocking finding is fixed: pay-box.tsx:328 hides the late note in closedPartial, and pay.spec.ts uses a strict How to get it back click again, so each held case shows one button. No other closedPartial case loses money information: the backend always sends amounts (ledger.ReadAmountsFor returns a row for every invoice; get.go sets inv.Amounts), so a closed checkout's received is payable 0 + held, and held already contains the late money (pay.late is capped at held). On-time 400 + late 600 shows 1,000 held, the right total; only the on-time/late split is gone, and both parts go back through the same support path. The other late cases still show the note (closed with nothing received, canceled, open or paid). Note, not blocking: if amounts were missing (the schema allows it, this backend never sends it), received would count only on-time money and the late money would vanish from the page. payState change, unit test (fails on the pre-fix pay.ts), e2e case and the reduced-motion spinners were checked in the first review and are unchanged. Pay unit tests 101/101 pass; verify passed at 20:56.",
+          "at": "2026-11-25T20:58:10Z",
+          "filesHash": "0f4980f9478e2b4d"
+        }
+      },
+      "branch": "fix/f475-a-closed-pay-page-whose-held-money-reach",
+      "baseCommit": "a0a059ad92254bd58e330b30cdbebbf9968646ec",
+      "failedVerifies": 0
     },
     {
       "id": "F477",

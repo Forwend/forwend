@@ -59,7 +59,8 @@ export function PayStatusLine({
         ) : found ? (
           <LoaderCircle
             aria-hidden
-            className={`${ICON} text-muted motion-safe:animate-[fw-spin_var(--fw-duration-slower)_linear_infinite]`}
+            data-motion="essential"
+            className={`${ICON} text-muted animate-[fw-spin_var(--fw-duration-slower)_linear_infinite]`}
           />
         ) : pending ? (
           <span aria-hidden className="relative mt-1.5 flex size-2 shrink-0">

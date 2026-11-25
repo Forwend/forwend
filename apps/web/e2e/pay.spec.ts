@@ -806,6 +806,26 @@ test.describe("pay page", () => {
       blocksTotal: 0,
       secondsLeft: 0,
     };
+    // Closed with every unit held: no confirmation is coming, so nothing may wait for one.
+    const allHeld = {
+      reconciliationStatus: "verified",
+      receiver: "1250000000",
+      payable: "0",
+      held: "1250000000",
+      settled: "0",
+      refunded: "0",
+      observedRefunded: "0",
+      lastReturnTxHash: null,
+      unreconciled: false,
+      hasPolicyException: false,
+    };
+    const lateDeposits = [{ ...confirmed, late: true, paid: "0" }];
+    const lateInFull = {
+      ...CLOSED,
+      amounts: allHeld,
+      deposits: lateDeposits,
+      options: [{ ...MAIN_OPTION, amounts: allHeld, deposits: lateDeposits }],
+    };
     const held: [object, string | RegExp][] = [
       [
         { ...PAID, deposits: [{ ...confirmed, amount: "1300000000", paid: "1250000000" }] },
@@ -819,6 +839,7 @@ test.describe("pay page", () => {
         { ...PARTIAL, paymentStatus: "expired_partially_paid" },
         "Closed before the full amount arrived. 250.00 USDC is held for you.",
       ],
+      [lateInFull, "Closed before the full amount arrived. 1,250.00 USDC is held for you."],
       [
         { ...CANCELED, deposits: [{ ...DEPOSIT, amount: "250000000" }] },
         "250.00 USDC held for you",
@@ -842,6 +863,9 @@ test.describe("pay page", () => {
       await expect(
         page.getByText(/ask (the recipient|Alice Design GmbH) to get it back/i),
       ).toHaveCount(0);
+      await expect(page.getByText(/is confirming the transfer|Awaiting confirmation/)).toHaveCount(
+        0,
+      );
       await page.getByRole("button", { name: "How to get it back" }).click();
       await expect(
         page
