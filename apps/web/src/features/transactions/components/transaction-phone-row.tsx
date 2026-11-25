@@ -73,6 +73,7 @@ export function TransactionPhoneRow({ t, typed, onOpen }: TransactionPhoneRowPro
           ) : (
             <LoaderCircle
               aria-hidden
+              data-motion="essential"
               className="size-3 shrink-0 animate-[fw-spin_var(--fw-duration-slower)_linear_infinite]"
             />
           )}

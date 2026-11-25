@@ -135,6 +135,8 @@ export function payState(inv: Invoice, now: number): PayStatus {
     (d) => !d.late && d.status !== API_DEPOSIT_STATUSES.confirmed,
   );
   const closing = closed && inv.amounts !== undefined && BigInt(inv.amounts.payable) > 0n;
+  // Booked closed with nothing payable: the money is held, and no confirmation will make it paid.
+  const allHeld = closed && inv.amounts !== undefined && !closing;
   const awaitingChoice =
     inv.optionCount > 1 && !inv.optionLocked && Boolean(firstPaymentOption(inv));
   const review = Boolean(
@@ -163,7 +165,7 @@ export function payState(inv: Invoice, now: number): PayStatus {
                   ? PAY_STATES.checking
                   : closing
                     ? PAY_STATES.closing
-                    : received >= amount
+                    : received >= amount && !allHeld
                       ? PAY_STATES.checking
                       : received > 0n
                         ? closed
