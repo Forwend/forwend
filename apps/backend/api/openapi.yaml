@@ -7,7 +7,7 @@ info:
     token. Addresses are lowercase 0x hex. Times are RFC 3339 in UTC.
 servers:
   - url: http://localhost:8080
-    description: Local (pnpm --filter @forwend/backend api)
+    description: Local (bun run --cwd apps/backend api)
 security:
   - privyAccessToken: []
   - secretApiKey: []

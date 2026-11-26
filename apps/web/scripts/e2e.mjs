@@ -24,7 +24,10 @@ await Promise.all(servers.map((server) => new Promise((resolve) => server.close(
 
 function playwright(args) {
   return new Promise((resolve) => {
-    const child = spawn("pnpm", ["exec", "playwright", "test", ...args], { stdio: "inherit", env });
+    const child = spawn("bun", ["x", "--no-install", "playwright", "test", ...args], {
+      stdio: "inherit",
+      env,
+    });
     child.on("error", (error) => {
       console.error(error);
       resolve(1);

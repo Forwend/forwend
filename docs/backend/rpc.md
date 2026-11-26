@@ -165,8 +165,8 @@ VALUES
 - Restart all RPC consumers and inspect startup results for each enabled chain.
 - Verify chain identity, canonical hash reads and historical state availability from the deployment region.
 - Local tests cannot establish public-provider uptime, quotas or honesty.
-- Run `pnpm --filter @forwend/backend test` for configuration, security, failover, ledger and signer regressions.
-- Run `pnpm --filter @forwend/backend e2e` for real-binary invoice, payment, confirmation and settlement workflows.
+- Run `bun run --cwd apps/backend test` for configuration, security, failover, ledger and signer regressions.
+- Run `bun run --cwd apps/backend e2e` for real-binary invoice, payment, confirmation and settlement workflows.
 - Fault proxies around Anvil cover failed providers and ambiguous broadcasts without relying on external RPC availability.
 - Rollback needs the previous binary's environment; keep old secret versions until the rollback window ends.
 

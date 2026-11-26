@@ -5,9 +5,9 @@ The current release is v2, on testnets and the development mainnets; `deployment
 
 ## Commands
 
-- `forge build`, `forge test` here, or `pnpm --filter @forwend/contracts test` from the root.
+- `forge build`, `forge test` here, or `bun run --cwd packages/contracts test` from the root.
 - Libraries are git submodules in `lib/` (`git submodule update --init --recursive`).
-- `pnpm vectors` rewrites `vectors/receive-address.json` (receive addresses the Go backend and pay page must match).
+- `bun run vectors` rewrites `vectors/receive-address.json` (receive addresses the Go backend and pay page must match).
   `vectors/receive-address-v1.1.json` is fixed: the v1.1 factory's, before the fees.
 - `node script/rpc.mjs <chain>` prints a working RPC (Infura keys, then public RPCs).
 - Keys only in `packages/contracts/.env` (names in `.env.example`); scripts load it. Never print or commit one.

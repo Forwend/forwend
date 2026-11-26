@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {InvoiceReceiverFactory} from "../src/InvoiceReceiverFactory.sol";
 import {InvoiceTerms} from "../src/InvoiceTypes.sol";
 
-/// Writes vectors/receive-address.json (`pnpm vectors`); no env reads, as Deploy.t.sol sets them in parallel.
+/// Writes vectors/receive-address.json (`bun run vectors`); no env reads, as Deploy.t.sol sets them in parallel.
 contract ReceiveAddressVectors is Script {
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     bytes32 internal constant SALT = keccak256("forwend.invoice-receiver-factory.v1");

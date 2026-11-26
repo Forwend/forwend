@@ -1,5 +1,5 @@
 #!/bin/sh
-# Root `pnpm dev` runs this beside the web app. The worker, signer and webhooks start once the api answers: it applies
+# Root `bun run dev` runs this beside the web app. The worker, signer and webhooks start once the api answers: it applies
 # the migrations they check.
 set -e
 cd "$(dirname "$0")/.."

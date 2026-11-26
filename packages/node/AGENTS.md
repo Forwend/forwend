@@ -5,5 +5,5 @@ Node 20 or later, no runtime dependency. `README.md` is its npm page.
 - The package uses MIT (D-103). Version 0.2.1 is published on npm.
 - Later releases need the owner's approval and publish from CI ([PLAN](../../PLAN.md)).
 
-- Test: `pnpm --filter ./packages/node test`. Build: `pnpm --filter ./packages/node build` writes `dist/`.
+- Test: `bun run --cwd packages/node test`. Build: `bun run --cwd packages/node build` writes `dist/`.
 - The API's routes and answers: [docs/backend/api.md](../../docs/backend/api.md) and `apps/backend/api/openapi.yaml`.

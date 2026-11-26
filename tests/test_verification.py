@@ -30,7 +30,7 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(set(names), {'docs-check', 'lint', 'typecheck', 'web-unit'})
 
     def test_unknown_paths_fall_back_and_explicit_checks_are_preserved(self):
-        for paths in (None, ['new-runtime/file.xyz'], ['pnpm-lock.yaml']):
+        for paths in (None, ['new-runtime/file.xyz'], ['bun.lock']):
             self.assertEqual(set(v.select(self.config, paths)), set(self.config['verification']['fallback']))
         self.assertIn('live-e2e', v.select(self.config, ['README.md'], ['live-e2e']))
 
@@ -189,7 +189,7 @@ class BrowserCommandTests(unittest.TestCase):
     def test_credentials_do_not_implicitly_run_live_tests(self):
         with tempfile.TemporaryDirectory(prefix='forwend-browser-test-') as directory:
             root = Path(directory)
-            binary = root / 'pnpm'
+            binary = root / 'bun'
             binary.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n')
             binary.chmod(0o755)
             (root / '.env').write_text('PRIVY_TEST_EMAIL=test@example.com\nPRIVY_TEST_OTP=123456\n')
@@ -197,10 +197,10 @@ class BrowserCommandTests(unittest.TestCase):
             env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ['PATH'], COMMAND_LOG=str(log))
             script = ROOT / 'apps/web/scripts/e2e.mjs'
             subprocess.run(['node', str(script)], cwd=root, env=env, check=True)
-            self.assertEqual(log.read_text().splitlines(), ['exec playwright test'])
+            self.assertEqual(log.read_text().splitlines(), ['x --no-install playwright test'])
             subprocess.run(['node', str(script), '--live', 'team.spec.ts'], cwd=root, env=env, check=True)
             self.assertEqual(log.read_text().splitlines()[-1],
-                             'exec playwright test -c playwright.privy.config.ts team.spec.ts')
+                             'x --no-install playwright test -c playwright.privy.config.ts team.spec.ts')
 
     def test_live_config_refuses_existing_servers(self):
         text = (ROOT / 'apps/web/playwright.privy.config.ts').read_text()

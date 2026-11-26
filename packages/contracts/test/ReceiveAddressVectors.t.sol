@@ -10,7 +10,7 @@ contract ReceiveAddressVectorsTest is Test {
         assertEq(
             vm.readFile("vectors/receive-address.json"),
             new ReceiveAddressVectors().json(),
-            "stale vectors: run `pnpm vectors` in packages/contracts"
+            "stale vectors: run `bun run vectors` in packages/contracts"
         );
     }
 }

@@ -33,7 +33,7 @@ var (
 	loadAPI      = flag.String("api", "", "an api binary to test instead of this tree's (a build of another commit)")
 )
 
-// TestLoad: pnpm --filter @forwend/backend loadtest -users=1000 (docs/backend/architecture.md#load-test).
+// TestLoad: bun run --cwd apps/backend loadtest -users=1000 (docs/backend/architecture.md#load-test).
 // RPC_RATE_PER_SECOND is high so the RPC count is the api's demand, not the pace limit.
 func TestLoad(t *testing.T) {
 	ctx := context.Background()

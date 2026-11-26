@@ -6,11 +6,11 @@ payment link page `/l/<slug>` and the public API docs `/docs`. Team invites open
 
 ## Commands
 
-- `pnpm dev` from the root starts the web app (http://localhost:3000) and the backend (Postgres in Docker, api,
+- `bun run dev` from the root starts the web app (http://localhost:3000) and the backend (Postgres in Docker, api,
   worker, signer and webhooks; it needs `EXECUTOR_PRIVATE_KEY` in `apps/backend/.env`).
   `/kit` works in dev; a production build needs `KIT_ENABLED=1`. Sign-in and `/app` need
   `apps/web/.env` (copy `.env.example`) and the backend api at `API_URL`.
-- `pnpm --filter @forwend/web test` (Vitest), `e2e` (deterministic Playwright), `e2e:live` (explicit Privy tests), `lighthouse`.
+- `bun run --cwd apps/web test` (Vitest), `e2e` (deterministic Playwright), `e2e:live` (explicit Privy tests), `lighthouse`.
 - Live tests require free ports 3000 and the configured API port; they refuse to reuse existing servers.
 
 ## What to read

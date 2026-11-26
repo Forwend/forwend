@@ -1,7 +1,7 @@
 //go:build e2e
 
-// Package e2e runs the whole money loop with the real binaries (R-23): pnpm --filter @forwend/backend e2e.
-// It needs Postgres (pnpm --filter @forwend/backend postgres:up) and Foundry on PATH.
+// Package e2e runs the whole money loop with the real binaries (R-23): bun run --cwd apps/backend e2e.
+// It needs Postgres (bun run --cwd apps/backend postgres:up) and Foundry on PATH.
 package e2e
 
 import (

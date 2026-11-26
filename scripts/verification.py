@@ -53,7 +53,7 @@ def execution_environment(root):
 def fingerprint(root, check, files, paths):
     patterns = check.get('inputs', ['*']) + [
         'scripts/harness.py', 'scripts/verification.py', 'docs/config.json',
-        'package.json', '*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml',
+        'package.json', '*/package.json', 'bun.lock',
         'turbo.json', '.nvmrc', 'tsconfig.base.json']
     inputs = {p: value for p, value in files.items() if matches(p, patterns)}
     # Include ignored environment files without storing their contents or individual hashes in the cache.
