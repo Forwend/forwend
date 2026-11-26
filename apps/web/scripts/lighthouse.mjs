@@ -7,10 +7,13 @@ const PORT = 3200;
 const URL_UNDER_TEST = `http://localhost:${PORT}/`;
 const LIMITS = { performance: 0.9, accessibility: 0.95, lcpMs: 2500 };
 
-const build = spawnSync("pnpm", ["build"], { stdio: "inherit" });
+const build = spawnSync("bun", ["run", "build"], { stdio: "inherit" });
 if (build.status !== 0) process.exit(build.status ?? 1);
 
-const server = spawn("pnpm", ["start", "-p", String(PORT)], { stdio: "ignore", detached: true });
+const server = spawn("bun", ["run", "start", "-p", String(PORT)], {
+  stdio: "ignore",
+  detached: true,
+});
 const stop = () => {
   try {
     process.kill(-server.pid, "SIGTERM");

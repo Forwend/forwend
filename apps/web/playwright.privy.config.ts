@@ -53,7 +53,7 @@ export default defineConfig({
     {
       // --force: a turbo cache restore would keep stale pages an earlier `next start` left in .next.
       command:
-        "pnpm --workspace-root exec turbo run build --filter=@forwend/web --force && pnpm start -p 3000 -H localhost",
+        "bun x --no-install turbo run build --filter=@forwend/web --force && bun run start -p 3000 -H localhost",
       env: { NEXT_PUBLIC_WALLET_MFA: "0" }, // the test account has no Privy MFA set up
       url: APP_URL,
       reuseExistingServer: false,

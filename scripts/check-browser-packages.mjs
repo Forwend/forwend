@@ -33,10 +33,10 @@ const tmp = mkdtempSync(join(tmpdir(), "forwend-packages-"));
 process.on("exit", () => rmSync(tmp, { recursive: true, force: true }));
 process.on("SIGINT", () => process.exit(130));
 try {
-  run("pnpm", ["exec", "turbo", "run", "build", "--filter=@forwend/react..."]);
+  run("bun", ["x", "--no-install", "turbo", "run", "build", "--filter=@forwend/react..."]);
   const tarballs = {};
   for (const { name, dir, budget } of PACKAGES) {
-    run("pnpm", ["pack", "--pack-destination", tmp], join(root, dir));
+    run("bun", ["pm", "pack", "--destination", tmp, "--quiet"], join(root, dir));
     const file = readdirSync(tmp).find(
       (f) => f.startsWith(name.slice(1).replace("/", "-")) && f.endsWith(".tgz"),
     );
@@ -77,15 +77,11 @@ try {
         react: "19.3.1",
         "react-dom": "19.3.1",
       },
+      // @forwend/react asks for @forwend/js by version, which npm doesn't have yet: the tarball stands in.
+      overrides: { "@forwend/js": `file:${tarballs["@forwend/js"]}` },
     }),
   );
-  // @forwend/react asks for @forwend/js by version, which npm doesn't have yet: the tarball stands in.
-  writeFileSync(
-    join(app, "pnpm-workspace.yaml"),
-    `overrides:\n  "@forwend/js": "file:${tarballs["@forwend/js"]}"\n`,
-  );
-  // Not --offline: CI's frozen install fills the store but not the registry metadata this project needs.
-  run("pnpm", ["install", "--prefer-offline", "--silent"], app);
+  run("bun", ["install", "--silent"], app);
 
   writeFileSync(
     join(app, "smoke.mjs"),

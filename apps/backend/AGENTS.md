@@ -5,22 +5,22 @@ Go API, worker, signer and webhooks sender, plus the canary and support's `ops` 
 
 ## Commands
 
-- First time: `cp .env.example .env`, then `pnpm --filter @forwend/backend postgres:up` (Docker).
-- `pnpm --filter @forwend/backend test` (gofmt, vet, `go test -race` on real Postgres).
-- Root `pnpm dev` runs Postgres, the api, the worker, the signer and the webhooks sender beside the web app. It refuses to start without
+- First time: `cp .env.example .env`, then `bun run --cwd apps/backend postgres:up` (Docker).
+- `bun run --cwd apps/backend test` (gofmt, vet, `go test -race` on real Postgres).
+- Root `bun run dev` runs Postgres, the api, the worker, the signer and the webhooks sender beside the web app. It refuses to start without
   `EXECUTOR_PRIVATE_KEY` in `.env`, waits until each process reports ready, and exits 1 when one stops or is not ready
-  in time ([startup](../../docs/backend/architecture.md#startup)). Alone: `pnpm --filter @forwend/backend api`
+  in time ([startup](../../docs/backend/architecture.md#startup)). Alone: `bun run --cwd apps/backend api`
   (or `worker`, `signer`, `webhooks`).
 - `sh scripts/with-env.sh go test -tags privylive ./internal/privy/`: opt-in test against the Privy test app
   (creates a throwaway user and wallet, then removes them).
-- `pnpm --filter @forwend/backend e2e`: the money-loop gate with the real binaries on Postgres and Anvil (also in
-  root `pnpm e2e` and CI).
-- `... | pnpm --silent --filter @forwend/backend canary`: checks the open invoices' terms on stdin against
+- `bun run --cwd apps/backend e2e`: the money-loop gate with the real binaries on Postgres and Anvil (also in
+  root `bun run e2e` and CI).
+- `... | bun run --silent --cwd apps/backend canary`: checks the open invoices' terms on stdin against
   `factory.predict` on two RPCs, the api and the pay page in Chromium; exit 1 on any difference
   ([canary](../../docs/backend/money-safety.md#canary)).
-- `pnpm --silent --filter @forwend/backend ops case <pay link>`: support's tool for held money; `return` and
+- `bun run --silent --cwd apps/backend ops case <pay link>`: support's tool for held money; `return` and
   `release` queue and drop a return; `deposit` records one the scan missed ([returns through support](../../docs/backend/money-safety.md#returns-through-support)).
-- `pnpm --filter @forwend/backend loadtest -users=1000 -duration=3m`: signed-in users polling the dashboard routes
+- `bun run --cwd apps/backend loadtest -users=1000 -duration=3m`: signed-in users polling the dashboard routes
   against the api on Anvil; not in any check ([load test](../../docs/backend/architecture.md#load-test)).
 
 A paid invoice's money waits in its receive contract, shown as "on its way", until the signer settles it into the

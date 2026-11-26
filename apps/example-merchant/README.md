@@ -25,8 +25,8 @@ A small shop that takes stablecoin payments through Forwend, end to end. Use it 
    - add this shop's origin, `http://localhost:3100`, to the store's allowed origins;
    - add a webhook endpoint for `invoice.paid` at a public address that reaches `/api/webhooks/forwend`.
 2. Copy `.env.example` to `.env` and fill it in.
-3. `pnpm --filter @forwend/example-merchant build`, then `pnpm --filter @forwend/example-merchant start`.
-4. Open http://localhost:3100. For development, `pnpm --filter @forwend/example-merchant local` runs `next dev`.
+3. `bun run --cwd apps/example-merchant build`, then `bun run --cwd apps/example-merchant start`.
+4. Open http://localhost:3100. For development, `bun run --cwd apps/example-merchant local` runs `next dev`.
 
 `FORWEND_URL` is read when the shop is built, for its frame policy: build again after you change it.
 

@@ -156,7 +156,7 @@ The lock's session sets TCP keepalives (30 s idle, 3 probes 10 s apart), so Post
 in about a minute, not two hours.
 Waiting instead of exiting suits rolling deploys: the new copy starts as soon as the old one stops.
 
-Root `pnpm dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in
+Root `bun run dev` (`apps/backend/scripts/dev.sh`) stops at once when `EXECUTOR_PRIVATE_KEY` is missing or empty in
 `apps/backend/.env`. It starts Postgres, builds the four binaries and starts the api. Once the api logs `api listening`
 and `/healthz` answers 200, it starts the worker, signer and webhooks, which need its migrations. Then it waits for their
 ready lines. Each process has 120 s. When one stops or is not ready in time, the script names it,
@@ -194,7 +194,7 @@ and the limit buckets in `internal/httpapi/mid` would move to it. Nothing else i
 
 ## Load test
 
-`pnpm --filter @forwend/backend loadtest -users=10000 -duration=3m` (`e2e/load_test.go`; needs Postgres and Foundry,
+`bun run --cwd apps/backend loadtest -users=10000 -duration=3m` (`e2e/load_test.go`; needs Postgres and Foundry,
 like the gate). Each user polls the dashboard routes every 15 s against Anvil behind a counting proxy; it prints
 p50/p95/p99 per route, errors, unread balances and RPC calls per second. On one Apple M4 Pro running everything,
 10,000 users gave p95 2.4 ms, 0 errors and 1,333 RPC calls/s (334 when the finalized block moves every 60 s). What

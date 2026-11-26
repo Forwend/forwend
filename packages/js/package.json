@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "bun run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

@@ -27,29 +27,29 @@
     },
     {
       "id": "lint",
-      "argv": ["pnpm", "lint"],
+      "argv": ["bun", "run", "lint"],
       "required": true,
       "precommit": true,
       "cache": true,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "typecheck",
-      "argv": ["pnpm", "typecheck"],
+      "argv": ["bun", "run", "typecheck"],
       "required": true,
       "precommit": true,
       "cache": true,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "unit",
       "lane": "unit",
-      "argv": ["pnpm", "test"],
+      "argv": ["bun", "run", "test"],
       "required": true,
       "cache": true,
       "versions": [
         ["node", "--version"],
-        ["pnpm", "--version"],
+        ["bun", "--version"],
         ["go", "version"],
         ["forge", "--version"],
         ["anvil", "--version"]
@@ -72,13 +72,13 @@
     },
     {
       "id": "build",
-      "argv": ["pnpm", "build"],
+      "argv": ["bun", "run", "build"],
       "required": true,
       "timeoutSeconds": 600,
       "cache": true,
       "versions": [
         ["node", "--version"],
-        ["pnpm", "--version"],
+        ["bun", "--version"],
         ["go", "version"],
         ["forge", "--version"]
       ],
@@ -92,13 +92,13 @@
     },
     {
       "id": "e2e",
-      "argv": ["pnpm", "e2e"],
+      "argv": ["bun", "run", "e2e"],
       "required": true,
       "timeoutSeconds": 600,
       "cache": true,
       "versions": [
         ["node", "--version"],
-        ["pnpm", "--version"],
+        ["bun", "--version"],
         ["go", "version"],
         ["forge", "--version"],
         ["anvil", "--version"]
@@ -113,70 +113,70 @@
     },
     {
       "id": "tokens-unit",
-      "argv": ["pnpm", "--filter", "@forwend/design-tokens", "test"],
+      "argv": ["bun", "run", "--cwd", "packages/design-tokens", "test"],
       "cache": true,
       "inputs": ["packages/design-tokens/*"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "ui-unit",
-      "argv": ["pnpm", "--filter", "@forwend/ui-web", "test"],
+      "argv": ["bun", "run", "--cwd", "packages/ui-web", "test"],
       "cache": true,
       "inputs": ["packages/ui-web/*", "packages/design-tokens/*"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "kit-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/kit.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e", "e2e/kit.spec.ts"],
       "timeoutSeconds": 600,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "landing-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/landing.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e", "e2e/landing.spec.ts"],
       "timeoutSeconds": 600,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "waitlist-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/waitlist.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e", "e2e/waitlist.spec.ts"],
       "timeoutSeconds": 600,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "a11y-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/a11y.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e", "e2e/a11y.spec.ts"],
       "timeoutSeconds": 600,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "seo-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e", "e2e/seo.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e", "e2e/seo.spec.ts"],
       "timeoutSeconds": 600,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "images-check",
       "argv": ["node", "scripts/check-images.mjs"],
       "cache": true,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "lighthouse",
-      "argv": ["pnpm", "--filter", "@forwend/web", "lighthouse"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "lighthouse"],
       "timeoutSeconds": 900,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "contracts",
       "lane": "unit",
-      "argv": ["pnpm", "--filter", "@forwend/contracts", "test"],
+      "argv": ["bun", "run", "--cwd", "packages/contracts", "test"],
       "timeoutSeconds": 900,
       "cache": true,
       "inputs": ["packages/contracts/*"],
@@ -191,18 +191,18 @@
         "for f in docs/diagrams/*.json; do npx -y mapgrain@0.2.5 validate \"$f\" || exit 1; done"
       ],
       "cache": true,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "backend",
       "lane": "unit",
-      "argv": ["pnpm", "--filter", "@forwend/backend", "test"],
+      "argv": ["bun", "run", "--cwd", "apps/backend", "test"],
       "timeoutSeconds": 900,
       "cache": true,
       "inputs": ["apps/backend/*", "packages/contracts/*"],
       "versions": [
         ["node", "--version"],
-        ["pnpm", "--version"],
+        ["bun", "--version"],
         ["go", "version"],
         ["forge", "--version"],
         ["anvil", "--version"]
@@ -231,14 +231,14 @@
     },
     {
       "id": "backend-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/backend", "e2e"],
+      "argv": ["bun", "run", "--cwd", "apps/backend", "e2e"],
       "timeoutSeconds": 900,
       "package": "apps/backend",
       "script": "e2e",
       "cache": true,
       "versions": [
         ["node", "--version"],
-        ["pnpm", "--version"],
+        ["bun", "--version"],
         ["go", "version"],
         ["forge", "--version"],
         ["anvil", "--version"]
@@ -258,21 +258,21 @@
       "ci": true,
       "timeoutSeconds": 900,
       "cache": false,
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "web-unit",
-      "argv": ["pnpm", "--filter", "@forwend/web", "test"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "test"],
       "cache": true,
       "inputs": ["apps/web/*", "packages/ui-web/*", "packages/design-tokens/*"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "node-unit",
-      "argv": ["pnpm", "--filter", "forwend", "test"],
+      "argv": ["bun", "run", "--cwd", "packages/node", "test"],
       "cache": true,
       "inputs": ["packages/node/*"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "browser-packages",
@@ -280,48 +280,48 @@
       "ci": true,
       "cache": true,
       "inputs": ["packages/js/*", "packages/react/*", "scripts/check-browser-packages.mjs"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "web-build",
-      "argv": ["pnpm", "--filter", "@forwend/web", "build"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "build"],
       "cache": true,
       "inputs": ["apps/web/*", "packages/ui-web/*", "packages/design-tokens/*"],
       "localInputs": ["apps/web/.env*"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]]
+      "versions": [["node", "--version"], ["bun", "--version"]]
     },
     {
       "id": "live-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e:live"],
       "cache": false,
       "timeoutSeconds": 900
     },
     {
       "id": "auth-live-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live", "e2e/privy/auth.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e:live", "e2e/privy/auth.spec.ts"],
       "cache": false,
       "timeoutSeconds": 600
     },
     {
       "id": "loading-live-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live", "e2e/privy/loading.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e:live", "e2e/privy/loading.spec.ts"],
       "cache": false,
       "timeoutSeconds": 600
     },
     {
       "id": "send-live-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e:live", "e2e/privy/send.spec.ts"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e:live", "e2e/privy/send.spec.ts"],
       "cache": false,
       "timeoutSeconds": 600
     },
     {
       "id": "web-e2e",
-      "argv": ["pnpm", "--filter", "@forwend/web", "e2e"],
+      "argv": ["bun", "run", "--cwd", "apps/web", "e2e"],
       "cache": true,
       "timeoutSeconds": 600,
       "inputs": ["apps/web/*", "packages/ui-web/*", "packages/design-tokens/*"],
       "localInputs": ["apps/web/.env*"],
-      "versions": [["node", "--version"], ["pnpm", "--version"]],
+      "versions": [["node", "--version"], ["bun", "--version"]],
       "covers": ["web-build"]
     }
   ],

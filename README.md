@@ -166,8 +166,8 @@ NEAR Intents has no testnet, so a real cross-chain payment needs mainnet funds.
 The browser tests run the pay page against a local stub API that returns signed 1Click quotes.
 
 ```sh
-pnpm install
-pnpm --filter @forwend/web e2e crosschain
+bun install
+bun run --cwd apps/web e2e crosschain
 ```
 
 Playwright builds the web app and pays a live invoice with USDT on Tron, from quote to receipt.
@@ -179,7 +179,7 @@ Every test passes.
 - Web: Next.js, React, Redux Toolkit, Zod, Tailwind CSS, Radix UI and Lucide icons.
 - Backend: Go with pgx, goose, go-ethereum, the Privy Go SDK, golang-jwt, gorilla/websocket and fpdf.
 - Contracts: Foundry with forge-std and OpenZeppelin Contracts.
-- Tests and tooling: Vitest, Playwright, Biome, Turborepo and pnpm.
+- Tests and tooling: Vitest, Playwright, Biome, Turborepo and Bun.
 - Services: the NEAR Intents 1Click API, Privy for sign-in and wallets, Chainlink price feeds and Uniswap v3.
 
 ## Packages
@@ -238,22 +238,22 @@ Each package's README has the full guide, and the API reference lives at `/docs`
 
 ## Run it locally
 
-You need Node 26, pnpm 12, Go 1.27, Foundry and Docker.
+You need Node 26, Bun 1.4, Go 1.27, Foundry and Docker.
 
 ```sh
-pnpm install
+bun install
 cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
-pnpm dev
+bun run dev
 ```
 
-`pnpm dev` starts Postgres in Docker, the API, the worker, the signer, the webhooks sender and the web app at http://localhost:3000.
+`bun run dev` starts Postgres in Docker, the API, the worker, the signer, the webhooks sender and the web app at http://localhost:3000.
 Fill in the keys in each `.env` first; the backend needs a funded testnet executor key.
 
 ```sh
-pnpm test        # unit tests for every package, the backend and the contracts
-pnpm e2e         # browser and backend end-to-end tests
-pnpm lint && pnpm typecheck
+bun run test    # unit tests for every package, the backend and the contracts
+bun run e2e     # browser and backend end-to-end tests
+bun run lint && bun run typecheck
 ```
 
 ## Roadmap

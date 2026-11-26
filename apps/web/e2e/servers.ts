@@ -5,7 +5,7 @@ export const API_PORT = Number(process.env.E2E_API_PORT); // e2e/stub-api.mjs
 export const EXAMPLE_PORT = Number(process.env.E2E_EXAMPLE_PORT);
 const ports = [PUBLIC_PORT, KIT_PORT, API_PORT, EXAMPLE_PORT];
 if (ports.some((port) => !port) || new Set(ports).size < ports.length) {
-  throw new Error("Run browser tests with pnpm --filter @forwend/web e2e");
+  throw new Error("Run browser tests with bun run --cwd apps/web e2e");
 }
 export const PUBLIC_URL = `http://127.0.0.1:${PUBLIC_PORT}`;
 export const KIT_URL = `http://127.0.0.1:${KIT_PORT}`;

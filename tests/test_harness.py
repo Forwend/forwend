@@ -437,9 +437,9 @@ class HarnessTests(unittest.TestCase):
             self.assertEqual((result['outcome'], result['log']), (outcome, f'{outcome}.log'))
             self.assertTrue((self.root / f'{outcome}.log').exists())
 
-    def test_missing_package_script_fails_before_pnpm(self):
+    def test_missing_package_script_fails_before_bun(self):
         (self.root / 'package.json').write_text(json.dumps({'scripts': {}}))
-        check = {'id': 'gate', 'argv': ['pnpm', 'e2e'], 'package': '.', 'script': 'e2e'}
+        check = {'id': 'gate', 'argv': ['bun', 'run', 'e2e'], 'package': '.', 'script': 'e2e'}
         with patch.object(h.subprocess, 'Popen') as spawn:
             result = h.run_check(self.root, check, self.root / 'check.log')
         self.assertEqual(result['outcome'], 'missing-command')

@@ -91,7 +91,7 @@ Structure review is manual: no check enforces import boundaries, so passing lint
 - The pre-push hook blocks pushes to `main`. `start` installs both hooks; `hook install` does it by hand.
 - `wrapup` never executes tests or grants verification. Delivery uses the recorded successful verification and independent review.
 - Auth and Privy integration changes must select live tests when deterministic tests cannot prove the behavior.
-- Live provider checks are explicit: `check live-e2e` or `pnpm --filter @forwend/web e2e:live`.
+- Live provider checks are explicit: `check live-e2e` or `bun run --cwd apps/web e2e:live`.
 - Live browser checks require configured test credentials and free application ports. They never reuse local servers or cached results.
 - For wording changes, inspect the affected screen. Filename rules cannot establish that a change only alters text.
 - Proof names must refer to checks that passed. The description explains relevance; independent review checks that claim.

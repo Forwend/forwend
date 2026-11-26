@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "nextId": 501,
+  "nextId": 502,
   "tasks": [
     {
       "id": "F332",
@@ -343,6 +343,128 @@
       "notes": [],
       "blockedReason": null,
       "evidence": null
+    },
+    {
+      "id": "F501",
+      "type": "build",
+      "behavior": "Bun installs the workspace in place of pnpm; Node still runs the apps and tests",
+      "acceptance": [
+        "A clean clone installs with bun install --frozen-lockfile from one committed bun.lock; the pnpm lockfile and workspace file are gone, and the workspaces, overrides and blocked install scripts carry over.",
+        "Every required and CI-only check passes locally with Bun as the package manager, lane by lane as staging CI runs them; Node still runs Next.js, Playwright and Vitest.",
+        "Staging CI, the web Docker image and the publish workflow install with Bun; the web image builds and its server answers.",
+        "A packed @forwend/react depends on @forwend/js by version, not workspace:, so a CI publish stays correct.",
+        "D-1, R-1, R-14 and every doc, script and comment name Bun commands; no pnpm command is left."
+      ],
+      "dependsOn": [],
+      "state": "verified",
+      "verification": [
+        "browser-packages"
+      ],
+      "refs": [
+        "D-1",
+        "R-1",
+        "R-14"
+      ],
+      "keep": [
+        "apps/web/src/*",
+        "apps/example-merchant/src/*",
+        "packages/*/src/*"
+      ],
+      "review": false,
+      "notes": [
+        "2026-11-26 review fail by reviewer: Blocking: .npmrc.example:3 documents npm publish \"$(cd packages/node && bun pm pack --quiet)\". Without --destination, bun pm pack --quiet prints only the file name (forwend-0.2.1.tgz), so npm publish from the root fails with ENOENT (reproduced). Also npm publish <tarball> skips prepublishOnly and bun pm pack runs only prepack/prepare, so packages/node/package.json:29 prepublishOnly (bun run build) no longer runs on any publish path; a hand publish from a clean clone ships no dist/ (gitignored). Fix: rename packages/node prepublishOnly to prepack (bun pm pack runs it), and make the command resolve, e.g. npm publish \"$(cd packages/node && bun pm pack --destination \"$PWD\" --quiet)\". Checked fine: overrides resolve to the same ws/uuid/decode-uri-component versions as pnpm; trustedDependencies [] blocks only the same 4 scripts (bun pm untrusted); frozen dry-run exit 0; Dockerfile filtered frozen install works (simulated, tsc/next/turbo present); setup-bun SHA = v2.2.0 and reads packageManager; setup-node kept; CI pack with --destination prints an absolute path, provenance/auth intact; config.json argv map to the right package folders and scripts; bunx resolves turbo/playwright/next with node shebang; Bun honors the file: override in check-browser-packages; bun run passes -flags and stdin (canary -h works); lint exit 0; unittest 68 OK; no pnpm left outside D-1.",
+        "2026-11-26 review pass by reviewer: Re-review after fixes. .npmrc.example:3 now packs with --destination \"$PWD\" (expanded after cd), so it prints one absolute path. packages/node, js and react use prepack: bun run build, and bun pm pack runs it. A real pack of each package prints exactly one line, so tarball=$(...) in publish.yml stays a clean path; tsc prints nothing to stdout, and stderr carries bun's $ lines. check-browser-packages.mjs only rebuilds dist again (its pack stdout is ignored). CI publish rebuilds after turbo with the same deps built; npm publish <tarball> runs no scripts. ci.yml cache: actions/cache SHA-pinned, path ~/.bun/install/cache is Bun's default when BUN_INSTALL is unset (setup-bun v2.2.0 sets no BUN_INSTALL), key on bun.lock; publish.yml stays uncached. Nit: the hand command leaves packages/node/forwend-<v>.tgz untracked and not gitignored; a temp --destination would avoid it. Earlier checks still hold: overrides, trustedDependencies, Dockerfile filtered install, setup-bun pin, config.json map, no pnpm left."
+      ],
+      "blockedReason": null,
+      "evidence": {
+        "version": 3,
+        "status": "passed",
+        "at": "2026-11-26T00:50:31Z",
+        "checks": [
+          {
+            "id": "harness",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 9.4,
+            "log": ""
+          },
+          {
+            "id": "docs-check",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.1,
+            "log": ""
+          },
+          {
+            "id": "lint",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.5,
+            "log": ""
+          },
+          {
+            "id": "typecheck",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "unit",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 84.9,
+            "log": ""
+          },
+          {
+            "id": "build",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 2.5,
+            "log": ""
+          },
+          {
+            "id": "e2e",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 47.2,
+            "log": ""
+          },
+          {
+            "id": "browser-packages",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 1.4,
+            "log": ""
+          },
+          {
+            "id": "keep",
+            "outcome": "passed",
+            "exit": 0,
+            "seconds": 0.0,
+            "log": ""
+          }
+        ],
+        "taskHash": "dbec9799a3352262",
+        "filesHash": "a59b9ba1cf9c12c0",
+        "proof": {
+          "1": "build: bun install migrated pnpm-lock.yaml into bun.lock with the same versions (ws 7.5.13 and 8.21.0+, uuid 11.1.1, decode-uri-component 0.5.0); pnpm-lock.yaml and pnpm-workspace.yaml are deleted. bun.lock keeps the three range-scoped overrides; bun pm untrusted lists the same four blocked install scripts (bufferutil, utf-8-validate, keccak, @reown/appkit); the layout is isolated (configVersion 1). bun install --frozen-lockfile from an empty node_modules takes 1.8-1.9 s (pnpm warm: 2.6-7.3 s).",
+          "2": "e2e: check --ci --fresh, lane by lane with Bun on PATH: lane main passed harness, docs-check, lint, typecheck, build, e2e and browser-packages; lane unit passed unit. symbolic failed only on a missing pipx on this Mac; the same halmos 0.3.3 command through uvx passed 6 of 6. Next.js, Playwright (bun x keeps the node shebang) and Vitest still run on Node.",
+          "3": "build: ci.yml and publish.yml use oven-sh/setup-bun pinned to v2.2.0 by SHA, with bun-version-file package.json, and keep setup-node for Node. ci.yml caches ~/.bun/install/cache keyed on bun.lock (actions/cache v6.1.0 by SHA); publish.yml has no cache. docker build -f infra/web.Dockerfile passed with bun install --frozen-lockfile; the container runs node v26.13.1 and answered GET / with 200 and the Forwend title, and /pay/not-a-token with 404. Staging CI runs at the next promotion.",
+          "4": "browser-packages: the check packs both packages with bun pm pack and fails on any workspace: range; the packed @forwend/react depends on \"@forwend/js\": \"^0.1.1\", as pnpm wrote it. Both tarballs install, render on the server and type-check. CI publishes the bun-packed tarball with npm publish --provenance. By hand, the .npmrc.example command packs with a full path; prepack builds dist (node, js, react); npm publish --dry-run of forwend 0.2.1 from an empty dist listed 10 dist files.",
+          "5": "docs-check: D-1, R-1 and R-14 name Bun; git grep -w pnpm outside bun.lock and the task record finds only D-1 saying Bun installs faster than pnpm did."
+        },
+        "review": {
+          "result": "pass",
+          "by": "reviewer",
+          "summary": "Re-review after fixes. .npmrc.example:3 now packs with --destination \"$PWD\" (expanded after cd), so it prints one absolute path. packages/node, js and react use prepack: bun run build, and bun pm pack runs it. A real pack of each package prints exactly one line, so tarball=$(...) in publish.yml stays a clean path; tsc prints nothing to stdout, and stderr carries bun's $ lines. check-browser-packages.mjs only rebuilds dist again (its pack stdout is ignored). CI publish rebuilds after turbo with the same deps built; npm publish <tarball> runs no scripts. ci.yml cache: actions/cache SHA-pinned, path ~/.bun/install/cache is Bun's default when BUN_INSTALL is unset (setup-bun v2.2.0 sets no BUN_INSTALL), key on bun.lock; publish.yml stays uncached. Nit: the hand command leaves packages/node/forwend-<v>.tgz untracked and not gitignored; a temp --destination would avoid it. Earlier checks still hold: overrides, trustedDependencies, Dockerfile filtered install, setup-bun pin, config.json map, no pnpm left.",
+          "at": "2026-11-26T00:54:24Z",
+          "filesHash": "a59b9ba1cf9c12c0"
+        }
+      },
+      "branch": "build/f501-bun-installs-the-workspace-in-place-of-p",
+      "baseCommit": "df58dd8d959e2c5a67b6e6fa6be39abca2206ba0",
+      "failedVerifies": 0
     }
   ],
   "lastWrapup": {

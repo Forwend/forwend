@@ -108,7 +108,7 @@ func exec(ctx context.Context, query string, args ...any) error {
 	}
 	conn, err := pgx.Connect(ctx, u.String())
 	if err != nil {
-		return fmt.Errorf("connect to Postgres (locally: pnpm --filter @forwend/backend postgres:up): %w", err)
+		return fmt.Errorf("connect to Postgres (locally: bun run --cwd apps/backend postgres:up): %w", err)
 	}
 	defer conn.Close(ctx)
 	_, err = conn.Exec(ctx, query, args...)
@@ -155,7 +155,7 @@ func build(migrate func(context.Context, string) error) (string, error) {
 	}
 	conn, err := pgx.Connect(ctx, u.String())
 	if err != nil {
-		return "", fmt.Errorf("connect to Postgres (locally: pnpm --filter @forwend/backend postgres:up): %w", err)
+		return "", fmt.Errorf("connect to Postgres (locally: bun run --cwd apps/backend postgres:up): %w", err)
 	}
 	defer conn.Close(ctx)
 	if _, err := conn.Exec(ctx, "SELECT pg_advisory_lock($1)", templateLock); err != nil {

@@ -32,7 +32,7 @@ export default defineConfig({
   // both read API_URL, so each server points it at the stub, not .env.
   webServer: [
     {
-      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/web && pnpm start -p ${PUBLIC_PORT}`,
+      command: `bun x --no-install turbo run build --filter=@forwend/web && bun run start -p ${PUBLIC_PORT}`,
       // The fake 1Click's key (e2e/oneclick.ts): the page takes it only on loopback.
       env: {
         NEXT_PUBLIC_SUPPORT_EMAIL: SUPPORT_EMAIL,
@@ -44,7 +44,7 @@ export default defineConfig({
       timeout: 240_000,
     },
     {
-      command: `pnpm start -p ${KIT_PORT}`,
+      command: `bun run start -p ${KIT_PORT}`,
       url: KIT_URL,
       env: { KIT_ENABLED: "1", API_URL },
       reuseExistingServer: false,
@@ -59,7 +59,7 @@ export default defineConfig({
     },
     // The example merchant, built with FORWEND_URL for its frame-src.
     {
-      command: `pnpm --workspace-root exec turbo run build --filter=@forwend/example-merchant... && pnpm --filter @forwend/example-merchant exec next start -p ${EXAMPLE_PORT}`,
+      command: `bun x --no-install turbo run build --filter=@forwend/example-merchant... && cd ../example-merchant && bun x --no-install next start -p ${EXAMPLE_PORT}`,
       url: EXAMPLE_URL,
       env: {
         FORWEND_URL: PUBLIC_URL,

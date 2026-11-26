@@ -1,4 +1,4 @@
-# Local services for apps/backend. Values come from apps/backend/.env: pnpm --filter @forwend/backend postgres:up
+# Local services for apps/backend. Values come from apps/backend/.env: bun run --cwd apps/backend postgres:up
 services:
   postgres:
     image: postgres:17

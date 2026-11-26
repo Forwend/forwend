@@ -29,7 +29,7 @@ Rules that protect the contracts. Read before touching invoices, the watcher, th
   - The database allows the status back only with `reopened_until`, once.
   - It allows reopen rows only between the first expiry and a second.
 - Go address code and `predict` share test vectors: `packages/contracts/vectors/receive-address.json`, written by
-  `pnpm vectors` in `packages/contracts`. `forge test` fails while the file is stale.
+  `bun run vectors` in `packages/contracts`. `forge test` fails while the file is stale.
   - `receive-address-v1.1.json` keeps the v1.1 factory's vectors, without fees, for the invoices that still use it.
 - The recipient is the profile wallet read from Privy, never from the request. The contract can't tell a wrong one.
 - The recipient wallet must exist on the invoice's chain before the invoice is created.
@@ -347,8 +347,8 @@ pay page stops showing the address 5 minutes before the close. The canary then:
 
 Any difference or failed read logs `canary alert` with the problem and exits 1; otherwise `canary passed`, exit 0.
 Empty stdin is an alert as well, because it usually means the query failed; pass `-allow-empty` only for a one-off
-run by hand. Run it on its own host with Node, `pnpm install` and `pnpm --filter @forwend/web exec playwright install
-chromium`, from cron or a scheduler. Page on a non-zero exit, and also when a scheduled run is missed (a dead-man
+run by hand. Run it on its own host with Node and Bun: `bun install`, then `bun x playwright install chromium` in
+`apps/web`. Start it from cron or a scheduler. Page on a non-zero exit, and also when a scheduled run is missed (a dead-man
 check on the last `canary passed`):
 
 ```sh
@@ -362,7 +362,7 @@ check on the last `canary passed`):
     AND i.factory_address = lower('$CANARY_FACTORY')"
   psql "$READONLY_DATABASE_URL" -At -F ' ' -c "SELECT 'quote', option_id, deposit_address, amount_out
   FROM crosschain_quotes WHERE status = 'PENDING_DEPOSIT' AND shown_until > now()"; } |
-  pnpm --silent --filter @forwend/backend canary
+  bun run --silent --cwd apps/backend canary
 ```
 
 The terms come from stdin, not a database connection, so the canary holds no database credentials; a read-only role

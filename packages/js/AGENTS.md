@@ -5,6 +5,6 @@
 
 - It frames `/embed/<token>` and takes only messages from that frame, from Forwend's origin, in the D-117 shape.
 - Its events are hints: nothing in it may decide that an order is paid.
-- Test: `pnpm --filter @forwend/js test`. Build: `pnpm --filter @forwend/js build` writes `dist/`.
+- Test: `bun run --cwd packages/js test`. Build: `bun run --cwd packages/js build` writes `dist/`.
 - `node scripts/check-browser-packages.mjs` packs it with `@forwend/react`: files, gzip budget, a fresh install.
 - Version 0.1.1 is published on npm. Later releases need the owner's approval and publish from CI ([PLAN](../../PLAN.md)).
