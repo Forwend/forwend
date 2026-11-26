@@ -356,7 +356,7 @@
         "D-1, R-1, R-14 and every doc, script and comment name Bun commands; no pnpm command is left."
       ],
       "dependsOn": [],
-      "state": "verified",
+      "state": "passing",
       "verification": [
         "browser-packages"
       ],
@@ -460,11 +460,18 @@
           "summary": "Re-review after fixes. .npmrc.example:3 now packs with --destination \"$PWD\" (expanded after cd), so it prints one absolute path. packages/node, js and react use prepack: bun run build, and bun pm pack runs it. A real pack of each package prints exactly one line, so tarball=$(...) in publish.yml stays a clean path; tsc prints nothing to stdout, and stderr carries bun's $ lines. check-browser-packages.mjs only rebuilds dist again (its pack stdout is ignored). CI publish rebuilds after turbo with the same deps built; npm publish <tarball> runs no scripts. ci.yml cache: actions/cache SHA-pinned, path ~/.bun/install/cache is Bun's default when BUN_INSTALL is unset (setup-bun v2.2.0 sets no BUN_INSTALL), key on bun.lock; publish.yml stays uncached. Nit: the hand command leaves packages/node/forwend-<v>.tgz untracked and not gitignored; a temp --destination would avoid it. Earlier checks still hold: overrides, trustedDependencies, Dockerfile filtered install, setup-bun pin, config.json map, no pnpm left.",
           "at": "2026-11-26T00:54:24Z",
           "filesHash": "a59b9ba1cf9c12c0"
-        }
+        },
+        "commit": "043a1d9c",
+        "doneAt": "2026-11-26T00:58:53Z"
       },
       "branch": "build/f501-bun-installs-the-workspace-in-place-of-p",
       "baseCommit": "df58dd8d959e2c5a67b6e6fa6be39abca2206ba0",
-      "failedVerifies": 0
+      "failedVerifies": 0,
+      "delivery": {
+        "mode": "pr",
+        "branch": "build/f501-bun-installs-the-workspace-in-place-of-p",
+        "base": "main"
+      }
     }
   ],
   "lastWrapup": {
